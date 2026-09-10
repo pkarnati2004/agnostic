@@ -1,0 +1,6 @@
+node_modules/
+dist/
+CLAUDE.local.md
+NOTES.md
+.env
+.claude
