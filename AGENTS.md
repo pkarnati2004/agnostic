@@ -7,4 +7,4 @@ Guidance for coding agents working in this repo. Humans: see CONTRIBUTING.md.
 - Shell out only through `packages/core/src/process.ts`.
 - Don't add abstractions for a single use. Don't add dependencies without a reason in the PR.
 - Run `pnpm lint && pnpm test` before declaring anything done. For behavior changes, extend `pnpm smoke`.
-- Ask before: changing the SQLite schema, adding a daemon endpoint, adding any network call beyond localhost.
+- No network calls beyond localhost and the daily catalog version check. Ask before: changing the SQLite schema, adding a daemon endpoint, adding any new network call.
