@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CoreError, ProcessError } from "./error.js";
+import { ConfigError, CoreError, ProcessError } from "./error.js";
 
 describe("CoreError", () => {
   it("keeps code, hint and cause", () => {
@@ -35,6 +35,21 @@ describe("ProcessError", () => {
     expect(error.args).toEqual(["status"]);
     expect(error.exitCode).toBe(128);
     expect(error.stderr).toBe("not a git repository");
+    expect(error).toBeInstanceOf(CoreError);
+  });
+});
+
+describe("ConfigError", () => {
+  it("keeps the file it came from alongside the code and hint", () => {
+    const error = new ConfigError("/repo/.ag/preferences.yaml is not valid: optimize", {
+      code: "ag-file-invalid",
+      hint: "Fix /repo/.ag/preferences.yaml or delete it to use the defaults.",
+      file: "/repo/.ag/preferences.yaml",
+    });
+    expect(error.name).toBe("ConfigError");
+    expect(error.file).toBe("/repo/.ag/preferences.yaml");
+    expect(error.code).toBe("ag-file-invalid");
+    expect(error.hint).toBe("Fix /repo/.ag/preferences.yaml or delete it to use the defaults.");
     expect(error).toBeInstanceOf(CoreError);
   });
 });

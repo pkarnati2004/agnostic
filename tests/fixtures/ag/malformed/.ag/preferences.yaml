@@ -1,0 +1,4 @@
+optimize: balanced
+risk_rules:
+  - area: auth
+   keywords: [auth]

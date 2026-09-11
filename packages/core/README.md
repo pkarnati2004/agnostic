@@ -6,5 +6,6 @@ The types every other package shares, and the two things they all need to do saf
 - `CoreError`, the base for every typed error in the repo, and `ProcessError`.
 - `newId` and the id alphabet; `agnosticPaths` and the `~/.agnostic` layout.
 - `run` and `spawn` in `process.ts`: the only place in agnostic that starts a child process, so env scrubbing happens once.
+- The `.ag/` loader - `RepoConfig`, `Preferences`, the instructions and decisions text, and task notes - in the on-disk formats every other package parses.
 
-It is not: config loading (`.ag/agnostic.yaml` is loaded in a later chunk), storage, HTTP, or anything that knows a specific harness. `core` imports no other package.
+It is not: storage, HTTP, the `CLAUDE.md` files `agn sync` generates, or anything that knows a specific harness. `core` imports no other package.

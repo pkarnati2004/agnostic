@@ -1,0 +1,2 @@
+id: short
+test_command: pnpm test

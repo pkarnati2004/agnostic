@@ -39,3 +39,18 @@ export class ProcessError extends CoreError {
     this.stderr = opts.stderr;
   }
 }
+
+export type ConfigErrorOptions = CoreErrorOptions & {
+  file: string;
+};
+
+/** A file under `.ag/` exists but cannot be used; `file` is the absolute path the user must fix. */
+export class ConfigError extends CoreError {
+  readonly file: string;
+
+  constructor(message: string, opts: ConfigErrorOptions) {
+    super(message, opts);
+    this.name = "ConfigError";
+    this.file = opts.file;
+  }
+}

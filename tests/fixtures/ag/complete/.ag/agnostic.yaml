@@ -1,0 +1,5 @@
+# test and lint commands for this repo, and the profile agn starts tasks with
+id: r7k2m4pqrs
+test_command: pnpm test
+lint_command: pnpm lint
+default_profile: claude-code:sonnet-4.5:native

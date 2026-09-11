@@ -1,0 +1,12 @@
+# optimize: quality | balanced | cost | speed
+optimize: quality
+subscriptions_only: true
+allow_local: false
+risk_rules:
+  - area: auth
+    keywords:
+      - auth
+      - oauth
+      - session
+    review: independent
+    min_evidence: strong

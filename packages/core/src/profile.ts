@@ -55,6 +55,20 @@ export function parseProfileId(id: string): {
   };
 }
 
+// `.ag/` files store profile ids as plain strings; parseProfileId stays the one definition of the shape.
+export const ProfileIdSchema = z.string().refine(
+  (id) => {
+    try {
+      parseProfileId(id);
+      return true;
+    } catch {
+      // The thrown CoreError says the same thing the zod issue will; false is the whole answer here.
+      return false;
+    }
+  },
+  { error: "expected a profile id like claude-code:sonnet-4.5:native" },
+);
+
 export const ProfileSchema = z
   .object({
     id: z.string().min(1),
