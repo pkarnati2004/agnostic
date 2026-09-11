@@ -12,6 +12,8 @@ Thanks for looking. agnostic is MIT-licensed and small on purpose.
 
 **Borrowed code.** Only from MIT/Apache sources, with the original notice kept and a row added to `PROVENANCE.md`. Please don't paste code from projects under other licenses.
 
+**Building.** Each package exports source under the `development` condition and `dist/` otherwise, so vitest and `tsx` type-check and run the TypeScript directly while `pnpm build` and anything consuming a built package get `dist/`.
+
 **Workflow.** Branch per change, conventional commits, `pnpm lint && pnpm test` green. PR description: what, why, how tested.
 
 **Adding a harness.** Add a `HarnessDefinition` in `packages/registry` (binary, detection, launch args, model override method) and, for full support, a hook installer in `packages/hooks` plus a transcript parser in `packages/usage`.

@@ -1,0 +1,26 @@
+{
+  "name": "agnostic",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "lint": "biome check . && tsc -b --noEmit && knip && tsx scripts/check-file-size.ts",
+    "smoke": "bash scripts/smoke.sh",
+    "dev": "node -e \"console.error('pnpm dev lands in a later chunk'); process.exit(1)\"",
+    "agn": "node -e \"console.error('pnpm agn lands in a later chunk'); process.exit(1)\""
+  },
+  "devDependencies": {
+    "@agnostic/core": "workspace:*",
+    "@biomejs/biome": "2.5.12",
+    "@types/node": "22.20.2",
+    "knip": "5.88.1",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}
