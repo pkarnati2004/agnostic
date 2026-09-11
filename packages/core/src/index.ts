@@ -5,6 +5,7 @@ export * from "./daemon-client.js";
 export { describeIssues } from "./describe-issues.js";
 export * from "./error.js";
 export * from "./event.js";
+export * from "./executor.js";
 export * from "./id.js";
 export * from "./outcome.js";
 export * from "./paths.js";

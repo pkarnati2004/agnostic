@@ -25,6 +25,7 @@ describe("agnosticPaths", () => {
       config: "/tmp/agnostic-test/config.yaml",
       worktrees: "/tmp/agnostic-test/worktrees",
       logs: "/tmp/agnostic-test/logs",
+      sessions: "/tmp/agnostic-test/sessions",
       daemon: "/tmp/agnostic-test/daemon.json",
     });
   });

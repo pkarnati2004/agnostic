@@ -4,7 +4,8 @@ import { IdSchema } from "./id.js";
 import { ProfileIdSchema } from "./profile.js";
 import { readYamlFile, writeYamlFile } from "./yaml-file.js";
 
-const HEADER = "test and lint commands for this repo, and the profile agn starts tasks with";
+const HEADER =
+  "test and lint commands for this repo, the profile agn starts tasks with, and how worktrees are made";
 
 // The file is snake_case (it is hand-edited yaml); the type is camelCase like the rest of core.
 export const RepoConfigSchema = z
@@ -13,17 +14,34 @@ export const RepoConfigSchema = z
     test_command: z.string().min(1).optional(),
     lint_command: z.string().min(1).optional(),
     default_profile: ProfileIdSchema.optional(),
+    base_branch: z.string().min(1).optional(),
+    branch_prefix: z.string().min(1).optional(),
+    setup_command: z.string().min(1).optional(),
+    clean_after_merge: z.boolean().optional(),
   })
   .transform((file) => ({
     id: file.id,
     testCommand: file.test_command ?? null,
     lintCommand: file.lint_command ?? null,
     defaultProfileId: file.default_profile ?? null,
+    baseBranch: file.base_branch ?? null,
+    branchPrefix: file.branch_prefix ?? null,
+    setupCommand: file.setup_command ?? null,
+    cleanAfterMerge: file.clean_after_merge ?? false,
   }));
 export type RepoConfig = z.infer<typeof RepoConfigSchema>;
 
 export function defaultRepoConfig(id: string): RepoConfig {
-  return { id, testCommand: null, lintCommand: null, defaultProfileId: null };
+  return {
+    id,
+    testCommand: null,
+    lintCommand: null,
+    defaultProfileId: null,
+    baseBranch: null,
+    branchPrefix: null,
+    setupCommand: null,
+    cleanAfterMerge: false,
+  };
 }
 
 /** Null when the repo has no `agnostic.yaml`: `agn add` registers a repo without writing one. */
@@ -46,6 +64,18 @@ export function writeRepoConfig(repoPath: string, config: RepoConfig): Promise<v
   }
   if (config.defaultProfileId !== null) {
     value.default_profile = config.defaultProfileId;
+  }
+  if (config.baseBranch !== null) {
+    value.base_branch = config.baseBranch;
+  }
+  if (config.branchPrefix !== null) {
+    value.branch_prefix = config.branchPrefix;
+  }
+  if (config.setupCommand !== null) {
+    value.setup_command = config.setupCommand;
+  }
+  if (config.cleanAfterMerge) {
+    value.clean_after_merge = true;
   }
   return writeYamlFile(agPaths(repoPath).agnosticYaml, value, HEADER);
 }

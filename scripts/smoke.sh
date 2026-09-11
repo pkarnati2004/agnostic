@@ -22,6 +22,27 @@ pnpm vitest run --project daemon
 echo "smoke: cli unit tests"
 pnpm vitest run --project cli
 
+echo "smoke: executor-tmux against a real tmux on a private socket"
+command -v tmux > /dev/null || {
+  echo "tmux is not installed: brew install tmux (macOS) or apt install tmux (Linux)" >&2
+  exit 1
+}
+TMUX_VERSION="$(tmux -V | awk '{print $2}')"
+case "$TMUX_VERSION" in
+  next | master) ;;
+  *)
+    TMUX_MINOR="${TMUX_VERSION#*.}"
+    if [ "${TMUX_VERSION%%.*}" -lt 3 ] ||
+      { [ "${TMUX_VERSION%%.*}" -eq 3 ] && [ "${TMUX_MINOR%%[!0-9]*}" -lt 2 ]; }; then
+      echo "agn needs tmux 3.2 or newer, found $TMUX_VERSION" >&2
+      exit 1
+    fi
+    ;;
+esac
+# The integration tests are the smoke: they launch the fake agent under tmux, check it is alive,
+# read the exit the pane-died hook wrote, and clean the worktree. They never touch the default socket.
+pnpm vitest run --project executor-tmux
+
 echo "smoke: agnd start/status/stop round trip"
 # PATH holds node's bin dir only, so detection finds no harness and no probe runs a real CLI.
 AGND=(node --import tsx packages/daemon/src/main.ts)

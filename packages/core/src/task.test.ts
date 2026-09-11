@@ -55,6 +55,7 @@ describe("TaskSchema", () => {
       harness: "claude-code",
       sessionId: null,
       tmuxSession: "agn-t3n9v2wxyz",
+      tmuxSocket: "agn",
       cwd: "/Users/dev/code/agnostic",
       lastSeenAt: "2026-09-10T12:31:00.000Z",
     };
@@ -67,6 +68,7 @@ describe("TaskSchema", () => {
       harness: "claude-code",
       sessionId: null,
       tmuxSession: "agn-t3n9v2wxyz",
+      tmuxSocket: "agn",
       cwd: "/Users/dev/code/agnostic",
       lastSeenAt: "2026-09-10T12:31:00.000Z",
     };
@@ -74,6 +76,17 @@ describe("TaskSchema", () => {
     const { cwd: _cwd, ...withoutCwd } = session;
     expect(TaskSessionSchema.safeParse(withoutCwd).success).toBe(false);
     expect(TaskSessionSchema.safeParse({ ...session, cwd: "" }).success).toBe(false);
+  });
+
+  it("defaults tmuxSocket to null so rows written before the private socket still parse", () => {
+    const old = {
+      harness: "claude-code",
+      sessionId: null,
+      tmuxSession: "agn-t3n9v2wxyz",
+      cwd: "/Users/dev/code/agnostic",
+      lastSeenAt: "2026-09-10T12:31:00.000Z",
+    };
+    expect(TaskSessionSchema.parse(old).tmuxSocket).toBeNull();
   });
 
   it("rejects the wrong type in every field", () => {

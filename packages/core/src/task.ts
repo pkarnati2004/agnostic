@@ -22,6 +22,8 @@ export const TaskSessionSchema = z.object({
   // Null until the harness reveals its own session id; the tmux session is what agn can always see.
   sessionId: z.string().min(1).nullable(),
   tmuxSession: z.string().min(1),
+  // Null is the user's default tmux server: an adopted session agn did not create.
+  tmuxSocket: z.string().min(1).nullable().default(null),
   // Where the harness runs: the worktree for git tasks, the repo for folder tasks.
   cwd: z.string().min(1),
   lastSeenAt: z.iso.datetime(),

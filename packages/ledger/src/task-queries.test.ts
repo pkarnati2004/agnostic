@@ -48,6 +48,7 @@ const session: TaskSession = {
   harness: "claude-code",
   sessionId: "b7d1f0e2",
   tmuxSession: "agn-t3n9v2wxyz",
+  tmuxSocket: "agn",
   cwd: "/Users/dev/code/agnostic",
   lastSeenAt: "2026-09-10T12:31:00.000Z",
 };
