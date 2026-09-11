@@ -20,5 +20,5 @@
 ## Checklist
 - [ ] No new dependency without a reason in Description
 - [ ] No file over 300 lines, no `any`, no `@ts-nocheck`
-- [ ] Copied or ported code has a row in PROVENANCE.md
+- [ ] Copied or ported code has a row in PROVENANCE.md, uses this repo's names and layout, and keeps nothing from the source but the notice
 - [ ] Docs updated if behavior changed

@@ -4,7 +4,7 @@ agnostic is MIT. Some code was copied or ported from other open projects.
 
 ## Rules
 
-- **MIT or Apache 2.0 source** (Orca, Agent Deck): copy or port allowed. Keep the original notice in the file header. Add a row below.
+- **MIT or Apache 2.0 source** (Orca, Agent Deck): copy or port allowed. Keep the original notice in the file header. Add a row below. A row records where the knowledge came from; ported files are written in this repo's style and naming, not copied word for word.
 - **ELv2 source** (Superset): read for ideas only. No code, comments, or fixtures copied.
 - Every copied or ported file gets a row. Rows are never removed.
 

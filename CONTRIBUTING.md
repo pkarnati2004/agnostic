@@ -10,7 +10,7 @@ Thanks for looking. agnostic is MIT-licensed and small on purpose.
 - No new dependency without a one-line reason in the PR.
 - Every bug fix comes with a test that failed before the fix.
 
-**Borrowed code.** Only from MIT/Apache sources, with the original notice kept and a row added to `PROVENANCE.md`. Please don't paste code from projects under other licenses.
+**Borrowed code.** Only from MIT/Apache sources, with the original notice kept and a row added to `PROVENANCE.md`. Ported code is rewritten in this repo's style with this repo's names, not transliterated; the row records where the knowledge came from. Please don't paste code from projects under other licenses.
 
 **Building.** Each package exports source under the `development` condition and `dist/` otherwise, so vitest and `tsx` type-check and run the TypeScript directly while `pnpm build` and anything consuming a built package get `dist/`.
 
