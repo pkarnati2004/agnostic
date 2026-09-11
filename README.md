@@ -37,19 +37,37 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 
 | Command | What it does |
 |---|---|
+| `agn daemon start\|stop\|status\|restart` | Run, inspect or replace the background daemon. `--port <n>` on `start` and `restart`, `--force` on `restart` |
+| `agn add <path>` | Register a repo. `--git-init` runs `git init` on a plain folder first; `--new-id` registers a second clone |
+| `agn repos` | List the registered repos |
 | `agn doctor` | Detect installed agents, logins, provider keys, local model servers |
 | `agn profiles` | List the agent × model combinations you can run right now |
-| `agn add <path>` | Register a repo |
-| `agn recommend "<task>"` | Recommend a profile for the task, with reasons and sources |
-| `agn run "<task>" [--profile <id>]` | Create a worktree and start the agent |
-| `agn status` / `agn attach <task>` / `agn stop <task>` | Watch, join, or stop a session |
+| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>` |
+| `agn status [<task>]` | One task, or every task across your repos |
+| `agn attach <task>` | Join the session in your terminal |
+| `agn stop <task>` | Stop the session |
+| `agn clean [<task>...]` | Remove the worktrees of closed tasks |
 | `agn resume <task>` | Bring a session back after a reboot, with its history where the agent supports it |
-| `agn adopt <path>` | Register an agent session you started outside agn |
-| `agn handoff <task> --to <profile>` | Hand a task to another agent with a structured note |
-| `agn sync` | Regenerate agent-specific config from `.ag/instructions.md` |
-| `agn open <task> [--editor cursor]` | Open the worktree in your editor |
-| `agn usage` | Today's and this week's usage per plan |
+| `agn adopt <path>` | Register an agent session you started outside agn. `--task "<title>"` |
+| `agn hooks install` | Install the status hook in a repo. `--repo <r>` |
+| `agn init` | Create `.ag/instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--repo <r>` |
+| `agn sync` | Regenerate agent-specific config from `.ag/instructions.md`. `--dry-run`, `--repo <r>` |
+| `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--subscriptions-only` |
+| `agn handoff <task> --to <id\|harness>` | Hand a task to another agent with a structured note. `--note <text>` |
+| `agn usage [<task>]` | Today's and this week's usage per plan, or one task's |
+| `agn outcomes <task>` | What the task changed, what passed, what you kept |
+| `agn open <task>` | Open the worktree in your editor. `--editor <name>` |
+| `agn catalog show <profile>` / `agn catalog update` | Print the benchmark rows behind a recommendation, or fetch the latest catalog |
 | `agn ui` | Open the workspace |
+
+Every command prints plain text: one aligned table for a list, `key: value` lines for a single
+thing, no colours. `--json` prints the daemon's response body instead, so scripts read the same
+types the UI does. Errors go to stderr as `agn: <message>` with an indented hint. Exit codes are 0
+for ok, 1 for a command that failed and 2 for a command line that was wrong; `agn daemon status`
+answers with its code instead (0 running, 1 stopped, 2 stale).
+
+Any command starts the daemon if it is not already running, except `agn daemon status` and
+`agn daemon stop`. `AGNOSTIC_HOME` moves everything agn stores away from `~/.agnostic`.
 
 ## Supported agents
 

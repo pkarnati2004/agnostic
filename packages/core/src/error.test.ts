@@ -58,7 +58,7 @@ describe("DaemonApiError", () => {
   it("carries the HTTP status alongside the code and hint", () => {
     const error = new DaemonApiError("no task matches qqqqqqqqqq", {
       code: "task-not-found",
-      hint: "Run agn ls.",
+      hint: "Run agn status.",
       status: 404,
     });
     expect(error.name).toBe("DaemonApiError");

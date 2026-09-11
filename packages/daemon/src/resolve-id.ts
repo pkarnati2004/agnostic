@@ -22,7 +22,7 @@ export function resolveTaskId(ledger: Ledger, idOrPrefix: string): Task {
     return exact;
   }
   const matches = byPrefix(idOrPrefix, () => ledger.tasks.list({ idPrefix: idOrPrefix }));
-  return one(matches, idOrPrefix, { noun: "task", list: "agn ls" });
+  return one(matches, idOrPrefix, { noun: "task", list: "agn status" });
 }
 
 /** Under three characters a prefix would match half the workspace, so it is not a prefix at all. */

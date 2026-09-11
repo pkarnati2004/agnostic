@@ -103,6 +103,6 @@ describe("resolveTaskId", () => {
   it("reports an unknown task with the command that lists them", () => {
     const error = thrown(() => resolveTaskId(ledger, "qqqqqqqqqq"));
     expect(error.code).toBe("task-not-found");
-    expect(error.hint).toContain("agn ls");
+    expect(error.hint).toContain("agn status");
   });
 });

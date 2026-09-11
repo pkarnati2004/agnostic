@@ -136,7 +136,7 @@ describe("createDaemonClient", () => {
   it("turns an error body into a DaemonApiError with the status", async () => {
     const daemon = await stubDaemon(() => ({
       status: 404,
-      body: { error: { code: "task-not-found", message: "no task", hint: "Run agn ls." } },
+      body: { error: { code: "task-not-found", message: "no task", hint: "Run agn status." } },
     }));
     const client = createDaemonClient({ baseUrl: daemon.baseUrl, token: "sekrit" });
     const error = await client.getTask("qqqqqqqqqq").catch((cause: unknown) => cause);
@@ -144,7 +144,7 @@ describe("createDaemonClient", () => {
     expect(error).toMatchObject({
       code: "task-not-found",
       message: "no task",
-      hint: "Run agn ls.",
+      hint: "Run agn status.",
       status: 404,
     });
     await daemon.close();

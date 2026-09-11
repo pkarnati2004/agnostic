@@ -203,7 +203,7 @@ function filterSql(filter: TaskFilter): { where: string; values: (string | numbe
 function notFound(id: string): LedgerError {
   return new LedgerError(`no task with id ${id}`, {
     code: "task-not-found",
-    hint: "Run agn ls to see the tasks agn knows about.",
+    hint: "Run agn status to see the tasks agn knows about.",
   });
 }
 
