@@ -23,7 +23,18 @@ describe("runMain", () => {
     const code = await runMain(["node", "agn", "--help"], cli.ctx);
     const help = cli.out.join("\n");
     expect(code).toBe(0);
-    for (const command of ["daemon", "add", "repos", "doctor", "profiles"]) {
+    for (const command of [
+      "daemon",
+      "add",
+      "repos",
+      "doctor",
+      "profiles",
+      "run",
+      "status",
+      "attach",
+      "stop",
+      "clean",
+    ]) {
       expect(help).toContain(command);
     }
   });

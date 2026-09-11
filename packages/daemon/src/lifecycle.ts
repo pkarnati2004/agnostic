@@ -84,8 +84,7 @@ export async function restartDaemon(opts: {
 }): Promise<DaemonInfo> {
   const paths = pathsFor(opts.home);
   if (opts.force === true) {
-    const pid = (await probeDaemon(paths)).info?.pid ?? null;
-    if (pid !== null && isProcessAlive(pid)) {
+    for (const pid of held(await probeDaemon(paths))) {
       kill(pid, "SIGKILL");
       await waitFor(EXIT_WAIT_MS, () => Promise.resolve(isProcessAlive(pid) ? null : true));
     }
@@ -94,6 +93,22 @@ export async function restartDaemon(opts: {
     await stopDaemon(opts).catch(rethrowUnlessStopped);
   }
   return startDaemon(opts);
+}
+
+/**
+ * Which processes `--force` has to end before the port is free. Two pids can be in play: the one
+ * `daemon.json` names, and the one answering `/health` when the file is stale. The answering pid
+ * is killed only because it answered as agnd on that port - never because of its name - and
+ * killing only the file's pid would leave the live daemon holding the port `start` needs.
+ */
+function held(probe: DaemonProbe): number[] {
+  const pids = new Set<number>();
+  for (const pid of [probe.info?.pid, probe.health?.pid]) {
+    if (pid !== undefined && isProcessAlive(pid)) {
+      pids.add(pid);
+    }
+  }
+  return [...pids];
 }
 
 export function daemonStatus(opts: { home?: string }): Promise<DaemonProbe> {

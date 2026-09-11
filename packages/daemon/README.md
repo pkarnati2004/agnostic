@@ -9,6 +9,9 @@ the ledger, and the detection it caches for the life of the process.
   nowhere else. Every request body and query is parsed with a core schema at its route.
 - `GET /events` is the SSE feed over the ledger's event table; `Last-Event-ID` resumes it.
 - Detection runs at start and on `POST /doctor`; `GET /profiles` answers from that cache.
+- Tasks: `POST /repos/:id/tasks` resolves the profile, writes the queued row and its note, prepares
+  the worktree and launches the harness through the executor. Statuses follow the session's exit,
+  and liveness is reconciled at start and before every task read, never on a timer.
 - The log is `~/.agnostic/logs/agnd.log`: one line per request, with method, path, status and
   duration. No prompt, task title or token ever reaches it.
 

@@ -14,7 +14,7 @@ Thanks for looking. agnostic is MIT-licensed and small on purpose.
 
 **Building.** Each package exports source under the `development` condition and `dist/` otherwise, so vitest and `tsx` type-check and run the TypeScript directly while `pnpm build` and anything consuming a built package get `dist/`.
 
-**Running the CLI.** `pnpm agn <args>` runs `agn` from source; pnpm passes the arguments through, so write flags as you would on the real command (`pnpm agn repos --json`). To put `agn` on your PATH from a checkout, run `pnpm build`, then `pnpm link --global` inside `packages/cli`.
+**Running the CLI.** `pnpm agn <args>` runs `agn` from source; pnpm passes the arguments through, so write flags as you would on the real command (`pnpm agn repos --json`). To put `agn` on your PATH from a checkout, run `pnpm build`, then `npm link` inside `packages/cli` (pnpm 12 has no global link; npm ships with Node 22).
 
 **Workflow.** Branch per change, conventional commits, `pnpm lint && pnpm test` green. PR description: what, why, how tested.
 

@@ -32,6 +32,11 @@ export function agnosticPaths(home: string = agnosticHome()): AgnosticPaths {
   };
 }
 
+/** One log per task under the state directory: setup output now, anything unattended later. */
+export function taskLogPath(paths: AgnosticPaths, taskId: string): string {
+  return join(paths.logs, "tasks", `${taskId}.log`);
+}
+
 export function worktreePath(paths: AgnosticPaths, repoId: string, taskId: string): string {
   return join(paths.worktrees, repoId, taskId);
 }

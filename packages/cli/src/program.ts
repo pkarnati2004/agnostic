@@ -1,10 +1,15 @@
 import { readFileSync } from "node:fs";
 import { Command, CommanderError } from "commander";
 import { addCommand } from "./commands/add.js";
+import { attachCommand } from "./commands/attach.js";
+import { cleanCommand } from "./commands/clean.js";
 import { daemonCommand } from "./commands/daemon.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { profilesCommand } from "./commands/profiles.js";
 import { reposCommand } from "./commands/repos.js";
+import { runCommand } from "./commands/run.js";
+import { statusCommand } from "./commands/status.js";
+import { stopCommand } from "./commands/stop.js";
 import type { CliContext, Output } from "./context.js";
 import { renderError } from "./render-error.js";
 
@@ -33,6 +38,11 @@ export function createProgram(ctx: CliContext, version: string): Command {
     reposCommand(ctx),
     doctorCommand(ctx),
     profilesCommand(ctx),
+    runCommand(ctx),
+    statusCommand(ctx),
+    attachCommand(ctx),
+    stopCommand(ctx),
+    cleanCommand(ctx),
   ]) {
     program.addCommand(command);
   }

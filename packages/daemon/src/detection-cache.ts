@@ -1,8 +1,14 @@
 import type { DoctorResponse } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
+import type { LocalServer } from "@agnostic/registry";
 
-/** What one detection run found. It is exactly the doctor response, so the route returns it whole. */
-export type Detection = DoctorResponse;
+/**
+ * What one detection run found: the doctor response, plus the local model servers that were
+ * answering. The servers are not part of the wire shape; a launch on the `local` route needs them
+ * to build the harness's provider overrides, and detecting them again per run would be a second
+ * round of loopback calls for an answer that is already here.
+ */
+export type Detection = DoctorResponse & { servers: LocalServer[] };
 
 export type DetectionCache = {
   /** The last run, waiting for one already in flight rather than starting a second. */

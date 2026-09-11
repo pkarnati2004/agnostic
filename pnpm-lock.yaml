@@ -163,6 +163,9 @@ importers:
       '@agnostic/core':
         specifier: workspace:*
         version: link:../core
+      '@agnostic/executor-tmux':
+        specifier: workspace:*
+        version: link:../executor-tmux
       '@agnostic/ledger':
         specifier: workspace:*
         version: link:../ledger

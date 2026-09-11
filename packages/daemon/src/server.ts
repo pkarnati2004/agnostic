@@ -8,8 +8,10 @@ import {
   agnosticPaths,
   type DaemonInfo,
   DEFAULT_DAEMON_PORT,
+  type ExecutorProvider,
   scrubEnv,
 } from "@agnostic/core";
+import { createTmuxExecutor } from "@agnostic/executor-tmux";
 import { type Ledger, openLedger } from "@agnostic/ledger";
 import { type ServerType, serve } from "@hono/node-server";
 import type { Hono } from "hono";
@@ -41,6 +43,10 @@ export async function runDaemon(
   const ledger = openLedger(paths.db);
   const feed = createEventFeed(ledger);
   const startedAt = new Date().toISOString();
+  // The env agnd was started from is the env detection sees and every harness is launched with;
+  // troubleshooting.md says so too.
+  const env = scrubEnv(process.env);
+  const executor = createTmuxExecutor({ paths });
   let port = wanted;
   const app = createApp({
     ledger,
@@ -50,9 +56,10 @@ export async function runDaemon(
     feed,
     version,
     startedAt,
+    executor,
+    env,
     port: () => port,
-    // The env agnd was started from is the env detection sees; troubleshooting.md says so too.
-    detect: realDetect(scrubEnv(process.env), homedir()),
+    detect: realDetect(env, homedir()),
   });
 
   let server: ServerType;
@@ -60,6 +67,7 @@ export async function runDaemon(
     ({ server, port } = await listen(app, wanted));
   } catch (cause) {
     feed.close();
+    await executor.close();
     ledger.close();
     log.close();
     throw bindFailed(wanted, cause);
@@ -68,7 +76,7 @@ export async function runDaemon(
   await writeFile(paths.daemon, `${JSON.stringify(info, null, 2)}\n`, "utf8");
   log.info("daemon listening", { port, pid: process.pid });
 
-  const close = closer({ server, feed, ledger, log, paths });
+  const close = closer({ server, feed, executor, ledger, log, paths });
   const shutdown = () => {
     void close().then(() => process.exit(0));
   };
@@ -97,6 +105,7 @@ function listen(app: Hono, port: number): Promise<{ server: ServerType; port: nu
 function closer(parts: {
   server: ServerType;
   feed: EventFeed;
+  executor: ExecutorProvider;
   ledger: Ledger;
   log: Logger;
   paths: AgnosticPaths;
@@ -110,6 +119,8 @@ function closer(parts: {
       }
       await new Promise<void>((done) => parts.server.close(() => done()));
       parts.feed.close();
+      // The exit watcher writes through the ledger, so it stops before the ledger does.
+      await parts.executor.close();
       parts.ledger.close();
       await rm(parts.paths.daemon, { force: true });
       parts.log.info("daemon stopped");

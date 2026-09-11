@@ -10,6 +10,7 @@ export const EventKindSchema = z.enum([
   "task.created",
   "task.status",
   "task.adopted",
+  "task.cleaned",
   "task.handoff",
   "session.captured",
   "repo.registered",
@@ -25,6 +26,8 @@ const payloadSchemas = {
   "task.created": z.object({ task: TaskSchema }),
   "task.status": z.object({ from: TaskStatusSchema, to: TaskStatusSchema }),
   "task.adopted": z.object({ pid: z.number().int().positive(), cwd: z.string().min(1) }),
+  // A worktree agn removed. Chunk 15 reads this: a worktree gone without one was removed by hand.
+  "task.cleaned": z.object({ deletedBranch: z.boolean() }),
   "task.handoff": z.object({
     fromProfileId: z.string().min(1),
     toProfileId: z.string().min(1),
@@ -80,6 +83,7 @@ function members<S extends z.core.$ZodLooseShape>(shape: S) {
     member(shape, "task.created"),
     member(shape, "task.status"),
     member(shape, "task.adopted"),
+    member(shape, "task.cleaned"),
     member(shape, "task.handoff"),
     member(shape, "session.captured"),
     member(shape, "repo.registered"),

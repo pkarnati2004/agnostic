@@ -42,11 +42,11 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn repos` | List the registered repos |
 | `agn doctor` | Detect installed agents, logins, provider keys, local model servers |
 | `agn profiles` | List the agent × model combinations you can run right now |
-| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>` |
-| `agn status [<task>]` | One task, or every task across your repos |
+| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>` |
+| `agn status [<task>]` | One task, or every task across your repos. `--all` lists everything from inside a worktree |
 | `agn attach <task>` | Join the session in your terminal |
 | `agn stop <task>` | Stop the session |
-| `agn clean [<task>...]` | Remove the worktrees of closed tasks |
+| `agn clean [<task>...]` | Remove the worktrees of closed tasks. `--delete-branch` removes the branch too |
 | `agn resume <task>` | Bring a session back after a reboot, with its history where the agent supports it |
 | `agn adopt <path>` | Register an agent session you started outside agn. `--task "<title>"` |
 | `agn hooks install` | Install the status hook in a repo. `--repo <r>` |

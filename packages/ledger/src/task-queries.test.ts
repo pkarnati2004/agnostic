@@ -202,3 +202,76 @@ describe("tasks.setSession", () => {
     );
   });
 });
+
+describe("tasks.start", () => {
+  it("writes branch, session and running status with both events in one transaction", () => {
+    ledger.tasks.insert(task);
+    const started = ledger.tasks.start(task.id, { branch: "agn/split-t3n9v2wxyz", session });
+    expect(started.status).toBe("running");
+    expect(started.branch).toBe("agn/split-t3n9v2wxyz");
+    expect(started.session).toEqual(session);
+    expect(ledger.tasks.get(task.id)).toEqual(started);
+    expect(ledger.events.forTask(task.id).map((event) => event.kind)).toEqual([
+      "task.created",
+      "session.captured",
+      "task.status",
+    ]);
+  });
+
+  it("skips the status event when the task is already running", () => {
+    ledger.tasks.insert({ ...task, status: "running" });
+    ledger.tasks.start(task.id, { branch: null, session });
+    expect(ledger.events.forTask(task.id).map((event) => event.kind)).toEqual([
+      "task.created",
+      "session.captured",
+    ]);
+  });
+});
+
+describe("tasks.clean", () => {
+  it("records the removed worktree and keeps the row's path and branch", () => {
+    ledger.tasks.insert({ ...task, worktreePath: "/w/t3n9v2wxyz", branch: "agn/split" });
+    const cleaned = ledger.tasks.clean(task.id, true);
+    expect(cleaned.worktreePath).toBe("/w/t3n9v2wxyz");
+    expect(cleaned.branch).toBe("agn/split");
+    const event = ledger.events.forTask(task.id).at(-1);
+    expect(event?.kind).toBe("task.cleaned");
+    expect(event?.payload).toEqual({ deletedBranch: true });
+  });
+
+  it("records a branch that was kept as well as one that was deleted", () => {
+    ledger.tasks.insert({ ...task, worktreePath: "/w/t3n9v2wxyz", branch: "agn/split" });
+    const cleaned = ledger.tasks.clean(task.id, false);
+    expect(cleaned.branch).toBe("agn/split");
+    const event = ledger.events.forTask(task.id).at(-1);
+    expect(event?.kind).toBe("task.cleaned");
+    expect(event?.payload).toEqual({ deletedBranch: false });
+  });
+
+  it("writes the row change and the event in the same transaction", () => {
+    ledger.tasks.insert({ ...task, worktreePath: "/w/t3n9v2wxyz", branch: "agn/split" });
+    const before = ledger.events.forTask(task.id).length;
+    ledger.tasks.clean(task.id, true);
+    expect(ledger.events.forTask(task.id)).toHaveLength(before + 1);
+    // The row and its event agree on what happened; neither could have been written alone.
+    expect(ledger.tasks.get(task.id)?.updatedAt).toBe(ledger.events.forTask(task.id).at(-1)?.ts);
+  });
+
+  it("records another task.cleaned event for a task cleaned a second time", () => {
+    ledger.tasks.insert({ ...task, worktreePath: "/w/t3n9v2wxyz", branch: "agn/split" });
+    ledger.tasks.clean(task.id, false);
+    ledger.tasks.clean(task.id, true);
+    const cleaned = ledger.events.forTask(task.id).filter((event) => event.kind === "task.cleaned");
+    expect(cleaned).toHaveLength(2);
+    expect(cleaned.map((event) => event.payload)).toEqual([
+      { deletedBranch: false },
+      { deletedBranch: true },
+    ]);
+  });
+
+  it("refuses an unknown task", () => {
+    expect(() => ledger.tasks.clean("z9z9z9z9z9", false)).toThrowError(
+      expect.objectContaining({ code: "task-not-found" }),
+    );
+  });
+});

@@ -46,6 +46,27 @@ async function body<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
+describe("POST /repos/:id/tasks", () => {
+  it("rejects a body with no prompt and a field it does not know", async () => {
+    const noPrompt = await daemon.request(`/repos/${repoId}/tasks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(noPrompt.status).toBe(400);
+    expect(await noPrompt.json()).toMatchObject({ error: { code: "request-invalid" } });
+
+    const unknownField = await daemon.request(`/repos/${repoId}/tasks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt: "ship it", harness: "codex" }),
+    });
+    expect(unknownField.status).toBe(400);
+    expect(await unknownField.json()).toMatchObject({ error: { code: "request-invalid" } });
+    expect(daemon.ledger.tasks.list()).toHaveLength(0);
+  });
+});
+
 describe("GET /repos/:id/tasks", () => {
   it("lists the repo's tasks", async () => {
     seedTask("mnpqrstuvw", "running");
@@ -80,6 +101,41 @@ describe("GET /repos/:id/tasks", () => {
     const response = await daemon.request("/repos/qqqqqqqqqq/tasks");
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({ error: { code: "repo-not-found" } });
+  });
+});
+
+describe("GET /tasks", () => {
+  it("lists every repo's tasks, newest first", async () => {
+    const otherRepo = newId();
+    daemon.ledger.repos.insert({
+      id: otherRepo,
+      path: "/tmp/beta",
+      kind: "folder",
+      name: "beta",
+      addedAt: new Date().toISOString(),
+    });
+    seedTask("mnpqrstuvw", "running");
+    daemon.ledger.tasks.insert({
+      ...seedTask("zyxwvutsrq", "done"),
+      id: "abcdefghjk",
+      repoId: otherRepo,
+      createdAt: "2030-01-01T00:00:00.000Z",
+    });
+    const response = await daemon.request("/tasks");
+    expect(response.status).toBe(200);
+    const tasks = (await body<TaskListResponse>(response)).tasks;
+    // The newest is first; the other two share a timestamp, so only their presence is promised.
+    expect(tasks[0]?.id).toBe("abcdefghjk");
+    expect(tasks.map((task) => task.id).sort()).toEqual(["abcdefghjk", "mnpqrstuvw", "zyxwvutsrq"]);
+  });
+
+  it("filters across repos by status", async () => {
+    seedTask("mnpqrstuvw", "running");
+    seedTask("zyxwvutsrq", "done");
+    seedTask("abcdefghjk", "failed");
+    const response = await daemon.request("/tasks?status=done,failed");
+    const tasks = (await body<TaskListResponse>(response)).tasks;
+    expect(tasks.map((task) => task.status).sort()).toEqual(["done", "failed"]);
   });
 });
 

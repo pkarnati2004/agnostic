@@ -9,6 +9,18 @@ agnostic doesn't ship any agent. Install and log in to the ones you want, then r
 - **tmux 3.2 or newer** - `brew install tmux` (macOS) / `apt install tmux` (Linux). Sessions run inside tmux on a private server (`tmux -L agn ls` lists them) so you can attach from any terminal.
 - **gh** (optional, for PR creation) - https://cli.github.com
 
+## agn itself
+
+Until there is a published package, agn runs from a checkout:
+
+```bash
+git clone <this repo> && cd agnostic
+pnpm install
+pnpm agn doctor          # runs the CLI from source, arguments and flags as usual
+```
+
+To put `agn` on your PATH instead, run `pnpm build`, then `npm link` inside `packages/cli`.
+
 ## Agents
 
 | Agent | Install and login | Billing agnostic uses |

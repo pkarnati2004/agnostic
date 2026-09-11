@@ -53,6 +53,9 @@ export default defineConfig({
           name: "daemon",
           root: "packages/daemon",
           include: ["src/**/*.test.ts"],
+          // The task tests launch a fake harness under a real tmux; they are not unit tests.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
         },
         resolve: {
           conditions: ["development"],

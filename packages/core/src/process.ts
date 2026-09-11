@@ -13,6 +13,8 @@ export type ProcessOptions = {
   detached?: boolean;
   /** Ignore stdin and append both output streams to this file, for a process nobody is watching. */
   logFile?: string;
+  /** Hand the terminal over: the child reads the user's keyboard and draws on their screen. */
+  stdio?: "inherit";
 };
 
 /** What the process log records: never the environment, never a byte of output. */
@@ -80,7 +82,7 @@ export function scrubEnv(env: NodeJS.ProcessEnv): Record<string, string> {
 
 function execaOptions(opts: ProcessOptions) {
   const inherited = scrubEnv(opts.inheritEnv === false ? {} : process.env);
-  const output = opts.logFile === undefined ? {} : redirect(opts.logFile);
+  const output = outputOptions(opts);
   return {
     cwd: opts.cwd,
     env: { ...inherited, ...opts.env },
@@ -91,6 +93,14 @@ function execaOptions(opts: ProcessOptions) {
     stripFinalNewline: true,
     ...output,
   } satisfies Options;
+}
+
+/** A log file and an inherited terminal are two answers to the same question; the file wins. */
+function outputOptions(opts: ProcessOptions) {
+  if (opts.logFile !== undefined) {
+    return redirect(opts.logFile);
+  }
+  return opts.stdio === "inherit" ? ({ stdio: "inherit" } as const) : {};
 }
 
 function redirect(file: string) {

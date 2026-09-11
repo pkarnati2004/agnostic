@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { agnosticPaths } from "@agnostic/core";
+import { agnosticPaths, spawn } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { createContext, writeJson } from "./context.js";
 import { stubEntry } from "./test-context.js";
@@ -13,8 +13,10 @@ describe("createContext", () => {
     const ctx = createContext({
       paths: agnosticPaths("/tmp/agn-test-home"),
       cwd: "/work",
+      env: { PATH: "/usr/bin" },
       io: IO,
       entry: stubEntry(),
+      spawn,
     });
     expect(ctx.json).toBe(false);
     expect(ctx.exitCode).toBe(0);
@@ -36,8 +38,10 @@ describe("client", () => {
     const ctx = createContext({
       paths: agnosticPaths(mkdtempSync(join(tmpdir(), "agn-context-"))),
       cwd: "/work",
+      env: { PATH: "/usr/bin" },
       io: IO,
       entry: stubEntry(),
+      spawn,
     });
     const first = ctx.client();
     expect(ctx.client()).toBe(first);

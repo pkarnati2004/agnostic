@@ -1,25 +1,58 @@
-import { TaskListQuerySchema, type TaskListResponse, type TaskResponse } from "@agnostic/core";
+import {
+  RunTaskRequestSchema,
+  TaskListQuerySchema,
+  type TaskListResponse,
+  type TaskResponse,
+} from "@agnostic/core";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { requestInvalid } from "../error.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
+import { startTask } from "../start-task.js";
+import { taskActionRoutes } from "./task-actions.js";
 
 export function taskRoutes(ctx: DaemonContext): Hono {
   return new Hono()
-    .get("/repos/:id/tasks", (c) => {
+    .get("/tasks", async (c) => {
+      await ctx.lifecycle.reconcileAll();
+      return c.json(listed(ctx, c.req.query(), null));
+    })
+    .get("/repos/:id/tasks", async (c) => {
       const repo = resolveRepoId(ctx.ledger, c.req.param("id"));
-      const query = TaskListQuerySchema.safeParse(c.req.query());
-      if (!query.success) {
-        throw requestInvalid(query.error);
+      await ctx.lifecycle.reconcileAll();
+      return c.json(listed(ctx, c.req.query(), repo.id));
+    })
+    .post("/repos/:id/tasks", async (c) => {
+      const repo = resolveRepoId(ctx.ledger, c.req.param("id"));
+      const parsed = RunTaskRequestSchema.safeParse(await c.req.json().catch(() => null));
+      if (!parsed.success) {
+        throw requestInvalid(parsed.error);
       }
-      const filter = query.data.status === undefined ? {} : { status: query.data.status };
-      const body: TaskListResponse = {
-        tasks: ctx.ledger.tasks.list({ repoId: repo.id, ...filter }),
-      };
+      const body: TaskResponse = { task: await startTask(ctx, repo, parsed.data) };
+      return c.json(body, 201);
+    })
+    .get("/tasks/:id", async (c) => {
+      const task = resolveTaskId(ctx.ledger, c.req.param("id"));
+      const body: TaskResponse = { task: await ctx.lifecycle.reconcile(task) };
       return c.json(body);
     })
-    .get("/tasks/:id", (c) => {
-      const body: TaskResponse = { task: resolveTaskId(ctx.ledger, c.req.param("id")) };
-      return c.json(body);
-    });
+    .route("/", taskActionRoutes(ctx));
+}
+
+/** Newest first, over one repo or all of them; the ledger's own order is what the list shows. */
+function listed(
+  ctx: DaemonContext,
+  query: Record<string, string>,
+  repoId: string | null,
+): TaskListResponse {
+  const parsed = TaskListQuerySchema.safeParse(query);
+  if (!parsed.success) {
+    throw requestInvalid(parsed.error);
+  }
+  return {
+    tasks: ctx.ledger.tasks.list({
+      ...(repoId === null ? {} : { repoId }),
+      ...(parsed.data.status === undefined ? {} : { status: parsed.data.status }),
+    }),
+  };
 }

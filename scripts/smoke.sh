@@ -96,3 +96,51 @@ grep -q '"code":"path-not-found"' "$WORK/add-error.json"
 
 agn daemon stop | grep -q "^agnd stopped"
 ! agn daemon status
+
+echo "smoke: agn run, status, stop and clean against the fake agent under tmux"
+# A private tmux tmpdir keeps the smoke off the author's own `agn` socket, and it has to be short:
+# a unix socket path is capped near 104 bytes.
+TMUX_TMPDIR="$(mktemp -d /tmp/agn-smoke-XXXXXX)"
+export TMUX_TMPDIR
+# The last command in an EXIT trap decides the script's exit code, so the kill cannot be the last
+# one: by then the executor has usually reaped the sessions and tmux answers "no server running".
+trap 'PATH="$SMOKE_PATH" tmux -L agn kill-server 2> /dev/null || true; rm -rf "$AGNOSTIC_HOME" "$WORK" "$TMUX_TMPDIR"' EXIT
+
+FAKEBIN="$WORK/fake-bin"
+mkdir -p "$FAKEBIN"
+# `claude` is the fake agent under another name; it answers --version itself so detection is quick.
+{
+  echo '#!/bin/sh'
+  echo 'case "$1" in --version) echo 1.0.0; exit 0 ;; esac'
+  echo "exec $PWD/tests/fixtures/fake-agent.sh --log $WORK/agent.log \"\$@\""
+} > "$FAKEBIN/claude"
+chmod +x "$FAKEBIN/claude"
+SMOKE_PATH="$FAKEBIN:$(dirname "$NODE"):$(dirname "$(command -v tmux)"):/usr/bin:/bin"
+
+agx() {
+  PATH="$SMOKE_PATH" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
+}
+
+mkdir -p "$WORK/runrepo" "$WORK/runfolder"
+git -C "$WORK/runrepo" init -q
+git -C "$WORK/runrepo" -c user.email=t@agn.test -c user.name=agn commit -q --allow-empty -m first
+agx add "$WORK/runrepo" > /dev/null
+agx add "$WORK/runfolder" > /dev/null
+
+agx run "smoke task" --profile claude-code --repo "$WORK/runrepo" > "$WORK/run.txt"
+grep -q "^started " "$WORK/run.txt"
+TASK="$(awk 'NR == 1 { print $2 }' "$WORK/run.txt")"
+agx status | grep -q "running"
+agx status "$TASK" | grep -q "^tmux: *agn-$TASK"
+agx stop "$TASK" | grep -q "^stopped $TASK"
+agx status | grep -q "stopped"
+agx clean | grep -q "^cleaned $TASK"
+
+agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"
+grep -q "^in place: " "$WORK/folder.txt"
+FOLDER_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/folder.txt")"
+! agx run "second folder task" --profile claude-code --repo "$WORK/runfolder" 2> "$WORK/folder-error.txt"
+grep -q "folder workspaces run one task at a time" "$WORK/folder-error.txt"
+agx stop "$FOLDER_TASK" | grep -q "^stopped"
+
+agx daemon stop | grep -q "^agnd stopped"

@@ -105,6 +105,26 @@ describe("restartDaemon", () => {
     await stopDaemon({ home });
   }, 30_000);
 
+  it("kills the daemon that is answering, not just the pid in the file", async () => {
+    // The file is stale but its port is held by a live daemon: killing only the file's pid would
+    // orphan that daemon and leave `start` with a port it cannot bind.
+    const live = await start();
+    await writeFile(
+      agnosticPaths(home).daemon,
+      JSON.stringify({
+        pid: await deadPid(),
+        port: live.port,
+        startedAt: new Date().toISOString(),
+      }),
+    );
+    const info = await restartDaemon({ home, port: live.port, force: true, entry: ENTRY });
+    expect(isProcessAlive(live.pid)).toBe(false);
+    expect(info.pid).not.toBe(live.pid);
+    expect(info.port).toBe(live.port);
+    expect((await daemonStatus({ home })).state).toBe("running");
+    await stopDaemon({ home });
+  }, 30_000);
+
   it("starts over a stale file when forced", async () => {
     await writeStaleFile(await deadPid());
     const info = await restartDaemon({ home, port: 0, force: true, entry: ENTRY });
