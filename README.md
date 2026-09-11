@@ -43,6 +43,8 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn recommend "<task>"` | Recommend a profile for the task, with reasons and sources |
 | `agn run "<task>" [--profile <id>]` | Create a worktree and start the agent |
 | `agn status` / `agn attach <task>` / `agn stop <task>` | Watch, join, or stop a session |
+| `agn resume <task>` | Bring a session back after a reboot, with its history where the agent supports it |
+| `agn adopt <path>` | Register an agent session you started outside agn |
 | `agn handoff <task> --to <profile>` | Hand a task to another agent with a structured note |
 | `agn sync` | Regenerate agent-specific config from `.ag/instructions.md` |
 | `agn open <task> [--editor cursor]` | Open the worktree in your editor |
