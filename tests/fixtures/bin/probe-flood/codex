@@ -1,0 +1,3 @@
+#!/bin/sh
+# Two mebibytes of output: more than any model list, and more than agn will parse.
+/usr/bin/yes 0123456789 | /usr/bin/head -c 2097152

@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+
+# pnpm 10+ reads its settings here rather than from .npmrc.
+saveExact: true
+
+# esbuild ships a platform binary from its install script; vitest needs it.
+allowBuilds:
+  esbuild: true
+  # better-sqlite3 ships prebuilds; the install script only compiles when none matches the ABI.
+  better-sqlite3: true

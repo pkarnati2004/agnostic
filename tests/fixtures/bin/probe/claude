@@ -1,0 +1,8 @@
+#!/bin/sh
+# Answers --version like the real CLI; otherwise copies the request to stderr and prints the listing.
+if [ "$1" = "--version" ]; then
+  echo "2.1.0 (Claude Code)"
+  exit 0
+fi
+/bin/cat >&2
+exec /bin/cat "${0%/*}/../../model-lists/claude.jsonl"

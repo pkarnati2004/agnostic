@@ -1,0 +1,3 @@
+{"type": "system", "subtype": "init", "session_id": "fixture-session"}
+not json at all
+{"type": "control_response", "response": {"subtype": "success", "response": {"models": [{"value": "fable", "displayName": "Fable", "description": "Most capable", "supportsEffort": true, "supportedEffortLevels": ["low", "high"], "supportsFastMode": false}, {"value": "opus", "displayName": "Opus", "supportsFastMode": true}, {"value": "sonnet", "displayName": "Sonnet"}, {"value": "haiku", "displayName": "Haiku"}, {"value": "cc-update-required-1", "displayName": "Fable 5.1 (disabled)", "disabled": true}, {"value": "default", "displayName": "Default (Sonnet)"}]}}}

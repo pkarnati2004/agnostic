@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "claude: not logged in" >&2; exit 2

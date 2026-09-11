@@ -1,0 +1,2 @@
+{"type": "system", "subtype": "init"}
+{"type": "control_response", "response": {"subtype": "error", "error": "unknown control request"}}

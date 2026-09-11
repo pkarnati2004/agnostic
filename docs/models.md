@@ -23,11 +23,11 @@ Claude Code supports pointing at an Anthropic-compatible endpoint through enviro
 
 ### Custom providers in Codex
 
-Codex reads `model_providers` from `~/.codex/config.toml`. Any OpenAI-compatible `base_url` works, including local servers. agnostic reads that file to build profiles.
+Codex reads `model_providers` from `~/.codex/config.toml`. Any OpenAI-compatible `base_url` works, including local servers. agnostic does not read that file yet; a later release will turn the providers in it into profiles.
 
 ## Local models
 
-Run LM Studio (https://lmstudio.ai) or Ollama (https://ollama.com) with their OpenAI-compatible server enabled. `agn doctor` detects the local port and adds `local` profiles for agents that accept a custom base URL (Codex, Pi, OpenCode). Local profiles cost nothing but score low on capability evidence; the recommender will suggest them for docs, tests, and small edits, not for risky work.
+Run LM Studio (https://lmstudio.ai) or Ollama (https://ollama.com) with their OpenAI-compatible server enabled. `agn doctor` detects the local port and adds `local` profiles for Codex, which takes a base URL on the command line. Pi and OpenCode need their own configuration files for a local provider, so agnostic does not enumerate local profiles for them yet. Local profiles cost nothing but score low on capability evidence; the recommender will suggest them for docs, tests, and small edits, not for risky work.
 
 ## Choosing what the recommender may use
 

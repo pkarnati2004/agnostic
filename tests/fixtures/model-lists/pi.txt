@@ -1,0 +1,5 @@
+provider            model                 context   output   thinking   status
+github-copilot      gpt-5.4-mini          128000    16000    yes        ready
+anthropic           claude-sonnet-4-5     200000    64000    yes        ready
+ollama              qwen3:8b              32000     8000     no         ready
+truncated line
