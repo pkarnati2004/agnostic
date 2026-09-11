@@ -8,3 +8,6 @@ trap 'rm -rf "$AGNOSTIC_HOME"' EXIT
 
 echo "smoke: core unit tests"
 pnpm vitest run --project core
+
+echo "smoke: ledger unit tests"
+pnpm vitest run --project ledger

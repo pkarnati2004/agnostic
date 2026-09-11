@@ -9,6 +9,37 @@ const statusInput: EventInput<"task.status"> = {
   payload: { from: "queued", to: "running" },
 };
 
+const repoInput: EventInput<"repo.registered"> = {
+  ts: "2026-09-10T11:00:00.000Z",
+  repoId: "r7k2m4pqrs",
+  kind: "repo.registered",
+  payload: {
+    repo: {
+      id: "r7k2m4pqrs",
+      path: "/Users/dev/code/agnostic",
+      kind: "git",
+      name: "agnostic",
+      addedAt: "2026-09-10T11:00:00.000Z",
+    },
+  },
+};
+
+const sessionInput: EventInput<"session.captured"> = {
+  ts: "2026-09-10T12:32:00.000Z",
+  taskId: "t3n9v2wxyz",
+  repoId: "r7k2m4pqrs",
+  kind: "session.captured",
+  payload: {
+    session: {
+      harness: "claude-code",
+      sessionId: "b7d1f0e2",
+      tmuxSession: "agn-t3n9v2wxyz",
+      cwd: "/Users/dev/.agnostic/worktrees/r7k2m4pqrs/t3n9v2wxyz",
+      lastSeenAt: "2026-09-10T12:32:00.000Z",
+    },
+  },
+};
+
 const usageInput: EventInput<"usage.recorded"> = {
   ts: "2026-09-10T12:40:00.000Z",
   taskId: "t3n9v2wxyz",
@@ -20,6 +51,27 @@ describe("EventInputSchema", () => {
   it("parses each kind with its own payload", () => {
     expect(EventInputSchema.parse(statusInput)).toEqual(statusInput);
     expect(EventInputSchema.parse(usageInput)).toEqual(usageInput);
+    expect(EventInputSchema.parse(repoInput)).toEqual(repoInput);
+    expect(EventInputSchema.parse(sessionInput)).toEqual(sessionInput);
+  });
+
+  it("parses the kinds the ledger has no row for", () => {
+    const adopted: EventInput<"task.adopted"> = {
+      ts: "2026-09-10T12:33:00.000Z",
+      taskId: "t3n9v2wxyz",
+      kind: "task.adopted",
+      payload: { pid: 4211, cwd: "/Users/dev/code/agnostic" },
+    };
+    expect(EventInputSchema.parse(adopted)).toEqual(adopted);
+    expect(EventInputSchema.safeParse({ ...adopted, payload: { pid: 0, cwd: "" } }).success).toBe(
+      false,
+    );
+  });
+
+  it("tells repo.registered and repo.updated apart", () => {
+    const updated = { ...repoInput, kind: "repo.updated" as const };
+    expect(EventInputSchema.parse(updated)).toEqual(updated);
+    expect(EventInputSchema.safeParse({ ...updated, payload: { repo: {} } }).success).toBe(false);
   });
 
   it("rejects a payload that belongs to another kind", () => {

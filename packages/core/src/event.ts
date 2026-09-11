@@ -3,12 +3,17 @@ import { IdSchema } from "./id.js";
 import { OutcomeSchema } from "./outcome.js";
 import { ProfileSchema } from "./profile.js";
 import { RecommendationSchema } from "./recommendation.js";
-import { TaskSchema, TaskStatusSchema } from "./task.js";
+import { RepoSchema } from "./repo.js";
+import { TaskSchema, TaskSessionSchema, TaskStatusSchema } from "./task.js";
 
 export const EventKindSchema = z.enum([
   "task.created",
   "task.status",
+  "task.adopted",
   "task.handoff",
+  "session.captured",
+  "repo.registered",
+  "repo.updated",
   "usage.recorded",
   "outcome.recorded",
   "profile.detected",
@@ -19,12 +24,17 @@ export type EventKind = z.infer<typeof EventKindSchema>;
 const payloadSchemas = {
   "task.created": z.object({ task: TaskSchema }),
   "task.status": z.object({ from: TaskStatusSchema, to: TaskStatusSchema }),
+  "task.adopted": z.object({ pid: z.number().int().positive(), cwd: z.string().min(1) }),
   "task.handoff": z.object({
     fromProfileId: z.string().min(1),
     toProfileId: z.string().min(1),
     childTaskId: IdSchema,
     note: z.string().nullable(),
   }),
+  "session.captured": z.object({ session: TaskSessionSchema }),
+  // Both repo kinds carry the whole row, so a consumer can upsert without a second read.
+  "repo.registered": z.object({ repo: RepoSchema }),
+  "repo.updated": z.object({ repo: RepoSchema }),
   "usage.recorded": z.object({
     tokens: z.number().int().nonnegative(),
     costUsd: z.number().nonnegative().nullable(),
@@ -61,39 +71,23 @@ const inputShape = {
 
 const ledgerShape = { ...inputShape, id: z.number().int().positive() };
 
+function member<S extends z.core.$ZodLooseShape, K extends EventKind>(shape: S, kind: K) {
+  return z.object({ ...shape, kind: z.literal(kind), payload: payloadSchemas[kind] });
+}
+
 function members<S extends z.core.$ZodLooseShape>(shape: S) {
   return [
-    z.object({
-      ...shape,
-      kind: z.literal("task.created"),
-      payload: payloadSchemas["task.created"],
-    }),
-    z.object({ ...shape, kind: z.literal("task.status"), payload: payloadSchemas["task.status"] }),
-    z.object({
-      ...shape,
-      kind: z.literal("task.handoff"),
-      payload: payloadSchemas["task.handoff"],
-    }),
-    z.object({
-      ...shape,
-      kind: z.literal("usage.recorded"),
-      payload: payloadSchemas["usage.recorded"],
-    }),
-    z.object({
-      ...shape,
-      kind: z.literal("outcome.recorded"),
-      payload: payloadSchemas["outcome.recorded"],
-    }),
-    z.object({
-      ...shape,
-      kind: z.literal("profile.detected"),
-      payload: payloadSchemas["profile.detected"],
-    }),
-    z.object({
-      ...shape,
-      kind: z.literal("recommendation.made"),
-      payload: payloadSchemas["recommendation.made"],
-    }),
+    member(shape, "task.created"),
+    member(shape, "task.status"),
+    member(shape, "task.adopted"),
+    member(shape, "task.handoff"),
+    member(shape, "session.captured"),
+    member(shape, "repo.registered"),
+    member(shape, "repo.updated"),
+    member(shape, "usage.recorded"),
+    member(shape, "outcome.recorded"),
+    member(shape, "profile.detected"),
+    member(shape, "recommendation.made"),
   ] as const;
 }
 

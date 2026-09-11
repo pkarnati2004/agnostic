@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Task, TaskSchema } from "./task.js";
+import { type Task, TaskSchema, type TaskSession, TaskSessionSchema } from "./task.js";
 
 const task: Task = {
   id: "t3n9v2wxyz",
@@ -10,6 +10,7 @@ const task: Task = {
   worktreePath: "/Users/dev/.agnostic/worktrees/r7k2m4pqrs/t3n9v2wxyz",
   branch: "agn/t3n9v2wxyz",
   status: "running",
+  origin: "agn",
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:31:00.000Z",
 };
@@ -43,6 +44,38 @@ describe("TaskSchema", () => {
     expect(TaskSchema.parse(handoff)).toEqual(handoff);
   });
 
+  it("defaults origin to agn so rows written before adoption existed still parse", () => {
+    const { origin, ...withoutOrigin } = task;
+    expect(origin).toBe("agn");
+    expect(TaskSchema.parse(withoutOrigin).origin).toBe("agn");
+  });
+
+  it("accepts an adopted task with a captured session", () => {
+    const session: TaskSession = {
+      harness: "claude-code",
+      sessionId: null,
+      tmuxSession: "agn-t3n9v2wxyz",
+      cwd: "/Users/dev/code/agnostic",
+      lastSeenAt: "2026-09-10T12:31:00.000Z",
+    };
+    const adopted: Task = { ...task, origin: "adopted", session };
+    expect(TaskSchema.parse(adopted)).toEqual(adopted);
+  });
+
+  it("requires cwd on a session even when every other field is present", () => {
+    const session: TaskSession = {
+      harness: "claude-code",
+      sessionId: null,
+      tmuxSession: "agn-t3n9v2wxyz",
+      cwd: "/Users/dev/code/agnostic",
+      lastSeenAt: "2026-09-10T12:31:00.000Z",
+    };
+    expect(TaskSessionSchema.parse(session)).toEqual(session);
+    const { cwd: _cwd, ...withoutCwd } = session;
+    expect(TaskSessionSchema.safeParse(withoutCwd).success).toBe(false);
+    expect(TaskSessionSchema.safeParse({ ...session, cwd: "" }).success).toBe(false);
+  });
+
   it("rejects the wrong type in every field", () => {
     const wrong: Record<string, unknown> = {
       id: "nope",
@@ -53,9 +86,11 @@ describe("TaskSchema", () => {
       worktreePath: 7,
       branch: 7,
       status: "thinking",
+      origin: "imported",
       createdAt: "yesterday",
       updatedAt: 0,
       recommendation: { recommended: {} },
+      session: { harness: "claude-code" },
       parentTaskId: "nope",
     };
     for (const [field, value] of Object.entries(wrong)) {
