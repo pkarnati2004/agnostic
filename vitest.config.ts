@@ -37,6 +37,16 @@ export default defineConfig({
       },
       {
         test: {
+          name: "daemon",
+          root: "packages/daemon",
+          include: ["src/**/*.test.ts"],
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
           name: "scripts",
           root: ".",
           include: ["scripts/**/*.test.ts"],

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, CoreError, ProcessError } from "./error.js";
+import { ConfigError, CoreError, DaemonApiError, ProcessError } from "./error.js";
 
 describe("CoreError", () => {
   it("keeps code, hint and cause", () => {
@@ -51,5 +51,27 @@ describe("ConfigError", () => {
     expect(error.code).toBe("ag-file-invalid");
     expect(error.hint).toBe("Fix /repo/.ag/preferences.yaml or delete it to use the defaults.");
     expect(error).toBeInstanceOf(CoreError);
+  });
+});
+
+describe("DaemonApiError", () => {
+  it("carries the HTTP status alongside the code and hint", () => {
+    const error = new DaemonApiError("no task matches qqqqqqqqqq", {
+      code: "task-not-found",
+      hint: "Run agn ls.",
+      status: 404,
+    });
+    expect(error.name).toBe("DaemonApiError");
+    expect(error.status).toBe(404);
+    expect(error.code).toBe("task-not-found");
+    expect(error).toBeInstanceOf(CoreError);
+  });
+
+  it("leaves status null for a request that never got an answer", () => {
+    const error = new DaemonApiError("the agn daemon is not answering", {
+      code: "daemon-unreachable",
+      status: null,
+    });
+    expect(error.status).toBeNull();
   });
 });

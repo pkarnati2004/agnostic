@@ -3,6 +3,7 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/ledger" },
-    { "path": "packages/registry" }
+    { "path": "packages/registry" },
+    { "path": "packages/daemon" }
   ]
 }

@@ -10,4 +10,6 @@
 
 **The daemon won't start.** Port in use or a stale lock file in `~/.agnostic/`. `agn daemon restart --force`.
 
-**Where things live.** Task database `~/.agnostic/agnostic.db`; worktrees `~/.agnostic/worktrees/<repo>/<task>`; logs `~/.agnostic/logs/`.
+**Where things live.** Task database `~/.agnostic/agnostic.db`; worktrees `~/.agnostic/worktrees/<repo>/<task>`; the daemon log `~/.agnostic/logs/agnd.log`.
+
+**Reading the daemon log.** `tail -f ~/.agnostic/logs/agnd.log`. One line per request, with the method, path, status and duration. Prompts, task titles and your auth token are never written there.

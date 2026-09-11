@@ -1,0 +1,107 @@
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { RegisterRepoResponse, RepoListResponse } from "@agnostic/core";
+import { run } from "@agnostic/core";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
+
+let daemon: TestDaemon;
+let workspace: string;
+
+beforeEach(async () => {
+  daemon = await createTestDaemon();
+  workspace = await realpath(await mkdtemp(join(tmpdir(), "agn-repos-")));
+});
+
+afterEach(async () => {
+  await daemon.close();
+  await rm(workspace, { recursive: true, force: true });
+});
+
+function post(body: unknown): Promise<Response> {
+  return daemon.request("/repos", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function gitRepo(name: string): Promise<string> {
+  const path = join(workspace, name);
+  await mkdir(path, { recursive: true });
+  await run("git", ["init"], { cwd: path });
+  return path;
+}
+
+describe("GET /repos", () => {
+  it("starts empty", async () => {
+    const response = await daemon.request("/repos");
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as RepoListResponse).repos).toEqual([]);
+  });
+
+  it("lists what was registered", async () => {
+    await post({ path: await gitRepo("alpha") });
+    const body = (await (await daemon.request("/repos")).json()) as RepoListResponse;
+    expect(body.repos.map((repo) => repo.name)).toEqual(["alpha"]);
+  });
+});
+
+describe("POST /repos", () => {
+  it("answers 201 the first time and 200 the second", async () => {
+    const path = await gitRepo("alpha");
+    const first = await post({ path });
+    expect(first.status).toBe(201);
+    const created = (await first.json()) as RegisterRepoResponse;
+    expect(created).toMatchObject({ created: true, repo: { kind: "git", name: "alpha" } });
+
+    const second = await post({ path });
+    expect(second.status).toBe(200);
+    const again = (await second.json()) as RegisterRepoResponse;
+    expect(again.created).toBe(false);
+    expect(again.repo.id).toBe(created.repo.id);
+  });
+
+  it("rejects a body with no path", async () => {
+    const response = await post({});
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "request-invalid" } });
+  });
+
+  it("rejects an unknown field", async () => {
+    expect((await post({ path: workspace, branch: "main" })).status).toBe(400);
+  });
+
+  it("rejects a body that is not JSON", async () => {
+    const response = await daemon.request("/repos", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "not json",
+    });
+    expect(response.status).toBe(400);
+  });
+
+  it("maps a missing path to 400 path-not-found", async () => {
+    const response = await post({ path: join(workspace, "ghost") });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "path-not-found" } });
+  });
+
+  it("maps a malformed agnostic.yaml to 400", async () => {
+    const path = await gitRepo("broken");
+    await mkdir(join(path, ".ag"), { recursive: true });
+    await writeFile(join(path, ".ag", "agnostic.yaml"), "id: [unclosed\n");
+    const response = await post({ path });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "ag-file-malformed" } });
+  });
+
+  it("refuses a path under agn's worktrees with 400", async () => {
+    const inside = join(daemon.paths.worktrees, "repo", "task");
+    await mkdir(inside, { recursive: true });
+    const response = await post({ path: inside });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "path-inside-worktrees" } });
+  });
+});
