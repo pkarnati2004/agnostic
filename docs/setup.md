@@ -27,6 +27,16 @@ agn doctor
 
 You should see each agent with its version, login state, and tier. "Unknown" means agnostic couldn't verify login - start the agent once by hand and re-run.
 
+## The daemon
+
+One local daemon owns the task database, detection and the running sessions. The first `agn`
+command starts it, and it keeps running after your shell exits. `agn daemon status` says whether it
+is up, `agn daemon stop` ends it, and `agn daemon restart --force` replaces one that is alive but no
+longer answering. `--port <n>` on `start` or `restart` overrides the port in `~/.agnostic/config.yaml`.
+
+The daemon sees the environment of whatever started it. Export provider keys before your first `agn`
+command of the session, or run `agn daemon restart` after exporting one.
+
 ## Register a repo
 
 ```bash

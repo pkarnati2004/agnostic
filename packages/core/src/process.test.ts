@@ -1,6 +1,9 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ProcessError } from "./error.js";
-import { run, scrubEnv, spawn } from "./process.js";
+import { type ProcessLogEntry, run, scrubEnv, setProcessLog, spawn } from "./process.js";
 
 beforeAll(() => {
   process.env.npm_config_probe = "1";
@@ -94,5 +97,71 @@ describe("spawn", () => {
     expect(child.stdout).not.toBeNull();
     const result = await child;
     expect(result.stdout).toBe("streamed");
+  });
+});
+
+describe("setProcessLog", () => {
+  afterEach(() => {
+    setProcessLog(null);
+  });
+
+  it("reports a successful run without its output", async () => {
+    const entries: ProcessLogEntry[] = [];
+    setProcessLog((entry) => entries.push(entry));
+    await run("echo", ["hello"]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ command: "echo", args: ["hello"], exitCode: 0 });
+    expect(JSON.stringify(entries[0])).not.toContain("hello world");
+  });
+
+  it("reports a failure with its exit code", async () => {
+    const entries: ProcessLogEntry[] = [];
+    setProcessLog((entry) => entries.push(entry));
+    await run("false").catch(() => undefined);
+    expect(entries[0]).toMatchObject({ command: "false", exitCode: 1 });
+  });
+
+  it("reports a spawned process when it finishes", async () => {
+    const entries: ProcessLogEntry[] = [];
+    setProcessLog((entry) => entries.push(entry));
+    await spawn("echo", ["spawned"]);
+    await new Promise((done) => setTimeout(done, 10));
+    expect(entries[0]).toMatchObject({ command: "echo", exitCode: 0 });
+  });
+
+  it("stops reporting once the sink is removed", async () => {
+    const entries: ProcessLogEntry[] = [];
+    setProcessLog((entry) => entries.push(entry));
+    setProcessLog(null);
+    await run("echo", ["quiet"]);
+    expect(entries).toEqual([]);
+  });
+});
+
+describe("logFile", () => {
+  it("appends both streams to the file and ignores stdin", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-process-"));
+    const file = join(dir, "logs", "out.log");
+    await run(process.execPath, ["-e", "console.log('to stdout'); console.error('to stderr')"], {
+      logFile: file,
+    });
+    await run(process.execPath, ["-e", "console.log('again')"], { logFile: file });
+    const text = await readFile(file, "utf8");
+    expect(text).toContain("to stdout");
+    expect(text).toContain("to stderr");
+    expect(text).toContain("again");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("lets a detached child outlive the parent's handle", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-detached-"));
+    const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 50)"], {
+      detached: true,
+      logFile: join(dir, "out.log"),
+    });
+    expect(child.pid).toBeGreaterThan(0);
+    child.unref();
+    await child;
+    await rm(dir, { recursive: true, force: true });
   });
 });

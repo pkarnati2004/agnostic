@@ -1,0 +1,29 @@
+{
+  "name": "@agnostic/daemon",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./main": {
+      "development": "./src/main.ts",
+      "types": "./dist/main.d.ts",
+      "default": "./dist/main.js"
+    }
+  },
+  "bin": {
+    "agnd": "./dist/main.js"
+  },
+  "dependencies": {
+    "@agnostic/core": "workspace:*",
+    "@agnostic/ledger": "workspace:*",
+    "@agnostic/registry": "workspace:*",
+    "@hono/node-server": "2.1.1",
+    "hono": "4.13.7",
+    "zod": "4.6.1"
+  }
+}

@@ -11,8 +11,8 @@
     "test": "vitest run",
     "lint": "biome check . && tsc -b && knip && tsx scripts/check-file-size.ts",
     "smoke": "bash scripts/smoke.sh",
-    "dev": "node -e \"console.error('pnpm dev lands in a later chunk'); process.exit(1)\"",
-    "agn": "node -e \"console.error('pnpm agn lands in a later chunk'); process.exit(1)\""
+    "dev": "tsx --conditions development packages/daemon/src/main.ts run",
+    "agn": "tsx --conditions development packages/cli/src/main.ts"
   },
   "devDependencies": {
     "@agnostic/core": "workspace:*",

@@ -54,3 +54,19 @@ export class ConfigError extends CoreError {
     this.file = opts.file;
   }
 }
+
+export type DaemonApiErrorOptions = CoreErrorOptions & {
+  /** The HTTP status the daemon answered with; null when the request never got an answer. */
+  status: number | null;
+};
+
+/** What a client throws: the daemon's own error body, or the reason it could not be reached. */
+export class DaemonApiError extends CoreError {
+  readonly status: number | null;
+
+  constructor(message: string, opts: DaemonApiErrorOptions) {
+    super(message, opts);
+    this.name = "DaemonApiError";
+    this.status = opts.status;
+  }
+}

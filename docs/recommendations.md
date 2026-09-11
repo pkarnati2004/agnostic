@@ -4,7 +4,7 @@
 
 **Inputs:** the task text, facts about the repo (languages, size, test command), your `.ag/preferences.yaml`, and a versioned benchmark catalog.
 
-**Output:** a recommended profile with a one-sentence reason, an alternative, and - when the evidence is material - a "worth trying" profile you don't have yet, with what it would take to enable.
+**Output:** a recommended profile with a one-sentence reason, an alternative, and - when the evidence is material - a "worth trying" profile you don't have yet, with the one step that would enable it: the environment variable to export for a key, or the command that installs the agent.
 
 **Evidence labels:** *strong* (benchmarks for this exact agent + model on this kind of task), *some* (related tasks or a close model), *model-level only* (bare-model scores such as LiveBench), or *none* (falls back to your default). Never a percentage.
 

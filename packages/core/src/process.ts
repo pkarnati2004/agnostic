@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { ExecaError, execa, type Options, type ResultPromise } from "execa";
 import { ProcessError } from "./error.js";
 
@@ -7,6 +9,19 @@ export type ProcessOptions = {
   inheritEnv?: boolean;
   timeoutMs?: number;
   input?: string;
+  /** Survive the parent exiting; the caller still has to `unref()` the returned subprocess. */
+  detached?: boolean;
+  /** Ignore stdin and append both output streams to this file, for a process nobody is watching. */
+  logFile?: string;
+};
+
+/** What the process log records: never the environment, never a byte of output. */
+export type ProcessLogEntry = {
+  command: string;
+  args: string[];
+  cwd?: string;
+  exitCode: number | null;
+  durationMs: number;
 };
 
 export type RunResult = {
@@ -17,6 +32,39 @@ export type RunResult = {
 };
 
 const STDERR_TAIL_LINES = 20;
+
+let processLog: ((entry: ProcessLogEntry) => void) | null = null;
+
+/** The daemon installs its logger here at start; nothing else in agnostic writes process lines. */
+export function setProcessLog(sink: ((entry: ProcessLogEntry) => void) | null): void {
+  processLog = sink;
+}
+
+function report(
+  command: string,
+  args: string[],
+  opts: ProcessOptions,
+  started: number,
+  exitCode: number | null,
+): void {
+  processLog?.({
+    command,
+    args,
+    ...(opts.cwd === undefined ? {} : { cwd: opts.cwd }),
+    exitCode,
+    durationMs: Date.now() - started,
+  });
+}
+
+/** Signal 0 checks for a process without touching it; EPERM still means something is there. */
+export function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (cause) {
+    return cause instanceof Error && "code" in cause && cause.code === "EPERM";
+  }
+}
 
 /** pnpm exports dozens of `npm_*` variables; they confuse harnesses that read them as their own. */
 export function scrubEnv(env: NodeJS.ProcessEnv): Record<string, string> {
@@ -32,14 +80,23 @@ export function scrubEnv(env: NodeJS.ProcessEnv): Record<string, string> {
 
 function execaOptions(opts: ProcessOptions) {
   const inherited = scrubEnv(opts.inheritEnv === false ? {} : process.env);
+  const output = opts.logFile === undefined ? {} : redirect(opts.logFile);
   return {
     cwd: opts.cwd,
     env: { ...inherited, ...opts.env },
     extendEnv: false,
     timeout: opts.timeoutMs,
     input: opts.input,
+    detached: opts.detached,
     stripFinalNewline: true,
+    ...output,
   } satisfies Options;
+}
+
+function redirect(file: string) {
+  mkdirSync(dirname(file), { recursive: true });
+  const target = { file, append: true } as const;
+  return { stdin: "ignore", stdout: target, stderr: target } as const;
 }
 
 export async function run(
@@ -50,6 +107,7 @@ export async function run(
   const startedAt = Date.now();
   try {
     const result = await execa(command, args, execaOptions(opts));
+    report(command, args, opts, startedAt, result.exitCode ?? 0);
     return {
       stdout: result.stdout,
       stderr: result.stderr,
@@ -57,7 +115,9 @@ export async function run(
       durationMs: Date.now() - startedAt,
     };
   } catch (cause) {
-    throw toProcessError(command, args, cause);
+    const error = toProcessError(command, args, cause);
+    report(command, args, opts, startedAt, error.exitCode);
+    throw error;
   }
 }
 
@@ -67,7 +127,17 @@ export function spawn(
   args: string[] = [],
   opts: ProcessOptions = {},
 ): ResultPromise {
-  return execa(command, args, execaOptions(opts));
+  const startedAt = Date.now();
+  const subprocess = execa(command, args, execaOptions(opts));
+  subprocess.then(
+    (result) => report(command, args, opts, startedAt, result.exitCode ?? 0),
+    (cause: unknown) => report(command, args, opts, startedAt, exitCodeOf(cause)),
+  );
+  return subprocess;
+}
+
+function exitCodeOf(cause: unknown): number | null {
+  return cause instanceof ExecaError ? (cause.exitCode ?? null) : null;
 }
 
 function toProcessError(command: string, args: string[], cause: unknown): ProcessError {

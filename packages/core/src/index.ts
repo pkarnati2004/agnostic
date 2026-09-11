@@ -1,5 +1,8 @@
 export * from "./ag-layout.js";
 export * from "./ag-text.js";
+export * from "./daemon-api.js";
+export * from "./daemon-client.js";
+export { describeIssues } from "./describe-issues.js";
 export * from "./error.js";
 export * from "./event.js";
 export * from "./id.js";
