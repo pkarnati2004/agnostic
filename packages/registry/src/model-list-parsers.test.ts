@@ -67,11 +67,29 @@ describe("parseCodexModelList", () => {
     expect(parseCodexModelList("{}")).toEqual([]);
   });
 
+  it("drops the rows the CLI marks hidden", () => {
+    const slugs = parseCodexModelList(fixture("codex.json"));
+    expect(slugs).not.toContain("gpt-reserve");
+    expect(slugs).not.toContain("codex-auto-review");
+  });
+
+  // Codex 0.154.0 prints `visibility` on every row, so a row without it is a row we cannot show a
+  // user honestly; the seed list covers a CLI whose listing we no longer understand.
+  it("drops a row that does not say it is listed", () => {
+    const rows = {
+      models: [
+        { slug: "gpt-5.5", display_name: "GPT-5.5" },
+        { slug: "gpt-5.6-luna", display_name: "GPT-5.6 Luna", visibility: "internal" },
+      ],
+    };
+    expect(parseCodexModelList(JSON.stringify(rows))).toEqual([]);
+  });
+
   it("lists a slug once", () => {
     const twice = {
       models: [
-        { slug: "gpt-5.5", display_name: "A" },
-        { slug: "gpt-5.5", display_name: "B" },
+        { slug: "gpt-5.5", display_name: "A", visibility: "list" },
+        { slug: "gpt-5.5", display_name: "B", visibility: "list" },
       ],
     };
     expect(parseCodexModelList(JSON.stringify(twice))).toEqual(["gpt-5.5"]);

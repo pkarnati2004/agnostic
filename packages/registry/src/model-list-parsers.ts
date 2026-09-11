@@ -52,16 +52,24 @@ const CodexModelListSchema = z.looseObject({ models: z.array(z.unknown()).option
 const CodexModelSchema = z.looseObject({
   slug: z.string().min(1),
   display_name: z.string().min(1),
+  visibility: z.string().optional(),
 });
 
-/** `codex debug models` prints one JSON document; a row without both names is not a model. */
+/**
+ * `codex debug models` prints one JSON document; a row without both names is not a model, and a row
+ * the CLI does not mark `"visibility": "list"` is not one a user can pick - 0.154.0 marks its
+ * reserve and auto-review rows `"hide"`, and prints the field on every row it lists.
+ */
 export function parseCodexModelList(output: string): string[] {
   const parsed = CodexModelListSchema.safeParse(parseJson(output));
   if (!parsed.success) {
     return [];
   }
   return unique(
-    (parsed.data.models ?? []).map((row) => CodexModelSchema.safeParse(row).data?.slug ?? null),
+    (parsed.data.models ?? []).map((row) => {
+      const model = CodexModelSchema.safeParse(row).data;
+      return model?.visibility === "list" ? model.slug : null;
+    }),
   );
 }
 
