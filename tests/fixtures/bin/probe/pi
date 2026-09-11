@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ "$1" = "--version" ]; then
+  echo "pi 0.14.2"
+  exit 0
+fi
+exec /bin/cat "${0%/*}/../../model-lists/pi.txt"

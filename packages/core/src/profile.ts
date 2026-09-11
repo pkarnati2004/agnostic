@@ -33,11 +33,13 @@ export function parseProfileId(id: string): {
   model: string | null;
   route: Route;
 } {
+  // The first colon ends the harness, the last starts the route, everything between is the model
+  // verbatim, so "codex:qwen3:8b:local" is legal.
   const segments = id.split(":");
-  const route = segments.pop();
-  const model = segments.pop();
-  // Whatever is left is the harness, so "other:aider" survives the split.
-  const harness = segments.join(":");
+  const harnessLength = segments[0] === "other" ? 2 : 1;
+  const harness = segments.slice(0, harnessLength).join(":");
+  const model = segments.slice(harnessLength, -1).join(":");
+  const route = segments.length > harnessLength ? segments[segments.length - 1] : undefined;
   const parsed = z
     .object({ harness: HarnessIdSchema, model: z.string().min(1), route: RouteSchema })
     .safeParse({ harness, model, route });

@@ -25,6 +25,7 @@ const roundTrips: Array<[HarnessId, string | null, Route]> = [
   ["codex", "gpt-5", "native"],
   ["other:aider", "deepseek-v3", "openai-compatible"],
   ["opencode", null, "local"],
+  ["codex", "qwen3:8b", "local"],
 ];
 
 describe("formatProfileId and parseProfileId", () => {
@@ -53,12 +54,34 @@ describe("formatProfileId and parseProfileId", () => {
     });
   });
 
+  it("keeps a model with colons in it whole, the way Ollama tags are written", () => {
+    expect(parseProfileId("codex:qwen3:8b:local")).toEqual({
+      harness: "codex",
+      model: "qwen3:8b",
+      route: "local",
+    });
+    expect(parseProfileId("other:aider:qwen3:8b:local")).toEqual({
+      harness: "other:aider",
+      model: "qwen3:8b",
+      route: "local",
+    });
+  });
+
   it("writes a null model as the default segment", () => {
     expect(formatProfileId("opencode", null, "local")).toBe("opencode:default:local");
   });
 
   it("throws CoreError with a stable code on anything else", () => {
-    for (const id of ["", "claude-code", "claude-code:sonnet-4.5", "nope:sonnet-4.5:native"]) {
+    const invalid = [
+      "",
+      "nope",
+      "claude-code",
+      "claude-code:sonnet-4.5",
+      "nope:sonnet-4.5:native",
+      "other:default:native",
+      "claude-code::native",
+    ];
+    for (const id of invalid) {
       expect(() => parseProfileId(id)).toThrowError(CoreError);
       try {
         parseProfileId(id);

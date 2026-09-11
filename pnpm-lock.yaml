@@ -155,6 +155,15 @@ importers:
         specifier: 13.0.3
         version: 13.0.3
 
+  packages/registry:
+    dependencies:
+      '@agnostic/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: 4.6.1
+        version: 4.6.1
+
 packages:
 
   '@biomejs/biome@2.5.12':

@@ -27,6 +27,16 @@ export default defineConfig({
       },
       {
         test: {
+          name: "registry",
+          root: "packages/registry",
+          include: ["src/**/*.test.ts"],
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
           name: "scripts",
           root: ".",
           include: ["scripts/**/*.test.ts"],

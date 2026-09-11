@@ -11,3 +11,6 @@ pnpm vitest run --project core
 
 echo "smoke: ledger unit tests"
 pnpm vitest run --project ledger
+
+echo "smoke: registry unit tests"
+pnpm vitest run --project registry
