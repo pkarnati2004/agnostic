@@ -6,6 +6,7 @@ import {
   EventsQuerySchema,
   HealthResponseSchema,
   HooksInstallRequestSchema,
+  RecommendRequestSchema,
   RegisterRepoRequestSchema,
   RunTaskRequestSchema,
   TaskListQuerySchema,
@@ -91,6 +92,67 @@ describe("RunTaskRequestSchema", () => {
     );
     expect(RunTaskRequestSchema.safeParse({ prompt: "ship it", model: 5 }).success).toBe(false);
     expect(RunTaskRequestSchema.safeParse({ prompt: 5 }).success).toBe(false);
+  });
+
+  it("accepts --intent, replacing what the classifier would read out of the prompt", () => {
+    expect(RunTaskRequestSchema.parse({ prompt: "ship it", intent: "debug" })).toMatchObject({
+      intent: "debug",
+    });
+    expect(RunTaskRequestSchema.safeParse({ prompt: "ship it", intent: "vibes" }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("RecommendRequestSchema", () => {
+  it("accepts a bare prompt and every optional field together", () => {
+    expect(
+      RecommendRequestSchema.parse({ repoId: "r4k8m2qrst", prompt: "fix the flaky auth test" }),
+    ).toEqual({ repoId: "r4k8m2qrst", prompt: "fix the flaky auth test" });
+    expect(
+      RecommendRequestSchema.parse({
+        repoId: "r4k8m2qrst",
+        prompt: "fix the flaky auth test",
+        intent: "debug",
+        subscriptionsOnly: true,
+      }),
+    ).toEqual({
+      repoId: "r4k8m2qrst",
+      prompt: "fix the flaky auth test",
+      intent: "debug",
+      subscriptionsOnly: true,
+    });
+  });
+
+  it("rejects an empty prompt, a missing repoId and an intent it does not know", () => {
+    expect(RecommendRequestSchema.safeParse({ repoId: "r4k8m2qrst", prompt: "" }).success).toBe(
+      false,
+    );
+    expect(RecommendRequestSchema.safeParse({ prompt: "ship it" }).success).toBe(false);
+    expect(
+      RecommendRequestSchema.safeParse({
+        repoId: "r4k8m2qrst",
+        prompt: "ship it",
+        intent: "vibes",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a field it does not know and the wrong type for subscriptionsOnly", () => {
+    expect(
+      RecommendRequestSchema.safeParse({
+        repoId: "r4k8m2qrst",
+        prompt: "ship it",
+        optimise: "quality",
+      }).success,
+    ).toBe(false);
+    expect(
+      RecommendRequestSchema.safeParse({
+        repoId: "r4k8m2qrst",
+        prompt: "ship it",
+        subscriptionsOnly: "yes",
+      }).success,
+    ).toBe(false);
   });
 });
 

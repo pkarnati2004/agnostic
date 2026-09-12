@@ -1,0 +1,129 @@
+{
+  "intents": [
+    {
+      "intent": "debug",
+      "keywords": [
+        "fix",
+        "bug",
+        "broke",
+        "fail",
+        "flaky",
+        "debug",
+        "crash",
+        "error",
+        "regression",
+        "hang",
+        "leak",
+        "timeout",
+        "repair",
+        "stacktrace",
+        "traceback",
+        "diagnose"
+      ]
+    },
+    {
+      "intent": "review",
+      "keywords": ["review", "audit", "critique", "inspect", "vet"]
+    },
+    {
+      "intent": "refactor",
+      "keywords": [
+        "refactor",
+        "rename",
+        "extract",
+        "restructure",
+        "reorganise",
+        "reorganize",
+        "simplify",
+        "tidy",
+        "dedupe",
+        "clean",
+        "split",
+        "rewrite",
+        "modularise",
+        "modularize"
+      ]
+    },
+    {
+      "intent": "research",
+      "keywords": [
+        "research",
+        "investigate",
+        "why",
+        "explain",
+        "understand",
+        "compare",
+        "evaluate",
+        "explore",
+        "analyse",
+        "analyze",
+        "figure"
+      ]
+    },
+    {
+      "intent": "ui",
+      "keywords": [
+        "ui",
+        "css",
+        "style",
+        "layout",
+        "responsive",
+        "design",
+        "frontend",
+        "button",
+        "modal",
+        "page",
+        "component",
+        "theme",
+        "tailwind",
+        "animation",
+        "accessibility",
+        "a11y",
+        "spacing"
+      ]
+    },
+    {
+      "intent": "implement",
+      "keywords": [
+        "add",
+        "implement",
+        "create",
+        "build",
+        "write",
+        "support",
+        "feature",
+        "introduce",
+        "wire",
+        "migrate",
+        "port",
+        "expose",
+        "generate",
+        "enable"
+      ]
+    }
+  ],
+  "breadth": [
+    "across",
+    "all",
+    "every",
+    "each",
+    "whole",
+    "entire",
+    "everywhere",
+    "everything",
+    "rewrite",
+    "migrate",
+    "codebase",
+    "monorepo"
+  ],
+  "browser": [
+    "browser",
+    "screenshot",
+    "playwright",
+    "puppeteer",
+    "selenium",
+    "cypress",
+    "webdriver",
+    "e2e"
+  ]
+}

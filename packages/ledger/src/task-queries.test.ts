@@ -42,6 +42,13 @@ const recommendation: Recommendation = {
   alternative: { profileId: "claude-code:sonnet-4.5:native", reason: "cheaper" },
   worthTrying: null,
   riskNote: null,
+  taskClass: {
+    intent: "refactor",
+    scope: "small",
+    risk: [],
+    needsBrowser: false,
+    automaticIntent: null,
+  },
 };
 
 const session: TaskSession = {

@@ -12,6 +12,8 @@ import {
   type InitRequest,
   type InitResponse,
   type ProfilesResponse,
+  type RecommendRequest,
+  type RecommendResponse,
   type RegisterRepoRequest,
   type RegisterRepoResponse,
   type RepoListResponse,
@@ -47,6 +49,8 @@ export type DaemonClient = {
   listSessions(repoId: string, path: string): Promise<SessionsResponse>;
   adoptTask(repoId: string, body: AdoptRequest): Promise<TaskResponse>;
   profiles(): Promise<ProfilesResponse>;
+  /** The pick for a prompt, without starting anything; `agn run` records one of its own. */
+  recommend(body: RecommendRequest): Promise<RecommendResponse>;
   doctor(request?: DoctorRequest): Promise<DoctorResponse>;
   /** Installs the status hook for one harness, or for every harness the repo could run. */
   installHooks(repoId: string, body: HooksInstallRequest): Promise<HooksInstallResponse>;
@@ -113,6 +117,7 @@ export function createDaemonClient(opts: {
     adoptTask: (repoId, body) =>
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
+    recommend: (body) => json<RecommendResponse>("POST", "/recommend", body),
     doctor: (request) => json<DoctorResponse>("POST", "/doctor", request ?? {}),
     installHooks: (repoId, body) =>
       json<HooksInstallResponse>("POST", `/repos/${encodeURIComponent(repoId)}/hooks`, body),

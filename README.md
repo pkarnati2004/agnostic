@@ -42,7 +42,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn repos` | List the registered repos |
 | `agn doctor` | Detect installed agents, logins, provider keys, local model servers |
 | `agn profiles` | List the agent × model combinations you can run right now |
-| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>` |
+| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>`, `--intent <class>` |
 | `agn status [<task>]` | One task, or every task across your repos. `--all` lists everything from inside a worktree |
 | `agn attach [<task>]` | Join the session in your terminal; defaults to the task of the worktree you are in |
 | `agn stop <task>` | Stop the session |
@@ -52,7 +52,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn hooks install` | Install the status hook in a repo. `--repo <r>`, `--harness <id>` |
 | `agn init` | Create `.ag/`, seeding `instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--from <file>`, `--force`, `--repo <r>` |
 | `agn sync` | Regenerate `CLAUDE.md` and `AGENTS.md` from `.ag/instructions.md`. `--dry-run`, `--force`, `--repo <r>` |
-| `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--subscriptions-only` |
+| `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--intent <class>`, `--subscriptions-only` |
 | `agn handoff <task> --to <id\|harness>` | Hand a task to another agent with a structured note. `--note <text>` |
 | `agn usage [<task>]` | Today's and this week's usage per plan, or one task's |
 | `agn outcomes <task>` | What the task changed, what passed, what you kept |

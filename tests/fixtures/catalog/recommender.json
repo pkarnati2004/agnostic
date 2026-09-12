@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "version": 3,
+  "generatedAt": "2026-09-01T00:00:00Z",
+  "sources": [
+    {
+      "id": "swe-bench-verified",
+      "name": "SWE-bench Verified",
+      "url": "https://www.swebench.com/",
+      "terms": "Published leaderboard figures.",
+      "fetchedAt": "2026-08-15"
+    },
+    {
+      "id": "terminal-bench",
+      "name": "Terminal-Bench leaderboard",
+      "url": "https://www.tbench.ai/leaderboard",
+      "terms": "Published leaderboard figures.",
+      "fetchedAt": "2026-08-15"
+    }
+  ],
+  "benchmarks": [
+    {
+      "source": "swe-bench-verified",
+      "date": "2026-08-01",
+      "benchmark": "SWE-bench Verified",
+      "model": "anthropic/claude-opus-5",
+      "modelVersion": null,
+      "harness": "claude-code",
+      "harnessVersion": "2.1",
+      "taskClass": "debug",
+      "metric": "resolved",
+      "score": 74,
+      "n": 500,
+      "costUsd": null,
+      "tokens": null,
+      "notes": ""
+    },
+    {
+      "source": "terminal-bench",
+      "date": "2026-08-01",
+      "benchmark": "Terminal-Bench 4.0",
+      "model": "anthropic/claude-opus-5",
+      "modelVersion": null,
+      "harness": "claude-code",
+      "harnessVersion": "2.1",
+      "taskClass": "debug",
+      "metric": "accuracy",
+      "score": 60,
+      "n": 89,
+      "costUsd": null,
+      "tokens": null,
+      "notes": ""
+    },
+    {
+      "source": "swe-bench-verified",
+      "date": "2026-08-01",
+      "benchmark": "SWE-bench Verified",
+      "model": "openai/gpt-5.6-sol",
+      "modelVersion": null,
+      "harness": "codex",
+      "harnessVersion": null,
+      "taskClass": "general",
+      "metric": "resolved",
+      "score": 66,
+      "n": 500,
+      "costUsd": null,
+      "tokens": null,
+      "notes": ""
+    },
+    {
+      "source": "swe-bench-verified",
+      "date": "2026-08-01",
+      "benchmark": "SWE-bench Verified",
+      "model": "google/gemini-4-pro",
+      "modelVersion": null,
+      "harness": "opencode",
+      "harnessVersion": null,
+      "taskClass": "general",
+      "metric": "resolved",
+      "score": 80,
+      "n": 500,
+      "costUsd": null,
+      "tokens": null,
+      "notes": "the best general row in this fixture"
+    },
+    {
+      "source": "terminal-bench",
+      "date": "2026-08-01",
+      "benchmark": "Terminal-Bench 4.0",
+      "model": "anthropic/claude-fable-5.1",
+      "modelVersion": null,
+      "harness": null,
+      "harnessVersion": null,
+      "taskClass": "debug",
+      "metric": "accuracy",
+      "score": 48,
+      "n": 89,
+      "costUsd": null,
+      "tokens": null,
+      "notes": "the model on its own, no harness named"
+    },
+    {
+      "source": "swe-bench-verified",
+      "date": "2026-08-01",
+      "benchmark": "SWE-bench Verified",
+      "model": "moonshotai/kimi-k2.7-code",
+      "modelVersion": null,
+      "harness": "pi",
+      "harnessVersion": null,
+      "taskClass": "debug",
+      "metric": "resolved",
+      "score": 96,
+      "n": 500,
+      "costUsd": null,
+      "tokens": null,
+      "notes": "the highest debug row in this fixture"
+    },
+    {
+      "source": "terminal-bench",
+      "date": "2024-01-01",
+      "benchmark": "Terminal-Bench 4.0",
+      "model": "openai/gpt-5.6-sol",
+      "modelVersion": null,
+      "harness": "codex",
+      "harnessVersion": null,
+      "taskClass": "debug",
+      "metric": "accuracy",
+      "score": 99,
+      "n": 89,
+      "costUsd": null,
+      "tokens": null,
+      "notes": "older than 360 days: ignored"
+    }
+  ],
+  "models": [
+    {
+      "harness": "claude-code",
+      "model": "opus",
+      "route": "native",
+      "canonical": "anthropic/claude-opus-5",
+      "legacy": false
+    },
+    {
+      "harness": "claude-code",
+      "model": "fable",
+      "route": "native",
+      "canonical": "anthropic/claude-fable-5.1",
+      "legacy": false
+    },
+    {
+      "harness": "claude-code",
+      "model": "sonnet-4.5",
+      "route": "native",
+      "canonical": "anthropic/claude-sonnet-4.5",
+      "legacy": true
+    },
+    {
+      "harness": "codex",
+      "model": "gpt-5.6-sol",
+      "route": "native",
+      "canonical": "openai/gpt-5.6-sol",
+      "legacy": false
+    },
+    {
+      "harness": "pi",
+      "model": "moonshotai/kimi-k2.7-code",
+      "route": "openrouter",
+      "canonical": "moonshotai/kimi-k2.7-code",
+      "legacy": false
+    }
+  ],
+  "plans": [
+    {
+      "vendor": "claude",
+      "id": "pro",
+      "displayName": "Pro",
+      "confirmedAt": "2026-08-15"
+    },
+    {
+      "vendor": "claude",
+      "id": "max20",
+      "displayName": "Max 20x",
+      "confirmedAt": "2026-08-15"
+    },
+    {
+      "vendor": "chatgpt",
+      "id": "plus",
+      "displayName": "Plus",
+      "confirmedAt": "2026-08-15"
+    }
+  ],
+  "entitlements": [
+    {
+      "harness": "claude-code",
+      "model": "opus",
+      "vendor": "claude",
+      "plan": "pro",
+      "access": "unavailable"
+    },
+    {
+      "harness": "claude-code",
+      "model": "opus",
+      "vendor": "claude",
+      "plan": "max20",
+      "access": "included"
+    },
+    {
+      "harness": "claude-code",
+      "model": "fable",
+      "vendor": "claude",
+      "plan": "pro",
+      "access": "credits"
+    }
+  ],
+  "pricing": [
+    {
+      "model": "anthropic/claude-opus-5",
+      "inputPerMillion": 10,
+      "outputPerMillion": 50,
+      "cacheReadPerMillion": 1,
+      "cacheWritePerMillion": 12.5,
+      "source": "curated",
+      "asOf": "2026-08-15"
+    },
+    {
+      "model": "openai/gpt-5.6-sol",
+      "inputPerMillion": 2,
+      "outputPerMillion": 10,
+      "cacheReadPerMillion": 0.2,
+      "cacheWritePerMillion": 2.5,
+      "source": "openrouter",
+      "asOf": "2026-08-15"
+    },
+    {
+      "model": "moonshotai/kimi-k2.7-code",
+      "inputPerMillion": 1,
+      "outputPerMillion": 3,
+      "cacheReadPerMillion": null,
+      "cacheWritePerMillion": null,
+      "source": "openrouter",
+      "asOf": "2026-08-15"
+    }
+  ]
+}

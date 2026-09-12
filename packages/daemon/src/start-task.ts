@@ -1,6 +1,7 @@
 import {
   newId,
   type Profile,
+  type Recommendation,
   type Repo,
   type RepoConfig,
   type RunTaskRequest,
@@ -10,12 +11,14 @@ import {
   worktreePath,
   writeTaskNote,
 } from "@agnostic/core";
+import { RecommenderError, recommend } from "@agnostic/recommender";
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
 import { ensureHooks } from "./hooks-install.js";
 import { initialTaskNote } from "./initial-task-note.js";
 import { freshLaunchCommand } from "./launch-command.js";
+import { buildRecommendInput } from "./recommend-input.js";
 import { detectRepoKind } from "./repo-kind.js";
 import { resolveProfile } from "./resolve-profile.js";
 import { ensureSynced } from "./sync-repo.js";
@@ -40,13 +43,44 @@ export async function startTask(
     // with the insert, below.
     await ctx.lifecycle.reconcileAll();
   }
-  const profile = await resolveProfile(ctx, repo, req);
+  const recommendation = await recommendFor(ctx, repo, req);
+  // The recommendation is also the last fallback for a run with no --profile and no default.
+  const profile = await resolveProfile(
+    ctx,
+    repo,
+    req,
+    recommendation?.recommended.profileId ?? null,
+  );
   const config = await readRepoConfig(repo.path);
-  const task = insertQueued(ctx, repo, req, profile.id);
+  const task = insertQueued(ctx, repo, req, profile.id, recommendation);
   try {
     return await launch(ctx, repo, task, { profile, config, base: req.base ?? null });
   } catch (cause) {
     await syncTaskNote(repo.path, ctx.ledger.tasks.setStatus(task.id, "failed"), ctx.log);
+    throw cause;
+  }
+}
+
+/**
+ * Every task records what agn would have picked, even when the user named a profile: the two
+ * together are what chunk 15 learns from. A machine with nothing eligible can still run a profile
+ * the user named, so a refusal here is logged and the run goes on.
+ */
+async function recommendFor(
+  ctx: DaemonContext,
+  repo: Repo,
+  req: RunTaskRequest,
+): Promise<Recommendation | null> {
+  const input = await buildRecommendInput(ctx, repo, req.prompt, {
+    ...(req.intent === undefined ? {} : { intent: req.intent }),
+  });
+  try {
+    return recommend(input);
+  } catch (cause) {
+    if (cause instanceof RecommenderError) {
+      ctx.log.warn("no profile could be recommended", { message: cause.message });
+      return null;
+    }
     throw cause;
   }
 }
@@ -66,12 +100,13 @@ function insertQueued(
   repo: Repo,
   req: RunTaskRequest,
   profileId: string,
+  recommendation: Recommendation | null,
 ): Task {
   const id = newId();
   const now = new Date().toISOString();
   return ctx.ledger.transaction(() => {
     assertFolderFree(ctx.ledger, repo);
-    return ctx.ledger.tasks.insert({
+    const task = ctx.ledger.tasks.insert({
       id,
       repoId: repo.id,
       title: req.title ?? titleFrom(req.prompt),
@@ -83,7 +118,20 @@ function insertQueued(
       origin: "agn",
       createdAt: now,
       updatedAt: now,
+      ...(recommendation === null ? {} : { recommendation }),
     });
+    if (recommendation !== null) {
+      // `chosenProfileId` is what the task actually started on, which is the pick unless the
+      // user overrode it; that difference is the whole value of the row.
+      ctx.ledger.events.append({
+        ts: now,
+        taskId: id,
+        repoId: repo.id,
+        kind: "recommendation.made",
+        payload: { recommendation, chosenProfileId: profileId },
+      });
+    }
+    return task;
   });
 }
 

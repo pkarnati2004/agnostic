@@ -66,6 +66,7 @@ describe("POST /repos/:id/tasks", () => {
     expect(log).toContain("## Spec");
     expect(daemon.ledger.events.forTask(task.id).map((event) => event.kind)).toEqual([
       "task.created",
+      "recommendation.made",
       "session.captured",
       "task.status",
     ]);
@@ -100,11 +101,48 @@ describe("POST /repos/:id/tasks", () => {
     expect(await agentLog("prompt:")).toContain("--model haiku");
   });
 
-  it("refuses a run with no profile and no repo default", async () => {
+  // ADR 019 replaced the old "refuses a run with no profile" test: resolution is --profile, then
+  // default_profile, then the recommendation, so one logged-in agent is enough to run a task.
+  it("starts on the recommended profile when nothing names one", async () => {
     const repo = await daemon.addRepo();
+    const task = await started(repo, { prompt: "ship it" });
+    expect(task.profileId).toBe(PROFILE);
+    expect(task.recommendation?.recommended.profileId).toBe(PROFILE);
+    const made = daemon.ledger.events
+      .forTask(task.id)
+      .find((event) => event.kind === "recommendation.made");
+    expect(made?.payload).toMatchObject({ chosenProfileId: PROFILE });
+  });
+
+  it("records the recommendation beside the profile the user overrode it with", async () => {
+    const repo = await daemon.addRepo();
+    const task = await started(repo, { prompt: "ship it", profile: "codex" });
+    expect(task.profileId).toBe("codex:default:native");
+    expect(task.recommendation?.recommended.profileId).toBe(PROFILE);
+    const made = daemon.ledger.events
+      .forTask(task.id)
+      .find((event) => event.kind === "recommendation.made");
+    expect(made?.payload).toMatchObject({ chosenProfileId: "codex:default:native" });
+  });
+
+  it("records the intent the caller gave beside the one the rules found", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    const task = await started(repo, { prompt: "why is the login flow slow", intent: "debug" });
+    expect(task.recommendation?.taskClass.intent).toBe("debug");
+    expect(task.recommendation?.taskClass.automaticIntent).toBe("research");
+  });
+
+  it("refuses with the malformed-file error rather than defaulting over a bad preferences.yaml", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    await mkdir(agPaths(repo.path).dir, { recursive: true });
+    await writeFile(
+      agPaths(repo.path).preferencesYaml,
+      "optimize: balanced\nrisk_rules:\n  - area: auth\n   keywords: [auth]\n",
+      "utf8",
+    );
     const response = await run(repo, { prompt: "ship it" });
     expect(response.status).toBe(400);
-    expect((await failure(response)).error.code).toBe("profile-required");
+    expect((await failure(response)).error.code).toBe("ag-file-malformed");
     expect(daemon.ledger.tasks.list()).toHaveLength(0);
   });
 
@@ -135,6 +173,7 @@ describe("POST /repos/:id/tasks", () => {
     expect(task?.session).toBeUndefined();
     expect(daemon.ledger.events.forTask(task?.id ?? "").map((event) => event.kind)).toEqual([
       "task.created",
+      "recommendation.made",
       "task.status",
     ]);
   });

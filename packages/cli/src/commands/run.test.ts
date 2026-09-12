@@ -104,6 +104,18 @@ describe("agn run", () => {
     });
   });
 
+  it("passes --intent through, and refuses one agn does not know", async () => {
+    const test = cli();
+    await parse(runCommand(test.ctx), ["why is the login flow slow", "--intent", "debug"]);
+    expect(test.sent[0]?.body.intent).toBe("debug");
+    const command = runCommand(test.ctx)
+      .exitOverride()
+      .configureOutput({ writeErr: () => undefined });
+    await expect(parse(command, ["ship it", "--intent", "vibes"])).rejects.toThrow(
+      /--intent must be one of/,
+    );
+  });
+
   it("refuses --profile and --harness together", async () => {
     const test = cli();
     const code = await runMain(

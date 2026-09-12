@@ -2,8 +2,10 @@ import { z } from "zod";
 import type { AttachInfo, DetectedHarness } from "./executor.js";
 import { type Plan, type Plans, PlansSchema, type PlanVendor } from "./plans.js";
 import type { Billing, HarnessId, Profile } from "./profile.js";
+import type { Recommendation } from "./recommendation.js";
 import type { Repo } from "./repo.js";
 import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
+import { TaskIntentSchema } from "./task-intent.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;
@@ -68,8 +70,23 @@ export const RunTaskRequestSchema = z.strictObject({
   model: z.string().min(1).optional(),
   /** A git ref or a task id to branch from; a folder workspace has nothing to branch. */
   base: z.string().min(1).optional(),
+  /** Replaces what the classifier read out of the prompt, for this task only. */
+  intent: TaskIntentSchema.optional(),
 });
 export type RunTaskRequest = z.infer<typeof RunTaskRequestSchema>;
+
+// `repoId` is in the body because a recommendation is about a repo without belonging to one: it
+// is asked for before any task exists.
+export const RecommendRequestSchema = z.strictObject({
+  repoId: z.string().min(1),
+  prompt: z.string().min(1),
+  intent: TaskIntentSchema.optional(),
+  /** Overrides `subscriptions_only` in preferences.yaml for this call only. */
+  subscriptionsOnly: z.boolean().optional(),
+});
+export type RecommendRequest = z.infer<typeof RecommendRequestSchema>;
+
+export type RecommendResponse = { recommendation: Recommendation };
 
 export const CleanTaskRequestSchema = z.strictObject({ deleteBranch: z.boolean().optional() });
 export type CleanTaskRequest = z.infer<typeof CleanTaskRequestSchema>;

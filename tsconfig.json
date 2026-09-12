@@ -5,6 +5,7 @@
     { "path": "packages/catalog" },
     { "path": "packages/ledger" },
     { "path": "packages/registry" },
+    { "path": "packages/recommender" },
     { "path": "packages/hooks" },
     { "path": "packages/sync" },
     { "path": "packages/executor-tmux" },

@@ -51,6 +51,8 @@ const statusByCode: Record<string, number> = {
   "invalid-profile-id": 400,
   "harness-unknown": 400,
   "profile-required": 400,
+  // Nothing on this machine may run the task: preferences or a missing install, both the user's.
+  "no-eligible-profile": 400,
   "harness-not-installed": 400,
   "hook-payload-invalid": 400,
   // A hook config agn will not read over or write into is the file's state, not a fault in agn.
