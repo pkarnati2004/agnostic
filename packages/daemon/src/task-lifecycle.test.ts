@@ -1,3 +1,5 @@
+import { rm, stat, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import {
   type Repo,
   run,
@@ -94,6 +96,40 @@ describe("POST /tasks/:id/stop", () => {
   });
 });
 
+describe("an exit that is still on its way", () => {
+  // The reconcile a read runs can see the session dead before the watcher has read the exit file.
+  // Settling it as stopped there would overwrite the real answer, so this runs several times.
+  it("never settles a task over the exit code the watcher is about to deliver", async () => {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const task = await start("other:quitter");
+      let final = "running";
+      await waitFor(`run ${attempt} to reach a terminal status through the API`, async () => {
+        final = (await readTask(task.id)).status;
+        return final !== "running" && final !== "queued";
+      });
+      expect(final).toBe("done");
+      expect(statusEvents(task.id)).toEqual(["running", "done"]);
+    }
+  }, 60_000);
+
+  it("ignores an exit reported for an earlier launch of the same session", async () => {
+    const task = await start();
+    const session = task.session?.tmuxSession ?? "";
+    // What the previous launch of this session name would have left behind (ADR 013, launch ids).
+    const stale = join(daemon.paths.sessions, `${session}.aaaaaaaaaa.exit`);
+    await writeFile(stale, "0 \n");
+    await waitFor("the watcher to read and remove the stale file", async () =>
+      stat(stale).then(
+        () => false,
+        () => true,
+      ),
+    );
+    expect((await readTask(task.id)).status).toBe("running");
+    expect(statusEvents(task.id)).toEqual(["running"]);
+    await rm(stale, { force: true });
+  });
+});
+
 describe("reconciliation", () => {
   it("reports a task whose tmux server went away as stopped on the next read", async () => {
     const task = await start();
@@ -140,6 +176,8 @@ describe("start-up reconcile", () => {
           sessionId: null,
           tmuxSession: `agn-${id}`,
           tmuxSocket: null,
+          launchId: null,
+          pid: null,
           cwd: "/tmp",
           lastSeenAt: now,
         });

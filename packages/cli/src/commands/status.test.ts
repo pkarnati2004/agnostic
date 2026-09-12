@@ -93,6 +93,8 @@ describe("agn status", () => {
           sessionId: null,
           tmuxSession: "agn-t3n9v2wxyz",
           tmuxSocket: "agn",
+          launchId: null,
+          pid: null,
           cwd: "/work/api",
           lastSeenAt: "2026-09-11T10:00:00.000Z",
         },

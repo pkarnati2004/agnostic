@@ -6,6 +6,7 @@ import type { ExecutorProvider, LaunchRequest, SessionEvent } from "@agnostic/co
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ExecutorError } from "./error.js";
 import { createTmuxExecutor } from "./executor.js";
+import { exitFileName } from "./exit-file.js";
 import { createExitWatch, parseExitStatus } from "./exit-watch.js";
 import { createTestTmux, type TestTmux, waitFor } from "./test-tmux.js";
 import { hasSession, panePid, type TmuxClient } from "./tmux-client.js";
@@ -63,9 +64,15 @@ describe("the exit watcher", () => {
       exitCode: 0,
     });
     expect(Date.parse(events[0]?.at ?? "")).toBeGreaterThan(0);
-    expect(await hasSession(tmux.client, handle.tmuxSession)).toBe(false);
+    expect(events[0]?.launchId).toBe(handle.launchId);
+    // The file outlives the event by design: a reconcile racing the watcher must still see that an
+    // exit code is owed. The dead session is reaped right after.
+    await waitFor(
+      "the dead session is reaped",
+      async () => !(await hasSession(tmux.client, handle.tmuxSession)),
+    );
     await expect(
-      stat(join(tmux.paths.sessions, `${handle.tmuxSession}.exit`)),
+      stat(join(tmux.paths.sessions, exitFileName(handle.tmuxSession, handle.launchId ?? ""))),
     ).rejects.toThrowError();
   });
 
@@ -120,7 +127,7 @@ describe("the exit watcher", () => {
     await waitFor(
       "the harness exits and its hook writes the file",
       () =>
-        stat(join(sessions, `${handle.tmuxSession}.exit`)).then(
+        stat(join(sessions, exitFileName(handle.tmuxSession, handle.launchId ?? ""))).then(
           () => true,
           () => false,
         ),

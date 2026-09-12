@@ -35,6 +35,8 @@ const sessionInput: EventInput<"session.captured"> = {
       sessionId: "b7d1f0e2",
       tmuxSession: "agn-t3n9v2wxyz",
       tmuxSocket: "agn",
+      launchId: null,
+      pid: null,
       cwd: "/Users/dev/.agnostic/worktrees/r7k2m4pqrs/t3n9v2wxyz",
       lastSeenAt: "2026-09-10T12:32:00.000Z",
     },

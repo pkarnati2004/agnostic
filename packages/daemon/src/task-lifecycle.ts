@@ -1,5 +1,6 @@
 import {
   type ExecutorProvider,
+  isProcessAlive,
   type SessionEvent,
   sessionHandle,
   type Task,
@@ -43,11 +44,21 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
   };
 
   const reconcile = async (task: Task): Promise<Task> => {
-    const handle = sessionHandle(task);
-    if (!LIVE.includes(task.status) || handle === null) {
+    if (!LIVE.includes(task.status)) {
       return task;
     }
-    return (await executor.alive(handle)) ? task : settle(task, "stopped");
+    const handle = sessionHandle(task);
+    if (handle !== null) {
+      // "exited" is a session whose real exit code is still on its way from the watcher; settling
+      // it here as stopped would overwrite done or failed with a guess.
+      return (await executor.sessionState(handle)) === "gone" ? settle(task, "stopped") : task;
+    }
+    // A session adopted from outside tmux has no pane to ask about, so the pid is the liveness.
+    const pid = task.session?.pid ?? null;
+    if (pid === null) {
+      return task;
+    }
+    return isProcessAlive(pid) ? task : settle(task, "stopped");
   };
 
   return {
@@ -92,6 +103,10 @@ async function recordExit(
   const task = ledger.tasks.get(event.taskId);
   // The session name carries the task id, so a file left by some other tool is not ours to read.
   if (task === null || task.session?.tmuxSession !== event.tmuxSession) {
+    return;
+  }
+  // A resume takes the session name back, so an exit from the launch before it is not this one's.
+  if (event.launchId !== null && task.session.launchId !== event.launchId) {
     return;
   }
   await settle(task, statusFor(event.exitCode));

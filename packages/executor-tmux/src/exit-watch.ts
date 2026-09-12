@@ -3,9 +3,9 @@ import { readdir, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import type { SessionEvent } from "@agnostic/core";
 import { ExecutorError } from "./error.js";
-import { killSession, type TmuxClient, taskIdFromSession } from "./tmux-client.js";
+import { type ExitFile, parseExitFileName } from "./exit-file.js";
+import { killSession, paneDead, type TmuxClient, taskIdFromSession } from "./tmux-client.js";
 
-const SUFFIX = ".exit";
 // The hook's redirect creates the file before it writes to it; an empty read is simply too early.
 const RETRY_MS = 50;
 
@@ -38,16 +38,15 @@ export function createExitWatch(
 
   async function sweep(): Promise<void> {
     let retry = false;
-    for (const name of await sessionsWithExitFiles(dir)) {
-      const file = join(dir, `${name}${SUFFIX}`);
-      const text = await readFile(file, "utf8").catch(() => "");
+    for (const [file, exit] of await exitFiles(dir)) {
+      const text = await readFile(join(dir, file), "utf8").catch(() => "");
       if (text.trim() === "") {
         retry = true;
         continue;
       }
-      emit(exitEvent(name, text));
-      await unlink(file).catch(() => undefined);
-      await reap(name);
+      emit(exitEvent(exit, text));
+      await unlink(join(dir, file)).catch(() => undefined);
+      await reap(exit.session);
     }
     if (retry && !closed) {
       setTimeout(() => {
@@ -56,9 +55,15 @@ export function createExitWatch(
     }
   }
 
-  /** A session left behind is harmless: `alive` is false and the next launch kills it first. */
+  /**
+   * Only a session whose pane is still dead: a resume may already have taken the name back, and
+   * this file belongs to the launch before it.
+   */
   async function reap(name: string): Promise<void> {
     try {
+      if ((await paneDead(client, name)) !== true) {
+        return;
+      }
       await killSession(client, name);
     } catch (cause) {
       if (!(cause instanceof ExecutorError)) {
@@ -78,22 +83,25 @@ export function createExitWatch(
   };
 }
 
-async function sessionsWithExitFiles(dir: string): Promise<string[]> {
+/** Only agn's own sessions: anything else in the directory is not ours to read or to reap. */
+async function exitFiles(dir: string): Promise<[string, ExitFile][]> {
   const entries = await readdir(dir).catch(() => [] as string[]);
-  return (
-    entries
-      .filter((entry) => entry.endsWith(SUFFIX))
-      .map((entry) => entry.slice(0, -SUFFIX.length))
-      // Only agn's own sessions: anything else in the directory is not ours to reap.
-      .filter((name) => taskIdFromSession(name) !== null)
-  );
+  const found: [string, ExitFile][] = [];
+  for (const entry of entries) {
+    const exit = parseExitFileName(entry);
+    if (exit !== null && taskIdFromSession(exit.session) !== null) {
+      found.push([entry, exit]);
+    }
+  }
+  return found;
 }
 
-function exitEvent(session: string, text: string): SessionEvent {
+function exitEvent(exit: ExitFile, text: string): SessionEvent {
   return {
     kind: "exited",
-    taskId: taskIdFromSession(session) ?? session,
-    tmuxSession: session,
+    taskId: taskIdFromSession(exit.session) ?? exit.session,
+    tmuxSession: exit.session,
+    launchId: exit.launchId,
     exitCode: parseExitStatus(text),
     at: new Date().toISOString(),
   };

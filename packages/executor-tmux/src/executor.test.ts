@@ -29,7 +29,7 @@ afterAll(async () => {
 });
 
 function handle(taskId: string, socket: string | null): SessionHandle {
-  return { taskId, tmuxSession: `agn-${taskId}`, tmuxSocket: socket, cwd: "/tmp" };
+  return { taskId, tmuxSession: `agn-${taskId}`, tmuxSocket: socket, launchId: null, cwd: "/tmp" };
 }
 
 describe("createTmuxExecutor", () => {
@@ -87,7 +87,7 @@ describe("a task from prepare to clean", () => {
     await waitFor("the agent is ready", async () =>
       (await readFile(log, "utf8").catch(() => "")).includes("ready"),
     );
-    expect(await executor.alive(live)).toBe(true);
+    expect(await executor.sessionState(live)).toBe("running");
     // What the daemon stores and rebuilds the handle from is the same thing launch returned.
     const stored = sessionHandle({
       ...task,
@@ -98,13 +98,18 @@ describe("a task from prepare to clean", () => {
         sessionId: null,
         tmuxSession: live.tmuxSession,
         tmuxSocket: live.tmuxSocket,
+        launchId: live.launchId,
+        pid: null,
         cwd: live.cwd,
         lastSeenAt: task.updatedAt,
       },
     });
     expect(stored).toEqual(live);
     await executor.stop(live);
-    await waitFor("the session is gone", async () => !(await executor.alive(live)));
+    await waitFor(
+      "the session is gone",
+      async () => (await executor.sessionState(live)) === "gone",
+    );
     await expect(stat(prepared.cwd)).resolves.toBeTruthy();
 
     await executor.clean({
@@ -116,12 +121,12 @@ describe("a task from prepare to clean", () => {
   }, 40_000);
 });
 
-describe("alive", () => {
-  it("is false for a session that was never created", async () => {
-    expect(await executor.alive(handle("nosuchtask", tmux.socketName))).toBe(false);
+describe("sessionState", () => {
+  it("is gone for a session that was never created", async () => {
+    expect(await executor.sessionState(handle("nosuchtask", tmux.socketName))).toBe("gone");
   });
 
-  it("is false for a dead pane the watcher has not reaped yet", async () => {
+  it("is exited, not gone, for a dead pane the watcher has not reaped yet", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "agn-alive-"));
     // No watcher: the dead session stays until something asks about it.
     const unwatched = createTmuxExecutor({
@@ -140,8 +145,13 @@ describe("alive", () => {
         promptAfterStart: null,
       },
     });
-    expect(await unwatched.alive(live)).toBe(true);
-    await waitFor("the pane dies", async () => !(await unwatched.alive(live)), 10_000);
+    expect(await unwatched.sessionState(live)).toBe("running");
+    // "exited" is the state that tells the daemon an exit code is still owed to this task.
+    await waitFor(
+      "the pane dies",
+      async () => (await unwatched.sessionState(live)) === "exited",
+      10_000,
+    );
   });
 });
 
@@ -166,10 +176,11 @@ describe("the default client env (no `env` override)", () => {
     let leaky: ExecutorProvider | null = null;
     try {
       leaky = createTmuxExecutor({ paths: agnosticPaths(home), socketName: "agn-clientenv-test" });
-      await leaky.alive({
+      await leaky.sessionState({
         taskId: "clientenvxy",
         tmuxSession: "agn-clientenvxy",
         tmuxSocket: "agn-clientenv-test",
+        launchId: null,
         cwd: home,
       });
     } finally {

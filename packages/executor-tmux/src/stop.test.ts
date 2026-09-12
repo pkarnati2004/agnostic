@@ -104,6 +104,7 @@ describe("stop", () => {
       taskId: "stopnobody",
       tmuxSession: "agn-stopnobody",
       tmuxSocket: tmux.socketName,
+      launchId: null,
       cwd: tmux.home,
     };
     await expect(executor.stop(handle)).resolves.toBeUndefined();

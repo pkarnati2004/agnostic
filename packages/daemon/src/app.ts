@@ -13,6 +13,7 @@ import { createDetectionCache, type Detection, type DetectionCache } from "./det
 import { errorBody } from "./error.js";
 import type { EventFeed } from "./event-feed.js";
 import { type Logger, requestLog } from "./log.js";
+import { adoptRoutes } from "./routes/adopt.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
 import { profileRoutes } from "./routes/profiles.js";
@@ -67,6 +68,7 @@ export function createApp(deps: DaemonDeps): Hono {
   app.route("/", healthRoutes(ctx));
   app.route("/", repoRoutes(ctx));
   app.route("/", taskRoutes(ctx));
+  app.route("/", adoptRoutes(ctx));
   app.route("/", profileRoutes(ctx));
   app.route("/", eventRoutes(ctx));
 

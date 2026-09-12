@@ -1,28 +1,26 @@
 import {
-  composeLaunchPrompt,
-  type LaunchPromptInput,
   newId,
   type Profile,
   type Repo,
   type RepoConfig,
   type RunTaskRequest,
-  readAgText,
   readRepoConfig,
   type Task,
-  type TaskNote,
   taskLogPath,
   worktreePath,
   writeTaskNote,
 } from "@agnostic/core";
-import { launchSpec } from "@agnostic/registry";
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
+import { assertFolderFree } from "./folder-guard.js";
+import { initialTaskNote } from "./initial-task-note.js";
+import { freshLaunchCommand } from "./launch-command.js";
 import { detectRepoKind } from "./repo-kind.js";
 import { resolveProfile } from "./resolve-profile.js";
 import { syncTaskNote } from "./task-note-sync.js";
+import { launchedSession } from "./task-session.js";
 
 const TITLE_MAX_CHARS = 80;
-const OPEN: Task["status"][] = ["queued", "running", "waiting"];
 
 /**
  * One run, from the queued row to the live session. The row and its note exist before the worktree
@@ -57,21 +55,6 @@ async function withCurrentKind(ctx: DaemonContext, repo: Repo): Promise<Repo> {
   return kind === repo.kind ? repo : ctx.ledger.repos.update(repo.id, { kind });
 }
 
-/** ADR 001: a folder workspace has one working tree, so it runs one task at a time. */
-function assertFolderFree(ctx: DaemonContext, repo: Repo): void {
-  const busy = ctx.ledger.tasks.list({ repoId: repo.id, status: OPEN });
-  if (busy.length === 0) {
-    return;
-  }
-  throw new DaemonError(
-    "folder workspaces run one task at a time; git init to run tasks in parallel.",
-    {
-      code: "folder-busy",
-      hint: `Run \`agn stop ${busy[0]?.id}\` first, or \`git init\` in ${repo.path}.`,
-    },
-  );
-}
-
 /**
  * The folder guard and the row it protects are one SQLite transaction, which better-sqlite3 runs
  * synchronously: two runs arriving on the same folder at once cannot both see an empty list.
@@ -85,9 +68,7 @@ function insertQueued(
   const id = newId();
   const now = new Date().toISOString();
   return ctx.ledger.transaction(() => {
-    if (repo.kind === "folder") {
-      assertFolderFree(ctx, repo);
-    }
+    assertFolderFree(ctx.ledger, repo);
     return ctx.ledger.tasks.insert({
       id,
       repoId: repo.id,
@@ -112,8 +93,7 @@ async function launch(
   task: Task,
   opts: LaunchOptions,
 ): Promise<Task> {
-  const note = noteFor(task);
-  await writeTaskNote(repo.path, note);
+  await writeTaskNote(repo.path, initialTaskNote(task, task.prompt));
   const prepared = await ctx.executor.prepare({
     task,
     repo,
@@ -122,33 +102,17 @@ async function launch(
     setupCommand: opts.config?.setupCommand ?? null,
     logFile: taskLogPath(ctx.paths, task.id),
   });
-  const prompt = composeLaunchPrompt(
-    await promptInput(ctx, repo, { ...task, branch: prepared.branch }, note),
+  const command = await freshLaunchCommand(
+    ctx,
+    repo,
+    { ...task, branch: prepared.branch },
+    opts.profile,
   );
-  // A profile on the local route is launched against whichever server detection found serving it.
-  const { servers } = await ctx.detection.current();
-  const spec = launchSpec(opts.profile, { prompt, env: ctx.env, servers });
-  const handle = await ctx.executor.launch({
-    taskId: task.id,
-    cwd: prepared.cwd,
-    command: {
-      command: spec.command,
-      args: spec.args,
-      env: { ...ctx.env, ...spec.env },
-      promptAfterStart: spec.promptAfterStart,
-    },
-  });
+  const handle = await ctx.executor.launch({ taskId: task.id, cwd: prepared.cwd, command });
   return ctx.ledger.tasks.start(task.id, {
     branch: prepared.branch,
-    session: {
-      harness: opts.profile.harness,
-      // Chunk 9's hooks report the harness's own session id; a launch has nothing to record yet.
-      sessionId: null,
-      tmuxSession: handle.tmuxSession,
-      tmuxSocket: handle.tmuxSocket,
-      cwd: handle.cwd,
-      lastSeenAt: new Date().toISOString(),
-    },
+    // Chunk 9's hooks report the harness's own session id; a first launch has none to record.
+    session: launchedSession(opts.profile.harness, handle, null),
   });
 }
 
@@ -169,41 +133,6 @@ async function resolveBase(ctx: DaemonContext, opts: LaunchOptions): Promise<str
     });
   }
   return task.branch;
-}
-
-async function promptInput(
-  ctx: DaemonContext,
-  repo: Repo,
-  task: Task,
-  note: TaskNote,
-): Promise<LaunchPromptInput> {
-  const done = ctx.ledger.tasks.list({ repoId: repo.id, status: "done", limit: 5 });
-  return {
-    task,
-    note,
-    done: done.map((row) => ({ task: row, outcome: ctx.ledger.outcomes.get(row.id) })),
-    inFlight: ctx.ledger.tasks
-      .list({ repoId: repo.id, status: OPEN })
-      .filter((row) => row.id !== task.id),
-    decisions: await readAgText(repo.path, "decisions.md"),
-    // Chunk 13 writes handoffs; a task started by `agn run` never has one.
-    handoff: null,
-  };
-}
-
-function noteFor(task: Task): TaskNote {
-  return {
-    id: task.id,
-    title: task.title,
-    status: task.status,
-    profileId: task.profileId,
-    createdAt: task.createdAt,
-    parentTaskId: task.parentTaskId ?? null,
-    spec: task.prompt,
-    acceptance: null,
-    notes: null,
-    handoffs: [],
-  };
 }
 
 /** The first line of the prompt, cut at a width a task list can print. */

@@ -152,7 +152,7 @@ function idleExecutor(): ExecutorProvider {
     id: "tmux-local",
     prepare: refuse,
     launch: refuse,
-    alive: () => Promise.resolve(false),
+    sessionState: () => Promise.resolve("gone" as const),
     attach: () => ({ kind: "tmux", argv: [] }),
     stop: () => Promise.resolve(),
     clean: () => Promise.resolve(),

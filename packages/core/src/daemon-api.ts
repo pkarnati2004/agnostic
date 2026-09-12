@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AttachInfo } from "./executor.js";
+import type { AttachInfo, DetectedHarness } from "./executor.js";
 import type { Billing, HarnessId, Profile } from "./profile.js";
 import type { Repo } from "./repo.js";
 import { type Task, TaskStatusSchema } from "./task.js";
@@ -72,6 +72,28 @@ export type CleanTaskRequest = z.infer<typeof CleanTaskRequestSchema>;
 export type CleanTaskResponse = { task: Task; removed: boolean };
 
 export type AttachResponse = { task: Task; attach: AttachInfo };
+
+/** `via` is the branch of the resume tree that was taken, which the CLI tells the user about. */
+export type ResumeTaskResponse = {
+  task: Task;
+  via: "live" | "native" | "fresh";
+  attach: AttachInfo;
+};
+
+// The path a caller is asking about, which the daemon checks is the repo or inside it.
+export const SessionsQuerySchema = z.strictObject({ path: z.string().min(1) });
+export type SessionsQuery = z.infer<typeof SessionsQuerySchema>;
+
+/** Candidates travel as data, never in an error hint: the caller picks one and sends its pid. */
+export type SessionsResponse = { sessions: DetectedHarness[] };
+
+export const AdoptRequestSchema = z.strictObject({
+  path: z.string().min(1),
+  /** One of the pids `GET /repos/:id/sessions` listed for that path. */
+  pid: z.number().int().positive(),
+  title: z.string().min(1).optional(),
+});
+export type AdoptRequest = z.infer<typeof AdoptRequestSchema>;
 
 export type ModelSource = "probe" | "seed" | "none";
 

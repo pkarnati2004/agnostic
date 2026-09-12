@@ -55,7 +55,16 @@ export async function createLaunchEnv(home: string): Promise<LaunchEnv> {
   // own tmux calls run with this environment too, and detection is stubbed, so nothing real is
   // ever detected through it.
   const env = {
-    PATH: [binDir, dirname(process.execPath), await tmuxDirectory(), "/usr/bin", "/bin"].join(":"),
+    PATH: [
+      binDir,
+      dirname(process.execPath),
+      await tmuxDirectory(),
+      "/usr/bin",
+      "/bin",
+      // macOS keeps lsof here, and that is how the executor reads a process's directory.
+      "/usr/sbin",
+      "/sbin",
+    ].join(":"),
     HOME: home,
     TMUX_TMPDIR: tmuxTmpdir,
   };

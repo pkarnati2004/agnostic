@@ -1,7 +1,8 @@
-import { stat } from "node:fs/promises";
+import { readdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { LaunchRequest, SessionHandle } from "@agnostic/core";
+import { type LaunchRequest, newId, type SessionHandle } from "@agnostic/core";
 import { ExecutorError } from "./error.js";
+import { exitFileName, isExitFileFor } from "./exit-file.js";
 import {
   assertUsableVersion,
   hasSession,
@@ -29,17 +30,26 @@ export async function launchSession(
   await assertDirectory(req.cwd);
   await assertUsableVersion(client);
   await clearDeadSession(client, name);
+  // A resume reuses the session name, so the previous run's exit file goes before this one starts.
+  await clearExitFiles(sessionsDir, name);
+  const launchId = newId();
+  const exitFile = join(sessionsDir, exitFileName(name, launchId));
   await runMutation(client, newSessionArgs(name, req));
   // The pane must survive its process so the hook can read the exit status off it.
   await runMutation(client, ["set-option", "-w", "-t", name, "remain-on-exit", "on"]);
-  const exitFile = join(sessionsDir, `${name}.exit`);
   await runMutation(client, ["set-hook", "-t", name, "pane-died", paneDiedHook(exitFile)]);
   const prompt = req.command.promptAfterStart;
   if (prompt !== null) {
     await new Promise((resolve) => setTimeout(resolve, PROMPT_DELAY_MS));
     await pasteText(client, name, prompt.replace(/\r\n/g, "\n").replace(/\r/g, "\n"));
   }
-  return { taskId: req.taskId, tmuxSession: name, tmuxSocket: client.socket, cwd: req.cwd };
+  return {
+    taskId: req.taskId,
+    tmuxSession: name,
+    tmuxSocket: client.socket,
+    launchId,
+    cwd: req.cwd,
+  };
 }
 
 /** The command is separate argv tokens: a single string would be wrapped in `$SHELL -c`, and a
@@ -80,6 +90,14 @@ function tmuxEscape(value: string): string {
     .replace(/"/g, '\\"')
     .replace(/\$/g, "\\$")
     .replace(/#/g, "\\#");
+}
+
+async function clearExitFiles(sessionsDir: string, session: string): Promise<void> {
+  for (const name of await readdir(sessionsDir).catch(() => [] as string[])) {
+    if (isExitFileFor(name, session)) {
+      await rm(join(sessionsDir, name), { force: true });
+    }
+  }
 }
 
 async function clearDeadSession(client: TmuxClient, name: string): Promise<void> {

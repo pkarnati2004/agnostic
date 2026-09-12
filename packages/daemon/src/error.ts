@@ -29,6 +29,9 @@ const statusByCode: Record<string, number> = {
   "folder-busy": 409,
   "task-active": 409,
   "session-not-running": 409,
+  "session-not-attachable": 409,
+  // The worktree a task ran in is gone; the branch is not, so the work continues as a new task.
+  "worktree-cleaned": 409,
   "request-invalid": 400,
   "ambiguous-id": 400,
   "path-not-found": 400,
@@ -41,6 +44,8 @@ const statusByCode: Record<string, number> = {
   "profile-required": 400,
   "harness-not-installed": 400,
   "base-invalid": 400,
+  "path-outside-repo": 400,
+  "adopt-pid-not-found": 400,
   // Registry refusals are all "that combination cannot be launched", which is the caller's choice.
   "route-unsupported": 400,
   "provider-key-missing": 400,

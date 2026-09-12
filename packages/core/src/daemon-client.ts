@@ -1,4 +1,5 @@
 import {
+  type AdoptRequest,
   ApiErrorBodySchema,
   type AttachResponse,
   type CleanTaskRequest,
@@ -9,7 +10,9 @@ import {
   type RegisterRepoRequest,
   type RegisterRepoResponse,
   type RepoListResponse,
+  type ResumeTaskResponse,
   type RunTaskRequest,
+  type SessionsResponse,
   type TaskListQuery,
   type TaskListResponse,
   type TaskResponse,
@@ -32,6 +35,10 @@ export type DaemonClient = {
   attachInfo(id: string): Promise<AttachResponse>;
   stopTask(id: string): Promise<TaskResponse>;
   cleanTask(id: string, body: CleanTaskRequest): Promise<CleanTaskResponse>;
+  resumeTask(id: string): Promise<ResumeTaskResponse>;
+  /** The harness processes running under `path`, for `agn adopt` to choose from. */
+  listSessions(repoId: string, path: string): Promise<SessionsResponse>;
+  adoptTask(repoId: string, body: AdoptRequest): Promise<TaskResponse>;
   profiles(): Promise<ProfilesResponse>;
   doctor(): Promise<DoctorResponse>;
   /** Resumes with `Last-Event-ID` after a dropped connection; ends when `signal` aborts. */
@@ -84,6 +91,14 @@ export function createDaemonClient(opts: {
     stopTask: (id) => json<TaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/stop`),
     cleanTask: (id, body) =>
       json<CleanTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/clean`, body),
+    resumeTask: (id) => json<ResumeTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/resume`),
+    listSessions: (repoId, path) =>
+      json<SessionsResponse>(
+        "GET",
+        `/repos/${encodeURIComponent(repoId)}/sessions?path=${encodeURIComponent(path)}`,
+      ),
+    adoptTask: (repoId, body) =>
+      json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
     doctor: () => json<DoctorResponse>("POST", "/doctor"),
     events: (after, signal) => streamEvents(doFetch, base, headers, after, signal),

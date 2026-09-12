@@ -12,6 +12,9 @@ the ledger, and the detection it caches for the life of the process.
 - Tasks: `POST /repos/:id/tasks` resolves the profile, writes the queued row and its note, prepares
   the worktree and launches the harness through the executor. Statuses follow the session's exit,
   and liveness is reconciled at start and before every task read, never on a timer.
+- `POST /tasks/:id/resume` walks the resume tree (live session, recorded session id, fresh with the
+  task context); `GET /repos/:id/sessions` and `POST /repos/:id/adopt` take over a session someone
+  started outside agn.
 - The log is `~/.agnostic/logs/agnd.log`: one line per request, with method, path, status and
   duration. No prompt, task title or token ever reaches it.
 

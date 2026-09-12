@@ -1,18 +1,21 @@
 import { mkdirSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import {
   type AgnosticPaths,
   type AttachInfo,
   type ExecutorProvider,
   type SessionHandle,
+  type SessionState,
   scrubEnv,
 } from "@agnostic/core";
 import { detectHarnesses } from "./detect.js";
+import { isExitFileFor } from "./exit-file.js";
 import { createExitWatch } from "./exit-watch.js";
 import { launchSession } from "./launch.js";
 import { processProbe, readProcessTable } from "./process-table.js";
 import { createEventFanout } from "./session-events.js";
 import { stopSession } from "./stop.js";
-import { createTmuxClient, hasSession, paneDead, type TmuxClient } from "./tmux-client.js";
+import { createTmuxClient, paneDead, type TmuxClient } from "./tmux-client.js";
 import { cleanWorktree, prepareWorktree } from "./worktree.js";
 
 export type TmuxExecutorOptions = {
@@ -49,12 +52,14 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
     id: "tmux-local",
     prepare: (input) => prepareWorktree(opts.paths, input),
     launch: (req) => launchSession(client, opts.paths.sessions, req),
-    async alive(handle) {
-      const target = clientFor(handle);
-      if (!(await hasSession(target, handle.tmuxSession))) {
-        return false;
+    async sessionState(handle): Promise<SessionState> {
+      // Null is "no such session"; remain-on-exit holds a dead pane until the watcher reads it.
+      const dead = await paneDead(clientFor(handle), handle.tmuxSession);
+      if (dead !== null) {
+        return dead ? "exited" : "running";
       }
-      return (await paneDead(target, handle.tmuxSession)) !== true;
+      // No session, but an exit file nobody has swept yet still owes this task its real exit code.
+      return (await hasExitFile(opts.paths.sessions, handle.tmuxSession)) ? "exited" : "gone";
     },
     attach(handle): AttachInfo {
       const socket = handle.tmuxSocket === null ? [] : ["-L", handle.tmuxSocket];
@@ -74,6 +79,11 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
       events.clear();
     },
   };
+}
+
+async function hasExitFile(sessionsDir: string, session: string): Promise<boolean> {
+  const entries = await readdir(sessionsDir).catch(() => [] as string[]);
+  return entries.some((entry) => isExitFileFor(entry, session));
 }
 
 /** TMUX and TMUX_PANE would point a client at the server agn itself was started from. */

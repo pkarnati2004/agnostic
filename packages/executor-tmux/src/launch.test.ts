@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -139,6 +139,8 @@ describe("launchSession", () => {
       taskId: req.taskId,
       tmuxSession: `agn-${req.taskId}`,
       tmuxSocket: tmux.socketName,
+      // A fresh id per launch: the session name is reused by a resume, this never is.
+      launchId: expect.stringMatching(/^[a-km-np-z2-9]{10}$/),
       cwd: req.cwd,
     });
     await waitFor("the agent logs that it started", async () =>
@@ -186,6 +188,22 @@ describe("launchSession", () => {
     const again = await launchSession(tmux.client, tmux.paths.sessions, first);
     expect(again.tmuxSession).toBe(`agn-${req.taskId}`);
     expect(await paneDead(tmux.client, again.tmuxSession)).toBe(false);
+  });
+
+  it("removes a stale exit file left under the session name before starting again", async () => {
+    // A resume reuses the deterministic session name; a file left from the run before this one
+    // must not be read as this run's death the moment the new pane's own hook is armed.
+    const req = await request({ args: [], promptAfterStart: null });
+    const name = `agn-${req.taskId}`;
+    const exitFile = join(tmux.paths.sessions, `${name}.exit`);
+    await mkdir(tmux.paths.sessions, { recursive: true });
+    await writeFile(exitFile, "1 \n");
+
+    await launchSession(tmux.client, tmux.paths.sessions, req);
+
+    await expect(stat(exitFile)).rejects.toThrowError();
+    expect(await hasSession(tmux.client, name)).toBe(true);
+    expect(await paneDead(tmux.client, name)).toBe(false);
   });
 
   it("says the working directory is missing, and creates no session", async () => {

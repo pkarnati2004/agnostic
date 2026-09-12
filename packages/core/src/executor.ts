@@ -29,24 +29,34 @@ export type LaunchCommand = {
 
 export type LaunchRequest = { taskId: string; cwd: string; command: LaunchCommand };
 
+/**
+ * "exited" is a session whose harness has ended but whose exit code has not been read yet, so the
+ * caller must wait for the exit event rather than decide the task's fate itself.
+ */
+export type SessionState = "running" | "exited" | "gone";
+
 /** Rebuilt from `Task.session` on every call, so a daemon restart loses nothing. */
 export type SessionHandle = {
   taskId: string;
   tmuxSession: string;
   /** Null means the user's default tmux server, where adopted sessions live. */
   tmuxSocket: string | null;
+  /** The launch this handle belongs to: a resume reuses the session name, not this. Null: adopted. */
+  launchId: string | null;
   cwd: string;
 };
 
+/** Null when the task has no session, or one that is not under tmux: there is nothing to drive. */
 export function sessionHandle(task: Task): SessionHandle | null {
   const session = task.session;
-  if (session === undefined) {
+  if (session === undefined || session.tmuxSession === null) {
     return null;
   }
   return {
     taskId: task.id,
     tmuxSession: session.tmuxSession,
     tmuxSocket: session.tmuxSocket,
+    launchId: session.launchId,
     cwd: session.cwd,
   };
 }
@@ -59,6 +69,8 @@ export type SessionEvent = {
   kind: "exited";
   taskId: string;
   tmuxSession: string;
+  /** Which launch ended: a session name outlives the run that created it, this does not. */
+  launchId: string | null;
   exitCode: number | null;
   at: string;
 };
@@ -80,8 +92,8 @@ export interface ExecutorProvider {
   /** Idempotent; never called for adopted tasks. */
   prepare(input: PrepareInput): Promise<Prepared>;
   launch(req: LaunchRequest): Promise<SessionHandle>;
-  /** True while the session exists and its pane process is still running. */
-  alive(handle: SessionHandle): Promise<boolean>;
+  /** Running, ended with its exit code still to come, or gone without a trace. */
+  sessionState(handle: SessionHandle): Promise<SessionState>;
   attach(handle: SessionHandle): AttachInfo;
   /** Idempotent; the exited event still fires exactly once. */
   stop(handle: SessionHandle): Promise<void>;

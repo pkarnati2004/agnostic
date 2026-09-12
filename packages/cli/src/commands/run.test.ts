@@ -30,6 +30,8 @@ function task(over: Partial<Task> = {}): Task {
       sessionId: null,
       tmuxSession: "agn-t3n9v2wxyz",
       tmuxSocket: "agn",
+      launchId: null,
+      pid: null,
       cwd: "/home/.agnostic/worktrees/r7k2m4pqrs/t3n9v2wxyz",
       lastSeenAt: "2026-09-11T10:00:00.000Z",
     },

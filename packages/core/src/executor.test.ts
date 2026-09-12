@@ -21,6 +21,8 @@ const session: TaskSession = {
   sessionId: null,
   tmuxSession: "agn-t3n9v2wxyz",
   tmuxSocket: "agn",
+  launchId: null,
+  pid: null,
   cwd: "/Users/dev/.agnostic/worktrees/r7k2m4pqrs/t3n9v2wxyz",
   lastSeenAt: "2026-09-10T12:31:00.000Z",
 };
@@ -31,6 +33,7 @@ describe("sessionHandle", () => {
       taskId: "t3n9v2wxyz",
       tmuxSession: "agn-t3n9v2wxyz",
       tmuxSocket: "agn",
+      launchId: null,
       cwd: "/Users/dev/.agnostic/worktrees/r7k2m4pqrs/t3n9v2wxyz",
     });
   });
@@ -46,5 +49,11 @@ describe("sessionHandle", () => {
 
   it("is null for a task that has no session yet", () => {
     expect(sessionHandle(task)).toBeNull();
+  });
+
+  it("is null for a session that is not under tmux, which has no pane to drive", () => {
+    expect(
+      sessionHandle({ ...task, session: { ...session, tmuxSession: null, pid: 4211 } }),
+    ).toBeNull();
   });
 });

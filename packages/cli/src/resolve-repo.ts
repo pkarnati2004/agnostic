@@ -21,19 +21,23 @@ export async function resolveRepo(ctx: CliContext, flag: string | undefined): Pr
       ? { repoId: await repoIdAt(ctx, path), taskId: null }
       : { repoId: flag, taskId: null };
   }
-  const cwd = await realpathOrSelf(ctx.cwd);
-  const worktree = await worktreeTask(ctx.paths, cwd);
+  const worktree = await worktreeTask(ctx.paths, await realpathOrSelf(ctx.cwd));
   if (worktree !== null) {
     return worktree;
   }
-  const repoId = await enclosingRepoId(ctx, cwd);
+  return { repoId: await repoContaining(ctx, ctx.cwd), taskId: null };
+}
+
+/** The registered repo a path belongs to; nested checkouts mean the longest match wins. */
+export async function repoContaining(ctx: CliContext, path: string): Promise<string> {
+  const repoId = await enclosingRepoId(ctx, await realpathOrSelf(path));
   if (repoId === null) {
-    throw new CliError(`${ctx.cwd} is not inside a registered repo`, {
+    throw new CliError(`${path} is not inside a registered repo`, {
       code: "repo-not-resolved",
       hint: "Run `agn add .` here, or pass --repo <id or path>.",
     });
   }
-  return { repoId, taskId: null };
+  return repoId;
 }
 
 /** `~/.agnostic/worktrees/<repo>/<task>` is agn's own layout, so the path names both ids. */
