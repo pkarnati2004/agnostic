@@ -47,6 +47,16 @@ export default defineConfig({
       },
       {
         test: {
+          name: "recommender",
+          root: "packages/recommender",
+          include: ["src/**/*.test.ts"],
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
           name: "hooks",
           root: "packages/hooks",
           include: ["src/**/*.test.ts"],

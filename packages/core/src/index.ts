@@ -20,6 +20,7 @@ export * from "./recommendation.js";
 export * from "./repo.js";
 export * from "./repo-config.js";
 export * from "./task.js";
+export * from "./task-class.js";
 export * from "./task-intent.js";
 export * from "./task-note.js";
 export * from "./yaml-file.js";

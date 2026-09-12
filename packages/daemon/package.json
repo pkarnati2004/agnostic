@@ -24,6 +24,7 @@
     "@agnostic/executor-tmux": "workspace:*",
     "@agnostic/hooks": "workspace:*",
     "@agnostic/ledger": "workspace:*",
+    "@agnostic/recommender": "workspace:*",
     "@agnostic/registry": "workspace:*",
     "@agnostic/sync": "workspace:*",
     "@hono/node-server": "2.1.1",

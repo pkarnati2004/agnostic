@@ -30,6 +30,7 @@ import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
 import { hookRoutes } from "./routes/hooks.js";
 import { profileRoutes } from "./routes/profiles.js";
+import { recommendRoutes } from "./routes/recommend.js";
 import { repoRoutes } from "./routes/repos.js";
 import { syncRoutes } from "./routes/sync.js";
 import { taskRoutes } from "./routes/tasks.js";
@@ -88,6 +89,7 @@ export function createApp(deps: DaemonDeps): Hono {
   app.route("/", taskRoutes(ctx));
   app.route("/", adoptRoutes(ctx));
   app.route("/", profileRoutes(ctx));
+  app.route("/", recommendRoutes(ctx));
   app.route("/", eventRoutes(ctx));
   app.route("/", hookRoutes(ctx));
   app.route("/", syncRoutes(ctx));

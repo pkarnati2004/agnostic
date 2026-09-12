@@ -39,6 +39,13 @@ describe("TaskSchema", () => {
         alternative: null,
         worthTrying: null,
         riskNote: null,
+        taskClass: {
+          intent: "debug",
+          scope: "small",
+          risk: [],
+          needsBrowser: false,
+          automaticIntent: null,
+        },
       },
     };
     expect(TaskSchema.parse(handoff)).toEqual(handoff);

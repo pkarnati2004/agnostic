@@ -28,7 +28,7 @@ To put `agn` on your PATH instead, run `pnpm build`, then `npm link` inside `pac
 | **Claude Code** | https://code.claude.com/docs - `npm i -g @anthropic-ai/claude-code`, then `claude` and sign in with your Claude Pro/Max/Team account | Your Claude plan |
 | **Codex CLI** | https://github.com/openai/codex - `npm i -g @openai/codex`, then `codex` and sign in with ChatGPT | Your ChatGPT plan |
 | **Pi** | https://pi.dev/docs/latest/quickstart - `npm i -g @earendil-works/pi-coding-agent`, then `/login` | API keys or subscription per Pi's docs |
-| **OpenCode** | https://opencode.ai/docs - install, then configure providers | API keys |
+| **OpenCode** | https://opencode.ai/docs - `npm i -g opencode-ai`, then configure providers | API keys |
 | **Gemini CLI, Cursor Agent, Copilot CLI, Aider, Goose, Amp, Kimi CLI, Qwen Code, …** | Each project's docs | Launch/attach only in agnostic |
 
 Codex gates hooks on a trust hash it keeps in `~/.codex/config.toml`. agn writes that hash itself, in a block marked with `# >>> agn hooks`, so status works from the first run; if Codex ever reports the hook as untrusted, run `/hooks` in Codex and approve it.

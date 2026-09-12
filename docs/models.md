@@ -11,7 +11,7 @@ If `claude` or `codex` is logged in, their subscription-backed models are profil
 A subscription lists more models than it includes. Claude Code lists Fable on every paid plan, and only Max includes it; on Pro it runs on usage credits. So agnostic records which plan you are on and reads what that plan covers from its catalog:
 
 - `subscription` - the model runs on your plan at no extra cost.
-- `credits` - the model runs on your login, metered, and costs money on top of the plan.
+- `credits` - the model runs on your login, metered, and costs money on top of the plan. The recommender prices a credits profile the way it prices an API key.
 - A model your plan cannot run at all is not offered as a profile.
 
 agnostic detects the plan from the agent's own files where it can: Codex from the plan in `~/.codex/auth.json`, Claude Code from the account block in `~/.claude.json`. Both are read locally; nothing is sent anywhere. Agents billed per provider key (Pi, OpenCode) have no plan.

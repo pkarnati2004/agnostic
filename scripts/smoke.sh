@@ -19,6 +19,9 @@ pnpm vitest run --project catalog
 echo "smoke: registry unit tests"
 pnpm vitest run --project registry
 
+echo "smoke: recommender unit tests"
+pnpm vitest run --project recommender
+
 echo "smoke: daemon unit tests"
 pnpm vitest run --project daemon
 
@@ -118,8 +121,9 @@ if (!planOptions.some((option) => option.vendor === 'claude')) {
 grep -q "claude, chatgpt" "$WORK/plan-error.txt"
 agn doctor --plan chatgpt=go > /dev/null
 grep -q "chatgpt: go" "$AGNOSTIC_HOME/config.yaml"
-# The rest of the smoke lets the daemon pick its own port, so the file written here goes away.
-rm -f "$AGNOSTIC_HOME/config.yaml"
+# The port line goes back: every daemon the rest of the smoke starts must stay off the real 7431,
+# where the author's own daemon lives.
+printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
 
 ! agn add "$WORK/nope" 2> "$WORK/add-error.txt"
 grep -q "does not exist" "$WORK/add-error.txt"
@@ -196,6 +200,13 @@ git -C "$WORK/runrepo" init -q
 git -C "$WORK/runrepo" -c user.email=t@agn.test -c user.name=agn commit -q --allow-empty -m first
 agx add "$WORK/runrepo" > /dev/null
 agx add "$WORK/runfolder" > /dev/null
+
+echo "smoke: agn recommend against the repo the fake agent runs in"
+agx recommend "fix the flaky auth test" --repo "$WORK/runrepo" > "$WORK/recommend.txt"
+grep -q "^Task: debug, small, risk: auth$" "$WORK/recommend.txt"
+grep -q "^Recommended: claude-code:" "$WORK/recommend.txt"
+grep -q "^Risk: touches auth" "$WORK/recommend.txt"
+agx recommend "fix the flaky auth test" --repo "$WORK/runrepo" --json | grep -q '"taskClass"'
 
 agx run "smoke task" --profile claude-code --repo "$WORK/runrepo" > "$WORK/run.txt"
 grep -q "^started " "$WORK/run.txt"

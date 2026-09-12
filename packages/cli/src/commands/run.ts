@@ -1,9 +1,11 @@
 import type { RunTaskRequest, Task } from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
+import { INTENT_FLAG_HELP, intentFlag } from "../intent-flag.js";
 import { resolveRepo } from "../resolve-repo.js";
 
 type RunFlags = {
+  intent?: string;
   profile?: string;
   harness?: string;
   model?: string;
@@ -22,6 +24,7 @@ export function runCommand(ctx: CliContext): Command {
     .option("--repo <repo>", "repo id, prefix or path; defaults to the one you are in")
     .option("--title <title>", "a title for the task; defaults to the first line of the prompt")
     .option("--base <ref>", "a git ref or task id to branch from")
+    .option("--intent <intent>", INTENT_FLAG_HELP)
     .action(async (prompt: string, flags: RunFlags, command: Command) => {
       if (flags.profile !== undefined && flags.harness !== undefined) {
         command.error("error: pass --profile or --harness, not both", {
@@ -29,9 +32,13 @@ export function runCommand(ctx: CliContext): Command {
           code: "commander.conflictingOption",
         });
       }
+      const intent = intentFlag(flags.intent, command);
       const { repoId } = await resolveRepo(ctx, flags.repo);
       const client = await ctx.client();
-      const response = await client.runTask(repoId, body(prompt, flags));
+      const response = await client.runTask(repoId, {
+        ...body(prompt, flags),
+        ...(intent === undefined ? {} : { intent }),
+      });
       if (ctx.json) {
         writeJson(ctx.io, response);
         return;
