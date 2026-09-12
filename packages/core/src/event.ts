@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { IdSchema } from "./id.js";
 import { OutcomeSchema } from "./outcome.js";
-import { ProfileSchema } from "./profile.js";
+import { PlanSchema } from "./plans.js";
+import { HarnessIdSchema, ProfileSchema } from "./profile.js";
 import { RecommendationSchema } from "./recommendation.js";
 import { RepoSchema } from "./repo.js";
 import { TaskSchema, TaskSessionSchema, TaskStatusSchema } from "./task.js";
@@ -19,6 +20,7 @@ export const EventKindSchema = z.enum([
   "outcome.recorded",
   "profile.detected",
   "recommendation.made",
+  "plan.changed",
 ]);
 export type EventKind = z.infer<typeof EventKindSchema>;
 
@@ -48,6 +50,13 @@ const payloadSchemas = {
   "recommendation.made": z.object({
     recommendation: RecommendationSchema,
     chosenProfileId: z.string().min(1),
+  }),
+  // `from` is null the first time agn learns a plan; `to` is null when a plan agn knew is gone.
+  "plan.changed": z.object({
+    harness: HarnessIdSchema,
+    from: PlanSchema.nullable(),
+    to: PlanSchema.nullable(),
+    source: z.enum(["detected", "config"]),
   }),
 } as const;
 
@@ -92,6 +101,7 @@ function members<S extends z.core.$ZodLooseShape>(shape: S) {
     member(shape, "outcome.recorded"),
     member(shape, "profile.detected"),
     member(shape, "recommendation.made"),
+    member(shape, "plan.changed"),
   ] as const;
 }
 

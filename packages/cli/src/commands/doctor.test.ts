@@ -15,6 +15,8 @@ function report(over: Partial<HarnessReport>): HarnessReport {
     tier: 1,
     models: ["sonnet-4.5"],
     modelSource: "probe",
+    planVendor: "claude",
+    plan: { value: "max20", source: "detected", known: true, confirmed: true },
     ...over,
   };
 }
@@ -41,6 +43,11 @@ function run(
     tools,
     detectedAt: "2026-09-11T10:00:00.000Z",
     pathVar: "/opt/bin",
+    plans: {},
+    planOptions: [
+      { vendor: "claude", id: "pro", displayName: "Pro" },
+      { vendor: "claude", id: "max20", displayName: "Max 20x" },
+    ],
   };
   const cli = createTestContext({ client: { doctor: () => Promise.resolve(response) } });
   return { cli, response, done: () => doctorCommand(cli.ctx).parseAsync([], { from: "user" }) };
@@ -68,8 +75,8 @@ describe("agn doctor", () => {
     ]);
     await done();
     expect(cli.out).toEqual([
-      "harness  version  login  support  models  path",
-      "codex    -        -      full     none    not installed",
+      "harness  version  login  support  models  plan  path",
+      "codex    -        -      full     none    -     not installed",
       "profiles: 1 available (agn profiles)",
       "PATH: /opt/bin",
     ]);
@@ -85,6 +92,8 @@ describe("agn doctor", () => {
         modelSource: "seed",
         models: ["a", "b"],
         version: "0.9",
+        planVendor: null,
+        plan: null,
       }),
       report({
         harness: "other:aider",
@@ -95,13 +104,15 @@ describe("agn doctor", () => {
         login: "unknown",
         models: [],
         modelSource: "none",
+        planVendor: null,
+        plan: null,
       }),
     ]);
     await done();
     expect(cli.out.slice(1, 4)).toEqual([
-      "claude-code  2.0.1    logged-in  full     1 (probed)     /opt/bin/claude",
-      "pi           0.9      logged-in  full     2 (seed list)  /opt/bin/pi",
-      "other:aider  0.1      unknown    basic    none           /opt/bin/aider",
+      "claude-code  2.0.1    logged-in  full     1 (probed)     max20  /opt/bin/claude",
+      "pi           0.9      logged-in  full     2 (seed list)  -      /opt/bin/pi",
+      "other:aider  0.1      unknown    basic    none           -      /opt/bin/aider",
     ]);
   });
 

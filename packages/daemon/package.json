@@ -19,6 +19,7 @@
     "agnd": "./dist/main.js"
   },
   "dependencies": {
+    "@agnostic/catalog": "workspace:*",
     "@agnostic/core": "workspace:*",
     "@agnostic/executor-tmux": "workspace:*",
     "@agnostic/hooks": "workspace:*",

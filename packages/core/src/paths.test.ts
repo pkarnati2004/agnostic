@@ -28,6 +28,7 @@ describe("agnosticPaths", () => {
       sessions: "/tmp/agnostic-test/sessions",
       hooks: "/tmp/agnostic-test/hooks",
       daemon: "/tmp/agnostic-test/daemon.json",
+      catalog: "/tmp/agnostic-test/catalog.json",
     });
   });
 });

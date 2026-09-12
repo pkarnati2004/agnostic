@@ -84,20 +84,77 @@ describe("probeDaemon", () => {
     expect(probe.health).toBeNull();
   });
 
-  it("is stale when the daemon answering is a different process", async () => {
+  it("is stale when the daemon answering is a different process in the same home", async () => {
+    const paths = agnosticPaths(home);
     const daemon = await stubDaemon({
       pid: process.pid + 1,
       port: 1,
       startedAt: new Date().toISOString(),
       version: "0",
+      home: paths.home,
     });
-    const paths = agnosticPaths(home);
     const port = Number(daemon.baseUrl.split(":").pop());
     await writeFile(
       paths.daemon,
       JSON.stringify({ pid: process.pid, port, startedAt: new Date().toISOString() }),
     );
     expect((await probeDaemon(paths)).state).toBe("stale");
+    await daemon.close();
+  });
+
+  it("is foreign when the daemon answering serves another home", async () => {
+    const paths = agnosticPaths(home);
+    const daemon = await stubDaemon({
+      pid: process.pid,
+      port: 1,
+      startedAt: new Date().toISOString(),
+      version: "0",
+      home: "/tmp/another-agnostic-home",
+    });
+    const port = Number(daemon.baseUrl.split(":").pop());
+    await writeFile(
+      paths.daemon,
+      JSON.stringify({ pid: process.pid, port, startedAt: new Date().toISOString() }),
+    );
+    const probe = await probeDaemon(paths);
+    expect(probe.state).toBe("foreign");
+    expect(probe.health?.home).toBe("/tmp/another-agnostic-home");
+    await daemon.close();
+  });
+
+  it("is foreign when the daemon answering is too old to say which home it serves", async () => {
+    const paths = agnosticPaths(home);
+    const daemon = await stubDaemon({
+      pid: process.pid,
+      port: 1,
+      startedAt: new Date().toISOString(),
+      version: "0",
+    });
+    const port = Number(daemon.baseUrl.split(":").pop());
+    await writeFile(
+      paths.daemon,
+      JSON.stringify({ pid: process.pid, port, startedAt: new Date().toISOString() }),
+    );
+    expect((await probeDaemon(paths)).state).toBe("foreign");
+    await daemon.close();
+  });
+
+  it("is running for the daemon that serves this home, whatever the path looks like", async () => {
+    const paths = agnosticPaths(home);
+    const daemon = await stubDaemon({
+      pid: process.pid,
+      port: 1,
+      startedAt: new Date().toISOString(),
+      version: "0",
+      // The same directory reached by a symlinked path: realpath is what decides.
+      home: `${paths.home}/.`,
+    });
+    const port = Number(daemon.baseUrl.split(":").pop());
+    await writeFile(
+      paths.daemon,
+      JSON.stringify({ pid: process.pid, port, startedAt: new Date().toISOString() }),
+    );
+    expect((await probeDaemon(paths)).state).toBe("running");
     await daemon.close();
   });
 });

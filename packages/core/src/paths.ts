@@ -11,6 +11,7 @@ export type AgnosticPaths = {
   sessions: string;
   daemon: string;
   hooks: string;
+  catalog: string;
 };
 
 export function agnosticHome(env: NodeJS.ProcessEnv = process.env): string {
@@ -32,6 +33,8 @@ export function agnosticPaths(home: string = agnosticHome()): AgnosticPaths {
     daemon: join(home, "daemon.json"),
     // The one script every harness hook runs, written at daemon start.
     hooks: join(home, "hooks"),
+    // A downloaded catalog, which serves only when it parses and is newer than the bundled one.
+    catalog: join(home, "catalog.json"),
   };
 }
 

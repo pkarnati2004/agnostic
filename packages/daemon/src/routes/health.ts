@@ -10,6 +10,9 @@ export function healthRoutes(ctx: DaemonContext): Hono {
       port: ctx.port(),
       startedAt: ctx.startedAt,
       version: ctx.version,
+      // Which state directory this daemon serves, so another one on the same port is not mistaken
+      // for a stale copy of it and killed.
+      home: ctx.paths.home,
     };
     return c.json(body);
   });

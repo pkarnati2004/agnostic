@@ -23,7 +23,9 @@ export function daemonCommand(ctx: CliContext): Command {
     .action((_flags: DaemonFlags, command: Command) => forward(ctx, command, ["stop"]));
   daemon
     .command("status")
-    .description("report whether the daemon is running (exit 0 running, 1 stopped, 2 stale)")
+    .description(
+      "report whether the daemon is running (exit 0 running, 1 stopped, 2 stale or foreign)",
+    )
     .action((_flags: DaemonFlags, command: Command) => forward(ctx, command, ["status"]));
   daemon
     .command("restart")

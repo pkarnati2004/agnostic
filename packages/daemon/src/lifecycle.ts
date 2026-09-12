@@ -84,7 +84,9 @@ export async function restartDaemon(opts: {
 }): Promise<DaemonInfo> {
   const paths = pathsFor(opts.home);
   if (opts.force === true) {
-    for (const pid of held(await probeDaemon(paths))) {
+    const probe = await probeDaemon(paths);
+    refuseForeign(probe, paths);
+    for (const pid of held(probe)) {
       kill(pid, "SIGKILL");
       await waitFor(EXIT_WAIT_MS, () => Promise.resolve(isProcessAlive(pid) ? null : true));
     }
@@ -93,6 +95,25 @@ export async function restartDaemon(opts: {
     await stopDaemon(opts).catch(rethrowUnlessStopped);
   }
   return startDaemon(opts);
+}
+
+/**
+ * A daemon on our port that serves another state directory is somebody else's: probably the same
+ * user with a second `AGNOSTIC_HOME`. `--force` says "end the daemon that is in my way", not "end
+ * whatever holds this port", so it stops here and names the other home.
+ */
+function refuseForeign(probe: DaemonProbe, paths: AgnosticPaths): void {
+  if (probe.state !== "foreign") {
+    return;
+  }
+  const home = probe.health?.home ?? "another state directory";
+  throw new DaemonError(
+    `port ${probe.info?.port ?? "?"} is held by an agn daemon for ${home}, not for ${paths.home}`,
+    {
+      code: "daemon-foreign-port",
+      hint: "Stop that daemon where it lives, or start this one on another port with --port.",
+    },
+  );
 }
 
 /**

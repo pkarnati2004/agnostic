@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
+    { "path": "packages/catalog" },
     { "path": "packages/ledger" },
     { "path": "packages/registry" },
     { "path": "packages/hooks" },

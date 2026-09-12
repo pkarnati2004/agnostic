@@ -8,5 +8,5 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*.ts", "src/**/*.json"],
-  "references": [{ "path": "../core" }]
+  "references": [{ "path": "../catalog" }, { "path": "../core" }]
 }

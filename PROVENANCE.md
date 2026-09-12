@@ -38,4 +38,14 @@ Superset (workspace layout, PTY daemon design), Orca (hook-based status), Agent 
 
 ## Catalog data
 
-Benchmark rows cite source URL and date. Only aggregate scores are redistributed.
+`packages/catalog/src/catalog.json` is transcribed by hand. Its `sources` table carries one row per
+place a number came from, with the URL, the terms it is published under, and the date it was read;
+every benchmark row names the source it came from, and every plan and entitlement row the vendor
+page it was confirmed against. Only aggregate scores are redistributed: no task, no trajectory, and
+no code from any benchmark repository.
+
+| Table | Sources as of 2026-09-12 |
+|---|---|
+| `benchmarks` | Terminal-Bench 4.0 leaderboard; SWE-bench Verified and Multilingual leaderboards; SWE-Bench Pro (public) leaderboard; LiveBench 2026-06-25; Red Hat `coding_agent_bench` README tables; OpenBench harness bench |
+| `plans`, `entitlements` | The Claude plan comparison and the Codex plans and usage page |
+| `pricing` | The public OpenRouter model list |

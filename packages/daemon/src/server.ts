@@ -2,6 +2,7 @@ import { rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { loadCatalog } from "@agnostic/catalog";
 import {
   type AgnosticPaths,
   agnosticHome,
@@ -50,6 +51,13 @@ export async function runDaemon(
   // troubleshooting.md says so too.
   const env = scrubEnv(process.env);
   const executor = createTmuxExecutor({ paths });
+  const home = homedir();
+  // Read once at start: a download replaces the file, and chunk 17 reloads it.
+  const { catalog, origin, problems } = await loadCatalog({ downloaded: paths.catalog });
+  for (const problem of problems) {
+    log.error("catalog problem", { code: problem.code, message: problem.message });
+  }
+  log.info("catalog loaded", { origin, version: catalog.version, models: catalog.models.length });
   let port = wanted;
   const app = createApp({
     ledger,
@@ -61,8 +69,10 @@ export async function runDaemon(
     startedAt,
     executor,
     env,
+    home,
+    catalog,
     port: () => port,
-    detect: realDetect(env, homedir()),
+    detect: realDetect(env, home, paths, catalog),
   });
 
   let server: ServerType;
