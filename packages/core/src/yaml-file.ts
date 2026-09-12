@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { chmod, mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import { parse, stringify, YAMLParseError } from "yaml";
 import type { z } from "zod";
 import { describeIssues } from "./describe-issues.js";
@@ -31,13 +31,38 @@ export async function readYamlFile<T>(
   return parsed.data;
 }
 
+/**
+ * Writes through a temporary file in the same directory and renames it into place, so a reader
+ * sees the old file or the new one and never half of either: `agn doctor --plan` rewrites the
+ * user's config.yaml, and a crash mid-write would otherwise cost them the file.
+ */
 export async function writeYamlFile(
   file: string,
   value: Record<string, unknown>,
   header: string,
 ): Promise<void> {
-  await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, `# ${header}\n${stringify(value)}`, "utf8");
+  const directory = dirname(file);
+  await mkdir(directory, { recursive: true });
+  const temporary = join(directory, `.${basename(file)}.${process.pid}.tmp`);
+  try {
+    await writeFile(temporary, `# ${header}\n${stringify(value)}`, "utf8");
+    const mode = await modeOf(file);
+    if (mode !== null) {
+      // rename does not carry the old file's permissions over, and this one is the user's.
+      await chmod(temporary, mode);
+    }
+    await rename(temporary, file);
+  } catch (cause) {
+    await rm(temporary, { force: true });
+    throw cause;
+  }
+}
+
+async function modeOf(file: string): Promise<number | null> {
+  return stat(file).then(
+    (info) => info.mode,
+    () => null,
+  );
 }
 
 function parseYaml(file: string, text: string, hint: string): unknown {

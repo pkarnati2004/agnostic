@@ -16,10 +16,12 @@ export const RouteSchema = z.enum([
 ]);
 export type Route = z.infer<typeof RouteSchema>;
 
-export const BillingSchema = z.enum(["subscription", "api-key", "local", "unknown"]);
+// `credits` is a model that runs on the user's login but is metered on their plan (ADR 016).
+export const BillingSchema = z.enum(["subscription", "credits", "api-key", "local", "unknown"]);
 export type Billing = z.infer<typeof BillingSchema>;
 
-export const EvidenceSchema = z.enum(["hook", "env", "binary", "port"]);
+// `unknown-plan` is "the harness is here and logged in, but agn does not know what the plan includes".
+export const EvidenceSchema = z.enum(["hook", "env", "binary", "port", "unknown-plan"]);
 export type Evidence = z.infer<typeof EvidenceSchema>;
 
 const DEFAULT_MODEL_SEGMENT = "default";

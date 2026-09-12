@@ -122,3 +122,15 @@ describe("ProfileSchema", () => {
     }
   });
 });
+
+describe("the billing and evidence a plan decides", () => {
+  it("takes a metered model on a subscription, and an unknown plan as its own evidence", () => {
+    const metered: Profile = { ...profile, billing: "credits", evidence: "unknown-plan" };
+    expect(ProfileSchema.parse(metered)).toEqual(metered);
+  });
+
+  it("still refuses a billing or evidence agn does not define", () => {
+    expect(ProfileSchema.safeParse({ ...profile, billing: "free" }).success).toBe(false);
+    expect(ProfileSchema.safeParse({ ...profile, evidence: "vibes" }).success).toBe(false);
+  });
+});

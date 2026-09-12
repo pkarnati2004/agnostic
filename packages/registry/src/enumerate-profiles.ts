@@ -1,15 +1,18 @@
+import type { EntitlementRow, ModelRow, PlanRow } from "@agnostic/catalog";
 import {
   type Billing,
   type Evidence,
   formatProfileId,
+  type Plan,
+  type Plans,
   type Profile,
   type Route,
 } from "@agnostic/core";
 import type { HarnessStatus } from "./detect.js";
 import type { LocalServer } from "./detect-local-servers.js";
+import { planVendor } from "./detect-plan.js";
 import { gateways } from "./gateways.js";
 import { harnessDefinition } from "./harness-list.js";
-import { seedModels } from "./seed-models.js";
 
 /** The key that lets a harness bill by API when its own login says nothing. */
 const NATIVE_API_KEYS: Record<string, string> = {
@@ -17,34 +20,74 @@ const NATIVE_API_KEYS: Record<string, string> = {
   codex: "OPENAI_API_KEY",
 };
 
+export type EnumerateInput = {
+  statuses: HarnessStatus[];
+  env: Record<string, string>;
+  servers: LocalServer[];
+  /** The catalog's tables, passed in as rows: nothing here reads a file or holds state. */
+  models: ModelRow[];
+  entitlements: EntitlementRow[];
+  catalogPlans: PlanRow[];
+  /** config.yaml's plans: the fallback for a harness with no plan source, and an override. */
+  configPlans: Plans;
+};
+
 /**
  * Everything this machine could run right now. A harness that is installed always has a native
  * profile, logged in or not: Claude Code's login lives in the Keychain, where we cannot see it.
  */
-export function enumerateProfiles(
-  statuses: HarnessStatus[],
-  env: Record<string, string>,
-  servers: LocalServer[],
-): Profile[] {
+export function enumerateProfiles(input: EnumerateInput): Profile[] {
   const profiles: Profile[] = [];
-  for (const status of statuses) {
+  for (const status of input.statuses) {
     if (status.path === null) {
       continue;
     }
     profiles.push(
-      ...nativeProfiles(status, env),
-      ...gatewayProfiles(status, env),
-      ...localProfiles(status, servers),
+      ...nativeProfiles(status, input),
+      ...gatewayProfiles(status, input),
+      ...localProfiles(status, input.servers),
     );
   }
   return byFirstId(profiles);
 }
 
-function nativeProfiles(status: HarnessStatus, env: Record<string, string>): Profile[] {
-  const billing = nativeBilling(status, env);
-  const models = status.models?.models ?? [];
+function nativeProfiles(status: HarnessStatus, input: EnumerateInput): Profile[] {
+  const billing = nativeBilling(status, input.env);
   // The default profile comes first: it is the one that works before anyone picks a model.
-  return [null, ...models].map((model) => profile(status, model, "native", billing, "binary"));
+  const models: Array<string | null> = [null, ...(status.models?.models ?? [])];
+  const vendor = billing === "subscription" ? planVendor(status.harness) : null;
+  if (vendor === null) {
+    return models.map((model) => profile(status, model, "native", billing, "binary"));
+  }
+  const plan = status.plan ?? input.configPlans[vendor] ?? null;
+  const known =
+    plan !== null && input.catalogPlans.some((row) => row.vendor === vendor && row.id === plan);
+  if (!known) {
+    // Logged in on a subscription, but agn cannot say what it includes, so it says exactly that.
+    const unclear: Billing = plan === null ? "subscription" : "unknown";
+    return models.map((model) => profile(status, model, "native", unclear, "unknown-plan"));
+  }
+  return models.flatMap((model) => entitledProfile(status, model, plan, input.entitlements));
+}
+
+/** A model the plan does not carry is not a profile at all; the default model is always there. */
+function entitledProfile(
+  status: HarnessStatus,
+  model: string | null,
+  plan: Plan,
+  entitlements: EntitlementRow[],
+): Profile[] {
+  const access =
+    model === null
+      ? "included"
+      : (entitlements.find(
+          (row) => row.harness === status.harness && row.model === model && row.plan === plan,
+        )?.access ?? "included");
+  if (access === "unavailable") {
+    return [];
+  }
+  const billing: Billing = access === "credits" ? "credits" : "subscription";
+  return [profile(status, model, "native", billing, "binary")];
 }
 
 function nativeBilling(status: HarnessStatus, env: Record<string, string>): Billing {
@@ -55,19 +98,19 @@ function nativeBilling(status: HarnessStatus, env: Record<string, string>): Bill
   return key && env[key] ? "api-key" : "unknown";
 }
 
-function gatewayProfiles(status: HarnessStatus, env: Record<string, string>): Profile[] {
+function gatewayProfiles(status: HarnessStatus, input: EnumerateInput): Profile[] {
   const routes = harnessDefinition(status.harness).routes;
   return gateways
     .filter(
       (gateway) =>
         gateway.harnesses.includes(status.harness) &&
         routes.includes(gateway.route) &&
-        Boolean(env[gateway.envKey]),
+        Boolean(input.env[gateway.envKey]),
     )
     .flatMap((gateway) =>
-      seedModels(status.harness, gateway.route).map((seed) =>
-        profile(status, seed.model, gateway.route, "api-key", "env"),
-      ),
+      input.models
+        .filter((row) => row.harness === status.harness && row.route === gateway.route)
+        .map((row) => profile(status, row.model, gateway.route, "api-key", "env")),
     );
 }
 

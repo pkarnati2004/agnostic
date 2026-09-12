@@ -1,6 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import { agnosticPaths, spawn } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { createContext, writeJson } from "./context.js";
@@ -16,6 +17,7 @@ describe("createContext", () => {
       env: { PATH: "/usr/bin" },
       io: IO,
       entry: stubEntry(),
+      stdin: Readable.from([]),
       spawn,
     });
     expect(ctx.json).toBe(false);
@@ -41,6 +43,7 @@ describe("client", () => {
       env: { PATH: "/usr/bin" },
       io: IO,
       entry: stubEntry(),
+      stdin: Readable.from([]),
       spawn,
     });
     const first = ctx.client();

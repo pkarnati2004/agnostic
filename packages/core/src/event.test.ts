@@ -156,3 +156,31 @@ describe("EventSchema", () => {
     expect(EventSchema.safeParse(crossed).success).toBe(false);
   });
 });
+
+describe("plan.changed", () => {
+  const changed: EventInput<"plan.changed"> = {
+    ts: "2026-09-12T09:00:00.000Z",
+    kind: "plan.changed",
+    payload: { harness: "claude-code", from: "pro", to: "max20", source: "detected" },
+  };
+
+  it("carries the harness, both plans and where the new one came from", () => {
+    expect(EventInputSchema.parse(changed)).toEqual(changed);
+    // The first time agn learns a plan there is nothing to change from.
+    const learned = { ...changed, payload: { ...changed.payload, from: null } };
+    expect(EventInputSchema.parse(learned)).toEqual(learned);
+  });
+
+  it("refuses a source it does not know and a harness it cannot name", () => {
+    expect(
+      EventInputSchema.safeParse({
+        ...changed,
+        payload: { ...changed.payload, source: "guessed" },
+      }).success,
+    ).toBe(false);
+    expect(
+      EventInputSchema.safeParse({ ...changed, payload: { ...changed.payload, harness: "" } })
+        .success,
+    ).toBe(false);
+  });
+});

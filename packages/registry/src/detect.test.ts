@@ -1,14 +1,25 @@
 import { fileURLToPath } from "node:url";
+import type { ModelRow } from "@agnostic/catalog";
 import { describe, expect, it } from "vitest";
 import { detectHarnesses, type HarnessStatus } from "./detect.js";
 import { harnesses } from "./harness-list.js";
 
 const FIXTURES = fileURLToPath(new URL("../../../tests/fixtures", import.meta.url));
 
+/** Codex is the only harness the catalog has rows for here, so Pi has nothing to fall back on. */
+const MODELS: ModelRow[] = ["gpt-6-astra", "gpt-5.6-sol"].map((model) => ({
+  harness: "codex",
+  model,
+  route: "native",
+  canonical: null,
+  legacy: false,
+}));
+
 function detect(pathCase: string, homeCase: string, timeouts?: Record<string, number>) {
   return detectHarnesses({
     env: { PATH: `${FIXTURES}/bin/${pathCase}` },
     home: `${FIXTURES}/home/${homeCase}`,
+    models: MODELS,
     ...timeouts,
   });
 }
@@ -56,7 +67,7 @@ describe("detectHarnesses", () => {
     expect(status(statuses, "other:kimi").login).toBe("unknown");
   });
 
-  it("falls back to the seed when the harness has no list command to answer with", async () => {
+  it("falls back to the catalog's rows when the harness has no list command to answer with", async () => {
     const statuses = await detect("tier1", "empty");
     for (const harness of ["claude-code", "codex", "pi", "opencode"]) {
       expect(["seed", "none"]).toContain(status(statuses, harness).models?.origin);
@@ -74,5 +85,24 @@ describe("detectHarnesses", () => {
     expect(status(statuses, "codex").version).toBeNull();
     expect(status(statuses, "codex").models?.origin).toBe("seed");
     expect(Date.now() - started).toBeLessThan(2_000);
+  });
+
+  it("reads the plan each harness's own files name, and nothing for the ones with none", async () => {
+    const plus = await detect("probe", "codex-plus");
+    expect(status(plus, "codex").plan).toBe("plus");
+    expect(status(plus, "pi").plan).toBeNull();
+    expect(status(plus, "opencode").plan).toBeNull();
+    const team = await detect("probe", "codex-team");
+    expect(status(team, "codex").plan).toBe("business");
+    const max = await detect("probe", "claude-max");
+    expect(status(max, "claude-code").plan).toBe("max20");
+  });
+
+  it("says nothing about a plan when the file cannot say", async () => {
+    for (const home of ["codex-chatgpt", "malformed", "empty"]) {
+      const statuses = await detect("probe", home);
+      expect(status(statuses, "codex").plan).toBeNull();
+      expect(status(statuses, "claude-code").plan).toBeNull();
+    }
   });
 });

@@ -1,6 +1,5 @@
 import { run } from "@agnostic/core";
 import type { HarnessDefinition } from "./harness-definition.js";
-import { seedModels } from "./seed-models.js";
 
 /**
  * Ported from Orca's model discovery runtime (`src/main/text-generation/
@@ -24,6 +23,8 @@ type ProbeOptions = {
   path: string;
   timeoutMs?: number;
   env?: Record<string, string>;
+  /** The catalog's rows for this harness, used when the probe says nothing. `[]` is legal. */
+  seeds: string[];
 };
 
 /**
@@ -37,7 +38,7 @@ export async function probeModels(
 ): Promise<ModelListResult> {
   const probe = def.modelSource;
   if (!probe) {
-    return fallback(def, `${def.name} has no model list command`);
+    return fallback(opts.seeds, `${def.name} has no model list command`);
   }
   let output: { stdout: string; stderr: string };
   try {
@@ -47,25 +48,20 @@ export async function probeModels(
       timeoutMs: opts.timeoutMs ?? PROBE_TIMEOUT_MS,
     });
   } catch (cause) {
-    return fallback(def, cause instanceof Error ? cause.message : String(cause));
+    return fallback(opts.seeds, cause instanceof Error ? cause.message : String(cause));
   }
   if (output.stdout.length + output.stderr.length > MAX_OUTPUT_BYTES) {
-    return fallback(def, `${def.name} printed more than 1 MiB of model list`);
+    return fallback(opts.seeds, `${def.name} printed more than 1 MiB of model list`);
   }
   // Some CLIs write their listing to stderr; stdout is still the one that should answer.
   const listed = probe.parse(output.stdout);
   const models = listed.length > 0 ? listed : probe.parse(output.stderr);
   if (models.length === 0) {
-    return fallback(def, `${def.name} listed no models`);
+    return fallback(opts.seeds, `${def.name} listed no models`);
   }
   return { models, origin: "probe", error: null };
 }
 
-function fallback(def: HarnessDefinition, error: string): ModelListResult {
-  const seeds = seedModels(def.id, "native").map((seed) => seed.model);
-  return {
-    models: seeds,
-    origin: seeds.length > 0 ? "seed" : "none",
-    error,
-  };
+function fallback(seeds: string[], error: string): ModelListResult {
+  return { models: seeds, origin: seeds.length > 0 ? "seed" : "none", error };
 }

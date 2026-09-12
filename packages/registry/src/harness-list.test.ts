@@ -135,6 +135,7 @@ describe("an open harness id", () => {
       prompt: { kind: "type-after-start" },
       modelFlag: null,
       modelSource: null,
+      planSource: null,
       routes: ["native"],
       resume: null,
       sessionCapture: null,

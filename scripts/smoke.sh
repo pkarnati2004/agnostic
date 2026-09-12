@@ -13,6 +13,9 @@ pnpm vitest run --project core
 echo "smoke: ledger unit tests"
 pnpm vitest run --project ledger
 
+echo "smoke: catalog unit tests"
+pnpm vitest run --project catalog
+
 echo "smoke: registry unit tests"
 pnpm vitest run --project registry
 
@@ -93,6 +96,30 @@ agn repos --json > "$WORK/repos.json"
 test "$(agn doctor | grep -c "not installed")" -eq 5
 agn doctor | grep -q "^tools: gh"
 test "$(agn profiles | wc -l)" -eq 2
+
+# No harness is installed here, so there is no plan to know and nothing to ask about.
+agn doctor | head -1 | grep -q "plan"
+! agn doctor | grep -q "plan unknown for"
+# The plan the user names is written to config.yaml, which keeps the port line it already had.
+echo "port: 7439" > "$AGNOSTIC_HOME/config.yaml"
+agn doctor --plan claude=max20 > /dev/null
+grep -q "claude: max20" "$AGNOSTIC_HOME/config.yaml"
+grep -q "port: 7439" "$AGNOSTIC_HOME/config.yaml"
+agn doctor --json | "$NODE" -e "
+const read = require('node:fs').readFileSync(0, 'utf8');
+const { plans, planOptions } = JSON.parse(read);
+if (plans.claude !== 'max20') { throw new Error('doctor did not report the plan it was given'); }
+if (!planOptions.some((option) => option.vendor === 'claude')) {
+  throw new Error('doctor offered no plans from the catalog');
+}
+"
+# A plan agn does not bill for is a usage error; a plan the catalog does not know is recorded.
+! agn doctor --plan nope=pro 2> "$WORK/plan-error.txt"
+grep -q "claude, chatgpt" "$WORK/plan-error.txt"
+agn doctor --plan chatgpt=go > /dev/null
+grep -q "chatgpt: go" "$AGNOSTIC_HOME/config.yaml"
+# The rest of the smoke lets the daemon pick its own port, so the file written here goes away.
+rm -f "$AGNOSTIC_HOME/config.yaml"
 
 ! agn add "$WORK/nope" 2> "$WORK/add-error.txt"
 grep -q "does not exist" "$WORK/add-error.txt"

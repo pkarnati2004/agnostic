@@ -4,6 +4,7 @@ import {
   type AttachResponse,
   type CleanTaskRequest,
   type CleanTaskResponse,
+  type DoctorRequest,
   type DoctorResponse,
   type HealthResponse,
   type HooksInstallRequest,
@@ -46,7 +47,7 @@ export type DaemonClient = {
   listSessions(repoId: string, path: string): Promise<SessionsResponse>;
   adoptTask(repoId: string, body: AdoptRequest): Promise<TaskResponse>;
   profiles(): Promise<ProfilesResponse>;
-  doctor(): Promise<DoctorResponse>;
+  doctor(request?: DoctorRequest): Promise<DoctorResponse>;
   /** Installs the status hook for one harness, or for every harness the repo could run. */
   installHooks(repoId: string, body: HooksInstallRequest): Promise<HooksInstallResponse>;
   /** Creates `.ag/`, seeding `instructions.md` from the repo's own instructions file. */
@@ -112,7 +113,7 @@ export function createDaemonClient(opts: {
     adoptTask: (repoId, body) =>
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
-    doctor: () => json<DoctorResponse>("POST", "/doctor"),
+    doctor: (request) => json<DoctorResponse>("POST", "/doctor", request ?? {}),
     installHooks: (repoId, body) =>
       json<HooksInstallResponse>("POST", `/repos/${encodeURIComponent(repoId)}/hooks`, body),
     initRepo: (repoId, body) =>

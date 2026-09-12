@@ -1,3 +1,4 @@
+import type { ModelRow } from "@agnostic/catalog";
 import { type HarnessId, ProfileSchema, parseProfileId } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import type { HarnessStatus } from "./detect.js";
@@ -5,6 +6,46 @@ import type { LocalServer } from "./detect-local-servers.js";
 import { enumerateProfiles } from "./enumerate-profiles.js";
 import { harnessDefinition } from "./harness-list.js";
 import type { ModelListResult } from "./probe-models.js";
+
+const gateway = (harness: HarnessId, model: string, route: ModelRow["route"]): ModelRow => ({
+  harness,
+  model,
+  route,
+  canonical: null,
+  legacy: false,
+});
+
+/** The gateway rows the catalog holds; the native models come from the probe, not from here. */
+const MODELS: ModelRow[] = [
+  gateway("claude-code", "kimi-k2.7-code", "anthropic-gateway"),
+  gateway("claude-code", "kimi-k2.6", "anthropic-gateway"),
+  gateway("pi", "moonshotai/kimi-k2.7-code", "openrouter"),
+  gateway("pi", "moonshotai/kimi-k2.6", "openrouter"),
+  gateway("pi", "moonshotai/kimi-k2.5", "openrouter"),
+  gateway("opencode", "moonshotai/kimi-k2.7-code", "openrouter"),
+  gateway("opencode", "moonshotai/kimi-k2.6", "openrouter"),
+  gateway("opencode", "moonshotai/kimi-k2.5", "openrouter"),
+];
+
+/**
+ * What a machine agn knows nothing else about sees: the catalog's gateway rows, no entitlements,
+ * no plans. `enumerate-billing.test.ts` is where the plan decides the answer.
+ */
+function enumerate(
+  statuses: HarnessStatus[],
+  env: Record<string, string> = {},
+  servers: LocalServer[] = [],
+) {
+  return enumerateProfiles({
+    statuses,
+    env,
+    servers,
+    models: MODELS,
+    entitlements: [],
+    catalogPlans: [],
+    configPlans: {},
+  });
+}
 
 function installed(
   harness: HarnessId,
@@ -20,6 +61,7 @@ function installed(
     login: "unknown",
     billing: "unknown",
     models: { models: [], origin: "none", error: "no answer" },
+    plan: null,
     tier: def.tier,
     ...overrides,
   };
@@ -43,17 +85,18 @@ describe("enumerateProfiles", () => {
         models: probed(["fable", "opus"]),
       }),
     ];
-    const profiles = enumerateProfiles(statuses, {}, []);
+    const profiles = enumerate(statuses, {}, []);
     expect(profiles.map((profile) => profile.id)).toEqual([
       "claude-code:default:native",
       "claude-code:fable:native",
       "claude-code:opus:native",
     ]);
     expect(profiles.every((profile) => profile.billing === "subscription")).toBe(true);
-    expect(profiles.every((profile) => profile.evidence === "binary")).toBe(true);
+    // The plan is unknown here, which the evidence says rather than the billing hiding it.
+    expect(profiles.every((profile) => profile.evidence === "unknown-plan")).toBe(true);
   });
 
-  it("uses the seed list when that is all the harness could offer", () => {
+  it("offers the rows a harness fell back to, seeded or probed alike", () => {
     const statuses = [
       installed("codex", {
         login: "logged-in",
@@ -65,7 +108,7 @@ describe("enumerateProfiles", () => {
         },
       }),
     ];
-    expect(enumerateProfiles(statuses, {}, []).map((profile) => profile.model)).toEqual([
+    expect(enumerate(statuses, {}, []).map((profile) => profile.model)).toEqual([
       null,
       "gpt-6-astra",
       "gpt-5.6-sol",
@@ -76,13 +119,13 @@ describe("enumerateProfiles", () => {
   });
 
   it("still offers the default profile when nothing knows the models", () => {
-    const profiles = enumerateProfiles([installed("pi")], {}, []);
+    const profiles = enumerate([installed("pi")], {}, []);
     expect(profiles.map((profile) => profile.id)).toEqual(["pi:default:native"]);
     expect(profiles[0]?.billing).toBe("unknown");
   });
 
   it("never hides an installed harness for lack of a login", () => {
-    const profiles = enumerateProfiles([installed("opencode"), installed("pi")], {}, []);
+    const profiles = enumerate([installed("opencode"), installed("pi")], {}, []);
     expect(profiles.map((profile) => profile.id)).toEqual([
       "opencode:default:native",
       "pi:default:native",
@@ -91,13 +134,13 @@ describe("enumerateProfiles", () => {
   });
 
   it("bills by API key when the provider key is in the environment and no login was found", () => {
-    const [profile] = enumerateProfiles([installed("codex")], { OPENAI_API_KEY: "sk-x" }, []);
+    const [profile] = enumerate([installed("codex")], { OPENAI_API_KEY: "sk-x" }, []);
     expect(profile?.billing).toBe("api-key");
   });
 
   it("adds the gateway profiles the environment pays for", () => {
     const statuses = [installed("claude-code"), installed("pi"), installed("codex")];
-    const profiles = enumerateProfiles(
+    const profiles = enumerate(
       statuses,
       { MOONSHOT_API_KEY: "moon", OPENROUTER_API_KEY: "or" },
       [],
@@ -120,7 +163,7 @@ describe("enumerateProfiles", () => {
   });
 
   it("gives OpenCode OpenRouter profiles too, same as Pi", () => {
-    const profiles = enumerateProfiles([installed("opencode")], { OPENROUTER_API_KEY: "or" }, []);
+    const profiles = enumerate([installed("opencode")], { OPENROUTER_API_KEY: "or" }, []);
     expect(
       profiles.filter((profile) => profile.route === "openrouter").map((profile) => profile.id),
     ).toEqual([
@@ -132,14 +175,14 @@ describe("enumerateProfiles", () => {
 
   it("builds ids that parseProfileId reads back into the same harness, model and route", () => {
     const statuses = [installed("claude-code", { models: probed(["fable"]) }), installed("codex")];
-    const profiles = enumerateProfiles(statuses, { MOONSHOT_API_KEY: "moon" }, [server]);
+    const profiles = enumerate(statuses, { MOONSHOT_API_KEY: "moon" }, [server]);
     for (const p of profiles) {
       expect(parseProfileId(p.id)).toEqual({ harness: p.harness, model: p.model, route: p.route });
     }
   });
 
   it("adds a local profile per model a server holds, for the harness that can use one", () => {
-    const profiles = enumerateProfiles([installed("codex"), installed("pi")], {}, [server]);
+    const profiles = enumerate([installed("codex"), installed("pi")], {}, [server]);
     expect(profiles.filter((profile) => profile.route === "local")).toEqual([
       expect.objectContaining({
         id: "codex:qwen3:8b:local",
@@ -157,11 +200,9 @@ describe("enumerateProfiles", () => {
       installed("pi"),
       installed("codex"),
     ];
-    const profiles = enumerateProfiles(
-      statuses,
-      { MOONSHOT_API_KEY: "moon", OPENROUTER_API_KEY: "or" },
-      [server],
-    );
+    const profiles = enumerate(statuses, { MOONSHOT_API_KEY: "moon", OPENROUTER_API_KEY: "or" }, [
+      server,
+    ]);
     expect(profiles.map((profile) => profile.id)).toEqual([
       "claude-code:default:native",
       "claude-code:opus:native",
@@ -183,14 +224,12 @@ describe("enumerateProfiles", () => {
 
   it("offers nothing for a harness that is not installed, whatever the environment holds", () => {
     const missing = installed("claude-code", { path: null });
-    expect(enumerateProfiles([missing], { MOONSHOT_API_KEY: "moon" }, [server])).toEqual([]);
-    expect(enumerateProfiles([], { OPENROUTER_API_KEY: "or" }, [server])).toEqual([]);
+    expect(enumerate([missing], { MOONSHOT_API_KEY: "moon" }, [server])).toEqual([]);
+    expect(enumerate([], { OPENROUTER_API_KEY: "or" }, [server])).toEqual([]);
   });
 
   it("gives a tier-2 harness its one profile and nothing else", () => {
-    const profiles = enumerateProfiles([installed("other:aider")], { OPENROUTER_API_KEY: "or" }, [
-      server,
-    ]);
+    const profiles = enumerate([installed("other:aider")], { OPENROUTER_API_KEY: "or" }, [server]);
     expect(profiles).toEqual([
       expect.objectContaining({ id: "other:aider:default:native", tier: 2 }),
     ]);

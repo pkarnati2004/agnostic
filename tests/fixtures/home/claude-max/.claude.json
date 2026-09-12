@@ -1,0 +1,9 @@
+{
+  "oauthAccount": {
+    "accountUuid": "00000000-fixture",
+    "emailAddress": "fixture@example.com",
+    "billingType": "stripe_subscription",
+    "organizationRateLimitTier": "default_claude_max_20x",
+    "userRateLimitTier": null
+  }
+}
