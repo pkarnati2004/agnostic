@@ -58,7 +58,8 @@ export function resumeLaunchCommand(
     return {
       command: spec.command,
       args: spec.args,
-      env: { ...env, ...spec.env },
+      // The task id every hook this session fires carries back.
+      env: { ...env, ...spec.env, [AGN_TASK_ID]: task.id },
       promptAfterStart: null,
     };
   } catch (cause) {

@@ -125,10 +125,13 @@ async function applyStatus(
   parsed: ParsedHook,
   harness: string,
 ): Promise<HookResponse> {
+  if (parsed.status === null) {
+    // An event agn has no rule for. No payload contents are ever logged: the event name is the
+    // whole of what this line says.
+    ctx.log.info("hook ignored", { harness, event: parsed.event });
+  }
   const to = transition(task, parsed.status);
   if (to === null) {
-    // No payload contents are ever logged: the event name is the whole of what this line says.
-    ctx.log.info("hook ignored", { harness, event: parsed.event });
     return { task, applied: null };
   }
   const updated = ctx.ledger.tasks.setStatus(task.id, to);

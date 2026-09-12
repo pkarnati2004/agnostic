@@ -108,8 +108,9 @@ describe("the Codex hook installer", () => {
     const result = await codexInstaller.uninstall(input());
     expect(result.changed).toBe(true);
     expect((await config()).trimEnd()).toBe(before.trimEnd());
-    const hooks = JSON.parse(await readFile(hooksFile(), "utf8")) as { hooks: object };
-    expect(hooks.hooks).toEqual({});
+    // Nothing of agn's is left, so the key it added is not left behind either.
+    const hooks = JSON.parse(await readFile(hooksFile(), "utf8")) as { hooks?: object };
+    expect(hooks.hooks).toBeUndefined();
   });
 
   it("refuses a config with one of agn's own tables already outside the block, unchanged", async () => {

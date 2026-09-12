@@ -1,4 +1,4 @@
-import { chmod, copyFile, mkdir, readFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -180,6 +180,20 @@ describe("POST /repos/:id/adopt", () => {
     expect(attach.status).toBe(200);
     const body = (await attach.json()) as AttachResponse;
     expect(body.attach.argv).toContain("manual");
+  });
+
+  it("adopts the session even when its note cannot be written, and says so in the log", async () => {
+    const repo = await daemon.addRepo();
+    const pid = await startOutsideTmux(join(repo.path, "sub"));
+    await waitForSessions(repo, repo.path, 1);
+    // A file where the notes directory belongs: the row is already written when this fails, so the
+    // adopt has to stand.
+    await mkdir(agPaths(repo.path).dir, { recursive: true });
+    await writeFile(agPaths(repo.path).tasksDir, "not a directory", "utf8");
+
+    const task = await adopted(repo, { path: repo.path, pid });
+    expect(task.status).toBe("running");
+    expect(await daemon.readLog()).toContain(`task note not written taskId=${task.id}`);
   });
 
   it("refuses a pid that is not one of the sessions it listed", async () => {

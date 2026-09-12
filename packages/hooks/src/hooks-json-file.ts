@@ -82,7 +82,9 @@ export function withoutManagedHooks(config: HooksJson, command: string): HooksJs
       hooks[event] = kept;
     }
   }
-  return { ...config, hooks };
+  // A file with no hooks left keeps none of the key: what is there is what the user put there.
+  const { hooks: _ours, ...rest } = config;
+  return Object.keys(hooks).length === 0 ? rest : { ...rest, hooks };
 }
 
 /** `sh '<script>' <harness>`: the quoted script path alone, so any harness's entry is recognised. */

@@ -171,6 +171,13 @@ describe("POST /hooks/:harness", () => {
     expect(await daemon.readLog()).toContain("hook ignored harness=claude-code event=PreCompact");
   });
 
+  it("logs nothing for an event it understood but had no transition to make", async () => {
+    const task = seed({ status: "waiting" });
+    const answer = await body(await post({ hook_event_name: "Stop" }, { taskId: task.id }));
+    expect(answer.applied).toBeNull();
+    expect(await daemon.readLog()).not.toContain("hook ignored");
+  });
+
   it("refuses a hook that matches no task", async () => {
     const response = await post({ hook_event_name: "Stop", cwd: "/nowhere/at/all" });
     expect(response.status).toBe(404);

@@ -13,6 +13,7 @@ import {
 import { harnesses, isHeadlessInvocation } from "@agnostic/registry";
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
+import { ensureHooks } from "./hooks-install.js";
 import { initialTaskNote } from "./initial-task-note.js";
 
 const LIVE: Task["status"][] = ["running", "waiting"];
@@ -93,7 +94,19 @@ export async function adoptTask(ctx: DaemonContext, repo: Repo, req: AdoptReques
       lastSeenAt: now,
     });
   });
-  await writeTaskNote(repo.path, initialTaskNote(task, "adopted from running session"));
+  // There is no launch to carry the task id, so the hook this session fires next is matched by the
+  // directory it runs in. The harness reads the config it was started with plus this one.
+  await ensureHooks(ctx, session.harness, session.cwd);
+  // The row and its event are already written: a note that cannot be written is a line in the log,
+  // not a failed adopt.
+  await writeTaskNote(repo.path, initialTaskNote(task, "adopted from running session")).catch(
+    (cause: unknown) => {
+      ctx.log.error("task note not written", {
+        taskId: task.id,
+        message: cause instanceof Error ? cause.message : String(cause),
+      });
+    },
+  );
   return task;
 }
 

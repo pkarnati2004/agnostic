@@ -74,6 +74,13 @@ describe("the hook config file", () => {
     expect(removed.hooks?.PreToolUse).toBeUndefined();
   });
 
+  it("leaves no empty hooks key behind when everything in it was ours", () => {
+    const installed = withManagedHooks({ permissions: {} }, EVENTS, COMMAND);
+    const removed = withoutManagedHooks(installed, COMMAND);
+    expect(removed).toEqual({ permissions: {} });
+    expect("hooks" in removed).toBe(false);
+  });
+
   it("writes only when a reinstall would change something", async () => {
     const file = join(dir, "nested", "settings.json");
     expect(await updateHooksJson(file, (c) => withManagedHooks(c, EVENTS, COMMAND))).toBe(true);
