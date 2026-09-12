@@ -14,7 +14,12 @@ agn catalog show claude-code:opus:native
 
 prints the catalog the daemon is using, then the fresh rows for that profile: the ones naming the
 agent first, then bare-model rows, newest first, each with the weight its age has left it. A `*`
-marks the rows the last recommendation cited.
+marks the rows the last recommendation cited, and the last line names the task class it was made
+for and how strong that evidence was:
+
+```
+* cited by the last recommendation (debug, strong evidence)
+```
 
 ## Updating it
 

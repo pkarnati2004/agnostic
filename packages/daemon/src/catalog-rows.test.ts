@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { type Catalog, readCatalogFile } from "@agnostic/catalog";
-import type { Event, EvidenceLevel } from "@agnostic/core";
+import type { Event, EvidenceLevel, TaskIntent } from "@agnostic/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { catalogRowsFor } from "./catalog-rows.js";
 
@@ -25,6 +25,7 @@ function recommendation(opts: {
   profileId?: string;
   evidence: EvidenceLevel;
   sources: string[];
+  intent?: TaskIntent;
 }): Event<"recommendation.made"> {
   const profileId = opts.profileId ?? PROFILE;
   return {
@@ -42,6 +43,13 @@ function recommendation(opts: {
         alternative: null,
         worthTrying: null,
         riskNote: null,
+        taskClass: {
+          intent: opts.intent ?? "implement",
+          scope: "small",
+          risk: [],
+          needsBrowser: false,
+          automaticIntent: null,
+        },
       },
       chosenProfileId: profileId,
     },
@@ -126,9 +134,31 @@ describe("catalogRowsFor marks what the last recommendation cited", () => {
         PROFILE,
         recommendation({ evidence, sources: ["terminal-bench", "livebench"] }),
       );
-      expect(cited).toEqual({ evidence, sources: ["terminal-bench", "livebench"] });
+      expect(cited).toEqual({
+        taskClass: "implement",
+        evidence,
+        sources: ["terminal-bench", "livebench"],
+      });
       expect(rows.filter((row) => row.cited).map((row) => row.source)).toEqual(["terminal-bench"]);
     }
+  });
+
+  it("marks only the class the recommendation was made for at strong", () => {
+    const { rows, cited } = rowsFor(
+      PROFILE,
+      recommendation({ evidence: "strong", intent: "debug", sources: ["terminal-bench"] }),
+    );
+    expect(cited?.taskClass).toBe("debug");
+    // The one harness row for this profile is an `implement` row, not a `debug` one.
+    expect(rows.some((row) => row.cited)).toBe(false);
+  });
+
+  it("keeps marking a harness row of another class at some", () => {
+    const { rows } = rowsFor(
+      PROFILE,
+      recommendation({ evidence: "some", intent: "debug", sources: ["terminal-bench"] }),
+    );
+    expect(rows.filter((row) => row.cited).map((row) => row.source)).toEqual(["terminal-bench"]);
   });
 
   it("marks the bare-model row when that is all the evidence there was", () => {

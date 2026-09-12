@@ -73,7 +73,7 @@ export type CatalogRowsResponse = {
   profileId: string;
   rows: CatalogShowRow[];
   /** The last recommendation, and only when the profile it picked is the one being shown. */
-  cited: { evidence: EvidenceLevel; sources: string[] } | null;
+  cited: { taskClass: TaskIntent; evidence: EvidenceLevel; sources: string[] } | null;
 };
 
 export type CatalogUpdateResponse = { update: CatalogUpdate; catalog: CatalogSummary };

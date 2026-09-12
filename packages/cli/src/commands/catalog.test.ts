@@ -116,7 +116,7 @@ describe("agn catalog show", () => {
     const test = cli({
       rows: {
         rows: [row(), row({ source: "livebench", harness: null, cited: false })],
-        cited: { evidence: "strong", sources: ["terminal-bench"] },
+        cited: { taskClass: "debug", evidence: "strong", sources: ["terminal-bench"] },
       },
     });
     await show(test);
@@ -124,7 +124,7 @@ describe("agn catalog show", () => {
     expect(test.out[3]?.endsWith("*")).toBe(false);
     // A row that measured the model alone names no harness.
     expect(test.out[3]).toContain("-");
-    expect(test.out[4]).toBe("* cited by the last recommendation (strong evidence)");
+    expect(test.out[4]).toBe("* cited by the last recommendation (debug, strong evidence)");
   });
 
   it("says so when the catalog has nothing for the profile", async () => {

@@ -64,10 +64,11 @@ function showLines(response: CatalogRowsResponse): string[] {
   if (response.rows.length === 0) {
     return [header, `no rows for ${response.profileId}`];
   }
+  const cited = response.cited;
   const footer =
-    response.cited === null
+    cited === null
       ? []
-      : [`* cited by the last recommendation (${response.cited.evidence} evidence)`];
+      : [`* cited by the last recommendation (${cited.taskClass}, ${cited.evidence} evidence)`];
   return [header, ...renderTable(response.rows, COLUMNS), ...footer];
 }
 

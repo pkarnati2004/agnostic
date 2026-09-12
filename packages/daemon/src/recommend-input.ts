@@ -27,6 +27,7 @@ export async function buildRecommendInput(
   const config = await readRepoConfig(repo.path);
   const detection = await ctx.detection.current();
   const { plans } = await readDaemonConfig(ctx.paths);
+  const catalog = ctx.catalog.current().catalog;
   return {
     prompt,
     preferences:
@@ -35,12 +36,12 @@ export async function buildRecommendInput(
         : { ...preferences, subscriptionsOnly: opts.subscriptionsOnly },
     profiles: detection.profiles,
     candidates: worthTryingCandidates(
-      ctx.catalog,
+      catalog,
       detection.profiles,
       installedHarnesses(detection),
       knownPlans(detection, plans),
     ),
-    catalog: ctx.catalog,
+    catalog,
     defaultProfileId: config?.defaultProfileId ?? null,
     // A task that is running or waiting still holds this repo's context in its own session.
     activeProfileIds: ctx.ledger.tasks

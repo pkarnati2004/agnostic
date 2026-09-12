@@ -3,7 +3,6 @@ import {
   type CatalogRowsResponse,
   type CatalogShowRow,
   type Event,
-  type EvidenceLevel,
   parseProfileId,
 } from "@agnostic/core";
 
@@ -46,7 +45,7 @@ export function catalogRowsFor(opts: {
       metric: row.metric,
       score: row.score,
       weight,
-      cited: cited !== null && isCited(row, cited.evidence, cited.sources),
+      cited: cited !== null && isCited(row, cited),
     }));
   return { rows, cited };
 }
@@ -62,24 +61,29 @@ function citedBy(event: Event<"recommendation.made"> | null, profileId: string):
   if (event === null) {
     return null;
   }
-  const { recommended } = event.payload.recommendation;
+  const { recommended, taskClass } = event.payload.recommendation;
   if (recommended.profileId !== profileId) {
     return null;
   }
-  return { evidence: recommended.evidence, sources: recommended.sources };
+  return {
+    taskClass: taskClass.intent,
+    evidence: recommended.evidence,
+    sources: recommended.sources,
+  };
 }
 
 /**
- * The level the recommendation claimed decides which of its sources' rows carry the mark. Chunk 12
- * adds the task class the recommendation was made for; until it does, `strong` marks the same
- * harness rows as `some`.
+ * The level the recommendation claimed decides which of its sources' rows carry the mark, the same
+ * way the recommender chose them: `strong` means it had rows for the very class it was asked
+ * about, `some` means rows for the profile on some other class, `model-level` means neither.
  */
-function isCited(row: BenchmarkRow, evidence: EvidenceLevel, sources: string[]): boolean {
-  if (!sources.includes(row.source)) {
+function isCited(row: BenchmarkRow, cited: NonNullable<Rows["cited"]>): boolean {
+  if (!cited.sources.includes(row.source)) {
     return false;
   }
-  switch (evidence) {
+  switch (cited.evidence) {
     case "strong":
+      return row.harness !== null && row.taskClass === cited.taskClass;
     case "some":
       return row.harness !== null;
     case "model-level":
