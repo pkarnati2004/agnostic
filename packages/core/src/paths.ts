@@ -8,6 +8,7 @@ export type AgnosticPaths = {
   config: string;
   worktrees: string;
   logs: string;
+  sessions: string;
   daemon: string;
 };
 
@@ -24,9 +25,16 @@ export function agnosticPaths(home: string = agnosticHome()): AgnosticPaths {
     config: join(home, "config.yaml"),
     worktrees: join(home, "worktrees"),
     logs: join(home, "logs"),
+    // One file per tmux session, written by its pane-died hook and read back as the exit status.
+    sessions: join(home, "sessions"),
     // daemon.json is a hint, not truth: readers verify the pid is alive and the port answers.
     daemon: join(home, "daemon.json"),
   };
+}
+
+/** One log per task under the state directory: setup output now, anything unattended later. */
+export function taskLogPath(paths: AgnosticPaths, taskId: string): string {
+  return join(paths.logs, "tasks", `${taskId}.log`);
 }
 
 export function worktreePath(paths: AgnosticPaths, repoId: string, taskId: string): string {

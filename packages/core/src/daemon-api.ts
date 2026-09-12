@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AttachInfo, DetectedHarness } from "./executor.js";
 import type { Billing, HarnessId, Profile } from "./profile.js";
 import type { Repo } from "./repo.js";
 import { type Task, TaskStatusSchema } from "./task.js";
@@ -50,6 +51,49 @@ export type TaskListQuery = z.output<typeof TaskListQuerySchema>;
 
 export type TaskListResponse = { tasks: Task[] };
 export type TaskResponse = { task: Task };
+
+// The daemon resolves `profile`, so the CLI, the UI and any adapter get one set of rules: a whole
+// profile id, or a bare harness id meaning that harness on its own default model and route.
+export const RunTaskRequestSchema = z.strictObject({
+  prompt: z.string().min(1),
+  title: z.string().min(1).optional(),
+  profile: z.string().min(1).optional(),
+  /** Replaces the model segment of the resolved profile; never checked against a model list. */
+  model: z.string().min(1).optional(),
+  /** A git ref or a task id to branch from; a folder workspace has nothing to branch. */
+  base: z.string().min(1).optional(),
+});
+export type RunTaskRequest = z.infer<typeof RunTaskRequestSchema>;
+
+export const CleanTaskRequestSchema = z.strictObject({ deleteBranch: z.boolean().optional() });
+export type CleanTaskRequest = z.infer<typeof CleanTaskRequestSchema>;
+
+/** `removed` is false when there was nothing to remove: a folder task, or a worktree already gone. */
+export type CleanTaskResponse = { task: Task; removed: boolean };
+
+export type AttachResponse = { task: Task; attach: AttachInfo };
+
+/** `via` is the branch of the resume tree that was taken, which the CLI tells the user about. */
+export type ResumeTaskResponse = {
+  task: Task;
+  via: "live" | "native" | "fresh";
+  attach: AttachInfo;
+};
+
+// The path a caller is asking about, which the daemon checks is the repo or inside it.
+export const SessionsQuerySchema = z.strictObject({ path: z.string().min(1) });
+export type SessionsQuery = z.infer<typeof SessionsQuerySchema>;
+
+/** Candidates travel as data, never in an error hint: the caller picks one and sends its pid. */
+export type SessionsResponse = { sessions: DetectedHarness[] };
+
+export const AdoptRequestSchema = z.strictObject({
+  path: z.string().min(1),
+  /** One of the pids `GET /repos/:id/sessions` listed for that path. */
+  pid: z.number().int().positive(),
+  title: z.string().min(1).optional(),
+});
+export type AdoptRequest = z.infer<typeof AdoptRequestSchema>;
 
 export type ModelSource = "probe" | "seed" | "none";
 

@@ -4,7 +4,10 @@ The types every other package shares, and the two things they all need to do saf
 
 - The `.ag`-independent domain types - `Repo`, `Profile`, `Task`, `Event`, `Outcome`, `Recommendation` - each with a zod schema used at boundaries (HTTP, files, SQLite rows) and a `type` used everywhere else.
 - `CoreError`, the base for every typed error in the repo, and `ProcessError`.
+- `executor.ts`: the `ExecutorProvider` interface and the types either side of it (`PrepareInput`, `LaunchCommand`, `SessionHandle`, `SessionEvent`, `ProcessMatcher`), so the daemon and the executor share them without either importing the other.
 - `newId` and the id alphabet; `agnosticPaths` and the `~/.agnostic` layout.
+- `launch-prompt.ts`: the pure composer that turns a task, its note and the ledger's repo state into
+  the prompt a harness is launched with. Rows in, markdown out; it reads no file.
 - `run` and `spawn` in `process.ts`: the only place in agnostic that starts a child process, so env scrubbing happens once.
 - `daemon-api.ts` and `daemon-client.ts`: the daemon's request and response types with their zod
   schemas, and the fetch client the CLI and tools use to talk to it, including the SSE reader and

@@ -34,6 +34,9 @@ const sessionInput: EventInput<"session.captured"> = {
       harness: "claude-code",
       sessionId: "b7d1f0e2",
       tmuxSession: "agn-t3n9v2wxyz",
+      tmuxSocket: "agn",
+      launchId: null,
+      pid: null,
       cwd: "/Users/dev/.agnostic/worktrees/r7k2m4pqrs/t3n9v2wxyz",
       lastSeenAt: "2026-09-10T12:32:00.000Z",
     },
@@ -66,6 +69,34 @@ describe("EventInputSchema", () => {
     expect(EventInputSchema.safeParse({ ...adopted, payload: { pid: 0, cwd: "" } }).success).toBe(
       false,
     );
+  });
+
+  it("parses task.cleaned with the branch deleted and kept", () => {
+    const cleaned: EventInput<"task.cleaned"> = {
+      ts: "2026-09-10T12:34:00.000Z",
+      taskId: "t3n9v2wxyz",
+      repoId: "r7k2m4pqrs",
+      kind: "task.cleaned",
+      payload: { deletedBranch: true },
+    };
+    expect(EventInputSchema.parse(cleaned)).toEqual(cleaned);
+    expect(EventInputSchema.parse({ ...cleaned, payload: { deletedBranch: false } })).toEqual({
+      ...cleaned,
+      payload: { deletedBranch: false },
+    });
+  });
+
+  it("rejects task.cleaned with the wrong payload type", () => {
+    const cleaned: EventInput<"task.cleaned"> = {
+      ts: "2026-09-10T12:34:00.000Z",
+      taskId: "t3n9v2wxyz",
+      kind: "task.cleaned",
+      payload: { deletedBranch: true },
+    };
+    expect(
+      EventInputSchema.safeParse({ ...cleaned, payload: { deletedBranch: "yes" } }).success,
+    ).toBe(false);
+    expect(EventInputSchema.safeParse({ ...cleaned, payload: {} }).success).toBe(false);
   });
 
   it("tells repo.registered and repo.updated apart", () => {

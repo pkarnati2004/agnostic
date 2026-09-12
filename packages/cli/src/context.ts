@@ -1,4 +1,4 @@
-import type { AgnosticPaths, DaemonClient } from "@agnostic/core";
+import type { AgnosticPaths, DaemonClient, spawn } from "@agnostic/core";
 import { connect } from "./daemon-connect.js";
 import type { DaemonEntry } from "./daemon-entry.js";
 
@@ -8,11 +8,15 @@ export type Output = { out(line: string): void; err(line: string): void };
 export type CliContext = {
   paths: AgnosticPaths;
   cwd: string;
+  /** The environment a command hands to a child process, `agn attach` being the only one so far. */
+  env: Record<string, string>;
   json: boolean;
   /** `agn daemon status` reports the daemon's state through its code, so a command may set it. */
   exitCode: number;
   io: Output;
   entry: DaemonEntry;
+  /** Injected so a test can watch `agn attach` hand the terminal over without running tmux. */
+  spawn: typeof spawn;
   client(): Promise<DaemonClient>;
 };
 
@@ -20,13 +24,17 @@ export type CliContext = {
 export function createContext(opts: {
   paths: AgnosticPaths;
   cwd: string;
+  env: Record<string, string>;
   io: Output;
   entry: DaemonEntry;
+  spawn: typeof spawn;
 }): CliContext {
   let pending: Promise<DaemonClient> | null = null;
   return {
     paths: opts.paths,
     cwd: opts.cwd,
+    env: opts.env,
+    spawn: opts.spawn,
     json: false,
     exitCode: 0,
     io: opts.io,

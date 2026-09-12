@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   ApiErrorBodySchema,
+  CleanTaskRequestSchema,
   DaemonInfoSchema,
   EventsQuerySchema,
   HealthResponseSchema,
   RegisterRepoRequestSchema,
+  RunTaskRequestSchema,
   TaskListQuerySchema,
 } from "./daemon-api.js";
 
@@ -60,6 +62,51 @@ describe("RegisterRepoRequestSchema", () => {
     expect(
       RegisterRepoRequestSchema.safeParse({ path: "/code/alpha", branch: "main" }).success,
     ).toBe(false);
+  });
+});
+
+describe("RunTaskRequestSchema", () => {
+  it("accepts a bare prompt and every optional field together", () => {
+    expect(RunTaskRequestSchema.parse({ prompt: "ship it" })).toEqual({ prompt: "ship it" });
+    expect(
+      RunTaskRequestSchema.parse({
+        prompt: "ship it",
+        title: "Ship it",
+        profile: "claude-code:opus:native",
+        model: "haiku",
+        base: "main",
+      }),
+    ).toMatchObject({ title: "Ship it", profile: "claude-code:opus:native", model: "haiku" });
+  });
+
+  it("rejects an empty prompt and a missing prompt", () => {
+    expect(RunTaskRequestSchema.safeParse({ prompt: "" }).success).toBe(false);
+    expect(RunTaskRequestSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("rejects a field it does not know and the wrong type for a known one", () => {
+    expect(RunTaskRequestSchema.safeParse({ prompt: "ship it", harness: "codex" }).success).toBe(
+      false,
+    );
+    expect(RunTaskRequestSchema.safeParse({ prompt: "ship it", model: 5 }).success).toBe(false);
+    expect(RunTaskRequestSchema.safeParse({ prompt: 5 }).success).toBe(false);
+  });
+});
+
+describe("CleanTaskRequestSchema", () => {
+  it("accepts no body, false and true", () => {
+    expect(CleanTaskRequestSchema.parse({})).toEqual({});
+    expect(CleanTaskRequestSchema.parse({ deleteBranch: false })).toEqual({
+      deleteBranch: false,
+    });
+    expect(CleanTaskRequestSchema.parse({ deleteBranch: true })).toEqual({ deleteBranch: true });
+  });
+
+  it("rejects the wrong type and a field it does not know", () => {
+    expect(CleanTaskRequestSchema.safeParse({ deleteBranch: "yes" }).success).toBe(false);
+    expect(CleanTaskRequestSchema.safeParse({ deleteBranch: true, force: true }).success).toBe(
+      false,
+    );
   });
 });
 

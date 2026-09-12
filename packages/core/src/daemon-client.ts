@@ -1,106 +1,44 @@
-import { readFile } from "node:fs/promises";
 import {
+  type AdoptRequest,
   ApiErrorBodySchema,
-  type DaemonInfo,
-  DaemonInfoSchema,
+  type AttachResponse,
+  type CleanTaskRequest,
+  type CleanTaskResponse,
   type DoctorResponse,
   type HealthResponse,
-  HealthResponseSchema,
   type ProfilesResponse,
   type RegisterRepoRequest,
   type RegisterRepoResponse,
   type RepoListResponse,
+  type ResumeTaskResponse,
+  type RunTaskRequest,
+  type SessionsResponse,
   type TaskListQuery,
   type TaskListResponse,
   type TaskResponse,
 } from "./daemon-api.js";
 import { DaemonApiError } from "./error.js";
 import { type Event, EventSchema } from "./event.js";
-import { type AgnosticPaths, agnosticPaths } from "./paths.js";
-import { isProcessAlive } from "./process.js";
-import { readTextFile } from "./read-text-file.js";
 
-const HEALTH_TIMEOUT_MS = 2_000;
 const RECONNECT_MS = 1_000;
 const START_HINT = "Run `agn daemon start`.";
-
-export async function readAuthToken(paths: AgnosticPaths = agnosticPaths()): Promise<string> {
-  const token = await readTextFile(paths.authToken);
-  if (token === null || token.trim() === "") {
-    throw new DaemonApiError(`no auth token at ${paths.authToken}`, {
-      code: "auth-token-missing",
-      hint: START_HINT,
-      status: null,
-    });
-  }
-  return token.trim();
-}
-
-/** Null when the file is missing or was written by something else; the caller then probes. */
-export async function readDaemonInfo(
-  paths: AgnosticPaths = agnosticPaths(),
-): Promise<DaemonInfo | null> {
-  let text: string;
-  try {
-    text = await readFile(paths.daemon, "utf8");
-  } catch {
-    return null;
-  }
-  try {
-    return DaemonInfoSchema.parse(JSON.parse(text));
-  } catch {
-    return null;
-  }
-}
-
-export type DaemonProbe = {
-  state: "running" | "stale" | "stopped";
-  info: DaemonInfo | null;
-  health: HealthResponse | null;
-};
-
-/**
- * ADR 005: daemon.json is a hint. A file with a dead pid, a port that does not answer, or a
- * daemon answering with a different pid is stale, and stale is what `restart --force` cleans up.
- */
-export async function probeDaemon(
-  paths: AgnosticPaths = agnosticPaths(),
-  timeoutMs: number = HEALTH_TIMEOUT_MS,
-): Promise<DaemonProbe> {
-  const info = await readDaemonInfo(paths);
-  if (info === null) {
-    return { state: "stopped", info: null, health: null };
-  }
-  if (!isProcessAlive(info.pid)) {
-    return { state: "stale", info, health: null };
-  }
-  const health = await readHealth(info.port, timeoutMs);
-  if (health === null || health.pid !== info.pid) {
-    return { state: "stale", info, health };
-  }
-  return { state: "running", info, health };
-}
-
-async function readHealth(port: number, timeoutMs: number): Promise<HealthResponse | null> {
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/health`, {
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!response.ok) {
-      return null;
-    }
-    return HealthResponseSchema.parse(await response.json());
-  } catch {
-    return null;
-  }
-}
 
 export type DaemonClient = {
   health(): Promise<HealthResponse>;
   listRepos(): Promise<RepoListResponse>;
   registerRepo(body: RegisterRepoRequest): Promise<RegisterRepoResponse>;
   listTasks(repoId: string, query?: TaskListQuery): Promise<TaskListResponse>;
+  /** Every repo at once, newest first, for `agn status` and the workspace's task list. */
+  listAllTasks(query?: TaskListQuery): Promise<TaskListResponse>;
   getTask(id: string): Promise<TaskResponse>;
+  runTask(repoId: string, body: RunTaskRequest): Promise<TaskResponse>;
+  attachInfo(id: string): Promise<AttachResponse>;
+  stopTask(id: string): Promise<TaskResponse>;
+  cleanTask(id: string, body: CleanTaskRequest): Promise<CleanTaskResponse>;
+  resumeTask(id: string): Promise<ResumeTaskResponse>;
+  /** The harness processes running under `path`, for `agn adopt` to choose from. */
+  listSessions(repoId: string, path: string): Promise<SessionsResponse>;
+  adoptTask(repoId: string, body: AdoptRequest): Promise<TaskResponse>;
   profiles(): Promise<ProfilesResponse>;
   doctor(): Promise<DoctorResponse>;
   /** Resumes with `Last-Event-ID` after a dropped connection; ends when `signal` aborts. */
@@ -145,7 +83,22 @@ export function createDaemonClient(opts: {
     registerRepo: (body) => json<RegisterRepoResponse>("POST", "/repos", body),
     listTasks: (repoId, query) =>
       json<TaskListResponse>("GET", `/repos/${encodeURIComponent(repoId)}/tasks${search(query)}`),
+    listAllTasks: (query) => json<TaskListResponse>("GET", `/tasks${search(query)}`),
     getTask: (id) => json<TaskResponse>("GET", `/tasks/${encodeURIComponent(id)}`),
+    runTask: (repoId, body) =>
+      json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/tasks`, body),
+    attachInfo: (id) => json<AttachResponse>("GET", `/tasks/${encodeURIComponent(id)}/attach`),
+    stopTask: (id) => json<TaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/stop`),
+    cleanTask: (id, body) =>
+      json<CleanTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/clean`, body),
+    resumeTask: (id) => json<ResumeTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/resume`),
+    listSessions: (repoId, path) =>
+      json<SessionsResponse>(
+        "GET",
+        `/repos/${encodeURIComponent(repoId)}/sessions?path=${encodeURIComponent(path)}`,
+      ),
+    adoptTask: (repoId, body) =>
+      json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
     doctor: () => json<DoctorResponse>("POST", "/doctor"),
     events: (after, signal) => streamEvents(doFetch, base, headers, after, signal),

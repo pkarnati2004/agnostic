@@ -6,8 +6,20 @@ agnostic doesn't ship any agent. Install and log in to the ones you want, then r
 
 - **Node 22+** - https://nodejs.org
 - **git 2.40+**
-- **tmux** - `brew install tmux` (macOS) / `apt install tmux` (Linux). Sessions run inside tmux so you can attach from any terminal.
+- **tmux 3.2 or newer** - `brew install tmux` (macOS) / `apt install tmux` (Linux). Sessions run inside tmux on a private server (`tmux -L agn ls` lists them) so you can attach from any terminal.
 - **gh** (optional, for PR creation) - https://cli.github.com
+
+## agn itself
+
+Until there is a published package, agn runs from a checkout:
+
+```bash
+git clone <this repo> && cd agnostic
+pnpm install
+pnpm agn doctor          # runs the CLI from source, arguments and flags as usual
+```
+
+To put `agn` on your PATH instead, run `pnpm build`, then `npm link` inside `packages/cli`.
 
 ## Agents
 
@@ -45,6 +57,10 @@ agn add .
 agn init        # creates .ag/instructions.md from an existing CLAUDE.md/AGENTS.md if present
 agn sync        # writes CLAUDE.md, AGENTS.md, and OpenCode config from .ag/instructions.md
 ```
+
+## GitHub (optional)
+
+agnostic never merges for you. Creating a pull request from the workspace pushes the task branch and, if the `gh` CLI is installed and logged in (`gh auth login`), opens the PR directly and shows you the link. Without `gh`, it opens GitHub's compare page in your browser with the title filled in and the description on your clipboard. `agn doctor` shows whether `gh` is available.
 
 ## Editors for `agn open`
 

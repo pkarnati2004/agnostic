@@ -163,6 +163,9 @@ importers:
       '@agnostic/core':
         specifier: workspace:*
         version: link:../core
+      '@agnostic/executor-tmux':
+        specifier: workspace:*
+        version: link:../executor-tmux
       '@agnostic/ledger':
         specifier: workspace:*
         version: link:../ledger
@@ -178,6 +181,12 @@ importers:
       zod:
         specifier: 4.6.1
         version: 4.6.1
+
+  packages/executor-tmux:
+    dependencies:
+      '@agnostic/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/ledger:
     dependencies:

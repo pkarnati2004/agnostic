@@ -1,5 +1,5 @@
 import { realpath, stat } from "node:fs/promises";
-import { basename, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, isAbsolute, relative, resolve } from "node:path";
 import {
   type AgnosticPaths,
   newId,
@@ -11,6 +11,7 @@ import {
 } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
 import { DaemonError } from "./error.js";
+import { detectRepoKind } from "./repo-kind.js";
 
 type RegisterOutcome = { repo: Repo; created: boolean };
 
@@ -26,7 +27,7 @@ export async function registerRepo(
 ): Promise<RegisterOutcome> {
   const path = await realDirectory(req.path);
   await rejectWorktree(paths, path);
-  let kind = await kindOf(path);
+  let kind = await detectRepoKind(path);
   if (req.gitInit === true && kind === "folder") {
     await run("git", ["init"], { cwd: path });
     kind = "git";
@@ -98,10 +99,6 @@ async function rejectWorktree(paths: AgnosticPaths, path: string): Promise<void>
       hint: "Register the repo this worktree came from instead.",
     });
   }
-}
-
-async function kindOf(path: string): Promise<RepoKind> {
-  return (await exists(join(path, ".git"))) ? "git" : "folder";
 }
 
 async function exists(path: string): Promise<boolean> {

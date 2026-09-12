@@ -7,5 +7,10 @@
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../core" }, { "path": "../ledger" }, { "path": "../registry" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../executor-tmux" },
+    { "path": "../ledger" },
+    { "path": "../registry" }
+  ]
 }

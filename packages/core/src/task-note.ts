@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { parse, stringify, YAMLParseError } from "yaml";
 import { z } from "zod";
 import { taskNotePath } from "./ag-layout.js";
@@ -89,6 +91,13 @@ export async function readTaskNote(repoPath: string, taskId: string): Promise<Ta
   const file = taskNotePath(repoPath, taskId);
   const text = await readTextFile(file);
   return text === null ? null : parseTaskNote(text, file);
+}
+
+/** The note lives in the main checkout, never in the worktree: it is repo history a human commits. */
+export async function writeTaskNote(repoPath: string, note: TaskNote): Promise<void> {
+  const file = taskNotePath(repoPath, note.id);
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, formatTaskNote(note), "utf8");
 }
 
 function formatSection(heading: string, body: string): string {

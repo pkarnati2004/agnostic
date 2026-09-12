@@ -98,6 +98,21 @@ describe("spawn", () => {
     const result = await child;
     expect(result.stdout).toBe("streamed");
   });
+
+  it("hands the terminal over with stdio: inherit, so nothing is captured", async () => {
+    const child = spawn("echo", ["to the terminal"], { stdio: "inherit" });
+    expect(child.stdout).toBeNull();
+    expect(child.stderr).toBeNull();
+    await child;
+  });
+
+  it("lets a log file win over stdio: inherit", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-process-inherit-"));
+    const file = join(dir, "out.log");
+    await run("echo", ["to the file"], { stdio: "inherit", logFile: file });
+    expect(await readFile(file, "utf8")).toContain("to the file");
+    await rm(dir, { recursive: true, force: true });
+  });
 });
 
 describe("setProcessLog", () => {

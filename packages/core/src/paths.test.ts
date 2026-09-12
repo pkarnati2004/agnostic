@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { agnosticHome, agnosticPaths, worktreePath } from "./paths.js";
+import { agnosticHome, agnosticPaths, taskLogPath, worktreePath } from "./paths.js";
 
 describe("agnosticHome", () => {
   it("honours AGNOSTIC_HOME", () => {
@@ -25,6 +25,7 @@ describe("agnosticPaths", () => {
       config: "/tmp/agnostic-test/config.yaml",
       worktrees: "/tmp/agnostic-test/worktrees",
       logs: "/tmp/agnostic-test/logs",
+      sessions: "/tmp/agnostic-test/sessions",
       daemon: "/tmp/agnostic-test/daemon.json",
     });
   });
@@ -36,5 +37,12 @@ describe("worktreePath", () => {
     expect(worktreePath(paths, "r7k2m4pqrs", "t3n9v2wxyz")).toBe(
       "/tmp/agnostic-test/worktrees/r7k2m4pqrs/t3n9v2wxyz",
     );
+  });
+});
+
+describe("taskLogPath", () => {
+  it("keeps one log per task under the logs directory", () => {
+    const paths = agnosticPaths("/tmp/agnostic-test");
+    expect(taskLogPath(paths, "t3n9v2wxyz")).toBe("/tmp/agnostic-test/logs/tasks/t3n9v2wxyz.log");
   });
 });

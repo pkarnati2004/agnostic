@@ -1,7 +1,6 @@
-import type { DoctorResponse } from "@agnostic/core";
 import { type Ledger, openLedger } from "@agnostic/ledger";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createDetectionCache } from "./detection-cache.js";
+import { createDetectionCache, type Detection } from "./detection-cache.js";
 import { fixtureDetection, fixtureProfile } from "./test-daemon.js";
 
 let ledger: Ledger;
@@ -29,10 +28,10 @@ describe("createDetectionCache", () => {
 
   it("shares one run between concurrent refreshes", async () => {
     let calls = 0;
-    let release: (value: DoctorResponse) => void = () => undefined;
+    let release: (value: Detection) => void = () => undefined;
     const cache = createDetectionCache(() => {
       calls += 1;
-      return new Promise<DoctorResponse>((resolve) => {
+      return new Promise<Detection>((resolve) => {
         release = resolve;
       });
     }, ledger);

@@ -1,8 +1,16 @@
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ConfigError } from "./error.js";
-import { formatTaskNote, parseTaskNote, readTaskNote, type TaskNote } from "./task-note.js";
+import {
+  formatTaskNote,
+  parseTaskNote,
+  readTaskNote,
+  type TaskNote,
+  writeTaskNote,
+} from "./task-note.js";
 
 const FIXTURES = fileURLToPath(new URL("../../../tests/fixtures/ag", import.meta.url));
 const COMPLETE_REPO = `${FIXTURES}/complete`;
@@ -169,5 +177,31 @@ describe("readTaskNote", () => {
 
   it("returns null when the task has no note", async () => {
     expect(await readTaskNote(COMPLETE_REPO, "zzzzzzzzzz")).toBeNull();
+  });
+});
+
+describe("writeTaskNote", () => {
+  it("creates .ag/tasks and round-trips through readTaskNote", async () => {
+    const repo = await mkdtemp(join(tmpdir(), "agn-note-"));
+    try {
+      const note: TaskNote = {
+        id: "t3n9v2wxyz",
+        title: "add a --verbose flag",
+        status: "queued",
+        profileId: "claude-code:default:native",
+        createdAt: "2026-09-11T10:00:00.000Z",
+        parentTaskId: null,
+        spec: "add a --verbose flag\nmore",
+        acceptance: null,
+        notes: null,
+        handoffs: [],
+      };
+      await writeTaskNote(repo, note);
+      expect(await readTaskNote(repo, note.id)).toEqual(note);
+      await writeTaskNote(repo, { ...note, status: "done" });
+      expect((await readTaskNote(repo, note.id))?.status).toBe("done");
+    } finally {
+      await rm(repo, { recursive: true, force: true });
+    }
   });
 });

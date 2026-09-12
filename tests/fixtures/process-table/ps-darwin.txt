@@ -1,0 +1,6 @@
+    1     0 /sbin/launchd
+  502     1 /usr/local/bin/tmux -u -L agn new-session -d -s agn-t3n9v2wxyz
+  871   502 /bin/zsh -l
+ 1204   871 node /Users/dev/.nvm/versions/node/v22.23.2/bin/claude --model sonnet
+ 1310     1 /Users/dev/Library/Application Support/Codex/codex-aarch64-apple-darwin
+ 1422   871 /usr/bin/vim notes-about-claude.md

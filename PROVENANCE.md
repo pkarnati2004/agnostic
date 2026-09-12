@@ -15,6 +15,7 @@ A row moves here from Planned when the file exists.
 | Our file | From | License |
 |---|---|---|
 | `packages/registry/src/harness-list.ts`, with the flag knowledge it feeds `gateways.ts` and `launch.ts` | stablyai/orca `src/shared/tui-agent.ts`, `tui-agent-config.ts`, `tui-agent-detection-commands.ts`, `agent-session-resume.ts`, `agent-session-option-catalog-claude-codex.ts`, `agent-process-recognition.ts`, `agent-node-entrypoint-identities.ts`, `commit-message-agent-specs-primary.ts` (agent rows and flags, ported) | MIT © Lovecast Inc. |
+| `packages/executor-tmux/src/tmux-client.ts`, `stop.ts` (and the behaviour they encode in `launch.ts`) | asheshgoplani/agent-deck `internal/tmux/tmux.go`, `socket.go`, `default_socket_guard.go`, `workdir_guard.go`, `initialsize.go`, `version_warning.go`, `ensure_pids_dead.go`, `canonical_line.go`, `keysender.go` (tmux argv rules, version floor, paste transport, kill escalation, test isolation; ported) | MIT © Ashesh Goplani |
 | `packages/registry/src/model-list-parsers.ts`, `probe-models.ts` | stablyai/orca `src/shared/claude-model-list-probe.ts`, `commit-message-model-parsers.ts`; `src/main/text-generation/commit-message-model-discovery.ts`, `commit-message-model-discovery-policy.ts` (ported) | MIT © Lovecast Inc. |
 
 ## Planned

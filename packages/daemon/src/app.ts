@@ -1,4 +1,4 @@
-import type { AgnosticPaths, HarnessReport } from "@agnostic/core";
+import type { AgnosticPaths, ExecutorProvider, HarnessReport } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
 import {
   detectHarnesses,
@@ -13,11 +13,13 @@ import { createDetectionCache, type Detection, type DetectionCache } from "./det
 import { errorBody } from "./error.js";
 import type { EventFeed } from "./event-feed.js";
 import { type Logger, requestLog } from "./log.js";
+import { adoptRoutes } from "./routes/adopt.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
 import { profileRoutes } from "./routes/profiles.js";
 import { repoRoutes } from "./routes/repos.js";
 import { taskRoutes } from "./routes/tasks.js";
+import { createTaskLifecycle, type TaskLifecycle } from "./task-lifecycle.js";
 
 export type DaemonDeps = {
   ledger: Ledger;
@@ -30,22 +32,34 @@ export type DaemonDeps = {
   port: () => number;
   /** Injected, so a test never detects a real harness and never runs a real probe. */
   detect: () => Promise<Detection>;
+  /** Owned by the caller: its exit watcher and its tmux clients outlive any one request. */
+  executor: ExecutorProvider;
+  /** The base environment every harness is launched with: the daemon's own, scrubbed. */
+  env: Record<string, string>;
   /** Owned by the caller: it polls the ledger, so it has to stop before the ledger closes. */
   feed: EventFeed;
   heartbeatMs?: number;
 };
 
-/** What a route gets: the deps plus the one thing the app owns for the life of the process. */
-export type DaemonContext = DaemonDeps & { detection: DetectionCache };
+/** What a route gets: the deps plus the two things the app owns for the life of the process. */
+export type DaemonContext = DaemonDeps & { detection: DetectionCache; lifecycle: TaskLifecycle };
 
 export function createApp(deps: DaemonDeps): Hono {
+  const lifecycle = createTaskLifecycle(deps);
   const ctx: DaemonContext = {
     ...deps,
     detection: createDetectionCache(deps.detect, deps.ledger),
+    lifecycle,
   };
+  // The subscription ends when the executor closes, which the daemon does before the ledger.
+  deps.executor.onEvent(lifecycle.onExited);
   // Detection shells out; starting it here means the first `agn doctor` does not wait for it.
   ctx.detection.refresh().catch((cause: unknown) => {
     deps.log.error("detection failed", { message: reason(cause) });
+  });
+  // A task the ledger calls running may have died while the daemon was down (ADR 014).
+  lifecycle.reconcileAll().catch((cause: unknown) => {
+    deps.log.error("start-up reconcile failed", { message: reason(cause) });
   });
 
   const app = new Hono();
@@ -54,6 +68,7 @@ export function createApp(deps: DaemonDeps): Hono {
   app.route("/", healthRoutes(ctx));
   app.route("/", repoRoutes(ctx));
   app.route("/", taskRoutes(ctx));
+  app.route("/", adoptRoutes(ctx));
   app.route("/", profileRoutes(ctx));
   app.route("/", eventRoutes(ctx));
 
@@ -82,6 +97,7 @@ export function realDetect(env: Record<string, string>, home: string): () => Pro
     return {
       harnesses: statuses.map(toReport),
       profiles: enumerateProfiles(statuses, env, servers),
+      servers,
       detectedAt: new Date().toISOString(),
       pathVar: env.PATH ?? "",
     };

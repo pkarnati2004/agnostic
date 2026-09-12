@@ -15,6 +15,7 @@ export type {
   Tier,
 } from "./harness-definition.js";
 export { harnessDefinition, harnesses } from "./harness-list.js";
+export { isHeadlessInvocation } from "./headless.js";
 export {
   type LaunchOptions,
   type LaunchSpec,

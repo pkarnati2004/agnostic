@@ -37,9 +37,25 @@ export default defineConfig({
       },
       {
         test: {
+          name: "executor-tmux",
+          root: "packages/executor-tmux",
+          include: ["src/**/*.test.ts"],
+          // A real tmux server per file, and worktrees on disk: these are not microsecond tests.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
           name: "daemon",
           root: "packages/daemon",
           include: ["src/**/*.test.ts"],
+          // The task tests launch a fake harness under a real tmux; they are not unit tests.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
         },
         resolve: {
           conditions: ["development"],

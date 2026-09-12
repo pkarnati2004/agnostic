@@ -55,6 +55,9 @@ describe("TaskSchema", () => {
       harness: "claude-code",
       sessionId: null,
       tmuxSession: "agn-t3n9v2wxyz",
+      tmuxSocket: "agn",
+      launchId: null,
+      pid: null,
       cwd: "/Users/dev/code/agnostic",
       lastSeenAt: "2026-09-10T12:31:00.000Z",
     };
@@ -67,6 +70,9 @@ describe("TaskSchema", () => {
       harness: "claude-code",
       sessionId: null,
       tmuxSession: "agn-t3n9v2wxyz",
+      tmuxSocket: "agn",
+      launchId: null,
+      pid: null,
       cwd: "/Users/dev/code/agnostic",
       lastSeenAt: "2026-09-10T12:31:00.000Z",
     };
@@ -74,6 +80,45 @@ describe("TaskSchema", () => {
     const { cwd: _cwd, ...withoutCwd } = session;
     expect(TaskSessionSchema.safeParse(withoutCwd).success).toBe(false);
     expect(TaskSessionSchema.safeParse({ ...session, cwd: "" }).success).toBe(false);
+  });
+
+  it("defaults tmuxSocket to null so rows written before the private socket still parse", () => {
+    const old = {
+      harness: "claude-code",
+      sessionId: null,
+      tmuxSession: "agn-t3n9v2wxyz",
+      cwd: "/Users/dev/code/agnostic",
+      lastSeenAt: "2026-09-10T12:31:00.000Z",
+    };
+    expect(TaskSessionSchema.parse(old).tmuxSocket).toBeNull();
+  });
+
+  it("defaults pid to null so rows written before adoption still parse", () => {
+    const old = {
+      harness: "claude-code",
+      sessionId: null,
+      tmuxSession: "agn-t3n9v2wxyz",
+      tmuxSocket: "agn",
+      launchId: null,
+      cwd: "/Users/dev/code/agnostic",
+      lastSeenAt: "2026-09-10T12:31:00.000Z",
+    };
+    expect(TaskSessionSchema.parse(old).pid).toBeNull();
+  });
+
+  it("accepts a session that is not under tmux, which is what adopt records for a bare terminal", () => {
+    const outside = {
+      harness: "claude-code" as const,
+      sessionId: null,
+      tmuxSession: null,
+      tmuxSocket: null,
+      launchId: null,
+      pid: 4211,
+      cwd: "/Users/dev/code/agnostic",
+      lastSeenAt: "2026-09-10T12:31:00.000Z",
+    };
+    expect(TaskSessionSchema.parse(outside)).toEqual(outside);
+    expect(TaskSessionSchema.safeParse({ ...outside, pid: 0 }).success).toBe(false);
   });
 
   it("rejects the wrong type in every field", () => {

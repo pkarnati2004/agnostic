@@ -1,0 +1,84 @@
+import { readFile } from "node:fs/promises";
+import {
+  type DaemonInfo,
+  DaemonInfoSchema,
+  type HealthResponse,
+  HealthResponseSchema,
+} from "./daemon-api.js";
+import { DaemonApiError } from "./error.js";
+import { type AgnosticPaths, agnosticPaths } from "./paths.js";
+import { isProcessAlive } from "./process.js";
+import { readTextFile } from "./read-text-file.js";
+
+const HEALTH_TIMEOUT_MS = 2_000;
+const START_HINT = "Run `agn daemon start`.";
+
+export async function readAuthToken(paths: AgnosticPaths = agnosticPaths()): Promise<string> {
+  const token = await readTextFile(paths.authToken);
+  if (token === null || token.trim() === "") {
+    throw new DaemonApiError(`no auth token at ${paths.authToken}`, {
+      code: "auth-token-missing",
+      hint: START_HINT,
+      status: null,
+    });
+  }
+  return token.trim();
+}
+
+/** Null when the file is missing or was written by something else; the caller then probes. */
+export async function readDaemonInfo(
+  paths: AgnosticPaths = agnosticPaths(),
+): Promise<DaemonInfo | null> {
+  let text: string;
+  try {
+    text = await readFile(paths.daemon, "utf8");
+  } catch {
+    return null;
+  }
+  try {
+    return DaemonInfoSchema.parse(JSON.parse(text));
+  } catch {
+    return null;
+  }
+}
+
+export type DaemonProbe = {
+  state: "running" | "stale" | "stopped";
+  info: DaemonInfo | null;
+  health: HealthResponse | null;
+};
+
+/**
+ * ADR 005: daemon.json is a hint. A file with a dead pid, a port that does not answer, or a
+ * daemon answering with a different pid is stale, and stale is what `restart --force` cleans up.
+ */
+export async function probeDaemon(
+  paths: AgnosticPaths = agnosticPaths(),
+  timeoutMs: number = HEALTH_TIMEOUT_MS,
+): Promise<DaemonProbe> {
+  const info = await readDaemonInfo(paths);
+  if (info === null) {
+    return { state: "stopped", info: null, health: null };
+  }
+  // The port is asked even when the file's pid is dead: something else may be holding it, and
+  // `restart --force` has to know which process is actually answering before it starts another.
+  const health = await readHealth(info.port, timeoutMs);
+  if (health === null || !isProcessAlive(info.pid) || health.pid !== info.pid) {
+    return { state: "stale", info, health };
+  }
+  return { state: "running", info, health };
+}
+
+async function readHealth(port: number, timeoutMs: number): Promise<HealthResponse | null> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/health`, {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    return HealthResponseSchema.parse(await response.json());
+  } catch {
+    return null;
+  }
+}

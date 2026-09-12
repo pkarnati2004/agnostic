@@ -25,6 +25,13 @@ const statusByCode: Record<string, number> = {
   "task-not-found": 404,
   "repo-exists": 409,
   "repo-id-registered": 409,
+  // A task or a workspace is busy: the request was right, the moment was not.
+  "folder-busy": 409,
+  "task-active": 409,
+  "session-not-running": 409,
+  "session-not-attachable": 409,
+  // The worktree a task ran in is gone; the branch is not, so the work continues as a new task.
+  "worktree-cleaned": 409,
   "request-invalid": 400,
   "ambiguous-id": 400,
   "path-not-found": 400,
@@ -33,6 +40,16 @@ const statusByCode: Record<string, number> = {
   "ag-file-malformed": 400,
   "ag-file-invalid": 400,
   "invalid-profile-id": 400,
+  "harness-unknown": 400,
+  "profile-required": 400,
+  "harness-not-installed": 400,
+  "base-invalid": 400,
+  "path-outside-repo": 400,
+  "adopt-pid-not-found": 400,
+  // Registry refusals are all "that combination cannot be launched", which is the caller's choice.
+  "route-unsupported": 400,
+  "provider-key-missing": 400,
+  "server-not-found": 400,
 };
 
 export function httpStatus(code: string): number {

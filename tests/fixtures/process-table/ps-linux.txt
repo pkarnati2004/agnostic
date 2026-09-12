@@ -1,0 +1,5 @@
+      1       0 /sbin/init
+    640       1 /usr/bin/tmux -u -L agn new-session -d -s agn-t3n9v2wxyz
+    912     640 -bash
+   1099     912 /usr/bin/python3 /home/dev/.local/bin/pi --resume
+   1180       1 codex

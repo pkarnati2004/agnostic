@@ -28,10 +28,17 @@ export type TaskFilter = {
   limit?: number;
 };
 
+/** What the executor decided at launch: the branch it chose and the session it is running in. */
+export type StartedTask = { branch: string | null; session: TaskSession };
+
 export type TaskQueries = {
   insert(task: Task): Task;
   setStatus(id: string, to: TaskStatus): Task;
   setSession(id: string, session: TaskSession): Task;
+  /** Branch, session and running status in one write, so a task is never running with no session. */
+  start(id: string, started: StartedTask): Task;
+  /** The worktree agn removed; the row keeps its path and branch as the record of what ran. */
+  clean(id: string, deletedBranch: boolean): Task;
   get(id: string): Task | null;
   list(filter?: TaskFilter): Task[];
 };
@@ -59,6 +66,8 @@ export function createTaskQueries(db: Database, events: EventQueries): TaskQueri
     insert: insertTask(db, events, get),
     setStatus: setTaskStatus(db, events, requireTask),
     setSession: setTaskSession(db, events, requireTask),
+    start: markStarted(db, events, requireTask),
+    clean: markCleaned(db, events, requireTask),
     get,
     list(filter: TaskFilter = {}): Task[] {
       const { where, values } = filterSql(filter);
@@ -160,6 +169,52 @@ function setTaskSession(
       payload: { session },
     });
     return { ...current, session, updatedAt };
+  });
+}
+
+function markStarted(
+  db: Database,
+  events: EventQueries,
+  requireTask: (id: string) => Task,
+): TaskQueries["start"] {
+  const updateRow = db.prepare(
+    "UPDATE tasks SET branch = ?, session_json = ?, status = 'running', updated_at = ? WHERE id = ?",
+  );
+  return db.transaction((id: string, started: StartedTask): Task => {
+    const current = requireTask(id);
+    const updatedAt = new Date().toISOString();
+    updateRow.run(started.branch, JSON.stringify(started.session), updatedAt, id);
+    const meta = { ts: updatedAt, taskId: id, repoId: current.repoId } as const;
+    events.append({ ...meta, kind: "session.captured", payload: { session: started.session } });
+    if (current.status !== "running") {
+      events.append({
+        ...meta,
+        kind: "task.status",
+        payload: { from: current.status, to: "running" },
+      });
+    }
+    return { ...current, ...started, status: "running", updatedAt };
+  });
+}
+
+function markCleaned(
+  db: Database,
+  events: EventQueries,
+  requireTask: (id: string) => Task,
+): TaskQueries["clean"] {
+  const touchRow = db.prepare("UPDATE tasks SET updated_at = ? WHERE id = ?");
+  return db.transaction((id: string, deletedBranch: boolean): Task => {
+    const current = requireTask(id);
+    const updatedAt = new Date().toISOString();
+    touchRow.run(updatedAt, id);
+    events.append({
+      ts: updatedAt,
+      taskId: id,
+      repoId: current.repoId,
+      kind: "task.cleaned",
+      payload: { deletedBranch },
+    });
+    return { ...current, updatedAt };
   });
 }
 

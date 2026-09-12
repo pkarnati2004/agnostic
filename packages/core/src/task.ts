@@ -21,7 +21,16 @@ export const TaskSessionSchema = z.object({
   harness: HarnessIdSchema,
   // Null until the harness reveals its own session id; the tmux session is what agn can always see.
   sessionId: z.string().min(1).nullable(),
-  tmuxSession: z.string().min(1),
+  // Null is a session that is not under tmux at all, which agn can watch but never attach to.
+  tmuxSession: z.string().min(1).nullable(),
+  // Null is the user's default tmux server: an adopted session agn did not create.
+  tmuxSocket: z.string().min(1).nullable().default(null),
+  // Which launch this session is: a resume reuses the tmux session name, so an exit reported for
+  // an earlier launch must not be read as this one's. Null for adopted and pre-launchId rows.
+  launchId: z.string().min(1).nullable().default(null),
+  // The harness process itself, known for an adopted session and the only liveness agn has
+  // when that session is not under tmux; null when agn launched it.
+  pid: z.number().int().positive().nullable().default(null),
   // Where the harness runs: the worktree for git tasks, the repo for folder tasks.
   cwd: z.string().min(1),
   lastSeenAt: z.iso.datetime(),
