@@ -6,7 +6,7 @@ import type { DoctorResponse, Profile } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realDetect } from "./app.js";
 import { createTestDaemon, type TestDaemon } from "./test-daemon.js";
-import { fixtureCatalog } from "./test-detection.js";
+import { fixtureCatalog, fixtureCatalogStore } from "./test-detection.js";
 
 const FIXTURES = fileURLToPath(new URL("../../../tests/fixtures", import.meta.url));
 
@@ -29,7 +29,7 @@ async function login(plan: string): Promise<void> {
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), "agn-plan-"));
   await login("plus");
-  const catalog = await fixtureCatalog();
+  const catalog = fixtureCatalogStore(await fixtureCatalog());
   daemon = await createTestDaemon({
     userHome: home,
     detect: (paths) => realDetect({ PATH: join(FIXTURES, "bin", "tier1") }, home, paths, catalog)(),

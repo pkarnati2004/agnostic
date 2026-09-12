@@ -8,6 +8,8 @@
 
 **Codex says the agn hook is untrusted.** Codex runs a hook only when `~/.codex/config.toml` holds the hash of that exact hook. Run `/hooks` in Codex and approve it, or run `agn hooks install --repo <path>` again to rewrite the entry. If agn refuses to edit the file, the block it manages has been split or one of its entries exists outside it: remove the `[hooks.state."…post.sh…"]` tables and the `# >>> agn hooks` markers, then install again.
 
+**`agn catalog update` says it could not fetch.** The check could not reach the published catalog: no network, a proxy in the way, or the host is down. Nothing changed - the catalog already on disk stays in use, and the version it names is in the message. Try again later, or point `AGNOSTIC_CATALOG_URL` at a mirror or a local copy of the two files. If you would rather agn never reached out on its own, put `catalog_check: false` in `~/.agnostic/config.yaml`; `agn catalog update` still works when you run it.
+
 **agn's sessions live on their own tmux server.** A plain `tmux ls` does not show them, and `tmux kill-server` does not end them. Use `tmux -L agn ls` to list them and `tmux -L agn kill-server` to end all of them at once.
 
 **`agn attach` says "task <id> has no session running".** The tmux server restarted (e.g. after reboot). The worktree and task record remain; run `agn resume <task>`. Where the agent supports it, the conversation is restored; otherwise the agent restarts in the same worktree with the task's context.

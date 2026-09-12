@@ -112,6 +112,23 @@ describe("events.forTask", () => {
   });
 });
 
+describe("events.latest", () => {
+  it("returns the newest event of one kind, and null when there is none", () => {
+    ledger.repos.insert(repo);
+    ledger.tasks.insert(task);
+    expect(ledger.events.latest("task.adopted")).toBeNull();
+
+    ledger.events.append(adopted(task.id));
+    const second = ledger.events.append({ ...adopted(task.id), payload: { pid: 5122, cwd: "/x" } });
+
+    const latest = ledger.events.latest("task.adopted");
+    expect(latest?.id).toBe(second.id);
+    expect(latest?.payload.pid).toBe(5122);
+    // The newest of one kind, not the newest event: task.created came first and stays first.
+    expect(ledger.events.latest("task.created")?.payload.task.id).toBe(task.id);
+  });
+});
+
 describe("event ids across tables", () => {
   it("stay monotonic no matter which query wrote them, so after(cursor) sees only later ones", () => {
     ledger.repos.insert(repo);

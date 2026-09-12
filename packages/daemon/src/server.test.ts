@@ -9,16 +9,23 @@ import { runDaemon } from "./server.js";
 
 let home: string;
 let realPath: string | undefined;
+let realCatalogUrl: string | undefined;
 
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), "agn-server-"));
   realPath = process.env.PATH;
+  realCatalogUrl = process.env.AGNOSTIC_CATALOG_URL;
   // Detection runs at start; with only node's own bin on PATH it finds no harness to probe.
   process.env.PATH = dirname(process.execPath);
 });
 
 afterEach(async () => {
   process.env.PATH = realPath;
+  if (realCatalogUrl === undefined) {
+    delete process.env.AGNOSTIC_CATALOG_URL;
+  } else {
+    process.env.AGNOSTIC_CATALOG_URL = realCatalogUrl;
+  }
   await rm(home, { recursive: true, force: true });
 });
 
@@ -69,6 +76,13 @@ describe("runDaemon", () => {
     expect((error as DaemonError).code).toBe("port-in-use");
     expect((error as DaemonError).message).toContain(String(held.port));
     expect((error as DaemonError).hint).toContain("config.yaml");
+  });
+
+  it("refuses a bad AGNOSTIC_CATALOG_URL before it opens the ledger", async () => {
+    process.env.AGNOSTIC_CATALOG_URL = "ftp://catalog.test";
+    const error = await runDaemon({ home, port: 0 }).catch((cause: unknown) => cause);
+    expect((error as Error).message).toContain("AGNOSTIC_CATALOG_URL");
+    await expect(stat(agnosticPaths(home).db)).rejects.toThrow();
   });
 
   it("takes the port from config.yaml when no port is given", async () => {

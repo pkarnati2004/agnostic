@@ -1,5 +1,6 @@
 export * from "./ag-layout.js";
 export * from "./ag-text.js";
+export * from "./catalog-api.js";
 export * from "./daemon-api.js";
 export * from "./daemon-client.js";
 export * from "./daemon-probe.js";

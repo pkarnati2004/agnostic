@@ -2,7 +2,7 @@ import { rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { loadCatalog } from "@agnostic/catalog";
+import { catalogSource, loadCatalog } from "@agnostic/catalog";
 import {
   type AgnosticPaths,
   agnosticHome,
@@ -19,6 +19,7 @@ import { type ServerType, serve } from "@hono/node-server";
 import type { Hono } from "hono";
 import { createApp, realDetect, realDetectEditors } from "./app.js";
 import { ensureAuthToken } from "./auth.js";
+import { createCatalogStore } from "./catalog-store.js";
 import { readDaemonConfig } from "./daemon-config.js";
 import { DaemonError } from "./error.js";
 import { createEventFeed, type EventFeed } from "./event-feed.js";
@@ -47,24 +48,28 @@ export async function runDaemon(
   const token = await ensureAuthToken(paths, log);
   // The one hook command on this machine, so an install has a script to point at.
   await writeHookScript(paths);
-  const wanted = opts.port ?? (await readDaemonConfig(paths)).port ?? DEFAULT_DAEMON_PORT;
-  const ledger = openLedger(paths.db);
-  const feed = createEventFeed(ledger);
-  const startedAt = new Date().toISOString();
+  const config = await readDaemonConfig(paths);
   // The env agnd was started from is the env detection sees and every harness is launched with;
   // troubleshooting.md says so too.
   const env = scrubEnv(process.env);
+  // Checked here, with the config: a bad AGNOSTIC_CATALOG_URL refuses to start before the ledger,
+  // the executor and the log are open.
+  const source = catalogSource(env);
+  const wanted = opts.port ?? config.port ?? DEFAULT_DAEMON_PORT;
+  const ledger = openLedger(paths.db);
+  const feed = createEventFeed(ledger);
+  const startedAt = new Date().toISOString();
   const executor = createTmuxExecutor({ paths });
   const verdicts = createVerdictSweep({ ledger, executor, log }, SWEEP_MS);
   const home = homedir();
-  // Read once at start: a download replaces the file, and chunk 17 reloads it.
-  const { catalog, origin, problems } = await loadCatalog({ downloaded: paths.catalog });
-  for (const problem of problems) {
-    log.error("catalog problem", { code: problem.code, message: problem.message });
-  }
-  log.info("catalog loaded", { origin, version: catalog.version, models: catalog.models.length });
+  // The store owns the reload, so a catalog downloaded while the daemon runs is served at once.
+  const catalog = createCatalogStore({
+    loaded: await loadCatalog({ downloaded: paths.catalog }),
+    downloaded: paths.catalog,
+    log,
+  });
   let port = wanted;
-  const app = createApp({
+  const { app, close: closeApp } = createApp({
     ledger,
     paths,
     token,
@@ -77,6 +82,8 @@ export async function runDaemon(
     home,
     catalog,
     verdicts,
+    catalogSource: source,
+    catalogCheck: config.catalogCheck,
     port: () => port,
     detect: realDetect(env, home, paths, catalog),
     detectEditors: realDetectEditors(env, home),
@@ -86,6 +93,7 @@ export async function runDaemon(
   try {
     ({ server, port } = await listen(app, wanted));
   } catch (cause) {
+    closeApp();
     feed.close();
     verdicts.close();
     await executor.close();
@@ -97,7 +105,7 @@ export async function runDaemon(
   await writeFile(paths.daemon, `${JSON.stringify(info, null, 2)}\n`, "utf8");
   log.info("daemon listening", { port, pid: process.pid });
 
-  const close = closer({ server, feed, verdicts, executor, ledger, log, paths });
+  const close = closer({ server, closeApp, feed, verdicts, executor, ledger, log, paths });
   const shutdown = () => {
     void close().then(() => process.exit(0));
   };
@@ -125,6 +133,8 @@ function listen(app: Hono, port: number): Promise<{ server: ServerType; port: nu
 
 function closer(parts: {
   server: ServerType;
+  /** Stops the catalog checker's timers; every other resource here is the caller's own. */
+  closeApp: () => void;
   feed: EventFeed;
   verdicts: VerdictSweep;
   executor: ExecutorProvider;
@@ -140,6 +150,7 @@ function closer(parts: {
         parts.server.closeAllConnections();
       }
       await new Promise<void>((done) => parts.server.close(() => done()));
+      parts.closeApp();
       parts.feed.close();
       // The exit watcher and the sweep write through the ledger, so both stop before it does.
       parts.verdicts.close();

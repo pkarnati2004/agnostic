@@ -163,7 +163,7 @@ TMUX_TMPDIR="$(mktemp -d /tmp/agn-smoke-XXXXXX)"
 export TMUX_TMPDIR
 # The last command in an EXIT trap decides the script's exit code, so the kill cannot be the last
 # one: by then the executor has usually reaped the sessions and tmux answers "no server running".
-trap 'PATH="$SMOKE_PATH" tmux -L agn kill-server 2> /dev/null || true; rm -rf "$AGNOSTIC_HOME" "$WORK" "$TMUX_TMPDIR"' EXIT
+trap 'kill "${CATALOG_PID:-}" 2> /dev/null || true; PATH="$SMOKE_PATH" tmux -L agn kill-server 2> /dev/null || true; rm -rf "$AGNOSTIC_HOME" "$WORK" "$TMUX_TMPDIR" "${OPTOUT_HOME:-/nonexistent}"' EXIT
 
 FAKEBIN="$WORK/fake-bin"
 mkdir -p "$FAKEBIN"
@@ -341,3 +341,55 @@ grep -q "1,700" "$WORK/usage.txt"
 agx usage --json > "$WORK/usage.json"
 grep -q '"unattributedTokens": 1700' "$WORK/usage.json"
 agx daemon stop | grep -q "^agnd stopped"
+echo "smoke: agn catalog update against a loopback catalog server"
+# The published catalog agn would fetch, served from this machine: the smoke never leaves it.
+CATALOG_DIR="$WORK/catalog"
+mkdir -p "$CATALOG_DIR"
+cp tests/fixtures/catalog/remote/catalog.json "$CATALOG_DIR/catalog.json"
+# The server binds an ephemeral loopback port and prints it, so the smoke claims no fixed port.
+"$NODE" tests/fixtures/bin/catalog-server.mjs "$CATALOG_DIR" > "$WORK/catalog-server.log" &
+CATALOG_PID=$!
+CATALOG_PORT=""
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  CATALOG_PORT="$(awk '{ print $NF }' "$WORK/catalog-server.log")"
+  [ -n "$CATALOG_PORT" ] && break
+  sleep 0.25
+done
+test -n "$CATALOG_PORT"
+curl -fsS "http://127.0.0.1:$CATALOG_PORT/manifest.json" > /dev/null
+export AGNOSTIC_CATALOG_URL="http://127.0.0.1:$CATALOG_PORT"
+
+agx catalog update | grep -q "^catalog updated 1 → 2 (generated 2026-09-08, 4 benchmark rows)$"
+test -f "$AGNOSTIC_HOME/catalog.json"
+agx catalog update | grep -q "^catalog 2 is current (generated 2026-09-08)$"
+grep -q '"outcome": "current"' "$AGNOSTIC_HOME/catalog-check.json"
+agx catalog show claude-code:opus:native | head -1 | grep -q "^catalog 2 (downloaded, generated 2026-09-08; checked "
+agx catalog show claude-code:opus:native | grep -q "terminal-bench"
+agx catalog show claude-code:default:native | grep -q "^no rows for claude-code:default:native$"
+agx daemon stop | grep -q "^agnd stopped"
+
+echo "smoke: catalog_check: false keeps the daemon from reaching out at all"
+OPTOUT_HOME="$(mktemp -d)"
+OPTOUT_PORT="$("$NODE" -e "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>process.stdout.write(String(p)))})")"
+printf 'port: %s\ncatalog_check: false\n' "$OPTOUT_PORT" > "$OPTOUT_HOME/config.yaml"
+AGNOSTIC_HOME="$OPTOUT_HOME" agx daemon start > /dev/null
+# The start check would have run five seconds in; nothing may be recorded, now or later.
+sleep 7
+test ! -f "$OPTOUT_HOME/catalog-check.json"
+AGNOSTIC_HOME="$OPTOUT_HOME" agx catalog show claude-code:opus:native | head -1 | grep -q "daily check off)$"
+# Opting out of the daily check does not take the command away.
+AGNOSTIC_HOME="$OPTOUT_HOME" agx catalog update | grep -q "^catalog updated 1 → 2 "
+AGNOSTIC_HOME="$OPTOUT_HOME" agx daemon stop | grep -q "^agnd stopped"
+unset AGNOSTIC_CATALOG_URL
+kill "$CATALOG_PID" 2> /dev/null || true
+# Reaped here so the shell does not announce the kill in the middle of the smoke's output.
+wait "$CATALOG_PID" 2> /dev/null || true
+
+echo "smoke: nothing in agn calls out except the catalog check"
+# This grep catches a new naked fetch call: the two files it finds both talk to loopback (ADR 002).
+# The catalog's own call is made through an injected fetch, so the host grep below is what covers
+# it - one file names a host that is not this machine, and that file is the catalog's source list.
+FETCHERS="$(grep -rlE "(^|[^A-Za-z.])fetch\(" packages/*/src --include='*.ts' | grep -v '\.test\.ts$' | sort | tr '\n' ' ')"
+test "$FETCHERS" = "packages/core/src/daemon-probe.ts packages/registry/src/detect-local-servers.ts "
+test "$(grep -rl "raw.githubusercontent.com" packages/*/src --include='*.ts' | wc -l | tr -d ' ')" -eq 1
+grep -q "raw.githubusercontent.com" packages/catalog/src/catalog-source.ts

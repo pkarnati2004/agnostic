@@ -84,16 +84,18 @@ agn open <task> --editor zed     # this once, in Zed
 
 ## Configuration
 
-`~/.agnostic/config.yaml` holds the settings for this machine. Both keys are optional:
+`~/.agnostic/config.yaml` holds the settings for this machine. Every key is optional:
 
 | Key | What it does |
 |---|---|
 | `port` | The port the daemon listens on; 7431 by default. `--port` on `agn daemon start` or `restart` wins over it. |
 | `editor` | Which editor `agn open` uses, as one of the ids above. Absent means the first editor agn detects. |
+| `catalog_check` | Whether agnostic checks once a day for a newer benchmark catalog, which is its only outbound call. Absent means yes; `false` turns it off and leaves `agn catalog update` working. |
 
 ```yaml
 port: 7431
 editor: cursor
+catalog_check: false
 ```
 
 An unknown key or an unknown editor id is an error, not a silent default.

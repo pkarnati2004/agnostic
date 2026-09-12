@@ -14,7 +14,9 @@ Agent-agnostic development. Use Claude Code, Codex, Pi - and know which one to u
 - **Open anywhere.** VS Code, Cursor, Zed, JetBrains, Xcode, or a terminal - one click.
 - **Workflows (optional).** Declare roles (plan, implement, test, review) once; agnostic generates each agent's native subagent config with the right model per role. Off unless you turn it on. *(soon)*
 - **Usage and cost.** Per-task tokens and cost, per-plan usage at a glance.
-- **Local. Free. MIT.** No server, no account, no telemetry.
+- **Local. Free. MIT.** No server, no account, no telemetry. agnostic makes one outbound call: a
+  daily check for a newer benchmark catalog. Put `catalog_check: false` in `~/.agnostic/config.yaml`
+  to turn it off; `agn catalog update` still works when you ask for it.
 
 ## How it works
 
@@ -83,6 +85,7 @@ Model overrides (Kimi in Claude Code, a local model in Codex, anything via OpenR
 - [Project context: `.ag/` and `agn sync`](docs/project-context.md)
 - [Recommendations: how the catalog works](docs/recommendations.md)
 - [Usage and cost: what agn counts](docs/usage.md)
+- [Catalog: what it holds, how it updates](docs/catalog.md)
 - [Workspace UI](docs/workspace.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Writing guide for docs and site](docs/WRITING.md)

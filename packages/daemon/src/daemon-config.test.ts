@@ -19,6 +19,7 @@ describe("readDaemonConfig", () => {
       port: null,
       plans: {},
       editor: null,
+      catalogCheck: true,
     });
   });
 
@@ -28,6 +29,7 @@ describe("readDaemonConfig", () => {
       port: 7500,
       plans: {},
       editor: null,
+      catalogCheck: true,
     });
   });
 
@@ -50,6 +52,16 @@ describe("readDaemonConfig", () => {
     const error = await readDaemonConfig(agnosticPaths(home)).catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(ConfigError);
     expect((error as ConfigError).code).toBe("ag-file-invalid");
+  });
+
+  it("reads the opt-out of the daily catalog check, and refuses anything but a boolean", async () => {
+    await writeFile(join(home, "config.yaml"), "catalog_check: false\n");
+    expect(await readDaemonConfig(agnosticPaths(home))).toMatchObject({ catalogCheck: false });
+    // `off` is YAML's string, not its boolean: a typo must not read as "on".
+    await writeFile(join(home, "config.yaml"), "catalog_check: off\n");
+    const error = await readDaemonConfig(agnosticPaths(home)).catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(ConfigError);
+    expect((error as ConfigError).message).toContain("catalog_check");
   });
 
   it("refuses an unknown key", async () => {
@@ -91,6 +103,7 @@ describe("writeDaemonConfigPlans", () => {
       port: 7500,
       editor: "cursor",
       plans: { claude: "max20", chatgpt: "plus" },
+      catalogCheck: true,
     });
   });
 
@@ -101,6 +114,14 @@ describe("writeDaemonConfigPlans", () => {
       port: null,
       editor: null,
       plans: { claude: "pro" },
+      catalogCheck: true,
     });
+  });
+
+  it("keeps an opted-out daily catalog check", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "catalog_check: false\n");
+    await writeDaemonConfigPlans(paths, { claude: "pro" });
+    expect(await readDaemonConfig(paths)).toMatchObject({ catalogCheck: false });
   });
 });

@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Catalog } from "@agnostic/catalog";
+import { type Catalog, catalogSource } from "@agnostic/catalog";
 import {
   type AgnosticPaths,
   agnosticPaths,
@@ -17,11 +17,13 @@ import type { LocalServer } from "@agnostic/registry";
 import { type ServerType, serve } from "@hono/node-server";
 import type { Hono } from "hono";
 import { createApp } from "./app.js";
+import { createCatalogStore } from "./catalog-store.js";
 import type { Detection } from "./detection-cache.js";
 import { createEventFeed } from "./event-feed.js";
 import { createLogger } from "./log.js";
 import {
   fixtureCatalog,
+  fixtureCatalogPath,
   fixtureDetection,
   fixtureEditors,
   launchDetection,
@@ -124,6 +126,11 @@ type TestDaemonOptions = {
    * The home the daemon reads harness auth files and transcripts under; the state directory by
    * default. A usage test points it at a tree holding `.claude/projects` and `.codex/sessions`.
    */
+  /** The base the catalog update reads; a port nothing listens on unless a test serves one. */
+  catalogUrl?: string;
+  /** Off by default: no test reaches off this machine on a timer. */
+  catalogCheck?: boolean;
+  /** The home the daemon watches for harness auth files; the state directory by default. */
   userHome?: string;
   /** The editors the stub detection reports; `[]` is a machine with none installed. */
   editors?: Editor[];
@@ -173,14 +180,27 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
   let calls = 0;
   let port = 0;
 
-  const app = createApp({
+  const { app, close: closeApp } = createApp({
     ledger,
     paths,
     feed,
     executor,
     verdicts,
     home: userHome,
-    catalog: opts.catalog ?? (await fixtureCatalog()),
+    catalog: createCatalogStore({
+      loaded: {
+        catalog: opts.catalog ?? (await fixtureCatalog()),
+        origin: "bundled",
+        path: fixtureCatalogPath(),
+        problems: [],
+      },
+      downloaded: paths.catalog,
+      bundled: fixtureCatalogPath(),
+      log,
+    }),
+    // 127.0.0.1:1 refuses at once, so an update in a test that serves nothing fails locally.
+    catalogSource: catalogSource({ AGNOSTIC_CATALOG_URL: opts.catalogUrl ?? "http://127.0.0.1:1" }),
+    catalogCheck: opts.catalogCheck ?? false,
     // HOME is always the test's own: an installer that writes per user must never find the real one.
     env: launch?.env ?? { PATH: "/opt/bin", HOME: userHome },
     token: TEST_TOKEN,
@@ -238,6 +258,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     readLog: () => readFile(logFile, "utf8"),
     close: async () => {
       await server.stop();
+      closeApp();
       feed.close();
       verdicts.close();
       await executor.close();

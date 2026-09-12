@@ -12,6 +12,7 @@ export type AgnosticPaths = {
   daemon: string;
   hooks: string;
   catalog: string;
+  catalogCheck: string;
 };
 
 export function agnosticHome(env: NodeJS.ProcessEnv = process.env): string {
@@ -35,6 +36,8 @@ export function agnosticPaths(home: string = agnosticHome()): AgnosticPaths {
     hooks: join(home, "hooks"),
     // A downloaded catalog, which serves only when it parses and is newer than the bundled one.
     catalog: join(home, "catalog.json"),
+    // When the daemon last asked whether a newer catalog exists, so a restart is not a new ask.
+    catalogCheck: join(home, "catalog-check.json"),
   };
 }
 

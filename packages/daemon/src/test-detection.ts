@@ -1,8 +1,9 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type Catalog, readCatalogFile } from "@agnostic/catalog";
+import { type Catalog, type LoadedCatalog, readCatalogFile } from "@agnostic/catalog";
 import type { Editor, HarnessId, HarnessReport, Profile } from "@agnostic/core";
 import { harnessDefinition, type LocalServer } from "@agnostic/registry";
+import type { CatalogStore } from "./catalog-store.js";
 import type { Detection } from "./detection-cache.js";
 
 // Not part of the package's exports: this is what a daemon test detects instead of a real machine.
@@ -40,16 +41,30 @@ function fixtureReport(models: string[], harness: HarnessId): HarnessReport {
   };
 }
 
+/** The file the fixture catalog is read from, which a test daemon reloads as its bundled copy. */
+export function fixtureCatalogPath(): string {
+  return fileURLToPath(new URL("../../../tests/fixtures/catalog/complete.json", import.meta.url));
+}
+
 /** The catalog every daemon test runs against, so nothing here depends on the shipped snapshot. */
 export async function fixtureCatalog(): Promise<Catalog> {
-  const file = fileURLToPath(
-    new URL("../../../tests/fixtures/catalog/complete.json", import.meta.url),
-  );
+  const file = fixtureCatalogPath();
   const catalog = await readCatalogFile(file);
   if (catalog === null) {
     throw new Error(`the fixture catalog is missing: ${file}`);
   }
   return catalog;
+}
+
+/** One catalog that never changes, for a test that wires `realDetect` up by hand. */
+export function fixtureCatalogStore(catalog: Catalog): CatalogStore {
+  const loaded: LoadedCatalog = {
+    catalog,
+    origin: "bundled",
+    path: fixtureCatalogPath(),
+    problems: [],
+  };
+  return { current: () => loaded, reload: () => Promise.resolve(loaded) };
 }
 
 export function fixtureDetection(

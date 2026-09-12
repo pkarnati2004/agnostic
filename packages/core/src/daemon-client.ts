@@ -1,3 +1,4 @@
+import type { CatalogRowsResponse, CatalogUpdateResponse } from "./catalog-api.js";
 import {
   type AdoptRequest,
   ApiErrorBodySchema,
@@ -77,6 +78,10 @@ export type DaemonClient = {
   taskUsage(id: string): Promise<TaskUsageResponse>;
   /** What the task cost and what became of its branch; the daemon rechecks the verdict first. */
   taskOutcome(id: string): Promise<OutcomeResponse>;
+  /** The catalog rows behind a profile, marked where the last recommendation leaned on them. */
+  catalogRows(profile: string): Promise<CatalogRowsResponse>;
+  /** Asks the published catalog whether it is newer, and downloads it when it is (ADR 002). */
+  catalogUpdate(): Promise<CatalogUpdateResponse>;
   /** Resumes with `Last-Event-ID` after a dropped connection; ends when `signal` aborts. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -155,6 +160,9 @@ export function createDaemonClient(opts: {
     usage: () => json<UsageResponse>("GET", "/usage"),
     taskUsage: (id) => json<TaskUsageResponse>("GET", `/tasks/${encodeURIComponent(id)}/usage`),
     taskOutcome: (id) => json<OutcomeResponse>("GET", `/tasks/${encodeURIComponent(id)}/outcome`),
+    catalogRows: (profile) =>
+      json<CatalogRowsResponse>("GET", `/catalog/rows?profile=${encodeURIComponent(profile)}`),
+    catalogUpdate: () => json<CatalogUpdateResponse>("POST", "/catalog/update"),
     events: (after, signal) => streamEvents(doFetch, base, headers, after, signal),
   };
 }

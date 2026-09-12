@@ -16,5 +16,10 @@ picks between the copy bundled here and a newer one downloaded into `~/.agnostic
   `coding_agent_bench` tables measure Pi and OpenCode as well as Claude Code and Codex, so all four
   tier-1 harnesses have harness-level evidence here and not only model-level rows.
 
-It is not: scoring, explanations, pricing arithmetic, or the download. The file is generated
+- `updateCatalog` is the one outbound call agn makes (ADR 002): a GET of the published manifest,
+  and a GET of the catalog only when the manifest names a newer version. It writes the download
+  only when the checksum, the schema and the version all match the manifest, and replaces the file
+  atomically. The timer, the last-check state file and the endpoints belong to the daemon.
+
+It is not: scoring, explanations, pricing arithmetic, or the schedule. The file is generated
 upstream by the `agnostic-catalog` repo; the copy here is a snapshot transcribed by hand.
