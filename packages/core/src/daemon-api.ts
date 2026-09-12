@@ -153,3 +153,44 @@ export const EventsQuerySchema = z.strictObject({
   after: z.coerce.number().int().nonnegative().optional(),
 });
 export type EventsQuery = z.output<typeof EventsQuerySchema>;
+
+// `agn init` creates `.ag/`; the seed for `instructions.md` is an existing instructions file or
+// agn's template, and the answer says which it was (ADR 017).
+export const InitRequestSchema = z.strictObject({
+  from: z.enum(["CLAUDE.md", "AGENTS.md"]).optional(),
+  force: z.boolean().optional(),
+});
+export type InitRequest = z.infer<typeof InitRequestSchema>;
+
+export type InitSource = "CLAUDE.md" | "AGENTS.md" | "template";
+
+/** `file` is relative to the repo root; `source` is set only for a seeded `instructions.md`. */
+export type InitWrite = {
+  file: string;
+  action: "created" | "kept" | "rewritten";
+  source: InitSource | null;
+};
+
+export type InitResponse = { writes: InitWrite[] };
+
+/** The files `agn sync` generates from `.ag/instructions.md`, relative to the repo root. */
+export type SyncTarget = "CLAUDE.md" | "AGENTS.md";
+
+export type SyncAction = "create" | "update" | "unchanged" | "conflict";
+
+/** `content` is what sync would write, whatever the action; `reason` is set for some of them. */
+export type SyncWrite = {
+  file: SyncTarget;
+  action: SyncAction;
+  content: string;
+  reason: string | null;
+};
+
+export const SyncRequestSchema = z.strictObject({
+  dryRun: z.boolean().optional(),
+  force: z.boolean().optional(),
+});
+export type SyncRequest = z.infer<typeof SyncRequestSchema>;
+
+/** `applied` is false after a dry run: the plan is the same, nothing on disk changed. */
+export type SyncResponse = { writes: SyncWrite[]; applied: boolean };

@@ -12,6 +12,7 @@
     { "path": "../executor-tmux" },
     { "path": "../hooks" },
     { "path": "../ledger" },
-    { "path": "../registry" }
+    { "path": "../registry" },
+    { "path": "../sync" }
   ]
 }

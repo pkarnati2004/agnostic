@@ -34,6 +34,10 @@ const statusByCode: Record<string, number> = {
   "session-not-attachable": 409,
   // The worktree a task ran in is gone; the branch is not, so the work continues as a new task.
   "worktree-cleaned": 409,
+  // A generated file was written by hand, or two instructions files disagree: the user decides.
+  "sync-conflict": 409,
+  "init-ambiguous-source": 409,
+  "init-source-generated": 409,
   "request-invalid": 400,
   "ambiguous-id": 400,
   "path-not-found": 400,
@@ -41,6 +45,9 @@ const statusByCode: Record<string, number> = {
   "path-inside-worktrees": 400,
   "ag-file-malformed": 400,
   "ag-file-invalid": 400,
+  // Nothing to generate from, or nothing to seed from: `agn init` is the next step either way.
+  "instructions-missing": 400,
+  "init-source-missing": 400,
   "invalid-profile-id": 400,
   "harness-unknown": 400,
   "profile-required": 400,

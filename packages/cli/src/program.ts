@@ -7,12 +7,14 @@ import { cleanCommand } from "./commands/clean.js";
 import { daemonCommand } from "./commands/daemon.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { hooksCommand } from "./commands/hooks.js";
+import { initCommand } from "./commands/init.js";
 import { profilesCommand } from "./commands/profiles.js";
 import { reposCommand } from "./commands/repos.js";
 import { resumeCommand } from "./commands/resume.js";
 import { runCommand } from "./commands/run.js";
 import { statusCommand } from "./commands/status.js";
 import { stopCommand } from "./commands/stop.js";
+import { syncCommand } from "./commands/sync.js";
 import type { CliContext, Output } from "./context.js";
 import { renderError } from "./render-error.js";
 
@@ -49,6 +51,8 @@ export function createProgram(ctx: CliContext, version: string): Command {
     cleanCommand(ctx),
     adoptCommand(ctx),
     hooksCommand(ctx),
+    initCommand(ctx),
+    syncCommand(ctx),
   ]) {
     program.addCommand(command);
   }

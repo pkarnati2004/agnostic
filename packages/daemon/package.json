@@ -24,6 +24,7 @@
     "@agnostic/hooks": "workspace:*",
     "@agnostic/ledger": "workspace:*",
     "@agnostic/registry": "workspace:*",
+    "@agnostic/sync": "workspace:*",
     "@hono/node-server": "2.1.1",
     "hono": "4.13.7",
     "zod": "4.6.1"

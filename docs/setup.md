@@ -56,9 +56,11 @@ command of the session, or run `agn daemon restart` after exporting one.
 ```bash
 cd ~/code/my-repo
 agn add .
-agn init        # creates .ag/instructions.md from an existing CLAUDE.md/AGENTS.md if present
-agn sync        # writes CLAUDE.md, AGENTS.md, and OpenCode config from .ag/instructions.md
+agn init        # creates .ag/, seeding instructions.md from an existing CLAUDE.md or AGENTS.md
+agn sync        # writes CLAUDE.md and AGENTS.md from .ag/instructions.md
 ```
+
+Both generated files start with a comment saying they are generated, and both are meant to be committed: a clone without agn, and every worktree agn creates, then carries the same instructions. `agn sync --dry-run` prints what it would write without touching anything.
 
 ## GitHub (optional)
 

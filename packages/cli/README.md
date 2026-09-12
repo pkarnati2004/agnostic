@@ -8,6 +8,8 @@ argv into one client call and prints the answer as an aligned table, `key: value
   listening (`agn daemon status` and `agn daemon stop` are the exceptions).
 - `agn daemon <cmd>` runs the daemon package's own entry as a child process and forwards its exit
   code, so the CLI never loads the daemon, the registry or SQLite.
+- `agn init` and `agn sync` render the daemon's plan: one line per file, and on `--dry-run` the
+  text each file would get, indented.
 - Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
 
 It is not: state, detection, launching, or policy. It holds no opinion the daemon does not already

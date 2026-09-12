@@ -1,0 +1,157 @@
+import type { InitSource, InitWrite } from "@agnostic/core";
+import { SyncError } from "./error.js";
+import { isGenerated } from "./generated-header.js";
+
+/** The five entries `agn init` owns, in the order it reports them. */
+export const AG_FILES = {
+  config: ".ag/agnostic.yaml",
+  preferences: ".ag/preferences.yaml",
+  instructions: ".ag/instructions.md",
+  decisions: ".ag/decisions.md",
+  tasks: ".ag/tasks/.gitkeep",
+} as const;
+
+export type InitInputs = {
+  repoId: string;
+  /** The heading of the template, when the repo has no instructions file to seed from. */
+  repoName: string;
+  hasAgnosticYaml: boolean;
+  hasPreferences: boolean;
+  hasInstructions: boolean;
+  hasDecisions: boolean;
+  hasTasksDir: boolean;
+  claudeMd: string | null;
+  agentsMd: string | null;
+};
+
+export type InitSeed = { text: string; source: InitSource };
+
+/** `instructions` is null when the repo already has the file, which init never rewrites. */
+export type InitPlan = { repoId: string; writes: InitWrite[]; instructions: InitSeed | null };
+
+export type InitOptions = { from: "CLAUDE.md" | "AGENTS.md" | null; force: boolean };
+
+export function planInit(inputs: InitInputs, opts: InitOptions): InitPlan {
+  const seed = inputs.hasInstructions ? null : chooseSeed(inputs, opts.from);
+  return {
+    repoId: inputs.repoId,
+    instructions: seed,
+    writes: [
+      // `agnostic.yaml` is the one file --force rewrites: agn generates it, the rest are yours.
+      entry(AG_FILES.config, { exists: inputs.hasAgnosticYaml, force: opts.force }),
+      entry(AG_FILES.preferences, { exists: inputs.hasPreferences }),
+      entry(AG_FILES.instructions, {
+        exists: inputs.hasInstructions,
+        source: seed?.source ?? null,
+      }),
+      entry(AG_FILES.decisions, { exists: inputs.hasDecisions }),
+      entry(AG_FILES.tasks, { exists: inputs.hasTasksDir }),
+    ],
+  };
+}
+
+function entry(
+  file: string,
+  of: { exists: boolean; force?: boolean; source?: InitSource | null },
+): InitWrite {
+  const source = of.source ?? null;
+  if (!of.exists) {
+    return { file, action: "created", source };
+  }
+  return { file, action: of.force === true ? "rewritten" : "kept", source };
+}
+
+/**
+ * Never guess and never concatenate: two instructions files that differ are a question for the
+ * user, because whichever agn picked would quietly stop being read.
+ */
+function chooseSeed(inputs: InitInputs, from: "CLAUDE.md" | "AGENTS.md" | null): InitSeed {
+  if (from !== null) {
+    return named(inputs, from);
+  }
+  // A CLAUDE.md that is only `@AGENTS.md` is Claude Code's import of AGENTS.md, not content.
+  const claudeMd = importsAgents(inputs.claudeMd) ? null : ownText(inputs.claudeMd);
+  const agentsMd = ownText(inputs.agentsMd);
+  if (claudeMd !== null && agentsMd !== null) {
+    if (claudeMd !== agentsMd) {
+      throw new SyncError("CLAUDE.md and AGENTS.md are both here and they differ", {
+        code: "init-ambiguous-source",
+        hint: "Run `agn init --from CLAUDE.md` or `agn init --from AGENTS.md` to say which one to keep.",
+      });
+    }
+    return { text: claudeMd, source: "CLAUDE.md" };
+  }
+  if (claudeMd !== null) {
+    return { text: claudeMd, source: "CLAUDE.md" };
+  }
+  if (agentsMd !== null) {
+    return { text: agentsMd, source: "AGENTS.md" };
+  }
+  const generated = generatedFiles(inputs);
+  if (generated.length > 0) {
+    throw generatedSource(generated, carrierOf(inputs, generated));
+  }
+  return { text: template(inputs.repoName), source: "template" };
+}
+
+/** The file the user named, which has to be there and has to be theirs. */
+function named(inputs: InitInputs, from: "CLAUDE.md" | "AGENTS.md"): InitSeed {
+  const text = from === "CLAUDE.md" ? inputs.claudeMd : inputs.agentsMd;
+  if (text === null) {
+    throw new SyncError(`this repo has no ${from} to seed .ag/instructions.md from`, {
+      code: "init-source-missing",
+      hint: "Run `agn init` without --from to start from agn's template.",
+    });
+  }
+  if (isGenerated(text)) {
+    throw generatedSource([from], carrierOf(inputs, [from]));
+  }
+  return { text, source: from };
+}
+
+/** Null for a file agn wrote: it is a copy of the instructions, not a source for them. */
+function ownText(text: string | null): string | null {
+  return text === null || isGenerated(text) ? null : text;
+}
+
+function generatedFiles(inputs: InitInputs): string[] {
+  const candidates: [string, string | null][] = [
+    ["CLAUDE.md", inputs.claudeMd],
+    ["AGENTS.md", inputs.agentsMd],
+  ];
+  return candidates.filter(([, text]) => text !== null && isGenerated(text)).map(([file]) => file);
+}
+
+/**
+ * Seeding from a generated file would copy the header into `instructions.md`, and every sync from
+ * then on would render that header as if it were the user's own text.
+ */
+function generatedSource(files: string[], carrier: string): SyncError {
+  const all = files.join(" and ");
+  const verb = files.length === 1 ? "was" : "were";
+  return new SyncError(
+    `${all} ${verb} generated by agn, so seeding from it would nest the header`,
+    {
+      code: "init-source-generated",
+      // Never "delete it": with `.ag/` gone, the generated file holds the only copy of the text.
+      hint: `Restore .ag/instructions.md from git, or remove the first line of ${carrier} and run \`agn init --from ${carrier}\`.`,
+    },
+  );
+}
+
+/** AGENTS.md carries the text; CLAUDE.md only imports it, so it is the one worth recovering. */
+function carrierOf(inputs: InitInputs, files: string[]): string {
+  return inputs.agentsMd !== null ? "AGENTS.md" : (files[0] ?? "AGENTS.md");
+}
+
+function importsAgents(claudeMd: string | null): boolean {
+  if (claudeMd === null) {
+    return false;
+  }
+  const lines = claudeMd.split("\n").filter((line) => line.trim() !== "");
+  return lines.length === 1 && lines[0]?.trim() === "@AGENTS.md";
+}
+
+function template(repoName: string): string {
+  return `# ${repoName}\n\nInstructions every coding agent reads before working in this repo. Edit this file; \`agn sync\` generates the agent-specific copies.\n`;
+}

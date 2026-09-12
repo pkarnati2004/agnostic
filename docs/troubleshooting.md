@@ -26,13 +26,19 @@
 
 **`agn clean` says the task is still running.** Clean removes a task's worktree, so the agent has to be out of it first. `agn stop <task>`, then clean. The branch survives either way unless you pass `--delete-branch`.
 
+**`agn sync` says a file "was written by hand and agn will not overwrite that".** The file no longer starts with agn's generated header, so agn treats it as yours. Copy what you want to keep into `.ag/instructions.md`, then run `agn sync --force` to regenerate it. During `agn run` or `agn resume` the same case is not an error: the task starts on the file that is there, and the daemon log records `sync skipped`.
+
+**Something you added to CLAUDE.md or AGENTS.md disappeared.** The header means agn owns the whole file, so an edit below an intact header is overwritten on the next sync with no conflict and no warning. Add the text to `.ag/instructions.md` and run `agn sync`; `git diff` on the generated file shows what was lost.
+
+**`agn init` says CLAUDE.md and AGENTS.md "are both here and they differ".** agn will not guess which one your instructions live in, and it never concatenates them. Run `agn init --from CLAUDE.md` or `agn init --from AGENTS.md`.
+
 **A model override isn't offered.** The provider key isn't in the environment the daemon was started from. Restart the daemon (`agn daemon restart`) after exporting the key.
 
 **The daemon won't start.** Port in use or a stale `daemon.json` in `~/.agnostic/`. `agn daemon restart --force`. When a start fails, agn names the log file to read; the reason is in its last lines.
 
 **A command fails with "the agn daemon could not be started".** Every command except `agn daemon status` and `agn daemon stop` starts the daemon itself, so this means the start failed rather than that you forgot one. Check `~/.agnostic/logs/agnd.log`, then `agn daemon start` to see the error directly.
 
-**You want to script agn.** `--json` prints the daemon's response body instead of a table, on `agn add`, `agn repos`, `agn doctor`, `agn profiles`, `agn run`, `agn status`, `agn stop`, `agn clean`, `agn adopt` and `agn hooks install`; on `agn attach` and `agn resume` it prints the tmux command instead of running it. Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
+**You want to script agn.** `--json` prints the daemon's response body instead of a table, on `agn add`, `agn repos`, `agn doctor`, `agn profiles`, `agn run`, `agn status`, `agn stop`, `agn clean`, `agn adopt`, `agn hooks install`, `agn init` and `agn sync`; on `agn attach` and `agn resume` it prints the tmux command instead of running it. Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
 
 **Where things live.** Task database `~/.agnostic/agnostic.db`; worktrees `~/.agnostic/worktrees/<repo>/<task>`; the daemon log `~/.agnostic/logs/agnd.log`.
 

@@ -15,6 +15,9 @@ the ledger, and the detection it caches for the life of the process.
 - `POST /tasks/:id/resume` walks the resume tree (live session, recorded session id, fresh with the
   task context); `GET /repos/:id/sessions` and `POST /repos/:id/adopt` take over a session someone
   started outside agn.
+- `POST /repos/:id/init` creates `.ag/`; `POST /repos/:id/sync` renders `CLAUDE.md` and `AGENTS.md`
+  from it, or plans the render for a dry run. Every launch syncs the directory it is about to start
+  an agent in, and logs the refusal rather than failing the run.
 - The log is `~/.agnostic/logs/agnd.log`: one line per request, with method, path, status and
   duration. No prompt, task title or token ever reaches it.
 
