@@ -46,6 +46,8 @@ export type UsageQueries = {
     rows: UsageInput[],
   ): { inserted: number; event: Event<"usage.recorded"> | null };
   sumForTask(taskId: string): UsageSum;
+  /** What the harness actually ran: the newest row that names a model, null when none does. */
+  latestModelForTask(taskId: string): string | null;
   /** Half-open window `[since, until)`; the caller owns day and week boundaries. */
   summarize(window: { since: string; until: string }): UsageBreakdown[];
 };
@@ -55,6 +57,10 @@ const SUMS =
 
 export function createUsageQueries(db: Database, events: EventQueries): UsageQueries {
   const sumTask = db.prepare(`SELECT ${SUMS} FROM usage WHERE task_id = ?`);
+  const latestModel = db.prepare(
+    `SELECT model FROM usage WHERE task_id = ? AND model IS NOT NULL
+      ORDER BY ts DESC, id DESC LIMIT 1`,
+  );
   // Attributed and unattributed rows never merge: only the first kind can be shown on a task.
   const summarizeRows = db.prepare(
     `SELECT harness, model, task_id IS NOT NULL AS attributed, ${SUMS}
@@ -67,6 +73,10 @@ export function createUsageQueries(db: Database, events: EventQueries): UsageQue
     record: recordUsage(db, events),
     sumForTask(taskId: string): UsageSum {
       return toSum(sumTask.get(taskId) as SumRow);
+    },
+    latestModelForTask(taskId: string): string | null {
+      const row = latestModel.get(taskId) as { model: string } | undefined;
+      return row?.model ?? null;
     },
     summarize(window: { since: string; until: string }): UsageBreakdown[] {
       const rows = summarizeRows.all(window.since, window.until) as BreakdownRow[];

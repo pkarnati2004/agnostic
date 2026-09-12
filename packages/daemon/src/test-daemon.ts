@@ -22,6 +22,7 @@ import { createLogger } from "./log.js";
 import { fixtureCatalog, fixtureDetection, launchDetection } from "./test-detection.js";
 import { createLaunchEnv, type LaunchEnv } from "./test-launch-env.js";
 import { createWorkspace, type TestRepoOptions } from "./test-workspace.js";
+import { createVerdictSweep, type VerdictSweep } from "./verdict-sweep.js";
 
 // Not part of the package's exports: this is what every daemon test builds its fixture from.
 export const TEST_TOKEN = "0123456789abcdef";
@@ -33,6 +34,8 @@ export type TestDaemon = {
   logFile: string;
   /** Set only when the daemon was built with `tmux: true`. */
   launch: LaunchEnv | null;
+  /** No timer: a test that cares about verdicts runs the sweep itself (ADR 022). */
+  verdicts: VerdictSweep;
   detectCalls(): number;
   addRepo(opts?: TestRepoOptions): Promise<Repo>;
   request(path: string, init?: RequestInit): Promise<Response>;
@@ -127,6 +130,11 @@ async function createParts(opts: TestDaemonOptions) {
   const ledger = openLedger(paths.db);
   const launch = opts.tmux === true ? await createLaunchEnv(home) : null;
   opts.seed?.(ledger);
+  const log = createLogger(logFile);
+  const executor =
+    launch === null
+      ? idleExecutor()
+      : createTmuxExecutor({ paths, socketName: launch.socketName, env: launch.env });
   return {
     home,
     userHome,
@@ -134,12 +142,10 @@ async function createParts(opts: TestDaemonOptions) {
     paths,
     ledger,
     launch,
-    log: createLogger(logFile),
+    log,
+    executor,
+    verdicts: createVerdictSweep({ ledger, executor, log }, null),
     feed: createEventFeed(ledger, opts.feedPollMs),
-    executor:
-      launch === null
-        ? idleExecutor()
-        : createTmuxExecutor({ paths, socketName: launch.socketName, env: launch.env }),
     // The paths are handed over so a test can run the real detection against this daemon's config.
     detect: () =>
       opts.detect === undefined
@@ -153,7 +159,7 @@ async function createParts(opts: TestDaemonOptions) {
 }
 
 export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<TestDaemon> {
-  const { home, userHome, paths, logFile, ledger, launch, log, feed, executor, detect } =
+  const { home, userHome, paths, logFile, ledger, launch, log, feed, executor, verdicts, detect } =
     await createParts(opts);
   const repoDirs: string[] = [];
   let calls = 0;
@@ -164,6 +170,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     paths,
     feed,
     executor,
+    verdicts,
     home: userHome,
     catalog: opts.catalog ?? (await fixtureCatalog()),
     // HOME is always the test's own: an installer that writes per user must never find the real one.
@@ -197,6 +204,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     paths,
     logFile,
     launch,
+    verdicts,
     detectCalls: () => calls,
     addRepo: async (repoOpts = {}) => {
       const path = await createWorkspace(repoOpts);
@@ -222,6 +230,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     close: async () => {
       await server.stop();
       feed.close();
+      verdicts.close();
       await executor.close();
       await launch?.cleanup();
       ledger.close();

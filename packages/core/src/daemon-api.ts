@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { AttachInfo, DetectedHarness } from "./executor.js";
+import type { Outcome } from "./outcome.js";
 import { type Plan, type Plans, PlansSchema, type PlanVendor } from "./plans.js";
 import type { Billing, HarnessId, Profile } from "./profile.js";
 import type { Recommendation } from "./recommendation.js";
@@ -38,7 +39,12 @@ export const HealthResponseSchema = DaemonInfoSchema.extend({
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
-export type RepoListResponse = { repos: Repo[] };
+/**
+ * A registered repo plus the one `.ag/agnostic.yaml` field a client needs to say what a run will
+ * do. Read per request rather than stored: the file is the user's, and only the daemon reads it.
+ */
+export type RepoListRow = Repo & { testCommand: string | null };
+export type RepoListResponse = { repos: RepoListRow[] };
 
 export const RegisterRepoRequestSchema = z.strictObject({
   // Absolute, or relative to the client's cwd: the client resolves before sending.
@@ -73,6 +79,8 @@ export const RunTaskRequestSchema = z.strictObject({
   base: z.string().min(1).optional(),
   /** Replaces what the classifier read out of the prompt, for this task only. */
   intent: TaskIntentSchema.optional(),
+  /** Skips the repo's `test_command` before launch, so the agent starts at once (ADR 022). */
+  skipTests: z.boolean().optional(),
 });
 export type RunTaskRequest = z.infer<typeof RunTaskRequestSchema>;
 
@@ -244,6 +252,9 @@ export type UsageResponse = {
   week: { window: UsageWindow; plans: PlanUsage[] };
   scannedAt: string;
 };
+
+/** One task's outcome row. `outcome` is null until the task closes and agn records one. */
+export type OutcomeResponse = { task: Task; outcome: Outcome | null };
 
 /** One task's tokens. `billing` comes from the task's profile; null when it cannot be resolved. */
 export type TaskUsageResponse = { task: Task; usage: UsageSum; billing: Billing | null };

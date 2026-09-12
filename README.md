@@ -42,7 +42,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn repos` | List the registered repos |
 | `agn doctor` | Detect installed agents, logins, provider keys, local model servers |
 | `agn profiles` | List the agent × model combinations you can run right now |
-| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>`, `--intent <class>` |
+| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>`, `--intent <class>`, `--skip-tests` |
 | `agn status [<task>]` | One task, or every task across your repos. `--all` lists everything from inside a worktree |
 | `agn attach [<task>]` | Join the session in your terminal; defaults to the task of the worktree you are in |
 | `agn stop <task>` | Stop the session |

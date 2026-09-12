@@ -42,6 +42,7 @@ function seedTask(profileId = "claude-code:default:native", sessionId = "s-aaaa"
     branch: null,
     status: "running",
     origin: "agn",
+    baseCommit: null,
     createdAt: new Date(Date.now() - 60_000).toISOString(),
     updatedAt: now,
     session: {

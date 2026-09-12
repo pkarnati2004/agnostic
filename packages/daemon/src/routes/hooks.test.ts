@@ -85,11 +85,13 @@ describe("POST /repos/:id/hooks", () => {
         branch: null,
         status: "queued",
         origin: "agn",
+        baseCommit: null,
         createdAt: now,
         updatedAt: now,
       });
       daemon.ledger.tasks.start(id, {
         branch: null,
+        baseCommit: null,
         session: {
           harness: "claude-code",
           sessionId: null,

@@ -48,6 +48,7 @@ function seedTask(opts: {
     branch: null,
     status: opts.status ?? "running",
     origin: "agn",
+    baseCommit: null,
     createdAt: opts.startedAt ?? new Date(Date.now() - 60_000).toISOString(),
     updatedAt: opts.updatedAt ?? now,
     session: {

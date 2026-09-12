@@ -21,6 +21,7 @@ const task: Task = {
   branch: null,
   status: "running",
   origin: "agn",
+  baseCommit: null,
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:00:00.000Z",
 };
@@ -181,5 +182,22 @@ describe("usage.summarize", () => {
   it("reports no cost when nothing in the group was priced", () => {
     const codex = ledger.usage.summarize(day).find((line) => line.harness === "codex");
     expect(codex).toMatchObject({ costUsd: null, tokensInput: 1800, tokensCacheRead: null });
+  });
+});
+
+describe("usage.latestModelForTask", () => {
+  it("reports the model of the newest row that names one", () => {
+    ledger.usage.record(task.id, [
+      row({ ts: "2026-09-10T12:10:00.000Z", model: "sonnet-4.5", ref: "a" }),
+      row({ ts: "2026-09-10T12:40:00.000Z", model: "opus-5", ref: "b" }),
+      row({ ts: "2026-09-10T12:50:00.000Z", model: null, ref: "c" }),
+    ]);
+    expect(ledger.usage.latestModelForTask(task.id)).toBe("opus-5");
+  });
+
+  it("is null for a task with no rows, and for rows that name no model", () => {
+    expect(ledger.usage.latestModelForTask(task.id)).toBeNull();
+    ledger.usage.record(task.id, [row({ model: null, ref: "d" })]);
+    expect(ledger.usage.latestModelForTask(task.id)).toBeNull();
   });
 });

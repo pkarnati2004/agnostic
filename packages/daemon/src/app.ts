@@ -20,6 +20,7 @@ import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { bearerAuth } from "./auth.js";
 import { authFilesStamp } from "./auth-files.js";
+import { closeOutcome } from "./close-outcome.js";
 import { readDaemonConfig } from "./daemon-config.js";
 import { createDetectionCache, type Detection, type DetectionCache } from "./detection-cache.js";
 import { errorBody } from "./error.js";
@@ -29,6 +30,7 @@ import { adoptRoutes } from "./routes/adopt.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
 import { hookRoutes } from "./routes/hooks.js";
+import { outcomeRoutes } from "./routes/outcomes.js";
 import { profileRoutes } from "./routes/profiles.js";
 import { recommendRoutes } from "./routes/recommend.js";
 import { repoRoutes } from "./routes/repos.js";
@@ -37,6 +39,7 @@ import { taskRoutes } from "./routes/tasks.js";
 import { usageRoutes } from "./routes/usage.js";
 import { createTaskLifecycle, type TaskLifecycle } from "./task-lifecycle.js";
 import { createUsageScanner, type UsageScanner } from "./usage-scan.js";
+import type { VerdictSweep } from "./verdict-sweep.js";
 
 export type DaemonDeps = {
   ledger: Ledger;
@@ -59,6 +62,8 @@ export type DaemonDeps = {
   home: string;
   /** Owned by the caller: it polls the ledger, so it has to stop before the ledger closes. */
   feed: EventFeed;
+  /** Owned by the caller for the same reason: its timer writes outcome rows (ADR 022). */
+  verdicts: VerdictSweep;
   heartbeatMs?: number;
 };
 
@@ -72,11 +77,13 @@ export type DaemonContext = DaemonDeps & {
 export function createApp(deps: DaemonDeps): Hono {
   const detection = createDetectionCache(deps.detect, deps.ledger, () => authFilesStamp(deps.home));
   const usage = createUsageScanner({ ...deps, detection });
-  // A task that has just closed has written its last turn; chunk 15 prices it from these rows.
+  // A task that has just closed has written its last turn, and its worktree is nobody else's:
+  // the usage rows are read first, then the outcome row is priced from them.
   const lifecycle = createTaskLifecycle({
     ...deps,
     afterClose: async (task) => {
       await usage.scan({ taskId: task.id });
+      await closeOutcome(ctx, task);
     },
   });
   const ctx: DaemonContext = { ...deps, detection, lifecycle, usage };
@@ -86,10 +93,14 @@ export function createApp(deps: DaemonDeps): Hono {
   ctx.detection.refresh().catch((cause: unknown) => {
     deps.log.error("detection failed", { message: reason(cause) });
   });
-  // A task the ledger calls running may have died while the daemon was down (ADR 014).
-  lifecycle.reconcileAll().catch((cause: unknown) => {
-    deps.log.error("start-up reconcile failed", { message: reason(cause) });
-  });
+  // A task the ledger calls running may have died while the daemon was down (ADR 014). The
+  // verdict sweep runs after it, so a task settled here is swept in the same pass.
+  lifecycle
+    .reconcileAll()
+    .then(() => deps.verdicts.runOnce())
+    .catch((cause: unknown) => {
+      deps.log.error("start-up reconcile failed", { message: reason(cause) });
+    });
 
   const app = new Hono();
   app.use("*", requestLog(deps.log));
@@ -104,6 +115,7 @@ export function createApp(deps: DaemonDeps): Hono {
   app.route("/", hookRoutes(ctx));
   app.route("/", syncRoutes(ctx));
   app.route("/", usageRoutes(ctx));
+  app.route("/", outcomeRoutes(ctx));
 
   app.notFound((c) =>
     c.json({ error: { code: "not-found", message: `no route for ${c.req.path}` } }, 404),

@@ -8,5 +8,5 @@ Pure functions. Everything it needs arrives as arguments: it reads no file but i
 table, holds no state, and makes no call.
 
 Not here: detecting harnesses (`registry`), fetching or parsing the catalog (`catalog`), pricing
-tables (`catalog`), the ledger's own outcomes (`ledger`, blended in from chunk 15), and assembling
-the input (`daemon`).
+tables (`catalog`), reading the ledger's own outcomes (`ledger`; they arrive as
+history rows), and assembling the input (`daemon`).

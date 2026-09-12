@@ -244,7 +244,23 @@ agx status | grep -q "stopped"
 agx resume "$TASK" --json > "$WORK/resume.json"
 grep -q '"via": "native"' "$WORK/resume.json"
 agx status "$TASK" | grep -q "running"
+
+echo "smoke: agn outcomes for a task whose branch was merged"
+# What the agent would leave behind: a commit on the task's branch, made while it is still running.
+WORKTREE="$(agx status "$TASK" | awk '$1 == "worktree:" { print $2 }')"
+BRANCH="$(agx status "$TASK" | awk '$1 == "branch:" { print $2 }')"
+printf 'one\ntwo\nthree\n' > "$WORKTREE/agent.txt"
+git -C "$WORKTREE" add agent.txt
+git -C "$WORKTREE" -c user.email=t@agn.test -c user.name=agn commit -q -m "the agent's work"
 agx stop "$TASK" | grep -q "^stopped $TASK"
+
+agx outcomes "$TASK" > "$WORK/outcomes.txt"
+grep -q "^tests:" "$WORK/outcomes.txt"
+grep -q "^agent lines: *3$" "$WORK/outcomes.txt"
+grep -q "^verdict: *not merged$" "$WORK/outcomes.txt"
+git -C "$WORK/runrepo" merge --no-ff -q -m "merge the task" "$BRANCH"
+agx outcomes "$TASK" | grep -q "^verdict: *accepted"
+agx outcomes "$TASK" --json | grep -q '"accepted": true'
 
 echo "smoke: agn handoff to the next agent"
 HANDOFF_NOTE="the parser is done, the printer is not"
@@ -270,6 +286,9 @@ FOLDER_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/folder.txt")"
 ! agx run "second folder task" --profile claude-code --repo "$WORK/runfolder" 2> "$WORK/folder-error.txt"
 grep -q "folder workspaces run one task at a time" "$WORK/folder-error.txt"
 agx stop "$FOLDER_TASK" | grep -q "^stopped"
+# A folder task has no branch of agn's, so it has no lines and no verdict to report.
+agx outcomes "$FOLDER_TASK" | grep -q "^agent lines: *-$"
+agx outcomes "$FOLDER_TASK" | grep -q "^verdict: *-$"
 
 echo "smoke: agn adopt of an agent started outside agn"
 # ps reports the script's own name, so this copy of the fake agent has to be called `claude`; the

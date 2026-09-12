@@ -34,6 +34,7 @@ function task(over: Partial<Task> = {}): Task {
     branch: null,
     status: "running",
     origin: "agn",
+    baseCommit: null,
     createdAt: NOTE.createdAt,
     updatedAt: NOTE.createdAt,
     ...over,

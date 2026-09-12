@@ -52,7 +52,12 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
   const command = native ?? (await freshLaunchCommand(ctx, repo, { ...task, branch }, profile));
   const handle = await ctx.executor.launch({ taskId: task.id, cwd, command });
   return {
-    task: await relaunched(ctx, repo, task, profile, { handle, branch, native: native !== null }),
+    task: await relaunched(ctx, repo, task, profile, {
+      handle,
+      branch,
+      baseCommit: prepared?.baseCommit ?? task.baseCommit,
+      native: native !== null,
+    }),
     via: native === null ? "fresh" : "native",
     attach: ctx.executor.attach(handle),
   };
@@ -63,7 +68,13 @@ function running(ctx: DaemonContext, task: Task): Task {
   return TERMINAL.includes(task.status) ? ctx.ledger.tasks.setStatus(task.id, "running") : task;
 }
 
-type Relaunch = { handle: SessionHandle; branch: string | null; native: boolean };
+type Relaunch = {
+  handle: SessionHandle;
+  branch: string | null;
+  /** Only a resume that created the worktree has a base to report; otherwise the row keeps its own. */
+  baseCommit: string | null;
+  native: boolean;
+};
 
 /**
  * The guard and the row that leaves the terminal state are one synchronous transaction, so a
@@ -84,6 +95,7 @@ async function relaunched(
       assertFolderFree(ctx.ledger, repo, task.id);
       return ctx.ledger.tasks.start(task.id, {
         branch: at.branch,
+        baseCommit: at.baseCommit,
         session: launchedSession(profile.harness, at.handle, sessionId),
       });
     });

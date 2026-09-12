@@ -71,7 +71,7 @@ export function taskActionRoutes(ctx: DaemonContext): Hono {
 
 /**
  * Removing the worktree is the executor's job; recording that agn removed it is the ledger's, so
- * chunk 15 can tell a cleaned worktree from one a person deleted by hand (ADR 014).
+ * the verdict can tell a cleaned worktree from one a person deleted by hand (ADR 014).
  */
 async function clean(
   ctx: DaemonContext,

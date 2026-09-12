@@ -59,6 +59,8 @@ async function daemon(detection: Detection, catalog: Catalog) {
       refresh: () => Promise.resolve(detection),
     },
     lifecycle: stubLifecycle(),
+    usage: { scan: () => Promise.resolve({ inserted: 0 }) },
+    verdicts: { runOnce: () => Promise.resolve(), close: () => undefined },
   };
   return {
     ctx,
@@ -74,6 +76,7 @@ async function daemon(detection: Detection, catalog: Catalog) {
 
 function stubLog(): Logger {
   return {
+    debug: () => undefined,
     info: () => undefined,
     warn: () => undefined,
     error: () => undefined,
@@ -128,6 +131,7 @@ function task(over: Partial<Task> & Pick<Task, "repoId">): Task {
     branch: null,
     status: "done",
     origin: "agn",
+    baseCommit: null,
     createdAt: now,
     updatedAt: now,
     ...over,

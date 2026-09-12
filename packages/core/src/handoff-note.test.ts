@@ -21,6 +21,7 @@ function from(over: Partial<Task> = {}): Task {
     branch: "agn/flag-t3n9v2wxyz",
     status: "stopped",
     origin: "agn",
+    baseCommit: null,
     createdAt: "2026-09-12T10:00:00.000Z",
     updatedAt: "2026-09-12T10:00:00.000Z",
     ...over,

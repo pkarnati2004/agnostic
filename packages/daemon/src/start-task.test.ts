@@ -240,6 +240,7 @@ function seedDoneTask(repo: Repo): void {
     branch: "agn/finished",
     status: "done",
     origin: "agn",
+    baseCommit: null,
     createdAt: now,
     updatedAt: now,
   });

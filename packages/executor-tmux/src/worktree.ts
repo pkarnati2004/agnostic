@@ -28,14 +28,18 @@ function slug(title: string): string {
   return slugged === "" ? "task" : slugged;
 }
 
-/** Idempotent: a worktree already registered for this task's branch is reused as it stands. */
+/**
+ * Idempotent: a worktree already registered for this task's branch is reused as it stands. Only a
+ * worktree this call creates reports a base commit; a reused one started from a commit the ledger
+ * already knows, and guessing it again after the branch has moved would be a lie.
+ */
 export async function prepareWorktree(
   paths: AgnosticPaths,
   input: PrepareInput,
 ): Promise<Prepared> {
   const { repo, task } = input;
   if (repo.kind === "folder") {
-    return { cwd: repo.path, branch: null };
+    return { cwd: repo.path, branch: null, baseCommit: null };
   }
   const path = worktreePath(paths, repo.id, task.id);
   const branch = branchName(task, input.branchPrefix);
@@ -49,14 +53,15 @@ export async function prepareWorktree(
       throw occupied(path, `it is a worktree of ${existing ?? "a detached HEAD"}`);
     }
     // The setup command ran when the worktree was created; re-running it would redo the install.
-    return { cwd: path, branch };
+    return { cwd: path, branch, baseCommit: null };
   }
   if (await exists(path)) {
     throw occupied(path, "a directory is already there");
   }
-  await git(repo.path, await addArgs(repo.path, path, branch, input.base));
+  const { args, base } = await addArgs(repo.path, path, branch, input.base);
+  await git(repo.path, args);
   await runSetupCommand(input, path);
-  return { cwd: path, branch };
+  return { cwd: path, branch, baseCommit: base };
 }
 
 /** Removes the worktree and keeps the branch unless asked; the agent's commits outlive the run. */
@@ -97,14 +102,15 @@ async function addArgs(
   path: string,
   branch: string,
   base: string | null,
-): Promise<string[]> {
+): Promise<{ args: string[]; base: string | null }> {
   const known = await git(repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`], {
     allowFailure: true,
   });
   if (known.exitCode === 0) {
-    return ["worktree", "add", path, branch];
+    return { args: ["worktree", "add", path, branch], base: null };
   }
-  return ["worktree", "add", "-b", branch, path, await baseCommit(repoPath, base)];
+  const commit = await baseCommit(repoPath, base);
+  return { args: ["worktree", "add", "-b", branch, path, commit], base: commit };
 }
 
 /** Always a commit, never the working tree: what the agent starts from is what the user can read. */

@@ -13,6 +13,7 @@ import {
   type HooksInstallResponse,
   type InitRequest,
   type InitResponse,
+  type OutcomeResponse,
   type ProfilesResponse,
   type RecommendRequest,
   type RecommendResponse,
@@ -67,6 +68,8 @@ export type DaemonClient = {
   /** Today's and this week's tokens per plan, from the transcripts on this machine. */
   usage(): Promise<UsageResponse>;
   taskUsage(id: string): Promise<TaskUsageResponse>;
+  /** What the task cost and what became of its branch; the daemon rechecks the verdict first. */
+  taskOutcome(id: string): Promise<OutcomeResponse>;
   /** Resumes with `Last-Event-ID` after a dropped connection; ends when `signal` aborts. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -138,6 +141,7 @@ export function createDaemonClient(opts: {
       json<SyncResponse>("POST", `/repos/${encodeURIComponent(repoId)}/sync`, body),
     usage: () => json<UsageResponse>("GET", "/usage"),
     taskUsage: (id) => json<TaskUsageResponse>("GET", `/tasks/${encodeURIComponent(id)}/usage`),
+    taskOutcome: (id) => json<OutcomeResponse>("GET", `/tasks/${encodeURIComponent(id)}/outcome`),
     events: (after, signal) => streamEvents(doFetch, base, headers, after, signal),
   };
 }

@@ -3,9 +3,25 @@ import type { Scored } from "./score-profiles.js";
 
 /** The one sentence under a pick: what the evidence is, and what running it costs the user. */
 export function explain(scored: Scored, taskClass: TaskClass): string {
-  const reason = evidenceReason(scored.evidence.level, taskClass.intent, scored.evidence.classes);
+  const reason = [
+    evidenceReason(scored.evidence.level, taskClass.intent, scored.evidence.classes),
+    ownResults(scored),
+  ]
+    .filter((part) => part !== null)
+    .join("; ");
   // Nothing to say about the bill when there was nothing to go on in the first place.
-  return scored.evidence.level === "none" ? reason : `${reason}; ${billingPhrase(scored)}`;
+  return scored.evidence.level === "none" && scored.own === null
+    ? reason
+    : `${reason}; ${billingPhrase(scored)}`;
+}
+
+/** The repo's own record, once there is enough of it to have moved the score (ADR 022). */
+function ownResults(scored: Scored): string | null {
+  if (scored.own === null) {
+    return null;
+  }
+  const kept = Math.round(scored.own.kept * 100);
+  return `your own results here: ${scored.own.tasks} tasks, ${kept}% kept`;
 }
 
 function evidenceReason(level: EvidenceLevel, intent: TaskIntent, classes: TaskIntent[]): string {

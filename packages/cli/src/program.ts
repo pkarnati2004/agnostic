@@ -9,6 +9,7 @@ import { doctorCommand } from "./commands/doctor.js";
 import { handoffCommand } from "./commands/handoff.js";
 import { hooksCommand } from "./commands/hooks.js";
 import { initCommand } from "./commands/init.js";
+import { outcomesCommand } from "./commands/outcomes.js";
 import { profilesCommand } from "./commands/profiles.js";
 import { recommendCommand } from "./commands/recommend.js";
 import { reposCommand } from "./commands/repos.js";
@@ -59,6 +60,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     initCommand(ctx),
     syncCommand(ctx),
     usageCommand(ctx),
+    outcomesCommand(ctx),
   ]) {
     program.addCommand(command);
   }

@@ -140,6 +140,7 @@ function insertChild(ctx: DaemonContext, repo: Repo, input: ChildInput): Task {
     branch: null,
     status: "queued",
     origin: "agn",
+    baseCommit: null,
     parentTaskId: input.from.id,
     // The prompt composer finds the section by this timestamp, so the row and the note share it.
     createdAt: input.at,

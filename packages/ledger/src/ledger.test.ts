@@ -24,6 +24,7 @@ const task: Task = {
   branch: null,
   status: "queued",
   origin: "agn",
+  baseCommit: null,
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:00:00.000Z",
 };
@@ -50,7 +51,7 @@ afterEach(() => {
 });
 
 describe("openLedger", () => {
-  it("creates the parent directory and the file, and migrates to version 1", () => {
+  it("creates the parent directory and the file, and applies every migration", () => {
     const path = join(mkdtempSync(join(tmpdir(), "agnostic-ledger-")), "nested", "agnostic.db");
     const ledger = ledgerAt(path);
     expect(ledger.path).toBe(path);
@@ -58,8 +59,9 @@ describe("openLedger", () => {
 
     const db = new Database(path, { readonly: true });
     expect(db.pragma("journal_mode", { simple: true })).toBe("wal");
-    expect(db.prepare("SELECT version, name FROM schema_version").all()).toEqual([
+    expect(db.prepare("SELECT version, name FROM schema_version ORDER BY version").all()).toEqual([
       { version: 1, name: "initial" },
+      { version: 2, name: "task-base-commit" },
     ]);
     db.close();
   });

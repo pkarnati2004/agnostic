@@ -14,6 +14,7 @@ function task(id: string, status: TaskStatus, worktreePath: string | null): Task
     branch: "agn/flag",
     status,
     origin: "agn",
+    baseCommit: null,
     createdAt: "2026-09-11T10:00:00.000Z",
     updatedAt: "2026-09-11T10:00:00.000Z",
   };

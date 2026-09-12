@@ -120,6 +120,7 @@ describe("prepareWorktree", () => {
     expect(prepared).toEqual({
       cwd: worktreePath(paths, repo.id, task.id),
       branch: `agn/add-a-verbose-flag-to-the-cli-${task.id}`,
+      baseCommit: (await run("git", ["-C", repo.path, "rev-parse", "HEAD"])).stdout.trim(),
     });
     expect(await currentBranch(prepared.cwd)).toBe(prepared.branch);
     const list = (await run("git", ["-C", repo.path, "worktree", "list"])).stdout;
@@ -132,7 +133,8 @@ describe("prepareWorktree", () => {
     const first = await prepareWorktree(paths, prepareInput(repo, task));
     await writeFile(join(first.cwd, "work-in-progress.txt"), "the agent's edit\n");
     const second = await prepareWorktree(paths, prepareInput(repo, task));
-    expect(second).toEqual(first);
+    // The base is reported by the prepare that chose it; a reuse has nothing new to say.
+    expect(second).toEqual({ ...first, baseCommit: null });
     expect(await readFile(join(first.cwd, "work-in-progress.txt"), "utf8")).toContain("edit");
   });
 
@@ -205,7 +207,7 @@ describe("prepareWorktree", () => {
     const { result: prepared, entries } = await processesDuring(() =>
       prepareWorktree(paths, prepareInput(repo, testTask(repo))),
     );
-    expect(prepared).toEqual({ cwd: repo.path, branch: null });
+    expect(prepared).toEqual({ cwd: repo.path, branch: null, baseCommit: null });
     expect(entries.map((entry) => entry.command)).not.toContain("git");
     await expect(stat(join(repo.path, ".git"))).rejects.toThrowError();
   });

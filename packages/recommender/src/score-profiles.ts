@@ -9,7 +9,7 @@ import type {
   TaskClass,
 } from "@agnostic/core";
 import { catalogEvidence, type EvidenceSummary } from "./catalog-evidence.js";
-import { type HistoryRow, historyEvidence } from "./history-evidence.js";
+import { type HistoryEvidence, type HistoryRow, historyEvidence } from "./history-evidence.js";
 import { marginalCostUsd } from "./marginal-cost.js";
 
 /** Everything scoring reads. `recommend` passes its whole input, which is a superset of this. */
@@ -25,6 +25,8 @@ export type ScoreInput = {
 export type Scored = {
   profile: Profile;
   evidence: EvidenceSummary;
+  /** This repo's own results for the profile, once there are enough of them; null until then. */
+  own: HistoryEvidence | null;
   costUsd: number | null;
   score: number;
 };
@@ -39,7 +41,10 @@ const WEIGHTS: Record<OptimizePreset, Weights> = {
   speed: { quality: 1, cost: 0.3, time: 1 },
 };
 
-/** A placeholder until chunk 15 measures real durations: a local model is the slowest thing here. */
+/** How far the repo's own results lead the catalog's once there are enough of them (ADR 022). */
+const OWN_WEIGHT = 0.7;
+
+/** A placeholder until outcomes measure real durations: a local model is the slowest thing here. */
 const TIME_BY_ROUTE: Record<Route, number> = {
   local: 1,
   "anthropic-gateway": 0.5,
@@ -68,7 +73,7 @@ export function scoreProfiles(
   const weights = WEIGHTS[input.preferences.optimize];
   const rows = eligible.map((profile) => ({
     profile,
-    evidence: evidenceFor(input, taskClass, profile),
+    ...evidenceFor(input, taskClass, profile),
     costUsd: marginalCostUsd(input.catalog, profile, taskClass.scope),
   }));
   // Cost is relative: the dearest eligible profile pays the full weight, and nothing else does.
@@ -84,11 +89,23 @@ export function scoreProfiles(
   return rank(scored);
 }
 
-function evidenceFor(input: ScoreInput, taskClass: TaskClass, profile: Profile): EvidenceSummary {
+/**
+ * With thirty outcomes or more for this class on this repo, what happened here leads what the
+ * catalog says, without silencing it: a profile the repo has kept is only as good as the benchmarks
+ * agree it is. The evidence level is the catalog's either way, because that is what it describes.
+ */
+function evidenceFor(
+  input: ScoreInput,
+  taskClass: TaskClass,
+  profile: Profile,
+): { evidence: EvidenceSummary; own: HistoryEvidence | null } {
   const evidence = catalogEvidence(input.catalog, profile, taskClass.intent, input.now);
-  // chunk 15: with 30 outcomes or more for this repo and class, its own numbers lead the catalog's.
   const own = historyEvidence(input.history, taskClass, profile.id);
-  return own === null ? evidence : { ...evidence, score: own };
+  if (own === null) {
+    return { evidence, own };
+  }
+  const score = OWN_WEIGHT * own.kept + (1 - OWN_WEIGHT) * evidence.score;
+  return { evidence: { ...evidence, score }, own };
 }
 
 /** Deterministic all the way down, so the same machine and catalog always answer the same. */

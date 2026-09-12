@@ -37,6 +37,7 @@ function seedTask(id: string, status: TaskStatus): Task {
     branch: null,
     status,
     origin: "agn",
+    baseCommit: null,
     createdAt: now,
     updatedAt: now,
   });

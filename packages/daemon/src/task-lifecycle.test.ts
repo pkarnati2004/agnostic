@@ -89,8 +89,8 @@ describe("usage at close", () => {
   });
 });
 
-describe("usage recording that fails at close", () => {
-  it("still settles the task and logs why the usage was not recorded", async () => {
+describe("close work that fails", () => {
+  it("still settles the task and logs why nothing was recorded", async () => {
     const home = await mkdtemp(join(tmpdir(), "agn-usage-fail-"));
     const failing = await createTestDaemon({
       userHome: home,
@@ -116,6 +116,7 @@ describe("usage recording that fails at close", () => {
       branch: null,
       status: "running",
       origin: "agn",
+      baseCommit: null,
       createdAt: now,
       updatedAt: now,
       session: {
@@ -135,7 +136,7 @@ describe("usage recording that fails at close", () => {
 
       expect(response.status).toBe(200);
       expect(((await response.json()) as TaskResponse).task.status).toBe("stopped");
-      expect(await failing.readLog()).toContain("usage not recorded at close");
+      expect(await failing.readLog()).toContain("outcome not recorded");
     } finally {
       await failing.close();
       await rm(home, { recursive: true, force: true });
@@ -240,6 +241,7 @@ describe("start-up reconcile", () => {
           branch: null,
           status: "running",
           origin: "agn",
+          baseCommit: null,
           createdAt: now,
           updatedAt: now,
         });

@@ -179,7 +179,12 @@ describe("POST /tasks/:id/handoff", () => {
     const { task: child } = await handoff(parent, { profile: "codex", note: NOTE });
 
     const kinds = daemon.ledger.events.after(before).map((event) => event.kind);
-    expect(kinds.slice(0, 3)).toEqual(["task.status", "task.created", "task.handoff"]);
+    // Stopping the parent records its outcome; the handoff itself is still the last of the three.
+    expect(kinds.filter((kind) => kind !== "outcome.recorded").slice(0, 3)).toEqual([
+      "task.status",
+      "task.created",
+      "task.handoff",
+    ]);
     const handoffEvent = daemon.ledger.events
       .forTask(parent.id)
       .find((event) => event.kind === "task.handoff");

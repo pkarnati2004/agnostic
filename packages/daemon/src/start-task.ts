@@ -1,5 +1,6 @@
 import {
   newId,
+  type Prepared,
   type Profile,
   type Recommendation,
   type Repo,
@@ -14,6 +15,7 @@ import {
 } from "@agnostic/core";
 import { RecommenderError, recommend } from "@agnostic/recommender";
 import type { DaemonContext } from "./app.js";
+import { recordTestsBefore } from "./close-outcome.js";
 import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
 import { ensureHooks } from "./hooks-install.js";
@@ -25,6 +27,7 @@ import { resolveProfile } from "./resolve-profile.js";
 import { ensureSynced } from "./sync-repo.js";
 import { syncTaskNote } from "./task-note-sync.js";
 import { launchedSession } from "./task-session.js";
+import { runTestCommand } from "./test-command.js";
 
 const TITLE_MAX_CHARS = 80;
 
@@ -59,12 +62,13 @@ export async function startTask(
     config,
     base: req.base ?? null,
     note: initialTaskNote(task, task.prompt),
+    skipTests: req.skipTests === true,
   });
 }
 
 /**
  * Every task records what agn would have picked, even when the user named a profile: the two
- * together are what chunk 15 learns from. A machine with nothing eligible can still run a profile
+ * together are what the recommender learns from. A machine with nothing eligible can still run a profile
  * the user named, so a refusal here is logged and the run goes on.
  */
 async function recommendFor(
@@ -117,6 +121,7 @@ function insertQueued(
       branch: null,
       status: "queued",
       origin: "agn",
+      baseCommit: null,
       createdAt: now,
       updatedAt: now,
       ...(recommendation === null ? {} : { recommendation }),
@@ -141,6 +146,8 @@ type LaunchOptions = {
   config: RepoConfig | null;
   base: string | null;
   note: TaskNote;
+  /** `agn run --skip-tests`: no baseline is measured and `testsBefore` stays null (ADR 022). */
+  skipTests?: boolean;
 };
 
 /**
@@ -176,6 +183,7 @@ async function launch(
     setupCommand: opts.config?.setupCommand ?? null,
     logFile: taskLogPath(ctx.paths, task.id),
   });
+  recordTestsBefore(ctx, task, await testsBefore(ctx, repo, task, prepared, opts));
   // The worktree exists now: its own `.ag/instructions.md` is what the generated files there are
   // made from, and it is the directory the harness reads its hooks from.
   await ensureSynced(ctx, prepared.cwd);
@@ -189,8 +197,40 @@ async function launch(
   const handle = await ctx.executor.launch({ taskId: task.id, cwd: prepared.cwd, command });
   return ctx.ledger.tasks.start(task.id, {
     branch: prepared.branch,
+    baseCommit: prepared.baseCommit,
     // Chunk 9's hooks report the harness's own session id; a first launch has none to record.
     session: launchedSession(opts.profile.harness, handle, null),
+  });
+}
+
+/**
+ * The baseline the agent's work is judged against, run in the worktree before the harness starts
+ * (ADR 022). Another task off the same commit has already answered this question, so the ledger's
+ * answer is reused and the agent launches at once.
+ */
+async function testsBefore(
+  ctx: DaemonContext,
+  repo: Repo,
+  task: Task,
+  prepared: Prepared,
+  opts: LaunchOptions,
+): Promise<boolean | null> {
+  const command = opts.config?.testCommand ?? null;
+  if (command === null || opts.skipTests === true) {
+    return null;
+  }
+  const cached =
+    prepared.baseCommit === null
+      ? null
+      : ctx.ledger.outcomes.testedAtCommit(repo.id, prepared.baseCommit);
+  if (cached !== null) {
+    return cached;
+  }
+  return await runTestCommand({
+    command,
+    cwd: prepared.cwd,
+    logFile: taskLogPath(ctx.paths, task.id),
+    log: ctx.log,
   });
 }
 

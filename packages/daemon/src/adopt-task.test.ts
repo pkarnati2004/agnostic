@@ -234,6 +234,33 @@ describe("POST /repos/:id/adopt", () => {
     });
   });
 
+  it("closes an adopted task with a duration and no diff fields, since it has no branch of agn's", async () => {
+    const repo = await daemon.addRepo();
+    const pid = await startOutsideTmux(join(repo.path, "sub"));
+    await waitForSessions(repo, repo.path, 1);
+    const task = await adopted(repo, { path: repo.path, pid });
+
+    process.kill(pid, "SIGKILL");
+    // Liveness for a process outside tmux is only reconciled on a read; `GET /tasks` is that read.
+    await waitFor("the adopted task to close with an outcome", async () => {
+      await daemon.request("/tasks");
+      return daemon.ledger.outcomes.get(task.id) !== null;
+    });
+
+    expect(daemon.ledger.tasks.get(task.id)?.baseCommit).toBeNull();
+    const outcome = daemon.ledger.outcomes.get(task.id);
+    expect(outcome?.durationSec).toBeGreaterThanOrEqual(0);
+    expect(outcome?.tokens).toBe(0);
+    // No test_command is configured, and an adopted task never gets a testsBefore baseline.
+    expect(outcome?.testsBefore).toBeNull();
+    expect(outcome?.testsAfter).toBeNull();
+    expect(outcome?.accepted).toBeNull();
+    expect(outcome?.reverted).toBeNull();
+    expect(outcome?.agentLines).toBeNull();
+    expect(outcome?.humanChangedLines).toBeNull();
+    expect(outcome?.humanEditRatio).toBeNull();
+  });
+
   it("holds a folder workspace the way a launched task does", async () => {
     const repo = await daemon.addRepo({ git: false });
     const pid = await startOutsideTmux(join(repo.path, "sub"));

@@ -18,3 +18,14 @@ export const OutcomeSchema = z.object({
   resolvedModel: z.string().nullable(),
 });
 export type Outcome = z.infer<typeof OutcomeSchema>;
+
+/** Where a task ended up, in one word. "open" is a branch nobody has merged or thrown away yet. */
+export function outcomeVerdict(outcome: Outcome | null): "accepted" | "reverted" | "open" | "none" {
+  if (outcome === null) {
+    return "none";
+  }
+  if (outcome.accepted === true) {
+    return "accepted";
+  }
+  return outcome.reverted === true ? "reverted" : "open";
+}
