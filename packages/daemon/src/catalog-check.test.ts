@@ -125,6 +125,7 @@ beforeEach(async () => {
   checker = null;
   log = {
     info: () => undefined,
+    debug: () => undefined,
     warn: (msg) => warnings.push(msg),
     error: () => undefined,
     close: () => undefined,

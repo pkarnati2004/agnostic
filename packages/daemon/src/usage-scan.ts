@@ -1,5 +1,6 @@
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
+import type { Catalog } from "@agnostic/catalog";
 import { type Billing, parseProfileId, type Task } from "@agnostic/core";
 import type { UsageInput } from "@agnostic/ledger";
 import { harnesses } from "@agnostic/registry";
@@ -67,10 +68,12 @@ async function run(
   const tasks = deps.ledger.tasks.list();
   const owners = await sessionOwners(tasks);
   const billing = await billingByTask(deps, tasks);
+  // Read once per scan: a catalog that reloads mid-scan must not price two turns differently.
+  const { catalog } = deps.catalog.current();
   let inserted = 0;
   for (const [owner, group] of attributeTurns(turns, owners)) {
     const rows = group.map((turn) =>
-      usageRow(turn, owner === null ? null : (billing.get(owner) ?? null), deps.catalog),
+      usageRow(turn, owner === null ? null : (billing.get(owner) ?? null), catalog),
     );
     inserted += deps.ledger.usage.record(owner, rows).inserted;
   }
@@ -162,11 +165,7 @@ function cache(turn: TranscriptTurn): number {
 }
 
 /** Tokens a task does not own are never priced: agn does not know what they were billed under. */
-function usageRow(
-  turn: TranscriptTurn,
-  billing: Billing | null,
-  catalog: ScanDeps["catalog"],
-): UsageInput {
+function usageRow(turn: TranscriptTurn, billing: Billing | null, catalog: Catalog): UsageInput {
   return {
     ts: turn.ts,
     harness: turn.harness,

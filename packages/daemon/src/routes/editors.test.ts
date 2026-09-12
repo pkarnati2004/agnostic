@@ -51,6 +51,7 @@ function seed(opts: { worktreePath?: string; cwd?: string } = {}): Task {
     profileId: "claude-code:default:native",
     worktreePath: opts.worktreePath ?? null,
     branch: opts.worktreePath === undefined ? null : "agn/task",
+    baseCommit: null,
     status: "stopped",
     origin: "agn",
     createdAt: now,
@@ -61,6 +62,7 @@ function seed(opts: { worktreePath?: string; cwd?: string } = {}): Task {
   }
   return daemon.ledger.tasks.start(id, {
     branch: task.branch,
+    baseCommit: null,
     session: {
       harness: "claude-code",
       sessionId: null,

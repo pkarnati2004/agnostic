@@ -24,6 +24,7 @@ const task: Task = {
   profileId: "claude-code:default:native",
   worktreePath: DIR,
   branch: "agn/flag",
+  baseCommit: null,
   status: "running",
   origin: "agn",
   createdAt: "2026-09-11T10:00:00.000Z",

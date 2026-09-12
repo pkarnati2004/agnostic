@@ -122,15 +122,14 @@ type TestDaemonOptions = {
   servers?: LocalServer[];
   /** The catalog the app is built with; the complete fixture unless a test needs another. */
   catalog?: Catalog;
-  /**
-   * The home the daemon reads harness auth files and transcripts under; the state directory by
-   * default. A usage test points it at a tree holding `.claude/projects` and `.codex/sessions`.
-   */
   /** The base the catalog update reads; a port nothing listens on unless a test serves one. */
   catalogUrl?: string;
   /** Off by default: no test reaches off this machine on a timer. */
   catalogCheck?: boolean;
-  /** The home the daemon watches for harness auth files; the state directory by default. */
+  /**
+   * The home the daemon reads harness auth files and transcripts under; the state directory by
+   * default. A usage test points it at a tree holding `.claude/projects` and `.codex/sessions`.
+   */
   userHome?: string;
   /** The editors the stub detection reports; `[]` is a machine with none installed. */
   editors?: Editor[];
