@@ -31,6 +31,8 @@ To put `agn` on your PATH instead, run `pnpm build`, then `npm link` inside `pac
 | **OpenCode** | https://opencode.ai/docs - install, then configure providers | API keys |
 | **Gemini CLI, Cursor Agent, Copilot CLI, Aider, Goose, Amp, Kimi CLI, Qwen Code, …** | Each project's docs | Launch/attach only in agnostic |
 
+Codex gates hooks on a trust hash it keeps in `~/.codex/config.toml`. agn writes that hash itself, in a block marked with `# >>> agn hooks`, so status works from the first run; if Codex ever reports the hook as untrusted, run `/hooks` in Codex and approve it.
+
 After installing, run:
 
 ```bash

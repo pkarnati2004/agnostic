@@ -5,6 +5,7 @@ import {
   DaemonInfoSchema,
   EventsQuerySchema,
   HealthResponseSchema,
+  HooksInstallRequestSchema,
   RegisterRepoRequestSchema,
   RunTaskRequestSchema,
   TaskListQuerySchema,
@@ -136,5 +137,17 @@ describe("EventsQuerySchema", () => {
     expect(EventsQuerySchema.safeParse({ after: "half" }).success).toBe(false);
     expect(EventsQuerySchema.safeParse({ after: "-1" }).success).toBe(false);
     expect(EventsQuerySchema.safeParse({ since: "1" }).success).toBe(false);
+  });
+});
+
+describe("HooksInstallRequestSchema", () => {
+  it("accepts a named harness, and nothing at all", () => {
+    expect(HooksInstallRequestSchema.parse({ harness: "codex" })).toEqual({ harness: "codex" });
+    expect(HooksInstallRequestSchema.parse({})).toEqual({});
+  });
+
+  it("rejects an empty harness name and an unknown key", () => {
+    expect(HooksInstallRequestSchema.safeParse({ harness: "" }).success).toBe(false);
+    expect(HooksInstallRequestSchema.safeParse({ harness: "codex", extra: 1 }).success).toBe(false);
   });
 });

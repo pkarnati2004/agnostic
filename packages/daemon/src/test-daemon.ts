@@ -1,9 +1,10 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   type AgnosticPaths,
   agnosticPaths,
+  type DaemonInfo,
   type ExecutorProvider,
   type HarnessId,
   type HarnessReport,
@@ -13,7 +14,7 @@ import {
 } from "@agnostic/core";
 import { createTmuxExecutor } from "@agnostic/executor-tmux";
 import { type Ledger, openLedger } from "@agnostic/ledger";
-import type { LocalServer } from "@agnostic/registry";
+import { harnessDefinition, type LocalServer } from "@agnostic/registry";
 import { type ServerType, serve } from "@hono/node-server";
 import type { Hono } from "hono";
 import { createApp } from "./app.js";
@@ -37,6 +38,8 @@ export type TestDaemon = {
   addRepo(opts?: TestRepoOptions): Promise<Repo>;
   request(path: string, init?: RequestInit): Promise<Response>;
   listen(): Promise<string>;
+  /** Listens, and writes the two files a hook script reads to find this daemon. */
+  serve(): Promise<string>;
   readLog(): Promise<string>;
   close(): Promise<void>;
 };
@@ -54,12 +57,13 @@ export function fixtureProfile(model: string | null): Profile {
   };
 }
 
-function fixtureReport(models: string[]): HarnessReport {
+function fixtureReport(models: string[], harness: HarnessId): HarnessReport {
+  const definition = harnessDefinition(harness);
   return {
-    harness: "claude-code",
-    name: "Claude Code",
-    binary: "claude",
-    path: "/opt/bin/claude",
+    harness,
+    name: definition.name,
+    binary: definition.binary,
+    path: `/opt/bin/${definition.binary}`,
     version: "2.0.0",
     login: "logged-in",
     billing: "subscription",
@@ -69,10 +73,14 @@ function fixtureReport(models: string[]): HarnessReport {
   };
 }
 
-export function fixtureDetection(models: string[] = ["sonnet-4.5"]): Detection {
+export function fixtureDetection(
+  models: string[] = ["sonnet-4.5"],
+  harnesses: HarnessId[] = ["claude-code"],
+): Detection {
   return {
-    harnesses: [fixtureReport(models)],
+    harnesses: harnesses.map((harness) => fixtureReport(models, harness)),
     profiles: [null, ...models].map(fixtureProfile),
+    tools: [],
     servers: [],
     detectedAt: new Date().toISOString(),
     pathVar: "/opt/bin",
@@ -100,6 +108,7 @@ function launchDetection(binDir: string, servers: LocalServer[]): Detection {
       installed("pi", "pi", null),
     ],
     profiles: [fixtureProfile(null)],
+    tools: [],
     servers,
     detectedAt: new Date().toISOString(),
     pathVar: binDir,
@@ -215,7 +224,8 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     paths,
     feed,
     executor,
-    env: launch?.env ?? { PATH: "/opt/bin" },
+    // HOME is always the test's own: an installer that writes per user must never find the real one.
+    env: launch?.env ?? { PATH: "/opt/bin", HOME: home },
     token: TEST_TOKEN,
     log,
     version: "0.0.0-test",
@@ -258,6 +268,14 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     },
     request,
     listen: server.start,
+    serve: async () => {
+      const url = await server.start();
+      const info: DaemonInfo = { pid: process.pid, port, startedAt: new Date().toISOString() };
+      await mkdir(paths.home, { recursive: true });
+      await writeFile(paths.daemon, JSON.stringify(info), "utf8");
+      await writeFile(paths.authToken, TEST_TOKEN, { mode: 0o600 });
+      return url;
+    },
     readLog: () => readFile(logFile, "utf8"),
     close: async () => {
       await server.stop();

@@ -5,6 +5,7 @@
 set -u
 
 log_file=""
+hook_command=""
 exit_code=0
 exit_after=""
 ignore_term=0
@@ -15,13 +16,21 @@ watchdog=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --log) log_file="$2"; shift 2 ;;
-    --hook-url) shift 2 ;;             # accepted so the launch args are realistic; unused for now
+    --hook-command) hook_command="$2"; shift 2 ;;
     --exit-after) exit_after="$2"; shift 2 ;;
     --exit-code) exit_code="$2"; shift 2 ;;
     --ignore-term) ignore_term=1; shift ;;
     *) prompt="${prompt:+$prompt }$1"; shift ;;
   esac
 done
+
+# The hook chain under test: a Claude-shaped payload on stdin, and whatever command the harness's
+# own hook config named. It runs in the background because a real harness does not wait for it.
+send_hook() {
+  [ -n "$hook_command" ] || return 0
+  payload="{\"hook_event_name\":\"$1\",\"session_id\":\"fake-$self\",\"cwd\":\"$PWD\"$2}"
+  (printf '%s' "$payload" | sh -c "$hook_command" > /dev/null 2>&1) &
+}
 
 log() {
   printf '%s\n' "$1"
@@ -48,7 +57,8 @@ fi
 # Ask for bracketed paste the way a real composer does, so a paste arrives framed.
 printf '\033[?2004h'
 printf 'fake-agent ready\n'
-log "ready cwd=$PWD AGN_TEST=${AGN_TEST:-}"
+log "ready cwd=$PWD AGN_TEST=${AGN_TEST:-} AGN_TASK_ID=${AGN_TASK_ID:-}"
+send_hook SessionStart ',"source":"startup"'
 if [ -n "$prompt" ]; then
   log "prompt: $prompt"
 fi
@@ -60,6 +70,10 @@ while IFS= read -r line; do
     exit) exit "$exit_code" ;;
     crash) exit 3 ;;
     spawn) sleep 30 & log "spawned $!" ;;
+    work) send_hook UserPromptSubmit '' ;;
+    ask) send_hook Stop '' ;;
+    permission) send_hook PermissionRequest ',"tool_name":"Bash"' ;;
+    approved) send_hook PostToolUse ',"tool_name":"Bash"' ;;
   esac
   start_watchdog
 done

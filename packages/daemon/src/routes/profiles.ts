@@ -19,8 +19,8 @@ export function profileRoutes(ctx: DaemonContext): Hono {
     .post("/doctor", async (c) => {
       // Field by field: the detection also carries the local servers, which are the daemon's
       // business and not part of the doctor response.
-      const { harnesses, profiles, detectedAt, pathVar } = await ctx.detection.refresh();
-      const body: DoctorResponse = { harnesses, profiles, detectedAt, pathVar };
+      const { harnesses, profiles, tools, detectedAt, pathVar } = await ctx.detection.refresh();
+      const body: DoctorResponse = { harnesses, profiles, tools, detectedAt, pathVar };
       return c.json(body);
     });
 }

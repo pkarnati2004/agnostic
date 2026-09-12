@@ -12,6 +12,7 @@ import {
   scrubEnv,
 } from "@agnostic/core";
 import { createTmuxExecutor } from "@agnostic/executor-tmux";
+import { writeHookScript } from "@agnostic/hooks";
 import { type Ledger, openLedger } from "@agnostic/ledger";
 import { type ServerType, serve } from "@hono/node-server";
 import type { Hono } from "hono";
@@ -39,6 +40,8 @@ export async function runDaemon(
   const paths = agnosticPaths(opts.home === undefined ? agnosticHome() : resolve(opts.home));
   const log = createLogger(join(paths.logs, LOG_FILE));
   const token = await ensureAuthToken(paths, log);
+  // The one hook command on this machine, so an install has a script to point at.
+  await writeHookScript(paths);
   const wanted = opts.port ?? (await readDaemonConfig(paths)).port ?? DEFAULT_DAEMON_PORT;
   const ledger = openLedger(paths.db);
   const feed = createEventFeed(ledger);

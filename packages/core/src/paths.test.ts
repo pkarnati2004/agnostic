@@ -26,6 +26,7 @@ describe("agnosticPaths", () => {
       worktrees: "/tmp/agnostic-test/worktrees",
       logs: "/tmp/agnostic-test/logs",
       sessions: "/tmp/agnostic-test/sessions",
+      hooks: "/tmp/agnostic-test/hooks",
       daemon: "/tmp/agnostic-test/daemon.json",
     });
   });

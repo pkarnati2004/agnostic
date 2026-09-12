@@ -4,6 +4,7 @@
     { "path": "packages/core" },
     { "path": "packages/ledger" },
     { "path": "packages/registry" },
+    { "path": "packages/hooks" },
     { "path": "packages/executor-tmux" },
     { "path": "packages/daemon" },
     { "path": "packages/cli" }

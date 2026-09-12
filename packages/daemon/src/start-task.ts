@@ -13,6 +13,7 @@ import {
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
+import { ensureHooks } from "./hooks-install.js";
 import { initialTaskNote } from "./initial-task-note.js";
 import { freshLaunchCommand } from "./launch-command.js";
 import { detectRepoKind } from "./repo-kind.js";
@@ -102,6 +103,8 @@ async function launch(
     setupCommand: opts.config?.setupCommand ?? null,
     logFile: taskLogPath(ctx.paths, task.id),
   });
+  // The worktree exists now, and it is the directory the harness will read its hooks from.
+  await ensureHooks(ctx, opts.profile.harness, prepared.cwd);
   const command = await freshLaunchCommand(
     ctx,
     repo,

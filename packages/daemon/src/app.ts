@@ -3,6 +3,7 @@ import type { Ledger } from "@agnostic/ledger";
 import {
   detectHarnesses,
   detectLocalServers,
+  detectTools,
   enumerateProfiles,
   type HarnessStatus,
 } from "@agnostic/registry";
@@ -16,6 +17,7 @@ import { type Logger, requestLog } from "./log.js";
 import { adoptRoutes } from "./routes/adopt.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
+import { hookRoutes } from "./routes/hooks.js";
 import { profileRoutes } from "./routes/profiles.js";
 import { repoRoutes } from "./routes/repos.js";
 import { taskRoutes } from "./routes/tasks.js";
@@ -71,6 +73,7 @@ export function createApp(deps: DaemonDeps): Hono {
   app.route("/", adoptRoutes(ctx));
   app.route("/", profileRoutes(ctx));
   app.route("/", eventRoutes(ctx));
+  app.route("/", hookRoutes(ctx));
 
   app.notFound((c) =>
     c.json({ error: { code: "not-found", message: `no route for ${c.req.path}` } }, 404),
@@ -97,6 +100,7 @@ export function realDetect(env: Record<string, string>, home: string): () => Pro
     return {
       harnesses: statuses.map(toReport),
       profiles: enumerateProfiles(statuses, env, servers),
+      tools: await detectTools({ env, home }),
       servers,
       detectedAt: new Date().toISOString(),
       pathVar: env.PATH ?? "",

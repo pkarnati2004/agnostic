@@ -21,6 +21,7 @@
   "dependencies": {
     "@agnostic/core": "workspace:*",
     "@agnostic/executor-tmux": "workspace:*",
+    "@agnostic/hooks": "workspace:*",
     "@agnostic/ledger": "workspace:*",
     "@agnostic/registry": "workspace:*",
     "@hono/node-server": "2.1.1",

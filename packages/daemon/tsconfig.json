@@ -10,6 +10,7 @@
   "references": [
     { "path": "../core" },
     { "path": "../executor-tmux" },
+    { "path": "../hooks" },
     { "path": "../ledger" },
     { "path": "../registry" }
   ]

@@ -49,7 +49,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn clean [<task>...]` | Remove the worktrees of closed tasks. `--delete-branch` removes the branch too |
 | `agn resume [<task>]` | Bring a session back after a reboot, with its history where the agent supports it |
 | `agn adopt <path>` | Register an agent session you started outside agn. `--task "<title>"`, `--pid <n>`, `--repo <r>` |
-| `agn hooks install` | Install the status hook in a repo. `--repo <r>` |
+| `agn hooks install` | Install the status hook in a repo. `--repo <r>`, `--harness <id>` |
 | `agn init` | Create `.ag/instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--repo <r>` |
 | `agn sync` | Regenerate agent-specific config from `.ag/instructions.md`. `--dry-run`, `--repo <r>` |
 | `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--subscriptions-only` |

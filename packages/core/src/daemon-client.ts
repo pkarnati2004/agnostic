@@ -6,6 +6,8 @@ import {
   type CleanTaskResponse,
   type DoctorResponse,
   type HealthResponse,
+  type HooksInstallRequest,
+  type HooksInstallResponse,
   type ProfilesResponse,
   type RegisterRepoRequest,
   type RegisterRepoResponse,
@@ -41,6 +43,8 @@ export type DaemonClient = {
   adoptTask(repoId: string, body: AdoptRequest): Promise<TaskResponse>;
   profiles(): Promise<ProfilesResponse>;
   doctor(): Promise<DoctorResponse>;
+  /** Installs the status hook for one harness, or for every harness the repo could run. */
+  installHooks(repoId: string, body: HooksInstallRequest): Promise<HooksInstallResponse>;
   /** Resumes with `Last-Event-ID` after a dropped connection; ends when `signal` aborts. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -101,6 +105,8 @@ export function createDaemonClient(opts: {
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
     doctor: () => json<DoctorResponse>("POST", "/doctor"),
+    installHooks: (repoId, body) =>
+      json<HooksInstallResponse>("POST", `/repos/${encodeURIComponent(repoId)}/hooks`, body),
     events: (after, signal) => streamEvents(doFetch, base, headers, after, signal),
   };
 }

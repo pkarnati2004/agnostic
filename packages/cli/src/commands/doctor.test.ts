@@ -1,4 +1,4 @@
-import type { DoctorResponse, HarnessReport, Profile } from "@agnostic/core";
+import type { DoctorResponse, HarnessReport, Profile, ToolReport } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { createTestContext } from "../test-context.js";
 import { doctorCommand } from "./doctor.js";
@@ -30,10 +30,15 @@ const PROFILE: Profile = {
   tier: 1,
 };
 
-function run(harnesses: HarnessReport[], profiles: Profile[] = [PROFILE]) {
+function run(
+  harnesses: HarnessReport[],
+  profiles: Profile[] = [PROFILE],
+  tools: ToolReport[] = [],
+) {
   const response: DoctorResponse = {
     harnesses,
     profiles,
+    tools,
     detectedAt: "2026-09-11T10:00:00.000Z",
     pathVar: "/opt/bin",
   };
@@ -98,6 +103,22 @@ describe("agn doctor", () => {
       "pi           0.9      logged-in  full     2 (seed list)  /opt/bin/pi",
       "other:aider  0.1      unknown    basic    none           /opt/bin/aider",
     ]);
+  });
+
+  it("prints gh under the table, with its version and login", async () => {
+    const { cli, done } = run([report({})], undefined, [
+      { tool: "gh", path: "/usr/local/bin/gh", version: "2.96.0", login: "logged-in" },
+    ]);
+    await done();
+    expect(cli.out).toContain("tools: gh 2.96.0 (logged-in)");
+  });
+
+  it("prints gh as missing when it is not installed", async () => {
+    const { cli, done } = run([report({})], undefined, [
+      { tool: "gh", path: null, version: null, login: "unknown" },
+    ]);
+    await done();
+    expect(cli.out).toContain("tools: gh not installed");
   });
 
   it("prints the response verbatim with --json", async () => {

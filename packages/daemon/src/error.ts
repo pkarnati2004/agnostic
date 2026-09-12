@@ -22,6 +22,8 @@ export class DaemonError extends CoreError {
 const statusByCode: Record<string, number> = {
   unauthorized: 401,
   "repo-not-found": 404,
+  "hook-unsupported": 404,
+  "hook-task-unknown": 404,
   "task-not-found": 404,
   "repo-exists": 409,
   "repo-id-registered": 409,
@@ -43,6 +45,11 @@ const statusByCode: Record<string, number> = {
   "harness-unknown": 400,
   "profile-required": 400,
   "harness-not-installed": 400,
+  "hook-payload-invalid": 400,
+  // A hook config agn will not read over or write into is the file's state, not a fault in agn.
+  "hook-config-unreadable": 400,
+  "hook-config-unwritable": 400,
+  "hook-payload-too-large": 413,
   "base-invalid": 400,
   "path-outside-repo": 400,
   "adopt-pid-not-found": 400,

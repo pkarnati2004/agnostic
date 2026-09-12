@@ -2,6 +2,7 @@ export { type DetectOptions, detectHarnesses, type HarnessStatus } from "./detec
 export { findOnPath, readVersion } from "./detect-binary.js";
 export { detectLocalServers, type LocalServer } from "./detect-local-servers.js";
 export { detectLogin, type LoginDetection } from "./detect-login.js";
+export { type DetectToolsOptions, detectTools } from "./detect-tools.js";
 export { enumerateProfiles } from "./enumerate-profiles.js";
 export { RegistryError } from "./error.js";
 export { type Gateway, gateways } from "./gateways.js";

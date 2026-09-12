@@ -1,0 +1,9 @@
+notify = ["/Users/u/bin/notify", "turn-ended"]
+
+[projects."/x"]
+trust_level = "trusted"
+
+[hooks.state]
+
+[hooks.state."acme@marketplace:hooks/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:0000000000000000000000000000000000000000000000000000000000000000"

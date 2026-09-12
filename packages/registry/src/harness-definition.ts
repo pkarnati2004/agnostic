@@ -11,7 +11,7 @@ export type PromptDelivery =
   | { kind: "type-after-start" };
 
 /** Where a harness lets us install a hook; chunk 9 owns the installers. */
-export type HookMethod = "claude-settings" | "codex-notify" | "pi-extension" | "opencode-plugin";
+export type HookMethod = "claude-settings" | "codex-hooks" | "pi-extension" | "opencode-plugin";
 
 /** The payload key a hook reports its session under, so a later run can resume it. */
 export type SessionCapture = { source: "hook"; key: string };
