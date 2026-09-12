@@ -1,6 +1,7 @@
 import { type Catalog, entitlement, knowsPlan, type PlanRow } from "@agnostic/catalog";
 import type {
   AgnosticPaths,
+  Editor,
   ExecutorProvider,
   HarnessReport,
   Plan,
@@ -9,6 +10,7 @@ import type {
 } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
 import {
+  detectEditors,
   detectHarnesses,
   detectLocalServers,
   detectTools,
@@ -27,6 +29,7 @@ import { errorBody } from "./error.js";
 import type { EventFeed } from "./event-feed.js";
 import { type Logger, requestLog } from "./log.js";
 import { adoptRoutes } from "./routes/adopt.js";
+import { editorRoutes } from "./routes/editors.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
 import { hookRoutes } from "./routes/hooks.js";
@@ -52,6 +55,8 @@ export type DaemonDeps = {
   port: () => number;
   /** Injected, so a test never detects a real harness and never runs a real probe. */
   detect: () => Promise<Detection>;
+  /** Scanned per open request rather than cached: an editor installed today is there today. */
+  detectEditors: () => Promise<Editor[]>;
   /** Loaded once at start; chunk 17 reloads it after a download. */
   catalog: Catalog;
   /** Owned by the caller: its exit watcher and its tmux clients outlive any one request. */
@@ -111,6 +116,7 @@ export function createApp(deps: DaemonDeps): Hono {
   app.route("/", adoptRoutes(ctx));
   app.route("/", profileRoutes(ctx));
   app.route("/", recommendRoutes(ctx));
+  app.route("/", editorRoutes(ctx));
   app.route("/", eventRoutes(ctx));
   app.route("/", hookRoutes(ctx));
   app.route("/", syncRoutes(ctx));
@@ -168,6 +174,14 @@ export function realDetect(
 
 export function planOptions(rows: PlanRow[]): PlanOption[] {
   return rows.map((row) => ({ vendor: row.vendor, id: row.id, displayName: row.displayName }));
+}
+
+/** The editors of the machine the daemon runs on, which is the machine the user is sitting at. */
+export function realDetectEditors(
+  env: Record<string, string>,
+  home: string,
+): () => Promise<Editor[]> {
+  return () => detectEditors({ env, home });
 }
 
 function toReport(status: HarnessStatus, plans: Plans, catalog: Catalog): HarnessReport {

@@ -8,12 +8,14 @@ import {
   type DoctorResponse,
   type HandoffTaskRequest,
   type HandoffTaskResponse,
+  type EditorsResponse,
   type HealthResponse,
   type HooksInstallRequest,
   type HooksInstallResponse,
   type InitRequest,
   type InitResponse,
   type OutcomeResponse,
+  type OpenTaskResponse,
   type ProfilesResponse,
   type RecommendRequest,
   type RecommendResponse,
@@ -31,6 +33,7 @@ import {
   type TaskUsageResponse,
   type UsageResponse,
 } from "./daemon-api.js";
+import type { EditorId } from "./editor.js";
 import { DaemonApiError } from "./error.js";
 import { type Event, EventSchema } from "./event.js";
 
@@ -58,6 +61,10 @@ export type DaemonClient = {
   profiles(): Promise<ProfilesResponse>;
   /** The pick for a prompt, without starting anything; `agn run` records one of its own. */
   recommend(body: RecommendRequest): Promise<RecommendResponse>;
+  /** The editors this machine has, and which one an open with no `--editor` would use. */
+  editors(): Promise<EditorsResponse>;
+  /** Where a task lives and what command opens it there; the caller runs the command. */
+  openInfo(id: string, editor?: EditorId): Promise<OpenTaskResponse>;
   doctor(request?: DoctorRequest): Promise<DoctorResponse>;
   /** Installs the status hook for one harness, or for every harness the repo could run. */
   installHooks(repoId: string, body: HooksInstallRequest): Promise<HooksInstallResponse>;
@@ -132,6 +139,12 @@ export function createDaemonClient(opts: {
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
     recommend: (body) => json<RecommendResponse>("POST", "/recommend", body),
+    editors: () => json<EditorsResponse>("GET", "/editors"),
+    openInfo: (id, editor) =>
+      json<OpenTaskResponse>(
+        "GET",
+        `/tasks/${encodeURIComponent(id)}/open${editor === undefined ? "" : `?editor=${editor}`}`,
+      ),
     doctor: (request) => json<DoctorResponse>("POST", "/doctor", request ?? {}),
     installHooks: (repoId, body) =>
       json<HooksInstallResponse>("POST", `/repos/${encodeURIComponent(repoId)}/hooks`, body),

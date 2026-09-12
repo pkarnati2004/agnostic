@@ -75,6 +75,19 @@ describe("createDaemonClient", () => {
     await daemon.close();
   });
 
+  it("builds the open url with and without an editor override", async () => {
+    const seen: string[] = [];
+    const daemon = await stubDaemon((url) => {
+      seen.push(url);
+      return { status: 200, body: {} };
+    });
+    const client = createDaemonClient({ baseUrl: daemon.baseUrl, token: "sekrit" });
+    await client.openInfo("t3n9v2wxyz");
+    await client.openInfo("t3n9v2wxyz", "cursor");
+    expect(seen).toEqual(["/tasks/t3n9v2wxyz/open", "/tasks/t3n9v2wxyz/open?editor=cursor"]);
+    await daemon.close();
+  });
+
   it("turns an error body into a DaemonApiError with the status", async () => {
     const daemon = await stubDaemon(() => ({
       status: 404,

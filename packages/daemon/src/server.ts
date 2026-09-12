@@ -17,7 +17,7 @@ import { writeHookScript } from "@agnostic/hooks";
 import { type Ledger, openLedger } from "@agnostic/ledger";
 import { type ServerType, serve } from "@hono/node-server";
 import type { Hono } from "hono";
-import { createApp, realDetect } from "./app.js";
+import { createApp, realDetect, realDetectEditors } from "./app.js";
 import { ensureAuthToken } from "./auth.js";
 import { readDaemonConfig } from "./daemon-config.js";
 import { DaemonError } from "./error.js";
@@ -79,6 +79,7 @@ export async function runDaemon(
     verdicts,
     port: () => port,
     detect: realDetect(env, home, paths, catalog),
+    detectEditors: realDetectEditors(env, home),
   });
 
   let server: ServerType;

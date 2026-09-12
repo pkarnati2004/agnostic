@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Catalog, readCatalogFile } from "@agnostic/catalog";
-import type { HarnessId, HarnessReport, Profile } from "@agnostic/core";
+import type { Editor, HarnessId, HarnessReport, Profile } from "@agnostic/core";
 import { harnessDefinition, type LocalServer } from "@agnostic/registry";
 import type { Detection } from "./detection-cache.js";
 
@@ -95,3 +95,9 @@ export function launchDetection(binDir: string, servers: LocalServer[]): Detecti
     pathVar: binDir,
   };
 }
+
+/** One editor of each kind, so an open test can check both argv shapes without a real editor. */
+export const fixtureEditors: Editor[] = [
+  { id: "vscode", name: "Visual Studio Code", via: "path", path: "/opt/bin/code" },
+  { id: "cursor", name: "Cursor", via: "app", path: "/Applications/Cursor.app" },
+];

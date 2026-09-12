@@ -68,4 +68,32 @@ agnostic never merges for you. Creating a pull request from the workspace pushes
 
 ## Editors for `agn open`
 
-Detected automatically if installed: VS Code (`code`), Cursor (`cursor`), Zed (`zed`), JetBrains Toolbox IDEs, Xcode, and your terminal. Set a default in `~/.agnostic/config.yaml`.
+`agn open <task>` opens the task's worktree in an editor on this machine. agn looks for the editor's
+command on the PATH the daemon was started with, then for its app bundle in `/Applications`,
+`~/Applications`, `~/Applications/JetBrains Toolbox` and `/System/Applications/Utilities`. Nothing is
+launched to find out whether it is installed.
+
+The ids, in the order agn prefers them: `vscode`, `cursor`, `zed`, `idea`, `webstorm`, `pycharm`,
+`goland`, `rustrover`, `clion`, `phpstorm`, `rubymine`, `xcode`, `iterm`, `terminal`. `--editor` also
+takes `code` for `vscode`.
+
+```bash
+agn open <task>                  # the editor from config.yaml, or the first agn detects
+agn open <task> --editor zed     # this once, in Zed
+```
+
+## Configuration
+
+`~/.agnostic/config.yaml` holds the settings for this machine. Both keys are optional:
+
+| Key | What it does |
+|---|---|
+| `port` | The port the daemon listens on; 7431 by default. `--port` on `agn daemon start` or `restart` wins over it. |
+| `editor` | Which editor `agn open` uses, as one of the ids above. Absent means the first editor agn detects. |
+
+```yaml
+port: 7431
+editor: cursor
+```
+
+An unknown key or an unknown editor id is an error, not a silent default.

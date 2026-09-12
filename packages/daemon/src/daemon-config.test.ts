@@ -14,13 +14,35 @@ describe("readDaemonConfig", () => {
 
   afterEach(() => rm(home, { recursive: true, force: true }));
 
-  it("has no port when the file is missing", async () => {
-    expect(await readDaemonConfig(agnosticPaths(home))).toEqual({ port: null, plans: {} });
+  it("has no port, no plans and no editor when the file is missing", async () => {
+    expect(await readDaemonConfig(agnosticPaths(home))).toEqual({
+      port: null,
+      plans: {},
+      editor: null,
+    });
   });
 
   it("reads a port", async () => {
     await writeFile(join(home, "config.yaml"), "port: 7500\n");
-    expect(await readDaemonConfig(agnosticPaths(home))).toEqual({ port: 7500, plans: {} });
+    expect(await readDaemonConfig(agnosticPaths(home))).toEqual({
+      port: 7500,
+      plans: {},
+      editor: null,
+    });
+  });
+
+  it("reads the editor agn open should use", async () => {
+    await writeFile(join(home, "config.yaml"), "editor: cursor\n");
+    expect(await readDaemonConfig(agnosticPaths(home))).toMatchObject({ editor: "cursor" });
+  });
+
+  it("refuses an editor that is not one of the ids, and names the ones that are", async () => {
+    await writeFile(join(home, "config.yaml"), "editor: vim\n");
+    const error = await readDaemonConfig(agnosticPaths(home)).catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(ConfigError);
+    expect((error as ConfigError).message).toContain("vscode");
+    expect((error as ConfigError).message).toContain("terminal");
+    expect((error as ConfigError).code).toBe("ag-file-invalid");
   });
 
   it("refuses a port outside the range rather than falling back", async () => {
@@ -58,15 +80,16 @@ describe("writeDaemonConfigPlans", () => {
 
   afterEach(() => rm(home, { recursive: true, force: true }));
 
-  it("keeps the port and the vendor the user did not mention", async () => {
+  it("keeps the port, the editor and the vendor the user did not mention", async () => {
     const paths = agnosticPaths(home);
-    await writeFile(paths.config, "port: 7500\nplans:\n  chatgpt: plus\n");
+    await writeFile(paths.config, "port: 7500\neditor: cursor\nplans:\n  chatgpt: plus\n");
     expect(await writeDaemonConfigPlans(paths, { claude: "max20" })).toEqual({
       claude: "max20",
       chatgpt: "plus",
     });
     expect(await readDaemonConfig(paths)).toEqual({
       port: 7500,
+      editor: "cursor",
       plans: { claude: "max20", chatgpt: "plus" },
     });
   });
@@ -74,6 +97,10 @@ describe("writeDaemonConfigPlans", () => {
   it("writes a file that was not there", async () => {
     const paths = agnosticPaths(home);
     await writeDaemonConfigPlans(paths, { claude: "pro" });
-    expect(await readDaemonConfig(paths)).toEqual({ port: null, plans: { claude: "pro" } });
+    expect(await readDaemonConfig(paths)).toEqual({
+      port: null,
+      editor: null,
+      plans: { claude: "pro" },
+    });
   });
 });

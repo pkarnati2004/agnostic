@@ -6,6 +6,7 @@ import {
   type AgnosticPaths,
   agnosticPaths,
   type DaemonInfo,
+  type Editor,
   type ExecutorProvider,
   type RegisterRepoResponse,
   type Repo,
@@ -19,7 +20,12 @@ import { createApp } from "./app.js";
 import type { Detection } from "./detection-cache.js";
 import { createEventFeed } from "./event-feed.js";
 import { createLogger } from "./log.js";
-import { fixtureCatalog, fixtureDetection, launchDetection } from "./test-detection.js";
+import {
+  fixtureCatalog,
+  fixtureDetection,
+  fixtureEditors,
+  launchDetection,
+} from "./test-detection.js";
 import { createLaunchEnv, type LaunchEnv } from "./test-launch-env.js";
 import { createWorkspace, type TestRepoOptions } from "./test-workspace.js";
 import { createVerdictSweep, type VerdictSweep } from "./verdict-sweep.js";
@@ -119,6 +125,8 @@ type TestDaemonOptions = {
    * default. A usage test points it at a tree holding `.claude/projects` and `.codex/sessions`.
    */
   userHome?: string;
+  /** The editors the stub detection reports; `[]` is a machine with none installed. */
+  editors?: Editor[];
 };
 
 /** Everything a test daemon owns on disk and in memory, before any route exists. */
@@ -184,6 +192,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
       calls += 1;
       return detect();
     },
+    detectEditors: () => Promise.resolve(opts.editors ?? fixtureEditors),
     ...(opts.heartbeatMs === undefined ? {} : { heartbeatMs: opts.heartbeatMs }),
   });
   const server = listener(app, (bound) => {

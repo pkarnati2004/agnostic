@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type Editor, type EditorId, EditorIdSchema } from "./editor.js";
 import type { AttachInfo, DetectedHarness } from "./executor.js";
 import type { Outcome } from "./outcome.js";
 import { type Plan, type Plans, PlansSchema, type PlanVendor } from "./plans.js";
@@ -122,6 +123,16 @@ export type ResumeTaskResponse = {
   via: "live" | "native" | "fresh";
   attach: AttachInfo;
 };
+
+/** Detected editors in the daemon's preference order, and the one `agn open` would use. */
+export type EditorsResponse = { editors: Editor[]; default: EditorId | null };
+
+// `?editor=<id>` overrides the `editor` key in config.yaml for this one open.
+export const OpenTaskQuerySchema = z.strictObject({ editor: EditorIdSchema.optional() });
+export type OpenTaskQuery = z.infer<typeof OpenTaskQuerySchema>;
+
+/** Everything an open needs, resolved by the daemon; the client runs `argv`, which opens `dir`. */
+export type OpenTaskResponse = { task: Task; editor: Editor; dir: string; argv: string[] };
 
 // The path a caller is asking about, which the daemon checks is the repo or inside it.
 export const SessionsQuerySchema = z.strictObject({ path: z.string().min(1) });

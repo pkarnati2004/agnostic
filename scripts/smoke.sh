@@ -191,6 +191,12 @@ EOF
   echo "exec $PWD/tests/fixtures/fake-agent.sh --log $WORK/agent.log \"\$@\""
 } > "$FAKEBIN/claude"
 chmod +x "$FAKEBIN/claude"
+# The editor `agn open` detects: it records the directory it was asked to open and exits.
+{
+  echo '#!/bin/sh'
+  echo "echo \"\$@\" >> $WORK/code.log"
+} > "$FAKEBIN/code"
+chmod +x "$FAKEBIN/code"
 # /usr/sbin is where macOS keeps lsof, which is how the executor reads a process's directory.
 SMOKE_PATH="$FAKEBIN:$(dirname "$NODE"):$(dirname "$(command -v tmux)"):/usr/bin:/bin:/usr/sbin:/sbin"
 
@@ -236,6 +242,12 @@ while [ "$WAITED" -lt 40 ]; do
   sleep 0.25
 done
 agx status "$TASK" | grep -q "^status: *waiting"
+
+echo "smoke: agn open against a stub editor on PATH"
+WORKTREE="$(agx status "$TASK" | awk '$1 == "worktree:" { print $2 }')"
+agx open "$TASK" --editor code | grep -q "^opened $WORKTREE in Visual Studio Code"
+grep -qF "$WORKTREE" "$WORK/code.log"
+agx open "$TASK" --json | grep -q '"argv"'
 
 agx stop "$TASK" | grep -q "^stopped $TASK"
 agx status | grep -q "stopped"

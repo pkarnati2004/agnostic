@@ -1,7 +1,7 @@
 # @agnostic/registry
 
-The table of coding agents `agn` knows how to start, and the detection that says which of them this
-machine actually has.
+The table of coding agents `agn` knows how to start, the table of editors it can open a task in, and
+the detection that says which of them this machine actually has.
 
 - `harnesses` is data: binary and aliases, launch tokens, how a prompt is delivered, the model flag,
   the routes each harness supports, resume argv, hook and transcript locations, tier.
@@ -10,6 +10,9 @@ machine actually has.
 - `detectHarnesses` reads a given `PATH` and home: binary present, `--version`, login state and plan
   from the harness's own files. `detectLocalServers` asks LM Studio and Ollama on loopback what they
   hold.
+- `editorList` is data too: each editor's name, the command it installs on `PATH`, and its app
+  bundles. `detectEditors` looks for both, `editorCommand` turns a hit into the argv that opens a
+  directory in it.
 - `probeModels` asks an installed harness for its model list; the caller passes the catalog's model
   rows as the seed used when a probe fails or a harness has no list command.
 - `enumerateProfiles` turns those findings plus the environment into the `Profile[]` the recommender
