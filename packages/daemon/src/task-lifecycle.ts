@@ -10,7 +10,13 @@ import type { Ledger } from "@agnostic/ledger";
 import type { Logger } from "./log.js";
 import { syncTaskNote } from "./task-note-sync.js";
 
-type LifecycleDeps = { ledger: Ledger; executor: ExecutorProvider; log: Logger };
+type LifecycleDeps = {
+  ledger: Ledger;
+  executor: ExecutorProvider;
+  log: Logger;
+  /** Runs once a task has reached a terminal status, before the caller is told it has. */
+  afterClose?: (task: Task) => Promise<void>;
+};
 
 export type TaskLifecycle = {
   /** The executor's one event kind, from the tmux pane-died hook or the scan at start. */
@@ -36,10 +42,17 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
       return task;
     }
     const updated = ledger.tasks.setStatus(task.id, to);
+    if (!TERMINAL.includes(to)) {
+      return updated;
+    }
     const repo = ledger.repos.get(task.repoId);
-    if (repo !== null && TERMINAL.includes(to)) {
+    if (repo !== null) {
       await syncTaskNote(repo.path, updated, log);
     }
+    // The transition stands whatever this does: usage is worth recording, not worth failing over.
+    await deps.afterClose?.(updated).catch((cause: unknown) => {
+      log.error("usage not recorded at close", { taskId: task.id, message: reason(cause) });
+    });
     return updated;
   };
 

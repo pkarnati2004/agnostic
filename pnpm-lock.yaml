@@ -193,6 +193,9 @@ importers:
       '@agnostic/sync':
         specifier: workspace:*
         version: link:../sync
+      '@agnostic/usage':
+        specifier: workspace:*
+        version: link:../usage
       '@hono/node-server':
         specifier: 2.1.1
         version: 2.1.1(hono@4.13.7)
@@ -256,6 +259,18 @@ importers:
       '@agnostic/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/usage:
+    dependencies:
+      '@agnostic/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@agnostic/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: 4.6.1
+        version: 4.6.1
 
 packages:
 

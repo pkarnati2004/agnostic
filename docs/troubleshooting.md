@@ -34,6 +34,10 @@
 
 **`agn init` says CLAUDE.md and AGENTS.md "are both here and they differ".** agn will not guess which one your instructions live in, and it never concatenates them. Run `agn init --from CLAUDE.md` or `agn init --from AGENTS.md`.
 
+**`agn usage` shows less than the agent's own usage screen.** They count different windows. agn counts the calendar day and the week from Monday, in your time zone; Claude Code and Codex show their plan's rolling window (five hours, seven days). agn also reads only what is in the transcript files on this machine, so a session run on another machine under the same login is not there.
+
+**`agn usage` shows a `-` in the cost column.** Either the model runs on your subscription, where the tokens cost nothing extra, or agn has no price for the model the agent reported. Run `agn catalog update` to refresh the rates. Usage from a session agn did not start is never priced.
+
 **A model override isn't offered.** The provider key isn't in the environment the daemon was started from. Restart the daemon (`agn daemon restart`) after exporting the key.
 
 **The daemon won't start.** Port in use or a stale `daemon.json` in `~/.agnostic/`. `agn daemon restart --force`. When a start fails, agn names the log file to read; the reason is in its last lines. If another `AGNOSTIC_HOME` already has a daemon on that port, `agn daemon status` says `foreign` and `--force` refuses and names the other home rather than killing it: stop that daemon where it lives, or start this one with `--port`.

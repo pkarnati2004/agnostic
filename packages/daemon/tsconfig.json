@@ -15,6 +15,7 @@
     { "path": "../ledger" },
     { "path": "../recommender" },
     { "path": "../registry" },
-    { "path": "../sync" }
+    { "path": "../sync" },
+    { "path": "../usage" }
   ]
 }

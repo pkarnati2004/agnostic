@@ -4,6 +4,7 @@
     { "path": "packages/core" },
     { "path": "packages/catalog" },
     { "path": "packages/ledger" },
+    { "path": "packages/usage" },
     { "path": "packages/registry" },
     { "path": "packages/recommender" },
     { "path": "packages/hooks" },

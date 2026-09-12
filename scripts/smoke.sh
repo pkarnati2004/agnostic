@@ -16,6 +16,9 @@ pnpm vitest run --project ledger
 echo "smoke: catalog unit tests"
 pnpm vitest run --project catalog
 
+echo "smoke: usage unit tests"
+pnpm vitest run --project usage
+
 echo "smoke: registry unit tests"
 pnpm vitest run --project registry
 
@@ -191,8 +194,13 @@ chmod +x "$FAKEBIN/claude"
 # /usr/sbin is where macOS keeps lsof, which is how the executor reads a process's directory.
 SMOKE_PATH="$FAKEBIN:$(dirname "$NODE"):$(dirname "$(command -v tmux)"):/usr/bin:/bin:/usr/sbin:/sbin"
 
+# A home of its own: the daemon reads transcript directories under HOME when a task closes and
+# when usage is asked for, and a smoke run must never read the author's.
+USAGE_HOME="$WORK/usage-home"
+mkdir -p "$USAGE_HOME/.claude/projects/-work-usage"
+
 agx() {
-  PATH="$SMOKE_PATH" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
+  HOME="$USAGE_HOME" PATH="$SMOKE_PATH" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
 }
 
 mkdir -p "$WORK/runrepo" "$WORK/runfolder"
@@ -285,4 +293,20 @@ agx status "$ADOPTED" | grep -q "^origin: *adopted"
 agx status "$ADOPTED" | grep -q "^tmux: *smoke-adopt"
 agx stop "$ADOPTED" | grep -q "^stopped $ADOPTED"
 
+agx daemon stop | grep -q "^agnd stopped"
+
+echo "smoke: agn usage over a transcript the agent left behind"
+# A session agn did not start, written where Claude Code writes: it counts against the plan and
+# belongs to no task.
+NOW="$("$NODE" -e "process.stdout.write(new Date().toISOString())")"
+printf '{"type":"assistant","sessionId":"s-smoke","timestamp":"%s","cwd":"%s","requestId":"req_s","message":{"id":"msg_s","model":"claude-fable-5-1","usage":{"input_tokens":1000,"output_tokens":500,"cache_read_input_tokens":200,"cache_creation_input_tokens":0}}}\n' \
+  "$NOW" "$WORK/runrepo" > "$USAGE_HOME/.claude/projects/-work-usage/s-smoke.jsonl"
+
+agx usage > "$WORK/usage.txt"
+grep -q "^today (" "$WORK/usage.txt"
+grep -q "^this week (from " "$WORK/usage.txt"
+grep -q "^unknown plan  claude-code " "$WORK/usage.txt"
+grep -q "1,700" "$WORK/usage.txt"
+agx usage --json > "$WORK/usage.json"
+grep -q '"unattributedTokens": 1700' "$WORK/usage.json"
 agx daemon stop | grep -q "^agnd stopped"

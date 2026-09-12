@@ -6,6 +6,7 @@ import type { MiddlewareHandler } from "hono";
 type Fields = Record<string, string | number>;
 
 export type Logger = {
+  debug(msg: string, fields?: Fields): void;
   info(msg: string, fields?: Fields): void;
   warn(msg: string, fields?: Fields): void;
   error(msg: string, fields?: Fields): void;
@@ -34,6 +35,7 @@ export function createLogger(file: string): Logger {
     });
   });
   return {
+    debug: (msg, fields) => write("DEBUG", msg, fields),
     info: (msg, fields) => write("INFO", msg, fields),
     warn: (msg, fields) => write("WARN", msg, fields),
     error: (msg, fields) => write("ERROR", msg, fields),

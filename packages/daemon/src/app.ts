@@ -34,7 +34,9 @@ import { recommendRoutes } from "./routes/recommend.js";
 import { repoRoutes } from "./routes/repos.js";
 import { syncRoutes } from "./routes/sync.js";
 import { taskRoutes } from "./routes/tasks.js";
+import { usageRoutes } from "./routes/usage.js";
 import { createTaskLifecycle, type TaskLifecycle } from "./task-lifecycle.js";
+import { createUsageScanner, type UsageScanner } from "./usage-scan.js";
 
 export type DaemonDeps = {
   ledger: Ledger;
@@ -60,16 +62,24 @@ export type DaemonDeps = {
   heartbeatMs?: number;
 };
 
-/** What a route gets: the deps plus the two things the app owns for the life of the process. */
-export type DaemonContext = DaemonDeps & { detection: DetectionCache; lifecycle: TaskLifecycle };
+/** What a route gets: the deps plus the things the app owns for the life of the process. */
+export type DaemonContext = DaemonDeps & {
+  detection: DetectionCache;
+  lifecycle: TaskLifecycle;
+  usage: UsageScanner;
+};
 
 export function createApp(deps: DaemonDeps): Hono {
-  const lifecycle = createTaskLifecycle(deps);
-  const ctx: DaemonContext = {
+  const detection = createDetectionCache(deps.detect, deps.ledger, () => authFilesStamp(deps.home));
+  const usage = createUsageScanner({ ...deps, detection });
+  // A task that has just closed has written its last turn; chunk 15 prices it from these rows.
+  const lifecycle = createTaskLifecycle({
     ...deps,
-    detection: createDetectionCache(deps.detect, deps.ledger, () => authFilesStamp(deps.home)),
-    lifecycle,
-  };
+    afterClose: async (task) => {
+      await usage.scan({ taskId: task.id });
+    },
+  });
+  const ctx: DaemonContext = { ...deps, detection, lifecycle, usage };
   // The subscription ends when the executor closes, which the daemon does before the ledger.
   deps.executor.onEvent(lifecycle.onExited);
   // Detection shells out; starting it here means the first `agn doctor` does not wait for it.
@@ -93,6 +103,7 @@ export function createApp(deps: DaemonDeps): Hono {
   app.route("/", eventRoutes(ctx));
   app.route("/", hookRoutes(ctx));
   app.route("/", syncRoutes(ctx));
+  app.route("/", usageRoutes(ctx));
 
   app.notFound((c) =>
     c.json({ error: { code: "not-found", message: `no route for ${c.req.path}` } }, 404),

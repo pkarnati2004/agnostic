@@ -44,6 +44,7 @@ beforeEach(async () => {
   repo = await mkdtemp(join(tmpdir(), "agn-note-sync-"));
   errors = [];
   log = {
+    debug: () => undefined,
     info: () => undefined,
     warn: () => undefined,
     error: (msg, fields) => errors.push({ msg, fields }),

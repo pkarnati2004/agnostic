@@ -82,6 +82,7 @@ Model overrides (Kimi in Claude Code, a local model in Codex, anything via OpenR
 - [Models and providers: OpenRouter, Kimi, local models](docs/models.md)
 - [Project context: `.ag/` and `agn sync`](docs/project-context.md)
 - [Recommendations: how the catalog works](docs/recommendations.md)
+- [Usage and cost: what agn counts](docs/usage.md)
 - [Workspace UI](docs/workspace.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Writing guide for docs and site](docs/WRITING.md)

@@ -27,6 +27,8 @@ import {
   type TaskListQuery,
   type TaskListResponse,
   type TaskResponse,
+  type TaskUsageResponse,
+  type UsageResponse,
 } from "./daemon-api.js";
 import { DaemonApiError } from "./error.js";
 import { type Event, EventSchema } from "./event.js";
@@ -62,6 +64,9 @@ export type DaemonClient = {
   initRepo(repoId: string, body: InitRequest): Promise<InitResponse>;
   /** Renders the generated instruction files; a dry run answers with the same plan unapplied. */
   syncRepo(repoId: string, body: SyncRequest): Promise<SyncResponse>;
+  /** Today's and this week's tokens per plan, from the transcripts on this machine. */
+  usage(): Promise<UsageResponse>;
+  taskUsage(id: string): Promise<TaskUsageResponse>;
   /** Resumes with `Last-Event-ID` after a dropped connection; ends when `signal` aborts. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -131,6 +136,8 @@ export function createDaemonClient(opts: {
       json<InitResponse>("POST", `/repos/${encodeURIComponent(repoId)}/init`, body),
     syncRepo: (repoId, body) =>
       json<SyncResponse>("POST", `/repos/${encodeURIComponent(repoId)}/sync`, body),
+    usage: () => json<UsageResponse>("GET", "/usage"),
+    taskUsage: (id) => json<TaskUsageResponse>("GET", `/tasks/${encodeURIComponent(id)}/usage`),
     events: (after, signal) => streamEvents(doFetch, base, headers, after, signal),
   };
 }

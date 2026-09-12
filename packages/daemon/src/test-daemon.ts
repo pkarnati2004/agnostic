@@ -111,7 +111,10 @@ type TestDaemonOptions = {
   servers?: LocalServer[];
   /** The catalog the app is built with; the complete fixture unless a test needs another. */
   catalog?: Catalog;
-  /** The home the daemon watches for harness auth files; the state directory by default. */
+  /**
+   * The home the daemon reads harness auth files and transcripts under; the state directory by
+   * default. A usage test points it at a tree holding `.claude/projects` and `.codex/sessions`.
+   */
   userHome?: string;
 };
 
@@ -164,7 +167,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     home: userHome,
     catalog: opts.catalog ?? (await fixtureCatalog()),
     // HOME is always the test's own: an installer that writes per user must never find the real one.
-    env: launch?.env ?? { PATH: "/opt/bin", HOME: home },
+    env: launch?.env ?? { PATH: "/opt/bin", HOME: userHome },
     token: TEST_TOKEN,
     log,
     version: "0.0.0-test",

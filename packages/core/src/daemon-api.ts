@@ -6,6 +6,7 @@ import type { Recommendation } from "./recommendation.js";
 import type { Repo } from "./repo.js";
 import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
 import { TaskIntentSchema } from "./task-intent.js";
+import type { PlanUsage, UsageSum, UsageWindow } from "./usage.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;
@@ -233,6 +234,19 @@ export type InitWrite = {
 };
 
 export type InitResponse = { writes: InitWrite[] };
+
+/**
+ * Both windows in one body (ADR 021): one scan of the transcripts answers the day and the week,
+ * so the CLI and the workspace's usage bar make one call. `scannedAt` is when that scan ran.
+ */
+export type UsageResponse = {
+  day: { window: UsageWindow; plans: PlanUsage[] };
+  week: { window: UsageWindow; plans: PlanUsage[] };
+  scannedAt: string;
+};
+
+/** One task's tokens. `billing` comes from the task's profile; null when it cannot be resolved. */
+export type TaskUsageResponse = { task: Task; usage: UsageSum; billing: Billing | null };
 
 /** The files `agn sync` generates from `.ag/instructions.md`, relative to the repo root. */
 export type SyncTarget = "CLAUDE.md" | "AGENTS.md";
