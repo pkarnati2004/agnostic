@@ -50,4 +50,6 @@ The header means agn owns the whole file, so an edit made *below* an intact head
 
 ## Handoff notes
 
-`agn handoff <task> --to <profile>` appends a handoff section to `.ag/tasks/<task>.md` - goal, decisions made, files touched, what was tried and failed - and starts the next agent with it as the first prompt. Native session history stays with the original agent; the note is what travels.
+`agn handoff <task> --to <profile>` appends a handoff section to `.ag/tasks/<task>.md` - goal, decisions made, files touched, what was tried and failed - and starts the next agent with it as the first prompt. The task you hand off is stopped first: the work has moved, and a folder workspace has room for only one agent anyway. The new task inherits the spec and acceptance of the old one and continues its branch.
+
+`--note <text>` is your text. It lands under Goal, and if it carries its own `### Decisions` or `### What failed` headings those fill their slots. `--note -` reads the note from stdin and `--note-file <path>` from a file, so an outgoing agent's own summary can be passed whole. agn fills in the files the branch touched and how the last agent ended; slots nobody wrote read "none recorded". Native session history stays with the original agent; the note is what travels.

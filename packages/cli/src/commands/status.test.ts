@@ -85,6 +85,12 @@ describe("agn status", () => {
     expect(test.out).toHaveLength(2);
   });
 
+  it("names the task a handoff came from", async () => {
+    const test = cli([task("q4m8n2vwxy", "running", { parentTaskId: "t3n9v2wxyz" })]);
+    await parse(test.ctx, ["q4m8n2vwxy"]);
+    expect(test.out.join("\n")).toContain("parent:   t3n9v2wxyz");
+  });
+
   it("shows a named task with its session", async () => {
     const test = cli([
       task("t3n9v2wxyz", "running", {

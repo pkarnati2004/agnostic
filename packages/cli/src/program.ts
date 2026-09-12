@@ -6,6 +6,7 @@ import { attachCommand } from "./commands/attach.js";
 import { cleanCommand } from "./commands/clean.js";
 import { daemonCommand } from "./commands/daemon.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { handoffCommand } from "./commands/handoff.js";
 import { hooksCommand } from "./commands/hooks.js";
 import { initCommand } from "./commands/init.js";
 import { profilesCommand } from "./commands/profiles.js";
@@ -52,6 +53,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     stopCommand(ctx),
     cleanCommand(ctx),
     adoptCommand(ctx),
+    handoffCommand(ctx),
     hooksCommand(ctx),
     initCommand(ctx),
     syncCommand(ctx),

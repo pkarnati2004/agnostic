@@ -53,7 +53,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn init` | Create `.ag/`, seeding `instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--from <file>`, `--force`, `--repo <r>` |
 | `agn sync` | Regenerate `CLAUDE.md` and `AGENTS.md` from `.ag/instructions.md`. `--dry-run`, `--force`, `--repo <r>` |
 | `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--intent <class>`, `--subscriptions-only` |
-| `agn handoff <task> --to <id\|harness>` | Hand a task to another agent with a structured note. `--note <text>` |
+| `agn handoff [<task>] --to <id\|harness>` | Stop a task and hand its work to another agent with a structured note. `--note <text>` (`-` reads stdin), `--note-file <path>` |
 | `agn usage [<task>]` | Today's and this week's usage per plan, or one task's |
 | `agn outcomes <task>` | What the task changed, what passed, what you kept |
 | `agn open <task>` | Open the worktree in your editor. `--editor <name>` |

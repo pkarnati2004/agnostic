@@ -3,6 +3,8 @@ import {
   type AttachResponse,
   CleanTaskRequestSchema,
   type CleanTaskResponse,
+  HandoffTaskRequestSchema,
+  type HandoffTaskResponse,
   type Repo,
   type ResumeTaskResponse,
   sessionHandle,
@@ -12,10 +14,11 @@ import {
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { DaemonError, requestInvalid } from "../error.js";
+import { handoffTask } from "../handoff-task.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
 import { resumeTask } from "../resume-task.js";
 
-/** What `agn attach`, `agn resume`, `agn stop` and `agn clean` do to a task that already exists. */
+/** What `agn attach`, `agn resume`, `agn handoff`, `agn stop` and `agn clean` do to a task. */
 export function taskActionRoutes(ctx: DaemonContext): Hono {
   return new Hono()
     .get("/tasks/:id/attach", async (c) => {
@@ -34,6 +37,15 @@ export function taskActionRoutes(ctx: DaemonContext): Hono {
       const task = await ctx.lifecycle.reconcile(resolveTaskId(ctx.ledger, c.req.param("id")));
       const body: ResumeTaskResponse = await resumeTask(ctx, task);
       return c.json(body);
+    })
+    .post("/tasks/:id/handoff", async (c) => {
+      const parsed = HandoffTaskRequestSchema.safeParse(await body(c.req.raw));
+      if (!parsed.success) {
+        throw requestInvalid(parsed.error);
+      }
+      const parent = await ctx.lifecycle.reconcile(resolveTaskId(ctx.ledger, c.req.param("id")));
+      const response: HandoffTaskResponse = await handoffTask(ctx, parent, parsed.data);
+      return c.json(response, 201);
     })
     .post("/tasks/:id/stop", async (c) => {
       const task = await ctx.lifecycle.reconcile(resolveTaskId(ctx.ledger, c.req.param("id")));

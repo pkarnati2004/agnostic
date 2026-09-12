@@ -88,6 +88,17 @@ export type RecommendRequest = z.infer<typeof RecommendRequestSchema>;
 
 export type RecommendResponse = { recommendation: Recommendation };
 
+// The daemon resolves `profile` exactly as it does for a run, so `--to` takes what `--profile` does.
+export const HandoffTaskRequestSchema = z.strictObject({
+  profile: z.string().min(1),
+  /** What the user wrote, or the outgoing agent's own summary; agn adds the mechanical context. */
+  note: z.string().min(1).optional(),
+});
+export type HandoffTaskRequest = z.infer<typeof HandoffTaskRequestSchema>;
+
+/** The child first, because it is what the caller goes on to attach to; the parent as it was left. */
+export type HandoffTaskResponse = { task: Task; parent: Task };
+
 export const CleanTaskRequestSchema = z.strictObject({ deleteBranch: z.boolean().optional() });
 export type CleanTaskRequest = z.infer<typeof CleanTaskRequestSchema>;
 

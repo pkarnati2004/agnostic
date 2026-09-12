@@ -7,6 +7,7 @@ export { describeIssues } from "./describe-issues.js";
 export * from "./error.js";
 export * from "./event.js";
 export * from "./executor.js";
+export * from "./handoff-note.js";
 export * from "./id.js";
 export * from "./launch-prompt.js";
 export * from "./outcome.js";

@@ -7,6 +7,7 @@ import {
   type RunTaskRequest,
   readRepoConfig,
   type Task,
+  type TaskNote,
   taskLogPath,
   worktreePath,
   writeTaskNote,
@@ -53,12 +54,12 @@ export async function startTask(
   );
   const config = await readRepoConfig(repo.path);
   const task = insertQueued(ctx, repo, req, profile.id, recommendation);
-  try {
-    return await launch(ctx, repo, task, { profile, config, base: req.base ?? null });
-  } catch (cause) {
-    await syncTaskNote(repo.path, ctx.ledger.tasks.setStatus(task.id, "failed"), ctx.log);
-    throw cause;
-  }
+  return await launchQueued(ctx, repo, task, {
+    profile,
+    config,
+    base: req.base ?? null,
+    note: initialTaskNote(task, task.prompt),
+  });
 }
 
 /**
@@ -135,7 +136,30 @@ function insertQueued(
   });
 }
 
-type LaunchOptions = { profile: Profile; config: RepoConfig | null; base: string | null };
+type LaunchOptions = {
+  profile: Profile;
+  config: RepoConfig | null;
+  base: string | null;
+  note: TaskNote;
+};
+
+/**
+ * A queued row becomes a live session: `agn run` and `agn handoff` differ only in the note they
+ * write and where they branch from, and both leave a task that could not be launched failed.
+ */
+export async function launchQueued(
+  ctx: DaemonContext,
+  repo: Repo,
+  task: Task,
+  opts: LaunchOptions,
+): Promise<Task> {
+  try {
+    return await launch(ctx, repo, task, opts);
+  } catch (cause) {
+    await syncTaskNote(repo.path, ctx.ledger.tasks.setStatus(task.id, "failed"), ctx.log);
+    throw cause;
+  }
+}
 
 async function launch(
   ctx: DaemonContext,
@@ -143,7 +167,7 @@ async function launch(
   task: Task,
   opts: LaunchOptions,
 ): Promise<Task> {
-  await writeTaskNote(repo.path, initialTaskNote(task, task.prompt));
+  await writeTaskNote(repo.path, opts.note);
   const prepared = await ctx.executor.prepare({
     task,
     repo,

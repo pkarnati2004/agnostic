@@ -237,6 +237,23 @@ agx resume "$TASK" --json > "$WORK/resume.json"
 grep -q '"via": "native"' "$WORK/resume.json"
 agx status "$TASK" | grep -q "running"
 agx stop "$TASK" | grep -q "^stopped $TASK"
+
+echo "smoke: agn handoff to the next agent"
+HANDOFF_NOTE="the parser is done, the printer is not"
+agx handoff "$TASK" --to claude-code --note "$HANDOFF_NOTE" > "$WORK/handoff.txt"
+grep -q "^handed off $TASK to " "$WORK/handoff.txt"
+CHILD="$(awk 'NR == 1 { print $5 }' "$WORK/handoff.txt")"
+grep -q "## Handoff to claude-code:default:native at " "$WORK/runrepo/.ag/tasks/$TASK.md"
+# The child is launched with the section as part of its first prompt; the fake agent logs it.
+for _ in 1 2 3 4 5; do
+  grep -q "## Handoff from $TASK" "$WORK/agent.log" && break
+  sleep 1
+done
+grep -q "## Handoff from $TASK" "$WORK/agent.log"
+grep -q "$HANDOFF_NOTE" "$WORK/agent.log"
+agx status "$CHILD" | grep -q "^parent: *$TASK"
+agx stop "$CHILD" | grep -q "^stopped $CHILD"
+
 agx clean | grep -q "^cleaned $TASK"
 
 agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"

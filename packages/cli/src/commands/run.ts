@@ -61,7 +61,8 @@ function body(prompt: string, flags: RunFlags): RunTaskRequest {
   };
 }
 
-function started(task: Task): string[] {
+/** `agn handoff` prints these too: the child of a handoff started the same way a run does. */
+export function started(task: Task): string[] {
   const where =
     task.worktreePath === null
       ? [`in place: ${task.session?.cwd ?? "the repo"}`]

@@ -7,6 +7,7 @@ import {
   readAgText,
   readTaskNote,
   type Task,
+  type TaskNoteHandoff,
 } from "@agnostic/core";
 import { AGN_TASK_ID } from "@agnostic/hooks";
 import { launchSpec, RegistryError, resumeSpec } from "@agnostic/registry";
@@ -84,7 +85,25 @@ async function promptInput(ctx: DaemonContext, repo: Repo, task: Task): Promise<
       .list({ repoId: repo.id, status: OPEN })
       .filter((row) => row.id !== task.id),
     decisions: await readAgText(repo.path, "decisions.md"),
-    // Chunk 13 writes handoffs; a task started by `agn run` never has one.
-    handoff: null,
+    handoff: await parentHandoff(repo, task),
   };
+}
+
+/**
+ * The section the handoff that created this task wrote into the parent's note, matched by the
+ * timestamp the two share. A task resumed fresh months later reads the same section again, and a
+ * note whose sections were edited by hand falls back to the last one.
+ */
+async function parentHandoff(repo: Repo, task: Task): Promise<TaskNoteHandoff | null> {
+  const parentId = task.parentTaskId;
+  if (parentId === undefined) {
+    return null;
+  }
+  const note = await readTaskNote(repo.path, parentId);
+  if (note === null) {
+    return null;
+  }
+  return (
+    note.handoffs.find((handoff) => handoff.at === task.createdAt) ?? note.handoffs.at(-1) ?? null
+  );
 }

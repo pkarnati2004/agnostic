@@ -75,6 +75,7 @@ function fields(task: Task): [string, string][] {
     ["harness", task.session?.harness ?? "-"],
     ["tmux", task.session?.tmuxSession ?? "-"],
     ["cwd", task.session?.cwd ?? "-"],
+    ["parent", task.parentTaskId ?? "-"],
     ["origin", task.origin],
     ["created", task.createdAt],
     ["updated", task.updatedAt],

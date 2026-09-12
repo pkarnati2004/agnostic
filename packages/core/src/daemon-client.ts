@@ -6,6 +6,8 @@ import {
   type CleanTaskResponse,
   type DoctorRequest,
   type DoctorResponse,
+  type HandoffTaskRequest,
+  type HandoffTaskResponse,
   type HealthResponse,
   type HooksInstallRequest,
   type HooksInstallResponse,
@@ -45,6 +47,8 @@ export type DaemonClient = {
   stopTask(id: string): Promise<TaskResponse>;
   cleanTask(id: string, body: CleanTaskRequest): Promise<CleanTaskResponse>;
   resumeTask(id: string): Promise<ResumeTaskResponse>;
+  /** Hands the task to another profile: the parent is stopped, the child starts from the note. */
+  handoffTask(id: string, body: HandoffTaskRequest): Promise<HandoffTaskResponse>;
   /** The harness processes running under `path`, for `agn adopt` to choose from. */
   listSessions(repoId: string, path: string): Promise<SessionsResponse>;
   adoptTask(repoId: string, body: AdoptRequest): Promise<TaskResponse>;
@@ -109,6 +113,8 @@ export function createDaemonClient(opts: {
     cleanTask: (id, body) =>
       json<CleanTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/clean`, body),
     resumeTask: (id) => json<ResumeTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/resume`),
+    handoffTask: (id, body) =>
+      json<HandoffTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/handoff`, body),
     listSessions: (repoId, path) =>
       json<SessionsResponse>(
         "GET",
