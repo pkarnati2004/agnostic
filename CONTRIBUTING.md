@@ -18,6 +18,6 @@ Thanks for looking. agnostic is MIT-licensed and small on purpose.
 
 **Workflow.** Branch per change, conventional commits, `pnpm lint && pnpm test` green. PR description: what, why, how tested.
 
-**Adding a harness.** Add a `HarnessDefinition` in `packages/registry` (binary, detection, launch args, model override method) and, for full support, a hook installer in `packages/hooks` plus a transcript parser in `packages/usage`.
+**Adding a harness.** Add a `HarnessDefinition` in `packages/registry` (binary, detection, launch args, model override method) and, for full support, an `install.ts` and a `parse.ts` under `packages/hooks/src/<harness>/` with a row each in `harness-hooks.ts`, plus a transcript parser in `packages/usage`. Nothing else names a harness: the daemon asks the table.
 
 **Adding catalog data.** Rows need a source URL, date, model version, harness, task class, metric, and score. See `docs/recommendations.md`.

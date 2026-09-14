@@ -13,10 +13,12 @@ import {
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
+import { ensureHooks } from "./hooks-install.js";
 import { initialTaskNote } from "./initial-task-note.js";
 import { freshLaunchCommand } from "./launch-command.js";
 import { detectRepoKind } from "./repo-kind.js";
 import { resolveProfile } from "./resolve-profile.js";
+import { ensureSynced } from "./sync-repo.js";
 import { syncTaskNote } from "./task-note-sync.js";
 import { launchedSession } from "./task-session.js";
 
@@ -102,6 +104,10 @@ async function launch(
     setupCommand: opts.config?.setupCommand ?? null,
     logFile: taskLogPath(ctx.paths, task.id),
   });
+  // The worktree exists now: its own `.ag/instructions.md` is what the generated files there are
+  // made from, and it is the directory the harness reads its hooks from.
+  await ensureSynced(ctx, prepared.cwd);
+  await ensureHooks(ctx, opts.profile.harness, prepared.cwd);
   const command = await freshLaunchCommand(
     ctx,
     repo,

@@ -37,6 +37,26 @@ export default defineConfig({
       },
       {
         test: {
+          name: "hooks",
+          root: "packages/hooks",
+          include: ["src/**/*.test.ts"],
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
+          name: "sync",
+          root: "packages/sync",
+          include: ["src/**/*.test.ts"],
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
           name: "executor-tmux",
           root: "packages/executor-tmux",
           include: ["src/**/*.test.ts"],

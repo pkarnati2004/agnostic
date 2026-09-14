@@ -13,9 +13,11 @@ import {
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
+import { ensureHooks } from "./hooks-install.js";
 import { freshLaunchCommand, resumeLaunchCommand } from "./launch-command.js";
 import { resolveRepoId } from "./resolve-id.js";
 import { resolveProfile } from "./resolve-profile.js";
+import { ensureSynced } from "./sync-repo.js";
 import { launchedSession } from "./task-session.js";
 
 const TERMINAL: Task["status"][] = ["done", "failed", "stopped"];
@@ -41,6 +43,10 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
   const prepared = await prepareIfQueued(ctx, repo, task);
   const cwd = prepared?.cwd ?? task.session?.cwd ?? task.worktreePath ?? repo.path;
   await assertDirectory(task, cwd);
+  // Whether the harness picks its conversation up or starts over, it reads its instructions and
+  // its hook config from this directory as it starts. A live session never gets here.
+  await ensureSynced(ctx, cwd);
+  await ensureHooks(ctx, profile.harness, cwd);
   const native = resumeLaunchCommand(task, profile, ctx.env);
   const branch = prepared?.branch ?? task.branch;
   const command = native ?? (await freshLaunchCommand(ctx, repo, { ...task, branch }, profile));

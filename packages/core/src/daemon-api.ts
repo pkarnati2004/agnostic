@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AttachInfo, DetectedHarness } from "./executor.js";
 import type { Billing, HarnessId, Profile } from "./profile.js";
 import type { Repo } from "./repo.js";
-import { type Task, TaskStatusSchema } from "./task.js";
+import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;
@@ -111,13 +111,41 @@ export type HarnessReport = {
   modelSource: ModelSource;
 };
 
+/** A tool that is not a harness but that agn reports on: `gh` is the only one in v0. */
+export type ToolReport = {
+  tool: "gh";
+  path: string | null;
+  version: string | null;
+  login: "logged-in" | "logged-out" | "unknown";
+};
+
 export type DoctorResponse = {
   harnesses: HarnessReport[];
   profiles: Profile[];
+  tools: ToolReport[];
   detectedAt: string;
   /** The PATH the daemon was started with, because that is what detection saw.  */
   pathVar: string;
 };
+
+/** Hooks move a task between these two only; queued and the terminal statuses are never touched. */
+export type HookStatus = Extract<TaskStatus, "running" | "waiting">;
+
+/** The answer to a harness hook: what the event meant, and null when it meant no transition. */
+export type HookResponse = { task: Task; applied: HookStatus | null };
+
+/** One harness's hook config after an install; `verify` is the step agn could not do itself. */
+export type HookInstallResult = {
+  harness: HarnessId;
+  file: string;
+  changed: boolean;
+  verify: string | null;
+};
+
+export const HooksInstallRequestSchema = z.strictObject({ harness: z.string().min(1).optional() });
+export type HooksInstallRequest = z.infer<typeof HooksInstallRequestSchema>;
+
+export type HooksInstallResponse = { installs: HookInstallResult[] };
 
 export type ProfilesResponse = { profiles: Profile[]; detectedAt: string };
 
@@ -125,3 +153,44 @@ export const EventsQuerySchema = z.strictObject({
   after: z.coerce.number().int().nonnegative().optional(),
 });
 export type EventsQuery = z.output<typeof EventsQuerySchema>;
+
+// `agn init` creates `.ag/`; the seed for `instructions.md` is an existing instructions file or
+// agn's template, and the answer says which it was (ADR 017).
+export const InitRequestSchema = z.strictObject({
+  from: z.enum(["CLAUDE.md", "AGENTS.md"]).optional(),
+  force: z.boolean().optional(),
+});
+export type InitRequest = z.infer<typeof InitRequestSchema>;
+
+export type InitSource = "CLAUDE.md" | "AGENTS.md" | "template";
+
+/** `file` is relative to the repo root; `source` is set only for a seeded `instructions.md`. */
+export type InitWrite = {
+  file: string;
+  action: "created" | "kept" | "rewritten";
+  source: InitSource | null;
+};
+
+export type InitResponse = { writes: InitWrite[] };
+
+/** The files `agn sync` generates from `.ag/instructions.md`, relative to the repo root. */
+export type SyncTarget = "CLAUDE.md" | "AGENTS.md";
+
+export type SyncAction = "create" | "update" | "unchanged" | "conflict";
+
+/** `content` is what sync would write, whatever the action; `reason` is set for some of them. */
+export type SyncWrite = {
+  file: SyncTarget;
+  action: SyncAction;
+  content: string;
+  reason: string | null;
+};
+
+export const SyncRequestSchema = z.strictObject({
+  dryRun: z.boolean().optional(),
+  force: z.boolean().optional(),
+});
+export type SyncRequest = z.infer<typeof SyncRequestSchema>;
+
+/** `applied` is false after a dry run: the plan is the same, nothing on disk changed. */
+export type SyncResponse = { writes: SyncWrite[]; applied: boolean };

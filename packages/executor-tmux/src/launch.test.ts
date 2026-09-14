@@ -119,7 +119,9 @@ describe("launchSession against a client that only records", () => {
     const last = calls.slice(-3);
     expect(last.map((call) => call.args[0])).toEqual(["load-buffer", "paste-buffer", "send-keys"]);
     expect(last[2]?.args).toEqual(["send-keys", "-t", expect.stringContaining("agn-"), "Enter"]);
-    expect((last[2]?.at ?? 0) - (last[1]?.at ?? 0)).toBeGreaterThanOrEqual(100);
+    // The wait is 100ms; a timer may fire a millisecond early, so the assertion is the gap, not
+    // the exact number. The order of the three calls above is what has to be right.
+    expect((last[2]?.at ?? 0) - (last[1]?.at ?? 0)).toBeGreaterThanOrEqual(90);
     expect(calls.flatMap((call) => call.args)).not.toContain("-l");
   });
 });

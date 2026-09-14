@@ -58,7 +58,7 @@ const tier1: HarnessDefinition[] = [
     routes: ["native", "local"],
     resume: (sessionId) => ["resume", sessionId],
     sessionCapture: { source: "hook", key: "session_id" },
-    hooks: "codex-notify",
+    hooks: "codex-hooks",
     authFile: ".codex/auth.json",
     transcriptsDir: ".codex/sessions",
     tier: 1,

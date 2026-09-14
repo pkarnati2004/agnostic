@@ -56,7 +56,9 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
       // Null is "no such session"; remain-on-exit holds a dead pane until the watcher reads it.
       const dead = await paneDead(clientFor(handle), handle.tmuxSession);
       if (dead !== null) {
-        return dead ? "exited" : "running";
+        // A session agn did not launch has no pane-died hook, so no exit file is on its way and a
+        // dead pane of its is all agn will ever learn about it.
+        return dead ? exitOnItsWay(handle) : "running";
       }
       // No session, but an exit file nobody has swept yet still owes this task its real exit code.
       return (await hasExitFile(opts.paths.sessions, handle.tmuxSession)) ? "exited" : "gone";
@@ -79,6 +81,15 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
       events.clear();
     },
   };
+}
+
+/**
+ * A launch of agn's writes an exit file through its pane-died hook, so its dead pane still owes
+ * the task an exit code. A session agn adopted has no such hook and no launch id: for that one,
+ * dead is the end of the story.
+ */
+function exitOnItsWay(handle: SessionHandle): SessionState {
+  return handle.launchId === null ? "gone" : "exited";
 }
 
 async function hasExitFile(sessionsDir: string, session: string): Promise<boolean> {

@@ -10,7 +10,7 @@ Agent-agnostic development. Use Claude Code, Codex, Pi - and know which one to u
 - **Recommendations, not leaderboards.** Describe the task; get a pick with a reason, a confidence label, and the benchmarks behind it - limited to agents you can actually run.
 - **Isolation.** One worktree per task. No stepping on each other's changes.
 - **Native sessions.** Plan mode, tool approvals, permissions, subagents all happen in the agent's own UI. `agnostic` renders it; it doesn't replace it.
-- **Portable project context.** `.ag/instructions.md` is the one file you maintain; `agn sync` generates `CLAUDE.md`, `AGENTS.md`, and OpenCode config from it.
+- **Portable project context.** `.ag/instructions.md` is the one file you maintain; `agn sync` generates `CLAUDE.md` and `AGENTS.md` from it. Claude Code reads CLAUDE.md; Codex, OpenCode and Pi read AGENTS.md.
 - **Open anywhere.** VS Code, Cursor, Zed, JetBrains, Xcode, or a terminal - one click.
 - **Workflows (optional).** Declare roles (plan, implement, test, review) once; agnostic generates each agent's native subagent config with the right model per role. Off unless you turn it on. *(soon)*
 - **Usage and cost.** Per-task tokens and cost, per-plan usage at a glance.
@@ -49,9 +49,9 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn clean [<task>...]` | Remove the worktrees of closed tasks. `--delete-branch` removes the branch too |
 | `agn resume [<task>]` | Bring a session back after a reboot, with its history where the agent supports it |
 | `agn adopt <path>` | Register an agent session you started outside agn. `--task "<title>"`, `--pid <n>`, `--repo <r>` |
-| `agn hooks install` | Install the status hook in a repo. `--repo <r>` |
-| `agn init` | Create `.ag/instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--repo <r>` |
-| `agn sync` | Regenerate agent-specific config from `.ag/instructions.md`. `--dry-run`, `--repo <r>` |
+| `agn hooks install` | Install the status hook in a repo. `--repo <r>`, `--harness <id>` |
+| `agn init` | Create `.ag/`, seeding `instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--from <file>`, `--force`, `--repo <r>` |
+| `agn sync` | Regenerate `CLAUDE.md` and `AGENTS.md` from `.ag/instructions.md`. `--dry-run`, `--force`, `--repo <r>` |
 | `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--subscriptions-only` |
 | `agn handoff <task> --to <id\|harness>` | Hand a task to another agent with a structured note. `--note <text>` |
 | `agn usage [<task>]` | Today's and this week's usage per plan, or one task's |

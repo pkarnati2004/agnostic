@@ -8,6 +8,7 @@ import {
   readTaskNote,
   type Task,
 } from "@agnostic/core";
+import { AGN_TASK_ID } from "@agnostic/hooks";
 import { launchSpec, RegistryError, resumeSpec } from "@agnostic/registry";
 import type { DaemonContext } from "./app.js";
 import { initialTaskNote } from "./initial-task-note.js";
@@ -32,7 +33,8 @@ export async function freshLaunchCommand(
   return {
     command: spec.command,
     args: spec.args,
-    env: { ...ctx.env, ...spec.env },
+    // The task id every hook this session fires carries back.
+    env: { ...ctx.env, ...spec.env, [AGN_TASK_ID]: task.id },
     promptAfterStart: spec.promptAfterStart,
   };
 }
@@ -56,7 +58,8 @@ export function resumeLaunchCommand(
     return {
       command: spec.command,
       args: spec.args,
-      env: { ...env, ...spec.env },
+      // The task id every hook this session fires carries back.
+      env: { ...env, ...spec.env, [AGN_TASK_ID]: task.id },
       promptAfterStart: null,
     };
   } catch (cause) {

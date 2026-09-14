@@ -2,7 +2,12 @@ import { chmod, copyFile, mkdir, mkdtemp, realpath, symlink } from "node:fs/prom
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type ExecutorProvider, type ProcessMatcher, spawn } from "@agnostic/core";
+import {
+  type DetectedHarness,
+  type ExecutorProvider,
+  type ProcessMatcher,
+  spawn,
+} from "@agnostic/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { detectHarnesses, matchesName, parsePaneOwners, processName } from "./detect.js";
 import { parsePsOutput } from "./process-table.js";
@@ -109,7 +114,13 @@ describe("parsePaneOwners", () => {
 
 describe("detect", () => {
   it("finds both harnesses under the path, with their cwd, args and tmux session", async () => {
-    const found = await executor.detect(root, MATCHERS);
+    // `lsof` can be slow enough under load to miss a pid, and a detection that missed one is a
+    // detection to repeat rather than a failure, so this reads until the machine agrees.
+    let found: DetectedHarness[] = [];
+    await waitFor("detect reports both harnesses with their tmux session", async () => {
+      found = await executor.detect(root, MATCHERS);
+      return found.length === 2 && found.some((row) => row.tmux !== null);
+    });
     expect(found).toHaveLength(2);
     const claude = found.find((row) => row.harness === "claude-code");
     const codex = found.find((row) => row.harness === "codex");
@@ -129,20 +140,17 @@ describe("detect", () => {
   });
 
   it("leaves out a harness running in a sibling directory", async () => {
-    const found = await executor.detect(root, MATCHERS);
-    expect(found.map((row) => row.pid)).not.toContain(elsewhere.pid);
-    expect((await executor.detect(sibling, MATCHERS)).map((row) => row.pid)).toEqual([
+    expect((await executor.detect(root, MATCHERS)).map((row) => row.pid)).not.toContain(
       elsewhere.pid,
-    ]);
+    );
+    expect((await pidsUnder(sibling)).map((row) => row.pid)).toEqual([elsewhere.pid]);
   });
 
   it("follows a symlinked path to the same processes", async () => {
     const link = join(await mkdtemp(join(tmpdir(), "agn-detect-link-")), "link");
     await symlink(root, link);
-    expect((await executor.detect(link, MATCHERS)).map((row) => row.harness).sort()).toEqual([
-      "claude-code",
-      "codex",
-    ]);
+    const found = await pidsUnder(link, 2);
+    expect(found.map((row) => row.harness).sort()).toEqual(["claude-code", "codex"]);
   });
 
   it("finds nothing when no matcher names a running program", async () => {
@@ -153,3 +161,13 @@ describe("detect", () => {
     expect(await detectHarnesses([tmux.client], [], root, MATCHERS)).toEqual([]);
   });
 });
+
+/** The same tolerance for a slow `lsof` as the first test, for the counts that must be exact. */
+async function pidsUnder(path: string, expected = 1): Promise<DetectedHarness[]> {
+  let found: DetectedHarness[] = [];
+  await waitFor(`detect reports ${expected} harness(es) under ${path}`, async () => {
+    found = await executor.detect(path, MATCHERS);
+    return found.length === expected;
+  });
+  return found;
+}

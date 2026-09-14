@@ -6,6 +6,10 @@ import {
   type CleanTaskResponse,
   type DoctorResponse,
   type HealthResponse,
+  type HooksInstallRequest,
+  type HooksInstallResponse,
+  type InitRequest,
+  type InitResponse,
   type ProfilesResponse,
   type RegisterRepoRequest,
   type RegisterRepoResponse,
@@ -13,6 +17,8 @@ import {
   type ResumeTaskResponse,
   type RunTaskRequest,
   type SessionsResponse,
+  type SyncRequest,
+  type SyncResponse,
   type TaskListQuery,
   type TaskListResponse,
   type TaskResponse,
@@ -41,6 +47,12 @@ export type DaemonClient = {
   adoptTask(repoId: string, body: AdoptRequest): Promise<TaskResponse>;
   profiles(): Promise<ProfilesResponse>;
   doctor(): Promise<DoctorResponse>;
+  /** Installs the status hook for one harness, or for every harness the repo could run. */
+  installHooks(repoId: string, body: HooksInstallRequest): Promise<HooksInstallResponse>;
+  /** Creates `.ag/`, seeding `instructions.md` from the repo's own instructions file. */
+  initRepo(repoId: string, body: InitRequest): Promise<InitResponse>;
+  /** Renders the generated instruction files; a dry run answers with the same plan unapplied. */
+  syncRepo(repoId: string, body: SyncRequest): Promise<SyncResponse>;
   /** Resumes with `Last-Event-ID` after a dropped connection; ends when `signal` aborts. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -101,6 +113,12 @@ export function createDaemonClient(opts: {
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
     doctor: () => json<DoctorResponse>("POST", "/doctor"),
+    installHooks: (repoId, body) =>
+      json<HooksInstallResponse>("POST", `/repos/${encodeURIComponent(repoId)}/hooks`, body),
+    initRepo: (repoId, body) =>
+      json<InitResponse>("POST", `/repos/${encodeURIComponent(repoId)}/init`, body),
+    syncRepo: (repoId, body) =>
+      json<SyncResponse>("POST", `/repos/${encodeURIComponent(repoId)}/sync`, body),
     events: (after, signal) => streamEvents(doFetch, base, headers, after, signal),
   };
 }

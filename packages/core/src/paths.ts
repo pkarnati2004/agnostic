@@ -10,6 +10,7 @@ export type AgnosticPaths = {
   logs: string;
   sessions: string;
   daemon: string;
+  hooks: string;
 };
 
 export function agnosticHome(env: NodeJS.ProcessEnv = process.env): string {
@@ -29,6 +30,8 @@ export function agnosticPaths(home: string = agnosticHome()): AgnosticPaths {
     sessions: join(home, "sessions"),
     // daemon.json is a hint, not truth: readers verify the pid is alive and the port answers.
     daemon: join(home, "daemon.json"),
+    // The one script every harness hook runs, written at daemon start.
+    hooks: join(home, "hooks"),
   };
 }
 

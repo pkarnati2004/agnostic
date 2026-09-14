@@ -9,14 +9,28 @@ const FAKE_AGENT = fileURLToPath(new URL("../../../tests/fixtures/fake-agent.sh"
 /**
  * The harnesses a task test may launch, all of them the fake agent under another name. `claude`
  * and `codex` stay up like a real session; `quitter` and `failer` end on their own, which is how
- * a test reaches done and failed without killing anything.
+ * a test reaches done and failed without killing anything. `hooksFile` is where that harness's own
+ * installer writes, in the shell's words: the wrapper reads its hook command back from it, so a
+ * test exercises the install rather than a command a test invented.
  */
-const BINARIES: Record<string, string[]> = {
-  claude: [],
-  codex: [],
-  quitter: ["--exit-after", "2"],
-  failer: ["--exit-after", "2", "--exit-code", "3"],
+const BINARIES: Record<string, { args: string[]; hooksFile?: string }> = {
+  claude: { args: [], hooksFile: '"$PWD/.claude/settings.local.json"' },
+  codex: { args: [], hooksFile: '"$HOME/.codex/hooks.json"' },
+  quitter: { args: ["--exit-after", "2"] },
+  failer: { args: ["--exit-after", "2", "--exit-code", "3"] },
 };
+
+/** Reads the command out of a Claude-shaped hook config; nothing on stdout when there is none. */
+const READ_HOOK_COMMAND = `const { readFileSync } = require("node:fs");
+try {
+  const config = JSON.parse(readFileSync(process.argv[2], "utf8"));
+  const entries = Object.values(config.hooks ?? {}).flat().flatMap((group) => group.hooks ?? []);
+  const found = entries.find((entry) => typeof entry.command === "string");
+  if (found) {
+    process.stdout.write(found.command);
+  }
+} catch {}
+`;
 
 export type LaunchEnv = {
   socketName: string;
@@ -43,10 +57,12 @@ export async function createLaunchEnv(home: string): Promise<LaunchEnv> {
   const logDir = join(home, "agent-logs");
   await mkdir(binDir, { recursive: true });
   await mkdir(logDir, { recursive: true });
-  for (const [binary, args] of Object.entries(BINARIES)) {
+  const reader = join(binDir, "hook-command.cjs");
+  await writeFile(reader, READ_HOOK_COMMAND, "utf8");
+  for (const [binary, spec] of Object.entries(BINARIES)) {
     const file = join(binDir, binary);
-    const flags = ["--log", `${logDir}/$$.log`, ...args].join(" ");
-    await writeFile(file, `#!/bin/sh\nexec ${FAKE_AGENT} ${flags} "$@"\n`, "utf8");
+    const flags = ["--log", `${logDir}/$$.log`, ...spec.args].join(" ");
+    await writeFile(file, wrapper(flags, reader, spec.hooksFile), "utf8");
     await chmod(file, 0o755);
   }
   sequence += 1;
@@ -84,6 +100,20 @@ export async function createLaunchEnv(home: string): Promise<LaunchEnv> {
       await rm(tmuxTmpdir, { recursive: true, force: true });
     },
   };
+}
+
+/** The wrapper a harness's binary name resolves to: the fake agent, with the hook it was given. */
+function wrapper(flags: string, reader: string, hooksFile: string | undefined): string {
+  if (hooksFile === undefined) {
+    return `#!/bin/sh\nexec ${FAKE_AGENT} ${flags} "$@"\n`;
+  }
+  return `#!/bin/sh
+hook="$(node '${reader}' ${hooksFile} 2> /dev/null)"
+if [ -n "$hook" ]; then
+  exec ${FAKE_AGENT} ${flags} --hook-command "$hook" "$@"
+fi
+exec ${FAKE_AGENT} ${flags} "$@"
+`;
 }
 
 async function readLogs(logDir: string): Promise<string> {

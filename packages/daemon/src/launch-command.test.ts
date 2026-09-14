@@ -54,7 +54,8 @@ describe("resumeLaunchCommand", () => {
     expect(command).toEqual({
       command: "claude",
       args: ["--resume", "sess-42"],
-      env: ENV,
+      // The resumed session reports its hooks under the same task as the launch it continues.
+      env: { ...ENV, AGN_TASK_ID: task.id },
       promptAfterStart: null,
     });
   });

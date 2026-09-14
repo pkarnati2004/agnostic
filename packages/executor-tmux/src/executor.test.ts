@@ -153,6 +153,34 @@ describe("sessionState", () => {
       10_000,
     );
   });
+
+  it("is gone for a dead pane of a session agn never launched", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "agn-adopted-"));
+    const unwatched = createTmuxExecutor({
+      paths: { ...tmux.paths, sessions: join(tmux.home, "sessions-adopted") },
+      socketName: tmux.socketName,
+      env: tmux.env,
+    });
+    await unwatched.close();
+    const live = await unwatched.launch({
+      taskId: "adoptedwxy",
+      cwd,
+      command: {
+        command: FAKE_AGENT,
+        args: ["--exit-after", "1"],
+        env: tmux.env,
+        promptAfterStart: null,
+      },
+    });
+    // An adopted session's row carries no launch id, so no pane-died hook will ever write its
+    // exit file: once its pane is dead there is nothing more coming.
+    const adopted: SessionHandle = { ...live, launchId: null };
+    await waitFor(
+      "the pane dies",
+      async () => (await unwatched.sessionState(adopted)) === "gone",
+      10_000,
+    );
+  });
 });
 
 describe("the default client env (no `env` override)", () => {
