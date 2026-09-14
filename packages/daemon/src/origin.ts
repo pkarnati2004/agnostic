@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "hono";
+import { isUiRead } from "./auth.js";
 import { DaemonError } from "./error.js";
 
 /** Both spellings of loopback: the URL `agn ui` prints is one, a user retyping it may write the other. */
@@ -24,9 +25,17 @@ export function originAllowed(origin: string | undefined, port: number): boolean
   );
 }
 
-/** Mounted before the auth check, so a foreign page is told 403 whatever token it guessed. */
+/**
+ * Mounted before the auth check, so a foreign page is told 403 whatever token it guessed. Fetching
+ * the built page itself is exempt (ADR 026): a `<link>` or a navigation from elsewhere carries a
+ * foreign Referer but never a foreign Origin, and the page holds no secret. Only a read is exempt,
+ * so a form POST from a foreign page still has nowhere under `/ui` to land.
+ */
 export function originCheck(port: () => number): MiddlewareHandler {
   return async (c, next) => {
+    if (isUiRead(c.req.method, c.req.path)) {
+      return next();
+    }
     const origin = c.req.header("origin");
     if (origin !== undefined && !originAllowed(origin, port())) {
       throw originForbidden(origin);

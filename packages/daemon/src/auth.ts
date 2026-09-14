@@ -39,12 +39,13 @@ async function warnOnLooseMode(file: string, log: Logger): Promise<void> {
 }
 
 /**
- * The built page and everything it loads: it carries nothing secret, so it needs no token
- * (ADR 026). Both middlewares that guard the daemon read this one predicate - `bearerAuth` below
- * and the Origin check - so the list of open paths has a single home.
+ * Reading the built page and everything it loads: it carries nothing secret, so it needs no token
+ * (ADR 026), and only GET and HEAD are exempt, so a write from a foreign page has nowhere under
+ * `/ui` to land. Both middlewares that guard the daemon read this one predicate - `bearerAuth`
+ * below and the Origin check - so the two exemptions cannot drift apart.
  */
-export function isUiPath(path: string): boolean {
-  return path === "/ui" || path.startsWith("/ui/");
+export function isUiRead(method: string, path: string): boolean {
+  return (method === "GET" || method === "HEAD") && (path === "/ui" || path.startsWith("/ui/"));
 }
 
 /**
@@ -55,7 +56,7 @@ export function isUiPath(path: string): boolean {
 export function bearerAuth(token: string): MiddlewareHandler {
   const expected = tokenDigest(token);
   return async (c, next) => {
-    if (c.req.path === "/health" || isUiPath(c.req.path)) {
+    if (c.req.path === "/health" || isUiRead(c.req.method, c.req.path)) {
       return next();
     }
     const header = c.req.header("authorization") ?? "";

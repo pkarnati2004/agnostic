@@ -64,6 +64,37 @@ describe("the Origin check on every route", () => {
     expect((await daemon.app.request("/health")).status).toBe(200);
   });
 
+  it("exempts a GET of the built page, which a foreign navigation can reach", async () => {
+    // Not built in this daemon, so the route's own 404 is what reaching the handler looks like.
+    for (const path of ["/ui", "/ui/", "/ui/assets/app.js"]) {
+      const response = await daemon.app.request(path, {
+        headers: { origin: "http://evil.example" },
+      });
+      expect(response.status, path).toBe(404);
+      expect(await response.json()).toMatchObject({ error: { code: "ui-not-built" } });
+    }
+  });
+
+  it("exempts a HEAD of the page too, which is the same read with no body", async () => {
+    const response = await daemon.app.request("/ui", {
+      method: "HEAD",
+      headers: { origin: "http://evil.example" },
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it("exempts the page for reads only, and nothing that merely starts with /ui", async () => {
+    const posted = await daemon.app.request("/ui", {
+      method: "POST",
+      headers: { origin: "http://evil.example" },
+    });
+    expect(posted.status).toBe(403);
+    const near = await daemon.app.request("/ui-events", {
+      headers: { origin: "http://evil.example" },
+    });
+    expect(near.status).toBe(403);
+  });
+
   it("streams the event feed to the daemon's own origin", async () => {
     const response = await daemon.request("/events", { headers: { origin: url } });
     expect(response.status).toBe(200);

@@ -45,6 +45,7 @@
 **`agn usage` shows less than the agent's own usage screen.** They count different windows. agn counts the calendar day and the week from Monday, in your time zone; Claude Code and Codex show their plan's rolling window (five hours, seven days). agn also reads only what is in the transcript files on this machine, so a session run on another machine under the same login is not there.
 
 **`agn usage` shows a `-` in the cost column.** Either the model runs on your subscription, where the tokens cost nothing extra, or agn has no price for the model the agent reported. Run `agn catalog update` to refresh the rates. Usage from a session agn did not start is never priced.
+
 **`agn ui` says the workspace is not built.** The daemon serves the page from the `@agnostic/ui`
 package next to it, and that package has no `dist` until it is built. From a checkout, run
 `pnpm build`. From an install, reinstall `agnostic-dev`: a published package carries the page.
