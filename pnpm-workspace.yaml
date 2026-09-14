@@ -9,3 +9,5 @@ allowBuilds:
   esbuild: true
   # better-sqlite3 ships prebuilds; the install script only compiles when none matches the ABI.
   better-sqlite3: true
+  # node-pty ships prebuilds; the install script only compiles when none matches the platform.
+  node-pty: true

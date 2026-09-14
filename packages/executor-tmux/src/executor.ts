@@ -7,15 +7,19 @@ import {
   type SessionHandle,
   type SessionState,
   scrubEnv,
+  type TerminalSize,
+  type TerminalStream,
 } from "@agnostic/core";
 import { detectHarnesses } from "./detect.js";
+import { ExecutorError } from "./error.js";
 import { isExitFileFor } from "./exit-file.js";
 import { createExitWatch } from "./exit-watch.js";
 import { launchSession } from "./launch.js";
 import { processProbe, readProcessTable } from "./process-table.js";
 import { createEventFanout } from "./session-events.js";
 import { stopSession } from "./stop.js";
-import { createTmuxClient, paneDead, type TmuxClient } from "./tmux-client.js";
+import { openTerminal } from "./terminal.js";
+import { createTmuxClient, hasSession, paneDead, type TmuxClient } from "./tmux-client.js";
 import { cleanWorktree, prepareWorktree } from "./worktree.js";
 
 export type TmuxExecutorOptions = {
@@ -36,6 +40,8 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
   const watch = createExitWatch(client, opts.paths.sessions, events.emit);
   void watch.scan();
   const probe = processProbe();
+  // A pty must never outlive the daemon, so every stream still open at close is closed with it.
+  const terminals = new Set<TerminalStream>();
 
   // The third case - a socket that is neither ours nor the default server - only comes from a task
   // row written before someone changed socketName, so its client is built once and not kept.
@@ -64,11 +70,19 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
       return (await hasExitFile(opts.paths.sessions, handle.tmuxSession)) ? "exited" : "gone";
     },
     attach(handle): AttachInfo {
-      const socket = handle.tmuxSocket === null ? [] : ["-L", handle.tmuxSocket];
-      return {
-        kind: "tmux",
-        argv: ["tmux", "-u", ...socket, "attach-session", "-t", handle.tmuxSession],
-      };
+      return { kind: "tmux", argv: attachArgv(handle) };
+    },
+    async terminal(handle, size: TerminalSize): Promise<TerminalStream> {
+      if (!(await hasSession(clientFor(handle), handle.tmuxSession))) {
+        throw new ExecutorError(`task ${handle.taskId} has no running session`, {
+          code: "session-not-running",
+          hint: `Run \`agn resume ${handle.taskId}\` to start one.`,
+        });
+      }
+      const stream = openTerminal({ argv: attachArgv(handle), env, size });
+      terminals.add(stream);
+      stream.onExit(() => terminals.delete(stream));
+      return stream;
     },
     stop: (handle) => stopSession(clientFor(handle), handle, probe),
     clean: (input) => cleanWorktree(opts.paths, input),
@@ -78,9 +92,18 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
     onEvent: events.subscribe,
     async close() {
       await watch.close();
+      // A copy: closing a stream removes it from the set as soon as its pty reports the exit.
+      for (const stream of [...terminals]) {
+        stream.close();
+      }
       events.clear();
     },
   };
+}
+
+function attachArgv(handle: SessionHandle): string[] {
+  const socket = handle.tmuxSocket === null ? [] : ["-L", handle.tmuxSocket];
+  return ["tmux", "-u", ...socket, "attach-session", "-t", handle.tmuxSession];
 }
 
 /**

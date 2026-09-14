@@ -9,6 +9,8 @@ The one `ExecutorProvider` (`tmux-local`): it gives a task a place to run and a 
 - Exit is reported without scraping the terminal: `remain-on-exit` plus a `pane-died` hook writes
   the status under `~/.agnostic/sessions/`, and the watcher turns that into an `exited` event even
   when the exit happened while the daemon was down.
+- `terminal` attaches one more tmux client, under a pty, and hands back its bytes: the session and
+  the pane are untouched, so closing a terminal ends that client and nothing else.
 - `detect` finds harness processes running under a path, whether or not agn started them, for
   `agn adopt`.
 

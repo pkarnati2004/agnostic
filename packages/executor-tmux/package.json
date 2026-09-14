@@ -11,6 +11,7 @@
     }
   },
   "dependencies": {
-    "@agnostic/core": "workspace:*"
+    "@agnostic/core": "workspace:*",
+    "node-pty": "1.2.0-beta.15"
   }
 }
