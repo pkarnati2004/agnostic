@@ -128,10 +128,12 @@ export function createApp(deps: DaemonDeps): { app: Hono; close: () => void } {
   ctx.detection.refresh().catch((cause: unknown) => {
     deps.log.error("detection failed", { message: reason(cause) });
   });
-  // A task the ledger calls running may have died while the daemon was down (ADR 014). The
-  // verdict sweep runs after it, so a task settled here is swept in the same pass.
+  // A task the ledger calls running may have died while the daemon was down (ADR 014), and one
+  // still queued was being launched by that daemon. The verdict sweep runs after both, so a task
+  // settled here is swept in the same pass.
   lifecycle
     .reconcileAll()
+    .then(() => lifecycle.failQueued())
     .then(() => deps.verdicts.runOnce())
     .catch((cause: unknown) => {
       deps.log.error("start-up reconcile failed", { message: reason(cause) });

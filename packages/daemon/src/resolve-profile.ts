@@ -86,10 +86,9 @@ async function assertInstalled(
 ): Promise<void> {
   const def = harnessDefinition(harness);
   const report = detection.harnesses.find((row) => row.harness === harness);
-  const path =
-    report === undefined
-      ? await findOnPath([def.binary, ...def.aliases], ctx.env.PATH ?? "")
-      : report.path;
+  // Detection is a cache of a machine that changes under it - an install, an upgrade that moves
+  // the binary - so a harness it has no path for is looked for on PATH before a run is refused.
+  const path = report?.path ?? (await findOnPath([def.binary, ...def.aliases], ctx.env.PATH ?? ""));
   if (path !== null) {
     return;
   }

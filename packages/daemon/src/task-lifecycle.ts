@@ -1,6 +1,8 @@
+import { stat } from "node:fs/promises";
 import {
   type ExecutorProvider,
   isProcessAlive,
+  type Repo,
   type SessionEvent,
   sessionHandle,
   type Task,
@@ -27,6 +29,8 @@ export type TaskLifecycle = {
   stop(task: Task): Promise<Task>;
   reconcile(task: Task): Promise<Task>;
   reconcileAll(): Promise<void>;
+  /** Runs once at start; see `failQueued` below for why a queued row there is nobody's. */
+  failQueued(): Promise<void>;
 };
 
 const LIVE: TaskStatus[] = ["running", "waiting"];
@@ -62,6 +66,19 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
     }
     // `stop` defers: the harness is still in the worktree until the executor has killed it.
     return defer ? updated : await closed(updated);
+  };
+
+  /** Recorded in the ledger, so a verdict can tell a worktree agn removed from one deleted by hand. */
+  const release = async (task: Task, repo: Repo): Promise<void> => {
+    if (
+      task.worktreePath === null ||
+      repo.kind === "folder" ||
+      !(await isThere(task.worktreePath))
+    ) {
+      return;
+    }
+    await executor.clean({ task, repo, deleteBranch: false });
+    ledger.tasks.clean(task.id, false);
   };
 
   const reconcile = async (task: Task): Promise<Task> => {
@@ -106,6 +123,30 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
 
     reconcile,
 
+    /**
+     * A queued row exists only inside the call that is launching it, so one found at start belongs
+     * to a daemon that died mid-launch: nothing will ever start it, and the worktree it reserved
+     * is nobody's. The branch stays, the way `agn clean` leaves it.
+     *
+     * The ledger is per AGNOSTIC_HOME, so the sweep can only ever see this daemon's queued rows,
+     * never a sibling's. The worktree is removed with force because no agent ever ran in it: the
+     * setup command's output is the only thing lost, and running the command again reproduces it.
+     */
+    async failQueued() {
+      for (const task of ledger.tasks.list({ status: ["queued"] })) {
+        log.warn("queued task failed: the daemon launching it did not finish", { taskId: task.id });
+        const failed = ledger.tasks.setStatus(task.id, "failed");
+        const repo = ledger.repos.get(task.repoId);
+        if (repo === null) {
+          continue;
+        }
+        await syncTaskNote(repo.path, failed, log);
+        await release(failed, repo).catch((cause: unknown) => {
+          log.error("worktree not removed", { taskId: task.id, message: reason(cause) });
+        });
+      }
+    },
+
     async reconcileAll() {
       for (const task of ledger.tasks.list({ status: LIVE })) {
         await reconcile(task).catch((cause: unknown) => {
@@ -138,6 +179,13 @@ function statusFor(exitCode: number | null): TaskStatus {
     return "stopped";
   }
   return exitCode === 0 ? "done" : "failed";
+}
+
+function isThere(path: string): Promise<boolean> {
+  return stat(path).then(
+    (stats) => stats.isDirectory(),
+    () => false,
+  );
 }
 
 function reason(cause: unknown): string {
