@@ -24,6 +24,8 @@ export type EventQueries = {
   /** The SSE cursor: everything newer than `cursor`, oldest first. */
   after(cursor: number, limit?: number): Event[];
   forTask(taskId: string): Event[];
+  /** The newest event of one kind, for a reader that wants the last word and not the history. */
+  latest<K extends EventKind>(kind: K): Event<K> | null;
   latestId(): number;
 };
 
@@ -33,6 +35,9 @@ export function createEventQueries(db: Database): EventQueries {
   );
   const selectAfter = db.prepare("SELECT * FROM events WHERE id > ? ORDER BY id LIMIT ?");
   const selectForTask = db.prepare("SELECT * FROM events WHERE task_id = ? ORDER BY id");
+  const selectLatestOfKind = db.prepare(
+    "SELECT * FROM events WHERE kind = ? ORDER BY id DESC LIMIT 1",
+  );
   const selectLatest = db.prepare("SELECT COALESCE(MAX(id), 0) AS id FROM events");
 
   return {
@@ -62,6 +67,12 @@ export function createEventQueries(db: Database): EventQueries {
 
     forTask(taskId: string): Event[] {
       return (selectForTask.all(taskId) as EventRow[]).map(toEvent);
+    },
+
+    latest<K extends EventKind>(kind: K): Event<K> | null {
+      const row = selectLatestOfKind.get(kind) as EventRow | undefined;
+      // The row was selected by kind, so the event it parses to carries that kind's payload.
+      return row === undefined ? null : (toEvent(row) as Event<K>);
     },
 
     latestId(): number {

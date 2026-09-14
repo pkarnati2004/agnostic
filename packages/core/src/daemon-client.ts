@@ -1,3 +1,4 @@
+import type { CatalogRowsResponse, CatalogUpdateResponse } from "./catalog-api.js";
 import {
   type AdoptRequest,
   ApiErrorBodySchema,
@@ -6,6 +7,7 @@ import {
   type CleanTaskResponse,
   type DoctorRequest,
   type DoctorResponse,
+  type EditorsResponse,
   type HandoffTaskRequest,
   type HandoffTaskResponse,
   type HealthResponse,
@@ -13,6 +15,7 @@ import {
   type HooksInstallResponse,
   type InitRequest,
   type InitResponse,
+  type OpenTaskResponse,
   type OutcomeResponse,
   type ProfilesResponse,
   type RecommendRequest,
@@ -31,8 +34,10 @@ import {
   type TaskUsageResponse,
   type UsageResponse,
 } from "./daemon-api.js";
+import type { EditorId } from "./editor.js";
 import { DaemonApiError } from "./error.js";
-import { type Event, EventSchema } from "./event.js";
+import type { Event } from "./event.js";
+import { readFrames } from "./event-frames.js";
 
 const RECONNECT_MS = 1_000;
 const START_HINT = "Run `agn daemon start`.";
@@ -58,6 +63,10 @@ export type DaemonClient = {
   profiles(): Promise<ProfilesResponse>;
   /** The pick for a prompt, without starting anything; `agn run` records one of its own. */
   recommend(body: RecommendRequest): Promise<RecommendResponse>;
+  /** The editors this machine has, and which one an open with no `--editor` would use. */
+  editors(): Promise<EditorsResponse>;
+  /** Where a task lives and what command opens it there; the caller runs the command. */
+  openInfo(id: string, editor?: EditorId): Promise<OpenTaskResponse>;
   doctor(request?: DoctorRequest): Promise<DoctorResponse>;
   /** Installs the status hook for one harness, or for every harness the repo could run. */
   installHooks(repoId: string, body: HooksInstallRequest): Promise<HooksInstallResponse>;
@@ -70,6 +79,10 @@ export type DaemonClient = {
   taskUsage(id: string): Promise<TaskUsageResponse>;
   /** What the task cost and what became of its branch; the daemon rechecks the verdict first. */
   taskOutcome(id: string): Promise<OutcomeResponse>;
+  /** The catalog rows behind a profile, marked where the last recommendation leaned on them. */
+  catalogRows(profile: string): Promise<CatalogRowsResponse>;
+  /** Asks the published catalog whether it is newer, and downloads it when it is (ADR 002). */
+  catalogUpdate(): Promise<CatalogUpdateResponse>;
   /** Resumes with `Last-Event-ID` after a dropped connection; ends when `signal` aborts. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -132,6 +145,12 @@ export function createDaemonClient(opts: {
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
     recommend: (body) => json<RecommendResponse>("POST", "/recommend", body),
+    editors: () => json<EditorsResponse>("GET", "/editors"),
+    openInfo: (id, editor) =>
+      json<OpenTaskResponse>(
+        "GET",
+        `/tasks/${encodeURIComponent(id)}/open${editor === undefined ? "" : `?editor=${editor}`}`,
+      ),
     doctor: (request) => json<DoctorResponse>("POST", "/doctor", request ?? {}),
     installHooks: (repoId, body) =>
       json<HooksInstallResponse>("POST", `/repos/${encodeURIComponent(repoId)}/hooks`, body),
@@ -142,6 +161,9 @@ export function createDaemonClient(opts: {
     usage: () => json<UsageResponse>("GET", "/usage"),
     taskUsage: (id) => json<TaskUsageResponse>("GET", `/tasks/${encodeURIComponent(id)}/usage`),
     taskOutcome: (id) => json<OutcomeResponse>("GET", `/tasks/${encodeURIComponent(id)}/outcome`),
+    catalogRows: (profile) =>
+      json<CatalogRowsResponse>("GET", `/catalog/rows?profile=${encodeURIComponent(profile)}`),
+    catalogUpdate: () => json<CatalogUpdateResponse>("POST", "/catalog/update"),
     events: (after, signal) => streamEvents(doFetch, base, headers, after, signal),
   };
 }
@@ -189,56 +211,6 @@ async function* streamEvents(
       yield event;
     }
     await delay(RECONNECT_MS, signal);
-  }
-}
-
-// The SSE line terminator is CRLF, CR or LF, and a blank line ends a frame (WHATWG "event stream").
-const LINE = /\r\n|\r|\n/;
-
-async function* readFrames(response: Response): AsyncGenerator<Event> {
-  if (response.body === null) {
-    return;
-  }
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let lines: string[] = [];
-  let buffer = "";
-  while (true) {
-    const chunk = await reader.read().catch(() => ({ done: true, value: undefined }) as const);
-    if (chunk.done) {
-      return;
-    }
-    buffer += decoder.decode(chunk.value, { stream: true });
-    const complete = buffer.split(LINE);
-    // The last piece has no terminator yet, so it waits for the next chunk.
-    buffer = complete.pop() ?? "";
-    for (const line of complete) {
-      if (line !== "") {
-        lines.push(line);
-        continue;
-      }
-      const event = parseFrame(lines);
-      lines = [];
-      if (event !== null) {
-        yield event;
-      }
-    }
-  }
-}
-
-/** Comments (`: ping`) and `retry:` carry no event; anything unparsable is skipped, not thrown. */
-function parseFrame(lines: string[]): Event | null {
-  // A field's value may be split over several `data:` lines, which rejoin with a newline.
-  const data = lines
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.slice("data:".length).replace(/^ /, ""));
-  if (data.length === 0) {
-    return null;
-  }
-  try {
-    return EventSchema.parse(JSON.parse(data.join("\n")));
-  } catch {
-    return null;
   }
 }
 

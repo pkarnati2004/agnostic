@@ -1,6 +1,13 @@
-import { type Catalog, entitlement, knowsPlan, type PlanRow } from "@agnostic/catalog";
+import {
+  type Catalog,
+  type CatalogSource,
+  entitlement,
+  knowsPlan,
+  type PlanRow,
+} from "@agnostic/catalog";
 import type {
   AgnosticPaths,
+  Editor,
   ExecutorProvider,
   HarnessReport,
   Plan,
@@ -9,6 +16,7 @@ import type {
 } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
 import {
+  detectEditors,
   detectHarnesses,
   detectLocalServers,
   detectTools,
@@ -20,6 +28,8 @@ import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { bearerAuth } from "./auth.js";
 import { authFilesStamp } from "./auth-files.js";
+import { type CatalogChecker, createCatalogChecker } from "./catalog-check.js";
+import type { CatalogStore } from "./catalog-store.js";
 import { closeOutcome } from "./close-outcome.js";
 import { readDaemonConfig } from "./daemon-config.js";
 import { createDetectionCache, type Detection, type DetectionCache } from "./detection-cache.js";
@@ -27,6 +37,8 @@ import { errorBody } from "./error.js";
 import type { EventFeed } from "./event-feed.js";
 import { type Logger, requestLog } from "./log.js";
 import { adoptRoutes } from "./routes/adopt.js";
+import { catalogRoutes } from "./routes/catalog.js";
+import { editorRoutes } from "./routes/editors.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
 import { hookRoutes } from "./routes/hooks.js";
@@ -52,8 +64,14 @@ export type DaemonDeps = {
   port: () => number;
   /** Injected, so a test never detects a real harness and never runs a real probe. */
   detect: () => Promise<Detection>;
-  /** Loaded once at start; chunk 17 reloads it after a download. */
-  catalog: Catalog;
+  /** Scanned per open request rather than cached: an editor installed today is there today. */
+  detectEditors: () => Promise<Editor[]>;
+  /** Loaded at start and reloaded after a download, so an update needs no restart. */
+  catalog: CatalogStore;
+  /** The URLs the daily check reads; `AGNOSTIC_CATALOG_URL` points them at a mirror or a test. */
+  catalogSource: CatalogSource;
+  /** `catalog_check` in config.yaml: false means agn never reaches out on its own (ADR 002). */
+  catalogCheck: boolean;
   /** Owned by the caller: its exit watcher and its tmux clients outlive any one request. */
   executor: ExecutorProvider;
   /** The base environment every harness is launched with: the daemon's own, scrubbed. */
@@ -72,9 +90,11 @@ export type DaemonContext = DaemonDeps & {
   detection: DetectionCache;
   lifecycle: TaskLifecycle;
   usage: UsageScanner;
+  catalogChecker: CatalogChecker;
 };
 
-export function createApp(deps: DaemonDeps): Hono {
+/** The app owns the catalog checker, so the caller gets back the one thing it has to close. */
+export function createApp(deps: DaemonDeps): { app: Hono; close: () => void } {
   const detection = createDetectionCache(deps.detect, deps.ledger, () => authFilesStamp(deps.home));
   const usage = createUsageScanner({ ...deps, detection });
   // A task that has just closed has written its last turn, and its worktree is nobody else's:
@@ -86,7 +106,22 @@ export function createApp(deps: DaemonDeps): Hono {
       await closeOutcome(ctx, task);
     },
   });
-  const ctx: DaemonContext = { ...deps, detection, lifecycle, usage };
+  const ctx: DaemonContext = {
+    ...deps,
+    detection,
+    lifecycle,
+    usage,
+    // Its timers are unref'd, so nothing waits on a check that is still in flight at shutdown.
+    catalogChecker: createCatalogChecker({
+      store: deps.catalog,
+      source: deps.catalogSource,
+      paths: deps.paths,
+      log: deps.log,
+      enabled: deps.catalogCheck,
+      // A newer catalog can move model lists and entitlements, which is what detection reports.
+      onUpdated: () => detection.refresh().then(() => undefined),
+    }),
+  };
   // The subscription ends when the executor closes, which the daemon does before the ledger.
   deps.executor.onEvent(lifecycle.onExited);
   // Detection shells out; starting it here means the first `agn doctor` does not wait for it.
@@ -111,11 +146,13 @@ export function createApp(deps: DaemonDeps): Hono {
   app.route("/", adoptRoutes(ctx));
   app.route("/", profileRoutes(ctx));
   app.route("/", recommendRoutes(ctx));
+  app.route("/", editorRoutes(ctx));
   app.route("/", eventRoutes(ctx));
   app.route("/", hookRoutes(ctx));
   app.route("/", syncRoutes(ctx));
   app.route("/", usageRoutes(ctx));
   app.route("/", outcomeRoutes(ctx));
+  app.route("/", catalogRoutes(ctx));
 
   app.notFound((c) =>
     c.json({ error: { code: "not-found", message: `no route for ${c.req.path}` } }, 404),
@@ -128,7 +165,7 @@ export function createApp(deps: DaemonDeps): Hono {
     }
     return c.json(body, status as ContentfulStatusCode);
   });
-  return app;
+  return { app, close: ctx.catalogChecker.close };
 }
 
 /**
@@ -141,10 +178,12 @@ export function realDetect(
   env: Record<string, string>,
   home: string,
   paths: AgnosticPaths,
-  catalog: Catalog,
+  store: CatalogStore,
 ): () => Promise<Detection> {
   return async () => {
     const { plans } = await readDaemonConfig(paths);
+    // Read per run rather than captured: an update lands in the middle of a daemon's life.
+    const { catalog } = store.current();
     const statuses = await detectHarnesses({ env, home, models: catalog.models });
     const servers = await detectLocalServers();
     return {
@@ -168,6 +207,14 @@ export function realDetect(
 
 export function planOptions(rows: PlanRow[]): PlanOption[] {
   return rows.map((row) => ({ vendor: row.vendor, id: row.id, displayName: row.displayName }));
+}
+
+/** The editors of the machine the daemon runs on, which is the machine the user is sitting at. */
+export function realDetectEditors(
+  env: Record<string, string>,
+  home: string,
+): () => Promise<Editor[]> {
+  return () => detectEditors({ env, home });
 }
 
 function toReport(status: HarnessStatus, plans: Plans, catalog: Catalog): HarnessReport {

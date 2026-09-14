@@ -40,6 +40,8 @@ const statusByCode: Record<string, number> = {
   "init-source-generated": 409,
   // The parent's branch was deleted, so there is nothing for the next agent to continue from.
   "branch-gone": 409,
+  // The daemon reached out and the far side did not answer: neither a bad request nor a bug.
+  "catalog-fetch-failed": 502,
   "request-invalid": 400,
   "ambiguous-id": 400,
   "path-not-found": 400,
@@ -62,6 +64,9 @@ const statusByCode: Record<string, number> = {
   "hook-config-unwritable": 400,
   "hook-payload-too-large": 413,
   "base-invalid": 400,
+  // An editor agn cannot see is the machine's state; the caller picks from the ones it can.
+  "editor-not-found": 400,
+  "editor-none": 400,
   "path-outside-repo": 400,
   "adopt-pid-not-found": 400,
   // Registry refusals are all "that combination cannot be launched", which is the caller's choice.

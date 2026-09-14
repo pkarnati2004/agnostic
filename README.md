@@ -14,7 +14,9 @@ Agent-agnostic development. Use Claude Code, Codex, Pi - and know which one to u
 - **Open anywhere.** VS Code, Cursor, Zed, JetBrains, Xcode, or a terminal - one click.
 - **Workflows (optional).** Declare roles (plan, implement, test, review) once; agnostic generates each agent's native subagent config with the right model per role. Off unless you turn it on. *(soon)*
 - **Usage and cost.** Per-task tokens and cost, per-plan usage at a glance.
-- **Local. Free. MIT.** No server, no account, no telemetry.
+- **Local. Free. MIT.** No server, no account, no telemetry. agnostic makes one outbound call: a
+  daily check for a newer benchmark catalog. Put `catalog_check: false` in `~/.agnostic/config.yaml`
+  to turn it off; `agn catalog update` still works when you ask for it.
 
 ## How it works
 
@@ -56,7 +58,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn handoff [<task>] --to <id\|harness>` | Stop a task and hand its work to another agent with a structured note. `--note <text>` (`-` reads stdin), `--note-file <path>` |
 | `agn usage [<task>]` | Today's and this week's usage per plan, or one task's |
 | `agn outcomes <task>` | What the task changed, what passed, what you kept |
-| `agn open <task>` | Open the worktree in your editor. `--editor <name>` |
+| `agn open [<task>]` | Open the task's directory in your editor. `--editor <id>` |
 | `agn catalog show <profile>` / `agn catalog update` | Print the benchmark rows behind a recommendation, or fetch the latest catalog |
 | `agn ui` | Open the workspace |
 
@@ -83,6 +85,7 @@ Model overrides (Kimi in Claude Code, a local model in Codex, anything via OpenR
 - [Project context: `.ag/` and `agn sync`](docs/project-context.md)
 - [Recommendations: how the catalog works](docs/recommendations.md)
 - [Usage and cost: what agn counts](docs/usage.md)
+- [Catalog: what it holds, how it updates](docs/catalog.md)
 - [Workspace UI](docs/workspace.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Writing guide for docs and site](docs/WRITING.md)

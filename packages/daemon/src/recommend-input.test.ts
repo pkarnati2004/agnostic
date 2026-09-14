@@ -20,7 +20,7 @@ import type { EventFeed } from "./event-feed.js";
 import type { Logger } from "./log.js";
 import { buildRecommendInput } from "./recommend-input.js";
 import type { TaskLifecycle } from "./task-lifecycle.js";
-import { fixtureCatalog, fixtureDetection } from "./test-detection.js";
+import { fixtureCatalog, fixtureCatalogStore, fixtureDetection } from "./test-detection.js";
 import { createWorkspace } from "./test-workspace.js";
 
 /**
@@ -49,7 +49,13 @@ async function daemon(detection: Detection, catalog: Catalog) {
     startedAt: new Date().toISOString(),
     port: () => 0,
     detect: () => Promise.resolve(detection),
-    catalog,
+    detectEditors: () => Promise.resolve([]),
+    catalog: fixtureCatalogStore(catalog),
+    catalogSource: {
+      manifestUrl: "http://127.0.0.1:1/manifest.json",
+      fileUrl: "http://127.0.0.1:1/catalog.json",
+    },
+    catalogCheck: false,
     executor: stubExecutor(),
     env: { PATH: "/opt/bin" },
     home,
@@ -61,6 +67,11 @@ async function daemon(detection: Detection, catalog: Catalog) {
     lifecycle: stubLifecycle(),
     usage: { scan: () => Promise.resolve({ inserted: 0 }) },
     verdicts: { runOnce: () => Promise.resolve(), close: () => undefined },
+    catalogChecker: {
+      update: () => Promise.reject(new Error("no catalog check in this test")),
+      lastCheck: () => null,
+      close: () => {},
+    },
   };
   return {
     ctx,

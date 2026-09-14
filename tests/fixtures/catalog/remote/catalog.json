@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "version": 2,
+  "generatedAt": "2026-09-08T00:00:00Z",
+  "sources": [
+    {
+      "id": "terminal-bench",
+      "name": "Terminal-Bench leaderboard",
+      "url": "https://www.tbench.ai/leaderboard",
+      "terms": "Published leaderboard figures.",
+      "fetchedAt": "2026-09-01"
+    },
+    {
+      "id": "anthropic-plans",
+      "name": "Claude plan comparison",
+      "url": "https://claude.com/pricing",
+      "terms": "Vendor plan page.",
+      "fetchedAt": "2026-09-01"
+    },
+    {
+      "id": "livebench",
+      "name": "LiveBench coding split",
+      "url": "https://livebench.ai/",
+      "terms": "Published leaderboard figures.",
+      "fetchedAt": "2026-09-05"
+    }
+  ],
+  "benchmarks": [
+    {
+      "source": "terminal-bench",
+      "date": "2026-08-30",
+      "benchmark": "Terminal-Bench 4.0",
+      "model": "anthropic/claude-fable-5.1",
+      "modelVersion": null,
+      "harness": "claude-code",
+      "harnessVersion": "2.1",
+      "taskClass": "general",
+      "metric": "accuracy",
+      "score": 61.3,
+      "n": 89,
+      "costUsd": null,
+      "tokens": null,
+      "notes": ""
+    },
+    {
+      "source": "terminal-bench",
+      "date": "2026-08-30",
+      "benchmark": "Terminal-Bench 4.0",
+      "model": "openai/gpt-6-astra",
+      "modelVersion": null,
+      "harness": "codex",
+      "harnessVersion": null,
+      "taskClass": "general",
+      "metric": "accuracy",
+      "score": 58.2,
+      "n": 89,
+      "costUsd": 12.5,
+      "tokens": 1200,
+      "notes": ""
+    },
+    {
+      "source": "terminal-bench",
+      "date": "2026-08-31",
+      "benchmark": "Terminal-Bench 4.0",
+      "model": "anthropic/claude-opus-5",
+      "modelVersion": null,
+      "harness": "claude-code",
+      "harnessVersion": "2.1",
+      "taskClass": "implement",
+      "metric": "accuracy",
+      "score": 57.4,
+      "n": 89,
+      "costUsd": null,
+      "tokens": null,
+      "notes": ""
+    },
+    {
+      "source": "livebench",
+      "date": "2026-08-20",
+      "benchmark": "LiveBench 2026-08",
+      "model": "anthropic/claude-opus-5",
+      "modelVersion": null,
+      "harness": null,
+      "harnessVersion": null,
+      "taskClass": "general",
+      "metric": "score",
+      "score": 71.2,
+      "n": null,
+      "costUsd": null,
+      "tokens": null,
+      "notes": "bare model, no harness"
+    }
+  ],
+  "models": [
+    {
+      "harness": "claude-code",
+      "model": "fable",
+      "route": "native",
+      "canonical": "anthropic/claude-fable-5.1",
+      "legacy": false
+    },
+    {
+      "harness": "claude-code",
+      "model": "opus",
+      "route": "native",
+      "canonical": "anthropic/claude-opus-5",
+      "legacy": false
+    },
+    {
+      "harness": "claude-code",
+      "model": "kimi-k2.6",
+      "route": "anthropic-gateway",
+      "canonical": "moonshotai/kimi-k2.6",
+      "legacy": false
+    },
+    {
+      "harness": "codex",
+      "model": "gpt-6-astra",
+      "route": "native",
+      "canonical": "openai/gpt-6-astra",
+      "legacy": false
+    }
+  ],
+  "plans": [
+    {
+      "vendor": "claude",
+      "id": "pro",
+      "displayName": "Pro",
+      "confirmedAt": "2026-09-01"
+    },
+    {
+      "vendor": "claude",
+      "id": "max5",
+      "displayName": "Max 5x",
+      "confirmedAt": "2026-09-01"
+    },
+    {
+      "vendor": "claude",
+      "id": "max20",
+      "displayName": "Max 20x",
+      "confirmedAt": "2026-09-01"
+    },
+    {
+      "vendor": "chatgpt",
+      "id": "plus",
+      "displayName": "Plus",
+      "confirmedAt": "2026-09-01"
+    }
+  ],
+  "entitlements": [
+    {
+      "harness": "claude-code",
+      "model": "fable",
+      "vendor": "claude",
+      "plan": "pro",
+      "access": "credits"
+    },
+    {
+      "harness": "claude-code",
+      "model": "fable",
+      "vendor": "claude",
+      "plan": "max20",
+      "access": "included"
+    },
+    {
+      "harness": "claude-code",
+      "model": "opus",
+      "vendor": "claude",
+      "plan": "pro",
+      "access": "unavailable"
+    },
+    {
+      "harness": "codex",
+      "model": "gpt-6-astra",
+      "vendor": "chatgpt",
+      "plan": "plus",
+      "access": "credits"
+    }
+  ],
+  "pricing": [
+    {
+      "model": "anthropic/claude-fable-5.1",
+      "inputPerMillion": 10,
+      "outputPerMillion": 50,
+      "cacheReadPerMillion": 0.25,
+      "cacheWritePerMillion": 12.5,
+      "source": "openrouter",
+      "asOf": "2026-09-01"
+    },
+    {
+      "model": "openai/gpt-6-astra",
+      "inputPerMillion": 10,
+      "outputPerMillion": 50,
+      "cacheReadPerMillion": 1,
+      "cacheWritePerMillion": 12.5,
+      "source": "curated",
+      "asOf": "2026-09-01"
+    }
+  ]
+}

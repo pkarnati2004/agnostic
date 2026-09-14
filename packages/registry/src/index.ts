@@ -1,5 +1,6 @@
 export { type DetectOptions, detectHarnesses, type HarnessStatus } from "./detect.js";
 export { findOnPath, readVersion } from "./detect-binary.js";
+export { type DetectEditorsOptions, detectEditors, editorCommand } from "./detect-editors.js";
 export { detectLocalServers, type LocalServer } from "./detect-local-servers.js";
 export { detectLogin, type LoginDetection } from "./detect-login.js";
 export { detectPlan, planVendor } from "./detect-plan.js";

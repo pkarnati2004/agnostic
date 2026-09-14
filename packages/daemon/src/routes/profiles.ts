@@ -36,7 +36,7 @@ export function profileRoutes(ctx: DaemonContext): Hono {
       const body: DoctorResponse = {
         ...detection,
         plans,
-        planOptions: planOptions(ctx.catalog.plans),
+        planOptions: planOptions(ctx.catalog.current().catalog.plans),
       };
       return c.json(body);
     });

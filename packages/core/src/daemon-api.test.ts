@@ -6,6 +6,7 @@ import {
   EventsQuerySchema,
   HealthResponseSchema,
   HooksInstallRequestSchema,
+  OpenTaskQuerySchema,
   RecommendRequestSchema,
   RegisterRepoRequestSchema,
   RunTaskRequestSchema,
@@ -199,6 +200,20 @@ describe("EventsQuerySchema", () => {
     expect(EventsQuerySchema.safeParse({ after: "half" }).success).toBe(false);
     expect(EventsQuerySchema.safeParse({ after: "-1" }).success).toBe(false);
     expect(EventsQuerySchema.safeParse({ since: "1" }).success).toBe(false);
+  });
+});
+
+describe("OpenTaskQuerySchema", () => {
+  it("accepts a named editor, and no editor at all", () => {
+    expect(OpenTaskQuerySchema.parse({ editor: "cursor" })).toEqual({ editor: "cursor" });
+    expect(OpenTaskQuerySchema.parse({})).toEqual({});
+  });
+
+  it("rejects an editor that is not one of the ids, and a field it does not know", () => {
+    expect(OpenTaskQuerySchema.safeParse({ editor: "vim" }).success).toBe(false);
+    expect(OpenTaskQuerySchema.safeParse({ editor: "cursor", terminal: "iterm" }).success).toBe(
+      false,
+    );
   });
 });
 

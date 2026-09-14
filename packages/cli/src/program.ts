@@ -3,12 +3,14 @@ import { Command, CommanderError } from "commander";
 import { addCommand } from "./commands/add.js";
 import { adoptCommand } from "./commands/adopt.js";
 import { attachCommand } from "./commands/attach.js";
+import { catalogCommand } from "./commands/catalog.js";
 import { cleanCommand } from "./commands/clean.js";
 import { daemonCommand } from "./commands/daemon.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { handoffCommand } from "./commands/handoff.js";
 import { hooksCommand } from "./commands/hooks.js";
 import { initCommand } from "./commands/init.js";
+import { openCommand } from "./commands/open.js";
 import { outcomesCommand } from "./commands/outcomes.js";
 import { profilesCommand } from "./commands/profiles.js";
 import { recommendCommand } from "./commands/recommend.js";
@@ -61,6 +63,8 @@ export function createProgram(ctx: CliContext, version: string): Command {
     syncCommand(ctx),
     usageCommand(ctx),
     outcomesCommand(ctx),
+    openCommand(ctx),
+    catalogCommand(ctx),
   ]) {
     program.addCommand(command);
   }

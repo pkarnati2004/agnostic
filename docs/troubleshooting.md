@@ -8,6 +8,8 @@
 
 **Codex says the agn hook is untrusted.** Codex runs a hook only when `~/.codex/config.toml` holds the hash of that exact hook. Run `/hooks` in Codex and approve it, or run `agn hooks install --repo <path>` again to rewrite the entry. If agn refuses to edit the file, the block it manages has been split or one of its entries exists outside it: remove the `[hooks.state."…post.sh…"]` tables and the `# >>> agn hooks` markers, then install again.
 
+**`agn catalog update` says it could not fetch.** The check could not reach the published catalog: no network, a proxy in the way, or the host is down. Nothing changed - the catalog already on disk stays in use, and the version it names is in the message. Try again later, or point `AGNOSTIC_CATALOG_URL` at a mirror or a local copy of the two files. If you would rather agn never reached out on its own, put `catalog_check: false` in `~/.agnostic/config.yaml`; `agn catalog update` still works when you run it.
+
 **agn's sessions live on their own tmux server.** A plain `tmux ls` does not show them, and `tmux kill-server` does not end them. Use `tmux -L agn ls` to list them and `tmux -L agn kill-server` to end all of them at once.
 
 **`agn attach` says "task <id> has no session running".** The tmux server restarted (e.g. after reboot). The worktree and task record remain; run `agn resume <task>`. Where the agent supports it, the conversation is restored; otherwise the agent restarts in the same worktree with the task's context.
@@ -37,6 +39,7 @@
 **`agn usage` shows less than the agent's own usage screen.** They count different windows. agn counts the calendar day and the week from Monday, in your time zone; Claude Code and Codex show their plan's rolling window (five hours, seven days). agn also reads only what is in the transcript files on this machine, so a session run on another machine under the same login is not there.
 
 **`agn usage` shows a `-` in the cost column.** Either the model runs on your subscription, where the tokens cost nothing extra, or agn has no price for the model the agent reported. Run `agn catalog update` to refresh the rates. Usage from a session agn did not start is never priced.
+**`agn open` says no editor was found.** agn looks for an editor's command on the PATH the daemon was started with, and for its app bundle in `/Applications`, `~/Applications`, `~/Applications/JetBrains Toolbox` and `/System/Applications/Utilities`. Install the editor's shell command (in VS Code, "Shell Command: Install 'code' command in PATH") and run `agn daemon restart`, or install the app. If you named an editor agn cannot see, with `--editor` or the `editor` key in `~/.agnostic/config.yaml`, the error lists the ones it can.
 
 **A model override isn't offered.** The provider key isn't in the environment the daemon was started from. Restart the daemon (`agn daemon restart`) after exporting the key.
 
@@ -44,7 +47,7 @@
 
 **A command fails with "the agn daemon could not be started".** Every command except `agn daemon status` and `agn daemon stop` starts the daemon itself, so this means the start failed rather than that you forgot one. Check `~/.agnostic/logs/agnd.log`, then `agn daemon start` to see the error directly.
 
-**You want to script agn.** `--json` prints the daemon's response body instead of a table, on `agn add`, `agn repos`, `agn doctor`, `agn profiles`, `agn run`, `agn status`, `agn stop`, `agn clean`, `agn handoff`, `agn adopt`, `agn hooks install`, `agn init` and `agn sync`; on `agn attach` and `agn resume` it prints the tmux command instead of running it. Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
+**You want to script agn.** `--json` prints the daemon's response body instead of a table, on `agn add`, `agn repos`, `agn doctor`, `agn profiles`, `agn run`, `agn status`, `agn stop`, `agn clean`, `agn handoff`, `agn adopt`, `agn hooks install`, `agn init` and `agn sync`; on `agn attach` and `agn resume` it prints the tmux command instead of running it, and on `agn open` the editor command instead of running it. Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
 
 **Where things live.** Task database `~/.agnostic/agnostic.db`; worktrees `~/.agnostic/worktrees/<repo>/<task>`; the daemon log `~/.agnostic/logs/agnd.log`.
 

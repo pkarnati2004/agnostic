@@ -72,6 +72,21 @@ line says so, because refusing to answer helps nobody.
 
 The label is never a percentage. `agn catalog show <profile>` prints the rows behind it.
 
+## The catalog
+
+The catalog aggregates published results, among them Terminal-Bench, SWE-bench Verified and Pro,
+LiveBench, and harness comparison tables, into one schema with source, date, model version,
+harness, task class, score, and cost. Rows age out. `agn catalog show <profile>` prints the rows
+behind a recommendation, newest and most specific first, with a `*` on the ones the last
+recommendation cited. The catalog is open data; contributions welcome.
+
+agnostic ships with a snapshot and checks once a day whether a newer one has been published, which
+is the only call it makes off your machine. The check reads a small manifest; it downloads the
+catalog itself only when the manifest names a newer version, and accepts it only when its checksum,
+schema and version all match what the manifest promised. `catalog_check: false` in
+`~/.agnostic/config.yaml` turns the daily check off. `agn catalog update` runs the same check on
+demand and works whether or not the daily one is on. See [the catalog reference](catalog.md).
+
 ## Worth trying
 
 A profile you cannot run yet is named only when it is clearly ahead of the pick and there is one
