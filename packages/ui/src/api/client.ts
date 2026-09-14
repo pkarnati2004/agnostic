@@ -3,12 +3,15 @@ import type {
   HandoffTaskRequest,
   HandoffTaskResponse,
   ProfilesResponse,
+  RecommendRequest,
+  RecommendResponse,
   RepoListResponse,
   ResumeTaskResponse,
+  RunTaskRequest,
   TaskListResponse,
   TaskResponse,
 } from "@agnostic/core";
-import { apiError, unreachable } from "./error";
+import { apiError, isAbortError, unreachable } from "./error";
 import { streamEvents } from "./event-stream";
 
 /** The part of the daemon's API the shell uses. Chunks 05-08 add their own calls here. */
@@ -20,6 +23,9 @@ export type WorkspaceClient = {
   stopTask(id: string): Promise<TaskResponse>;
   resumeTask(id: string): Promise<ResumeTaskResponse>;
   handoffTask(id: string, body: HandoffTaskRequest): Promise<HandoffTaskResponse>;
+  /** The pick for a prompt, with nothing started; `signal` aborts the call the next keystroke replaces. */
+  recommend(body: RecommendRequest, signal: AbortSignal): Promise<RecommendResponse>;
+  runTask(repoId: string, body: RunTaskRequest): Promise<TaskResponse>;
   /** Ends when `signal` aborts; resumes from the last id seen while it does not. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -34,17 +40,24 @@ export function createClient(opts: {
   const base = (opts.baseUrl ?? "").replace(/\/$/, "");
   const headers = { authorization: `Bearer ${opts.token}` };
 
-  const send = async (method: string, path: string, body?: unknown): Promise<Response> => {
+  const send = async (
+    method: string,
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<Response> => {
     const init: RequestInit = {
       method,
       headers: body === undefined ? headers : { ...headers, "content-type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(signal === undefined ? {} : { signal }),
     };
     let response: Response;
     try {
       response = await doFetch(`${base}${path}`, init);
     } catch (cause) {
-      throw unreachable(base, cause);
+      // The caller that aborted is the one that has to see it, unchanged.
+      throw isAbortError(cause) ? cause : unreachable(base, cause);
     }
     if (!response.ok) {
       throw await apiError(response);
@@ -54,8 +67,12 @@ export function createClient(opts: {
 
   // Responses are built from the same core types the page reads them as, by a daemon of the same
   // version on loopback, so they are parsed once - at the daemon - and trusted here.
-  const json = async <T>(method: string, path: string, body?: unknown): Promise<T> =>
-    (await send(method, path, body)).json() as Promise<T>;
+  const json = async <T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<T> => (await send(method, path, body, signal)).json() as Promise<T>;
 
   return {
     listRepos: () => json<RepoListResponse>("GET", "/repos"),
@@ -66,6 +83,9 @@ export function createClient(opts: {
     resumeTask: (id) => json<ResumeTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/resume`),
     handoffTask: (id, body) =>
       json<HandoffTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/handoff`, body),
+    recommend: (body, signal) => json<RecommendResponse>("POST", "/recommend", body, signal),
+    runTask: (repoId, body) =>
+      json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/tasks`, body),
     events: (after, signal) =>
       streamEvents({ fetch: doFetch, baseUrl: base, token: opts.token, after, signal }),
   };

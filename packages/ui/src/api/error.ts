@@ -38,6 +38,23 @@ export async function apiError(response: Response): Promise<ApiError> {
   });
 }
 
+/** An aborted fetch is the page's own doing, never something to show or to wrap. */
+export function isAbortError(cause: unknown): boolean {
+  return cause instanceof Error && cause.name === "AbortError";
+}
+
+/** Anything thrown out of a client call, as the notice and the dialogs read it. */
+export function asApiError(cause: unknown): ApiError {
+  if (cause instanceof ApiError) {
+    return cause;
+  }
+  return new ApiError(cause instanceof Error ? cause.message : "the workspace hit an error", {
+    code: "workspace-failed",
+    status: null,
+    cause,
+  });
+}
+
 export function unreachable(baseUrl: string, cause: unknown): ApiError {
   return new ApiError(
     `the agn daemon is not answering on ${baseUrl === "" ? "this page" : baseUrl}`,

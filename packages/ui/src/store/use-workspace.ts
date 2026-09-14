@@ -1,7 +1,8 @@
 import type { Task } from "@agnostic/core";
 import { useCallback, useEffect, useReducer, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
-import { ApiError } from "../api/error";
+import type { ApiError } from "../api/error";
+import { asApiError } from "../api/error";
 import {
   EMPTY_WORKSPACE,
   REFETCH_KINDS,
@@ -14,7 +15,8 @@ export type Workspace = {
   state: WorkspaceState;
   /** The last call that failed, shown until the next one succeeds. */
   error: ApiError | null;
-  act(run: (client: WorkspaceClient) => Promise<Task | undefined>): Promise<void>;
+  /** Returns the task the call answered with, or undefined when it failed. */
+  act(run: (client: WorkspaceClient) => Promise<Task | undefined>): Promise<Task | undefined>;
 };
 
 /** The page's one connection to the daemon: a snapshot, then the feed, for as long as it is open. */
@@ -40,8 +42,10 @@ export function useWorkspace(client: WorkspaceClient): Workspace {
           dispatch({ type: "task", task });
         }
         setError(null);
+        return task;
       } catch (cause) {
         setError(asApiError(cause));
+        return undefined;
       }
     },
     [client],
@@ -83,15 +87,4 @@ export async function followWorkspace(
       dispatch({ type: "task", task: response.task });
     }
   }
-}
-
-function asApiError(cause: unknown): ApiError {
-  if (cause instanceof ApiError) {
-    return cause;
-  }
-  return new ApiError(cause instanceof Error ? cause.message : "the workspace hit an error", {
-    code: "workspace-failed",
-    status: null,
-    cause,
-  });
 }

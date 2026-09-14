@@ -1,6 +1,6 @@
 import type { RepoListRow, Task, TaskStatus } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
-import { groupTasks } from "./group-tasks";
+import { groupTasks, inSidebarOrder } from "./group-tasks";
 
 function repo(id: string, name: string): RepoListRow {
   return {
@@ -74,5 +74,14 @@ describe("groupTasks", () => {
 
   it("lists a repo with no tasks", () => {
     expect(groups.repos[2]).toEqual({ repo: EMPTY, tasks: [] });
+  });
+
+  // A new task defaults to the first repo on the left, which is this order's first, not the store's.
+  it("orders repos for the sidebar whatever order the store holds", () => {
+    expect(inSidebarOrder([PETAL, KATHA, EMPTY]).map((one) => one.name)).toEqual([
+      "katha",
+      "Petal",
+      "zephyr",
+    ]);
   });
 });
