@@ -1,3 +1,4 @@
+import type { Readable } from "node:stream";
 import type { AgnosticPaths, DaemonClient, spawn } from "@agnostic/core";
 import { connect } from "./daemon-connect.js";
 import type { DaemonEntry } from "./daemon-entry.js";
@@ -15,10 +16,15 @@ export type CliContext = {
   exitCode: number;
   io: Output;
   entry: DaemonEntry;
+  /** The doctor prompt asks a question of it; `agn handoff --note -` reads it to the end. */
+  stdin: Stdin;
   /** Injected so a test can watch `agn attach` hand the terminal over without running tmux. */
   spawn: typeof spawn;
   client(): Promise<DaemonClient>;
 };
+
+/** `process.stdin`, narrowed to what a prompt needs, so a test can hand over a fake one. */
+export type Stdin = Readable & { isTTY?: boolean };
 
 /** The client is lazy and memoised: a command that needs no daemon never starts one. */
 export function createContext(opts: {
@@ -27,6 +33,7 @@ export function createContext(opts: {
   env: Record<string, string>;
   io: Output;
   entry: DaemonEntry;
+  stdin: Stdin;
   spawn: typeof spawn;
 }): CliContext {
   let pending: Promise<DaemonClient> | null = null;
@@ -39,6 +46,7 @@ export function createContext(opts: {
     exitCode: 0,
     io: opts.io,
     entry: opts.entry,
+    stdin: opts.stdin,
     client: () => {
       pending ??= connect({ paths: opts.paths, entry: opts.entry, io: opts.io });
       return pending;

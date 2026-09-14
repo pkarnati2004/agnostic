@@ -38,6 +38,8 @@ const statusByCode: Record<string, number> = {
   "sync-conflict": 409,
   "init-ambiguous-source": 409,
   "init-source-generated": 409,
+  // The parent's branch was deleted, so there is nothing for the next agent to continue from.
+  "branch-gone": 409,
   "request-invalid": 400,
   "ambiguous-id": 400,
   "path-not-found": 400,
@@ -51,6 +53,8 @@ const statusByCode: Record<string, number> = {
   "invalid-profile-id": 400,
   "harness-unknown": 400,
   "profile-required": 400,
+  // Nothing on this machine may run the task: preferences or a missing install, both the user's.
+  "no-eligible-profile": 400,
   "harness-not-installed": 400,
   "hook-payload-invalid": 400,
   // A hook config agn will not read over or write into is the file's state, not a fault in agn.

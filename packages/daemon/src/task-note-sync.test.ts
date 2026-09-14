@@ -34,6 +34,7 @@ function task(over: Partial<Task> = {}): Task {
     branch: null,
     status: "running",
     origin: "agn",
+    baseCommit: null,
     createdAt: NOTE.createdAt,
     updatedAt: NOTE.createdAt,
     ...over,
@@ -44,6 +45,7 @@ beforeEach(async () => {
   repo = await mkdtemp(join(tmpdir(), "agn-note-sync-"));
   errors = [];
   log = {
+    debug: () => undefined,
     info: () => undefined,
     warn: () => undefined,
     error: (msg, fields) => errors.push({ msg, fields }),

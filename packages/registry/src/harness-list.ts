@@ -1,4 +1,5 @@
 import type { HarnessId } from "@agnostic/core";
+import { parseClaudePlan, parseCodexPlan } from "./detect-plan.js";
 import { RegistryError } from "./error.js";
 import type { HarnessDefinition, PromptDelivery } from "./harness-definition.js";
 import {
@@ -41,6 +42,7 @@ const tier1: HarnessDefinition[] = [
     sessionCapture: { source: "hook", key: "session_id" },
     hooks: "claude-settings",
     authFile: ".claude.json",
+    planSource: { file: ".claude.json", parse: parseClaudePlan },
     transcriptsDir: ".claude/projects",
     tier: 1,
   },
@@ -60,6 +62,7 @@ const tier1: HarnessDefinition[] = [
     sessionCapture: { source: "hook", key: "session_id" },
     hooks: "codex-hooks",
     authFile: ".codex/auth.json",
+    planSource: { file: ".codex/auth.json", parse: parseCodexPlan },
     transcriptsDir: ".codex/sessions",
     tier: 1,
   },
@@ -79,6 +82,8 @@ const tier1: HarnessDefinition[] = [
     sessionCapture: { source: "hook", key: "session_id" },
     hooks: "pi-extension",
     authFile: ".pi/agent/auth.json",
+    // Pi and OpenCode are billed per provider key, so there is no plan to read.
+    planSource: null,
     transcriptsDir: null,
     tier: 1,
   },
@@ -97,6 +102,7 @@ const tier1: HarnessDefinition[] = [
     sessionCapture: { source: "hook", key: "sessionID" },
     hooks: "opencode-plugin",
     authFile: ".local/share/opencode/auth.json",
+    planSource: null,
     transcriptsDir: null,
     tier: 1,
   },
@@ -177,6 +183,7 @@ function tier2Definition(source: Tier2Source): HarnessDefinition {
     sessionCapture: null,
     hooks: null,
     authFile: null,
+    planSource: null,
     transcriptsDir: null,
     tier: 2,
   };
@@ -229,6 +236,7 @@ function openHarness(binary: string): HarnessDefinition {
     sessionCapture: null,
     hooks: null,
     authFile: null,
+    planSource: null,
     transcriptsDir: null,
     tier: 2,
   };

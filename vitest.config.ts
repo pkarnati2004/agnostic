@@ -27,8 +27,38 @@ export default defineConfig({
       },
       {
         test: {
+          name: "catalog",
+          root: "packages/catalog",
+          include: ["src/**/*.test.ts"],
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
+          name: "usage",
+          root: "packages/usage",
+          include: ["src/**/*.test.ts"],
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
           name: "registry",
           root: "packages/registry",
+          include: ["src/**/*.test.ts"],
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
+          name: "recommender",
+          root: "packages/recommender",
           include: ["src/**/*.test.ts"],
         },
         resolve: {

@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    // Inside dist, so that deleting the output also discards the build state that describes it.
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.json"],
+  "references": [{ "path": "../core" }]
+}

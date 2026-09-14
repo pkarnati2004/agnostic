@@ -10,6 +10,7 @@ const REPO = {
   kind: "git" as const,
   name: "api",
   addedAt: "2026-09-11T10:00:00.000Z",
+  testCommand: null as string | null,
 };
 
 function task(over: Partial<Task> = {}): Task {
@@ -23,6 +24,7 @@ function task(over: Partial<Task> = {}): Task {
     branch: "agn/add-a-verbose-flag-t3n9v2wxyz",
     status: "running",
     origin: "agn",
+    baseCommit: null,
     createdAt: "2026-09-11T10:00:00.000Z",
     updatedAt: "2026-09-11T10:00:00.000Z",
     session: {
@@ -39,12 +41,15 @@ function task(over: Partial<Task> = {}): Task {
   };
 }
 
-function cli(over: Partial<Task> = {}) {
+/** The daemon reads `.ag/agnostic.yaml`; the CLI only ever sees the command on the repo row. */
+const REPO_WITH_TESTS = { ...REPO, testCommand: "pnpm test" };
+
+function cli(over: Partial<Task> = {}, repo = REPO) {
   const sent: { repoId: string; body: RunTaskRequest }[] = [];
   const test = createTestContext({
-    cwd: REPO.path,
+    cwd: repo.path,
     client: {
-      listRepos: () => Promise.resolve({ repos: [REPO] }),
+      listRepos: () => Promise.resolve({ repos: [repo] }),
       runTask: (repoId, body) => {
         sent.push({ repoId, body });
         return Promise.resolve({ task: task(over) });
@@ -69,6 +74,19 @@ describe("agn run", () => {
       "branch:   agn/add-a-verbose-flag-t3n9v2wxyz",
       "attach:   agn attach t3n9v2wxyz",
     ]);
+  });
+
+  it("explains the wait when the repo runs its tests before the agent starts", async () => {
+    const test = cli({}, REPO_WITH_TESTS);
+    await parse(runCommand(test.ctx), ["add a --verbose flag", "--repo", REPO.id]);
+    expect(test.out[0]).toBe("running the tests first: pnpm test");
+  });
+
+  it("skips that run, and says so to the daemon, with --skip-tests", async () => {
+    const test = cli({}, REPO_WITH_TESTS);
+    await parse(runCommand(test.ctx), ["add a --verbose flag", "--skip-tests", "--repo", REPO.id]);
+    expect(test.out[0]).toBe("started t3n9v2wxyz add a --verbose flag");
+    expect(test.sent[0]?.body.skipTests).toBe(true);
   });
 
   it("says where a folder task runs instead of naming a branch", async () => {
@@ -102,6 +120,18 @@ describe("agn run", () => {
         base: "main",
       },
     });
+  });
+
+  it("passes --intent through, and refuses one agn does not know", async () => {
+    const test = cli();
+    await parse(runCommand(test.ctx), ["why is the login flow slow", "--intent", "debug"]);
+    expect(test.sent[0]?.body.intent).toBe("debug");
+    const command = runCommand(test.ctx)
+      .exitOverride()
+      .configureOutput({ writeErr: () => undefined });
+    await expect(parse(command, ["ship it", "--intent", "vibes"])).rejects.toThrow(
+      /--intent must be one of/,
+    );
   });
 
   it("refuses --profile and --harness together", async () => {

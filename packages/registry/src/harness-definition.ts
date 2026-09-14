@@ -1,4 +1,4 @@
-import type { HarnessId, Route } from "@agnostic/core";
+import type { HarnessId, Plan, Route } from "@agnostic/core";
 
 export type Tier = 1 | 2;
 
@@ -23,6 +23,12 @@ export type ModelProbe = {
   parse: (stdout: string) => string[];
 };
 
+/**
+ * Where the user's plan can be read: a file under home and the one field in it that names a tier.
+ * Null for a harness billed per provider key, which has no plan to read.
+ */
+export type PlanSource = { file: string; parse: (contents: unknown) => Plan | null };
+
 export type HarnessDefinition = {
   id: HarnessId;
   name: string;
@@ -44,6 +50,7 @@ export type HarnessDefinition = {
   hooks: HookMethod | null;
   /** Relative to home; `detect-login.ts` knows how to read each one. */
   authFile: string | null;
+  planSource: PlanSource | null;
   /** Relative to home; chunk 14 scans it for usage. */
   transcriptsDir: string | null;
   tier: Tier;

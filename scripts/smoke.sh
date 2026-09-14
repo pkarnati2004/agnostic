@@ -13,8 +13,17 @@ pnpm vitest run --project core
 echo "smoke: ledger unit tests"
 pnpm vitest run --project ledger
 
+echo "smoke: catalog unit tests"
+pnpm vitest run --project catalog
+
+echo "smoke: usage unit tests"
+pnpm vitest run --project usage
+
 echo "smoke: registry unit tests"
 pnpm vitest run --project registry
+
+echo "smoke: recommender unit tests"
+pnpm vitest run --project recommender
 
 echo "smoke: daemon unit tests"
 pnpm vitest run --project daemon
@@ -94,6 +103,31 @@ test "$(agn doctor | grep -c "not installed")" -eq 5
 agn doctor | grep -q "^tools: gh"
 test "$(agn profiles | wc -l)" -eq 2
 
+# No harness is installed here, so there is no plan to know and nothing to ask about.
+agn doctor | head -1 | grep -q "plan"
+! agn doctor | grep -q "plan unknown for"
+# The plan the user names is written to config.yaml, which keeps the port line it already had.
+echo "port: 7439" > "$AGNOSTIC_HOME/config.yaml"
+agn doctor --plan claude=max20 > /dev/null
+grep -q "claude: max20" "$AGNOSTIC_HOME/config.yaml"
+grep -q "port: 7439" "$AGNOSTIC_HOME/config.yaml"
+agn doctor --json | "$NODE" -e "
+const read = require('node:fs').readFileSync(0, 'utf8');
+const { plans, planOptions } = JSON.parse(read);
+if (plans.claude !== 'max20') { throw new Error('doctor did not report the plan it was given'); }
+if (!planOptions.some((option) => option.vendor === 'claude')) {
+  throw new Error('doctor offered no plans from the catalog');
+}
+"
+# A plan agn does not bill for is a usage error; a plan the catalog does not know is recorded.
+! agn doctor --plan nope=pro 2> "$WORK/plan-error.txt"
+grep -q "claude, chatgpt" "$WORK/plan-error.txt"
+agn doctor --plan chatgpt=go > /dev/null
+grep -q "chatgpt: go" "$AGNOSTIC_HOME/config.yaml"
+# The port line goes back: every daemon the rest of the smoke starts must stay off the real 7431,
+# where the author's own daemon lives.
+printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+
 ! agn add "$WORK/nope" 2> "$WORK/add-error.txt"
 grep -q "does not exist" "$WORK/add-error.txt"
 ! agn add "$WORK/nope" --json 2> "$WORK/add-error.json"
@@ -160,8 +194,13 @@ chmod +x "$FAKEBIN/claude"
 # /usr/sbin is where macOS keeps lsof, which is how the executor reads a process's directory.
 SMOKE_PATH="$FAKEBIN:$(dirname "$NODE"):$(dirname "$(command -v tmux)"):/usr/bin:/bin:/usr/sbin:/sbin"
 
+# A home of its own: the daemon reads transcript directories under HOME when a task closes and
+# when usage is asked for, and a smoke run must never read the author's.
+USAGE_HOME="$WORK/usage-home"
+mkdir -p "$USAGE_HOME/.claude/projects/-work-usage"
+
 agx() {
-  PATH="$SMOKE_PATH" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
+  HOME="$USAGE_HOME" PATH="$SMOKE_PATH" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
 }
 
 mkdir -p "$WORK/runrepo" "$WORK/runfolder"
@@ -169,6 +208,13 @@ git -C "$WORK/runrepo" init -q
 git -C "$WORK/runrepo" -c user.email=t@agn.test -c user.name=agn commit -q --allow-empty -m first
 agx add "$WORK/runrepo" > /dev/null
 agx add "$WORK/runfolder" > /dev/null
+
+echo "smoke: agn recommend against the repo the fake agent runs in"
+agx recommend "fix the flaky auth test" --repo "$WORK/runrepo" > "$WORK/recommend.txt"
+grep -q "^Task: debug, small, risk: auth$" "$WORK/recommend.txt"
+grep -q "^Recommended: claude-code:" "$WORK/recommend.txt"
+grep -q "^Risk: touches auth" "$WORK/recommend.txt"
+agx recommend "fix the flaky auth test" --repo "$WORK/runrepo" --json | grep -q '"taskClass"'
 
 agx run "smoke task" --profile claude-code --repo "$WORK/runrepo" > "$WORK/run.txt"
 grep -q "^started " "$WORK/run.txt"
@@ -198,7 +244,40 @@ agx status | grep -q "stopped"
 agx resume "$TASK" --json > "$WORK/resume.json"
 grep -q '"via": "native"' "$WORK/resume.json"
 agx status "$TASK" | grep -q "running"
+
+echo "smoke: agn outcomes for a task whose branch was merged"
+# What the agent would leave behind: a commit on the task's branch, made while it is still running.
+WORKTREE="$(agx status "$TASK" | awk '$1 == "worktree:" { print $2 }')"
+BRANCH="$(agx status "$TASK" | awk '$1 == "branch:" { print $2 }')"
+printf 'one\ntwo\nthree\n' > "$WORKTREE/agent.txt"
+git -C "$WORKTREE" add agent.txt
+git -C "$WORKTREE" -c user.email=t@agn.test -c user.name=agn commit -q -m "the agent's work"
 agx stop "$TASK" | grep -q "^stopped $TASK"
+
+agx outcomes "$TASK" > "$WORK/outcomes.txt"
+grep -q "^tests:" "$WORK/outcomes.txt"
+grep -q "^agent lines: *3$" "$WORK/outcomes.txt"
+grep -q "^verdict: *not merged$" "$WORK/outcomes.txt"
+git -C "$WORK/runrepo" merge --no-ff -q -m "merge the task" "$BRANCH"
+agx outcomes "$TASK" | grep -q "^verdict: *accepted"
+agx outcomes "$TASK" --json | grep -q '"accepted": true'
+
+echo "smoke: agn handoff to the next agent"
+HANDOFF_NOTE="the parser is done, the printer is not"
+agx handoff "$TASK" --to claude-code --note "$HANDOFF_NOTE" > "$WORK/handoff.txt"
+grep -q "^handed off $TASK to " "$WORK/handoff.txt"
+CHILD="$(awk 'NR == 1 { print $5 }' "$WORK/handoff.txt")"
+grep -q "## Handoff to claude-code:default:native at " "$WORK/runrepo/.ag/tasks/$TASK.md"
+# The child is launched with the section as part of its first prompt; the fake agent logs it.
+for _ in 1 2 3 4 5; do
+  grep -q "## Handoff from $TASK" "$WORK/agent.log" && break
+  sleep 1
+done
+grep -q "## Handoff from $TASK" "$WORK/agent.log"
+grep -q "$HANDOFF_NOTE" "$WORK/agent.log"
+agx status "$CHILD" | grep -q "^parent: *$TASK"
+agx stop "$CHILD" | grep -q "^stopped $CHILD"
+
 agx clean | grep -q "^cleaned $TASK"
 
 agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"
@@ -207,6 +286,9 @@ FOLDER_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/folder.txt")"
 ! agx run "second folder task" --profile claude-code --repo "$WORK/runfolder" 2> "$WORK/folder-error.txt"
 grep -q "folder workspaces run one task at a time" "$WORK/folder-error.txt"
 agx stop "$FOLDER_TASK" | grep -q "^stopped"
+# A folder task has no branch of agn's, so it has no lines and no verdict to report.
+agx outcomes "$FOLDER_TASK" | grep -q "^agent lines: *-$"
+agx outcomes "$FOLDER_TASK" | grep -q "^verdict: *-$"
 
 echo "smoke: agn adopt of an agent started outside agn"
 # ps reports the script's own name, so this copy of the fake agent has to be called `claude`; the
@@ -230,4 +312,20 @@ agx status "$ADOPTED" | grep -q "^origin: *adopted"
 agx status "$ADOPTED" | grep -q "^tmux: *smoke-adopt"
 agx stop "$ADOPTED" | grep -q "^stopped $ADOPTED"
 
+agx daemon stop | grep -q "^agnd stopped"
+
+echo "smoke: agn usage over a transcript the agent left behind"
+# A session agn did not start, written where Claude Code writes: it counts against the plan and
+# belongs to no task.
+NOW="$("$NODE" -e "process.stdout.write(new Date().toISOString())")"
+printf '{"type":"assistant","sessionId":"s-smoke","timestamp":"%s","cwd":"%s","requestId":"req_s","message":{"id":"msg_s","model":"claude-fable-5-1","usage":{"input_tokens":1000,"output_tokens":500,"cache_read_input_tokens":200,"cache_creation_input_tokens":0}}}\n' \
+  "$NOW" "$WORK/runrepo" > "$USAGE_HOME/.claude/projects/-work-usage/s-smoke.jsonl"
+
+agx usage > "$WORK/usage.txt"
+grep -q "^today (" "$WORK/usage.txt"
+grep -q "^this week (from " "$WORK/usage.txt"
+grep -q "^unknown plan  claude-code " "$WORK/usage.txt"
+grep -q "1,700" "$WORK/usage.txt"
+agx usage --json > "$WORK/usage.json"
+grep -q '"unattributedTokens": 1700' "$WORK/usage.json"
 agx daemon stop | grep -q "^agnd stopped"

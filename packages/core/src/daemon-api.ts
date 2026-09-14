@@ -1,8 +1,13 @@
 import { z } from "zod";
 import type { AttachInfo, DetectedHarness } from "./executor.js";
+import type { Outcome } from "./outcome.js";
+import { type Plan, type Plans, PlansSchema, type PlanVendor } from "./plans.js";
 import type { Billing, HarnessId, Profile } from "./profile.js";
+import type { Recommendation } from "./recommendation.js";
 import type { Repo } from "./repo.js";
 import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
+import { TaskIntentSchema } from "./task-intent.js";
+import type { PlanUsage, UsageSum, UsageWindow } from "./usage.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;
@@ -26,10 +31,20 @@ export const DaemonInfoSchema = z.strictObject({
 export type DaemonInfo = z.infer<typeof DaemonInfoSchema>;
 
 // The one unauthenticated response, so `agn daemon status` can tell "stale" from "not my token".
-export const HealthResponseSchema = DaemonInfoSchema.extend({ version: z.string().min(1) });
+// `home` is optional only so that a daemon older than this field still parses; a response without
+// one is treated as another machine's daemon, never as ours to kill.
+export const HealthResponseSchema = DaemonInfoSchema.extend({
+  version: z.string().min(1),
+  home: z.string().min(1).optional(),
+});
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
-export type RepoListResponse = { repos: Repo[] };
+/**
+ * A registered repo plus the one `.ag/agnostic.yaml` field a client needs to say what a run will
+ * do. Read per request rather than stored: the file is the user's, and only the daemon reads it.
+ */
+export type RepoListRow = Repo & { testCommand: string | null };
+export type RepoListResponse = { repos: RepoListRow[] };
 
 export const RegisterRepoRequestSchema = z.strictObject({
   // Absolute, or relative to the client's cwd: the client resolves before sending.
@@ -62,8 +77,36 @@ export const RunTaskRequestSchema = z.strictObject({
   model: z.string().min(1).optional(),
   /** A git ref or a task id to branch from; a folder workspace has nothing to branch. */
   base: z.string().min(1).optional(),
+  /** Replaces what the classifier read out of the prompt, for this task only. */
+  intent: TaskIntentSchema.optional(),
+  /** Skips the repo's `test_command` before launch, so the agent starts at once (ADR 022). */
+  skipTests: z.boolean().optional(),
 });
 export type RunTaskRequest = z.infer<typeof RunTaskRequestSchema>;
+
+// `repoId` is in the body because a recommendation is about a repo without belonging to one: it
+// is asked for before any task exists.
+export const RecommendRequestSchema = z.strictObject({
+  repoId: z.string().min(1),
+  prompt: z.string().min(1),
+  intent: TaskIntentSchema.optional(),
+  /** Overrides `subscriptions_only` in preferences.yaml for this call only. */
+  subscriptionsOnly: z.boolean().optional(),
+});
+export type RecommendRequest = z.infer<typeof RecommendRequestSchema>;
+
+export type RecommendResponse = { recommendation: Recommendation };
+
+// The daemon resolves `profile` exactly as it does for a run, so `--to` takes what `--profile` does.
+export const HandoffTaskRequestSchema = z.strictObject({
+  profile: z.string().min(1),
+  /** What the user wrote, or the outgoing agent's own summary; agn adds the mechanical context. */
+  note: z.string().min(1).optional(),
+});
+export type HandoffTaskRequest = z.infer<typeof HandoffTaskRequestSchema>;
+
+/** The child first, because it is what the caller goes on to attach to; the parent as it was left. */
+export type HandoffTaskResponse = { task: Task; parent: Task };
 
 export const CleanTaskRequestSchema = z.strictObject({ deleteBranch: z.boolean().optional() });
 export type CleanTaskRequest = z.infer<typeof CleanTaskRequestSchema>;
@@ -97,6 +140,21 @@ export type AdoptRequest = z.infer<typeof AdoptRequestSchema>;
 
 export type ModelSource = "probe" | "seed" | "none";
 
+/**
+ * What agn knows about a harness's plan. `known` is false for a plan the catalog has no row for,
+ * which agn shows as it was read rather than guessing what it includes. `confirmed` is false when
+ * nothing but `config.yaml` says so and the models the harness lists belong to another plan.
+ */
+export type PlanReport = {
+  value: Plan;
+  source: "detected" | "config";
+  known: boolean;
+  confirmed: boolean;
+};
+
+/** A plan the catalog knows, which is what `agn doctor` offers and the workspace picker lists. */
+export type PlanOption = { vendor: PlanVendor; id: Plan; displayName: string };
+
 /** A registry `HarnessStatus` flattened for the wire; tier 2 and uninstalled rows carry `[]`. */
 export type HarnessReport = {
   harness: HarnessId;
@@ -109,6 +167,10 @@ export type HarnessReport = {
   tier: 1 | 2;
   models: string[];
   modelSource: ModelSource;
+  /** null for a harness billed per provider key, which has no plan to be on. */
+  planVendor: PlanVendor | null;
+  /** null when nothing said which plan: not logged in, no plan source, no config entry. */
+  plan: PlanReport | null;
 };
 
 /** A tool that is not a harness but that agn reports on: `gh` is the only one in v0. */
@@ -119,6 +181,10 @@ export type ToolReport = {
   login: "logged-in" | "logged-out" | "unknown";
 };
 
+// An absent or empty body is legal: `agn doctor` with no flag changes nothing and re-detects.
+export const DoctorRequestSchema = z.strictObject({ plans: PlansSchema.optional() });
+export type DoctorRequest = z.infer<typeof DoctorRequestSchema>;
+
 export type DoctorResponse = {
   harnesses: HarnessReport[];
   profiles: Profile[];
@@ -126,6 +192,10 @@ export type DoctorResponse = {
   detectedAt: string;
   /** The PATH the daemon was started with, because that is what detection saw.  */
   pathVar: string;
+  /** config.yaml's plans after this call, so a client can show what it just wrote. */
+  plans: Plans;
+  /** Every plan the catalog knows, for the prompt and the picker; agn offers nothing else. */
+  planOptions: PlanOption[];
 };
 
 /** Hooks move a task between these two only; queued and the terminal statuses are never touched. */
@@ -172,6 +242,22 @@ export type InitWrite = {
 };
 
 export type InitResponse = { writes: InitWrite[] };
+
+/**
+ * Both windows in one body (ADR 021): one scan of the transcripts answers the day and the week,
+ * so the CLI and the workspace's usage bar make one call. `scannedAt` is when that scan ran.
+ */
+export type UsageResponse = {
+  day: { window: UsageWindow; plans: PlanUsage[] };
+  week: { window: UsageWindow; plans: PlanUsage[] };
+  scannedAt: string;
+};
+
+/** One task's outcome row. `outcome` is null until the task closes and agn records one. */
+export type OutcomeResponse = { task: Task; outcome: Outcome | null };
+
+/** One task's tokens. `billing` comes from the task's profile; null when it cannot be resolved. */
+export type TaskUsageResponse = { task: Task; usage: UsageSum; billing: Billing | null };
 
 /** The files `agn sync` generates from `.ag/instructions.md`, relative to the repo root. */
 export type SyncTarget = "CLAUDE.md" | "AGENTS.md";

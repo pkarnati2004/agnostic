@@ -19,6 +19,8 @@ A row moves here from Planned when the file exists.
 | `packages/hooks/src/codex/trust.ts` (the trust key format, the snake_case event labels and the hashed handler definition) | stablyai/orca `src/main/codex/codex-hook-identity.ts`, `codex-trust-identity.ts`, `codex-hook-definition.ts`, `codex-hook-local-install.ts` (ported) | MIT © Lovecast Inc. |
 | `packages/hooks/src/claude-code/parse.ts`, `packages/hooks/src/codex/parse.ts` (which hook event means working and which means waiting), and the one-script hook transport in `hook-script.ts` | stablyai/orca `src/shared/agent-hook-listener.ts`, `agent-hook-listener/providers/claude-events.ts`, `codex-events.ts`, `hook-envelope.ts`; `src/main/claude/hook-settings.ts`, `hook-service.ts`; `src/main/agent-hooks/hook-post-command.ts`, `hook-stdin-contract.ts`, `posix-hook-command.ts` (ported from a behaviour list, not copied) | MIT © Lovecast Inc. |
 | `packages/registry/src/model-list-parsers.ts`, `probe-models.ts` | stablyai/orca `src/shared/claude-model-list-probe.ts`, `commit-message-model-parsers.ts`; `src/main/text-generation/commit-message-model-discovery.ts`, `commit-message-model-discovery-policy.ts` (ported) | MIT © Lovecast Inc. |
+| `packages/usage/src/claude-code/parse.ts`, `scan-transcripts.ts` (the assistant-record shape, the prefilter, the dedupe key and max-per-bucket merge, the `*.jsonl` walk and the size-and-mtime skip) | stablyai/orca `src/main/claude-usage/transcript-record-parser.ts`, `transcript-file-discovery.ts`, `scanner.ts` (ported) | MIT © Lovecast Inc. |
+| `packages/usage/src/pricing.ts` (the logic only: the `-YYYYMMDD` normalisation and the per-bucket cost sum; the rates are catalog data, ADR 011) | asheshgoplani/agent-deck `internal/costs/pricing.go` (ported) | MIT © Ashesh Goplani |
 
 ## Planned
 
@@ -26,10 +28,6 @@ Files we intend to copy or port. Names are provisional until the file lands.
 
 | Our file | From | License |
 |---|---|---|
-| `packages/usage/src/parse-claude-transcript.ts` | asheshgoplani/agent-deck `internal/costs/parser_claude.go` (ported to TS) | MIT © Ashesh Goplani |
-| `packages/usage/src/parse-openai-transcript.ts` | asheshgoplani/agent-deck `internal/costs/parser_openai.go` (ported) | MIT © Ashesh Goplani |
-| `packages/usage/src/pricing.ts` | asheshgoplani/agent-deck `internal/costs/pricing.go` (ported) | MIT © Ashesh Goplani |
-| `packages/usage/src/scan-claude-usage.ts` | stablyai/orca `src/main/claude-usage/` | MIT © Lovecast Inc. |
 | `packages/ui/src/styles/tokens.css` | stablyai/orca `src/renderer/src/assets/main.css` (tokens only) | MIT © Lovecast Inc. |
 
 ## Ideas, no code
@@ -38,4 +36,14 @@ Superset (workspace layout, PTY daemon design), Orca (hook-based status), Agent 
 
 ## Catalog data
 
-Benchmark rows cite source URL and date. Only aggregate scores are redistributed.
+`packages/catalog/src/catalog.json` is transcribed by hand. Its `sources` table carries one row per
+place a number came from, with the URL, the terms it is published under, and the date it was read;
+every benchmark row names the source it came from, and every plan and entitlement row the vendor
+page it was confirmed against. Only aggregate scores are redistributed: no task, no trajectory, and
+no code from any benchmark repository.
+
+| Table | Sources as of 2026-09-12 |
+|---|---|
+| `benchmarks` | Terminal-Bench 4.0 leaderboard; SWE-bench Verified and Multilingual leaderboards; SWE-Bench Pro (public) leaderboard; LiveBench 2026-06-25; Red Hat `coding_agent_bench` README tables; OpenBench harness bench |
+| `plans`, `entitlements` | The Claude plan comparison and the Codex plans and usage page |
+| `pricing` | The public OpenRouter model list |

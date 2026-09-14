@@ -19,9 +19,10 @@ function home(): AgnosticPaths {
 function markRunning(paths: AgnosticPaths, port: number): DaemonInfo {
   const info: DaemonInfo = { pid: process.pid, port, startedAt: new Date().toISOString() };
   writeFileSync(paths.daemon, JSON.stringify(info));
-  // probeDaemon calls /health with the global fetch; this process's own pid is the live one.
+  // probeDaemon calls /health with the global fetch; this process's own pid is the live one, and
+  // the home it answers with is this one, or the probe would call it another home's daemon.
   vi.stubGlobal("fetch", () =>
-    Promise.resolve(new Response(JSON.stringify({ ...info, version: "0.0.0" }))),
+    Promise.resolve(new Response(JSON.stringify({ ...info, version: "0.0.0", home: paths.home }))),
   );
   return info;
 }

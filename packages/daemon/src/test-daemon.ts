@@ -1,28 +1,28 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Catalog } from "@agnostic/catalog";
 import {
   type AgnosticPaths,
   agnosticPaths,
   type DaemonInfo,
   type ExecutorProvider,
-  type HarnessId,
-  type HarnessReport,
-  type Profile,
   type RegisterRepoResponse,
   type Repo,
 } from "@agnostic/core";
 import { createTmuxExecutor } from "@agnostic/executor-tmux";
 import { type Ledger, openLedger } from "@agnostic/ledger";
-import { harnessDefinition, type LocalServer } from "@agnostic/registry";
+import type { LocalServer } from "@agnostic/registry";
 import { type ServerType, serve } from "@hono/node-server";
 import type { Hono } from "hono";
 import { createApp } from "./app.js";
 import type { Detection } from "./detection-cache.js";
 import { createEventFeed } from "./event-feed.js";
 import { createLogger } from "./log.js";
+import { fixtureCatalog, fixtureDetection, launchDetection } from "./test-detection.js";
 import { createLaunchEnv, type LaunchEnv } from "./test-launch-env.js";
 import { createWorkspace, type TestRepoOptions } from "./test-workspace.js";
+import { createVerdictSweep, type VerdictSweep } from "./verdict-sweep.js";
 
 // Not part of the package's exports: this is what every daemon test builds its fixture from.
 export const TEST_TOKEN = "0123456789abcdef";
@@ -34,6 +34,8 @@ export type TestDaemon = {
   logFile: string;
   /** Set only when the daemon was built with `tmux: true`. */
   launch: LaunchEnv | null;
+  /** No timer: a test that cares about verdicts runs the sweep itself (ADR 022). */
+  verdicts: VerdictSweep;
   detectCalls(): number;
   addRepo(opts?: TestRepoOptions): Promise<Repo>;
   request(path: string, init?: RequestInit): Promise<Response>;
@@ -43,77 +45,6 @@ export type TestDaemon = {
   readLog(): Promise<string>;
   close(): Promise<void>;
 };
-
-export function fixtureProfile(model: string | null): Profile {
-  return {
-    id: `claude-code:${model ?? "default"}:native`,
-    harness: "claude-code",
-    model,
-    route: "native",
-    billing: "subscription",
-    available: true,
-    evidence: "binary",
-    tier: 1,
-  };
-}
-
-function fixtureReport(models: string[], harness: HarnessId): HarnessReport {
-  const definition = harnessDefinition(harness);
-  return {
-    harness,
-    name: definition.name,
-    binary: definition.binary,
-    path: `/opt/bin/${definition.binary}`,
-    version: "2.0.0",
-    login: "logged-in",
-    billing: "subscription",
-    tier: 1,
-    models,
-    modelSource: "probe",
-  };
-}
-
-export function fixtureDetection(
-  models: string[] = ["sonnet-4.5"],
-  harnesses: HarnessId[] = ["claude-code"],
-): Detection {
-  return {
-    harnesses: harnesses.map((harness) => fixtureReport(models, harness)),
-    profiles: [null, ...models].map(fixtureProfile),
-    tools: [],
-    servers: [],
-    detectedAt: new Date().toISOString(),
-    pathVar: "/opt/bin",
-  };
-}
-
-/** What a launch test detects: the two fake harnesses on PATH, and Pi installed nowhere. */
-function launchDetection(binDir: string, servers: LocalServer[]): Detection {
-  const installed = (harness: HarnessId, binary: string, path: string | null): HarnessReport => ({
-    harness,
-    name: binary,
-    binary,
-    path,
-    version: path === null ? null : "1.0.0",
-    login: "logged-in",
-    billing: "subscription",
-    tier: 1,
-    models: [],
-    modelSource: "none",
-  });
-  return {
-    harnesses: [
-      installed("claude-code", "claude", join(binDir, "claude")),
-      installed("codex", "codex", join(binDir, "codex")),
-      installed("pi", "pi", null),
-    ],
-    profiles: [fixtureProfile(null)],
-    tools: [],
-    servers,
-    detectedAt: new Date().toISOString(),
-    pathVar: binDir,
-  };
-}
 
 /** Polls until the check passes, so a test never sleeps for a fixed time it does not need. */
 export async function waitFor(
@@ -172,7 +103,7 @@ function idleExecutor(): ExecutorProvider {
 }
 
 type TestDaemonOptions = {
-  detect?: () => Promise<Detection>;
+  detect?: (paths: AgnosticPaths) => Promise<Detection>;
   feedPollMs?: number;
   heartbeatMs?: number;
   /** A real tmux executor on a private socket, with the fake harnesses on the launch PATH. */
@@ -181,39 +112,54 @@ type TestDaemonOptions = {
   seed?: (ledger: Ledger) => void;
   /** Local model servers the stub detection reports, for a launch on the `local` route. */
   servers?: LocalServer[];
+  /** The catalog the app is built with; the complete fixture unless a test needs another. */
+  catalog?: Catalog;
+  /**
+   * The home the daemon reads harness auth files and transcripts under; the state directory by
+   * default. A usage test points it at a tree holding `.claude/projects` and `.codex/sessions`.
+   */
+  userHome?: string;
 };
 
 /** Everything a test daemon owns on disk and in memory, before any route exists. */
 async function createParts(opts: TestDaemonOptions) {
   const home = await mkdtemp(join(tmpdir(), "agn-daemon-"));
+  const userHome = opts.userHome ?? home;
   const paths = agnosticPaths(home);
   const logFile = join(paths.logs, "agnd.log");
   const ledger = openLedger(paths.db);
   const launch = opts.tmux === true ? await createLaunchEnv(home) : null;
   opts.seed?.(ledger);
+  const log = createLogger(logFile);
+  const executor =
+    launch === null
+      ? idleExecutor()
+      : createTmuxExecutor({ paths, socketName: launch.socketName, env: launch.env });
   return {
     home,
-    paths,
+    userHome,
     logFile,
+    paths,
     ledger,
     launch,
-    log: createLogger(logFile),
+    log,
+    executor,
+    verdicts: createVerdictSweep({ ledger, executor, log }, null),
     feed: createEventFeed(ledger, opts.feedPollMs),
-    executor:
-      launch === null
-        ? idleExecutor()
-        : createTmuxExecutor({ paths, socketName: launch.socketName, env: launch.env }),
-    detect:
-      opts.detect ??
-      (() =>
-        Promise.resolve(
-          launch === null ? fixtureDetection() : launchDetection(launch.binDir, opts.servers ?? []),
-        )),
+    // The paths are handed over so a test can run the real detection against this daemon's config.
+    detect: () =>
+      opts.detect === undefined
+        ? Promise.resolve(
+            launch === null
+              ? fixtureDetection()
+              : launchDetection(launch.binDir, opts.servers ?? []),
+          )
+        : opts.detect(paths),
   };
 }
 
 export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<TestDaemon> {
-  const { home, paths, logFile, ledger, launch, log, feed, executor, detect } =
+  const { home, userHome, paths, logFile, ledger, launch, log, feed, executor, verdicts, detect } =
     await createParts(opts);
   const repoDirs: string[] = [];
   let calls = 0;
@@ -224,8 +170,11 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     paths,
     feed,
     executor,
+    verdicts,
+    home: userHome,
+    catalog: opts.catalog ?? (await fixtureCatalog()),
     // HOME is always the test's own: an installer that writes per user must never find the real one.
-    env: launch?.env ?? { PATH: "/opt/bin", HOME: home },
+    env: launch?.env ?? { PATH: "/opt/bin", HOME: userHome },
     token: TEST_TOKEN,
     log,
     version: "0.0.0-test",
@@ -255,6 +204,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     paths,
     logFile,
     launch,
+    verdicts,
     detectCalls: () => calls,
     addRepo: async (repoOpts = {}) => {
       const path = await createWorkspace(repoOpts);
@@ -280,6 +230,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     close: async () => {
       await server.stop();
       feed.close();
+      verdicts.close();
       await executor.close();
       await launch?.cleanup();
       ledger.close();

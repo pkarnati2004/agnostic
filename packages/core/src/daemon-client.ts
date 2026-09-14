@@ -4,13 +4,19 @@ import {
   type AttachResponse,
   type CleanTaskRequest,
   type CleanTaskResponse,
+  type DoctorRequest,
   type DoctorResponse,
+  type HandoffTaskRequest,
+  type HandoffTaskResponse,
   type HealthResponse,
   type HooksInstallRequest,
   type HooksInstallResponse,
   type InitRequest,
   type InitResponse,
+  type OutcomeResponse,
   type ProfilesResponse,
+  type RecommendRequest,
+  type RecommendResponse,
   type RegisterRepoRequest,
   type RegisterRepoResponse,
   type RepoListResponse,
@@ -22,6 +28,8 @@ import {
   type TaskListQuery,
   type TaskListResponse,
   type TaskResponse,
+  type TaskUsageResponse,
+  type UsageResponse,
 } from "./daemon-api.js";
 import { DaemonApiError } from "./error.js";
 import { type Event, EventSchema } from "./event.js";
@@ -42,17 +50,26 @@ export type DaemonClient = {
   stopTask(id: string): Promise<TaskResponse>;
   cleanTask(id: string, body: CleanTaskRequest): Promise<CleanTaskResponse>;
   resumeTask(id: string): Promise<ResumeTaskResponse>;
+  /** Hands the task to another profile: the parent is stopped, the child starts from the note. */
+  handoffTask(id: string, body: HandoffTaskRequest): Promise<HandoffTaskResponse>;
   /** The harness processes running under `path`, for `agn adopt` to choose from. */
   listSessions(repoId: string, path: string): Promise<SessionsResponse>;
   adoptTask(repoId: string, body: AdoptRequest): Promise<TaskResponse>;
   profiles(): Promise<ProfilesResponse>;
-  doctor(): Promise<DoctorResponse>;
+  /** The pick for a prompt, without starting anything; `agn run` records one of its own. */
+  recommend(body: RecommendRequest): Promise<RecommendResponse>;
+  doctor(request?: DoctorRequest): Promise<DoctorResponse>;
   /** Installs the status hook for one harness, or for every harness the repo could run. */
   installHooks(repoId: string, body: HooksInstallRequest): Promise<HooksInstallResponse>;
   /** Creates `.ag/`, seeding `instructions.md` from the repo's own instructions file. */
   initRepo(repoId: string, body: InitRequest): Promise<InitResponse>;
   /** Renders the generated instruction files; a dry run answers with the same plan unapplied. */
   syncRepo(repoId: string, body: SyncRequest): Promise<SyncResponse>;
+  /** Today's and this week's tokens per plan, from the transcripts on this machine. */
+  usage(): Promise<UsageResponse>;
+  taskUsage(id: string): Promise<TaskUsageResponse>;
+  /** What the task cost and what became of its branch; the daemon rechecks the verdict first. */
+  taskOutcome(id: string): Promise<OutcomeResponse>;
   /** Resumes with `Last-Event-ID` after a dropped connection; ends when `signal` aborts. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -104,6 +121,8 @@ export function createDaemonClient(opts: {
     cleanTask: (id, body) =>
       json<CleanTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/clean`, body),
     resumeTask: (id) => json<ResumeTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/resume`),
+    handoffTask: (id, body) =>
+      json<HandoffTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/handoff`, body),
     listSessions: (repoId, path) =>
       json<SessionsResponse>(
         "GET",
@@ -112,13 +131,17 @@ export function createDaemonClient(opts: {
     adoptTask: (repoId, body) =>
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
-    doctor: () => json<DoctorResponse>("POST", "/doctor"),
+    recommend: (body) => json<RecommendResponse>("POST", "/recommend", body),
+    doctor: (request) => json<DoctorResponse>("POST", "/doctor", request ?? {}),
     installHooks: (repoId, body) =>
       json<HooksInstallResponse>("POST", `/repos/${encodeURIComponent(repoId)}/hooks`, body),
     initRepo: (repoId, body) =>
       json<InitResponse>("POST", `/repos/${encodeURIComponent(repoId)}/init`, body),
     syncRepo: (repoId, body) =>
       json<SyncResponse>("POST", `/repos/${encodeURIComponent(repoId)}/sync`, body),
+    usage: () => json<UsageResponse>("GET", "/usage"),
+    taskUsage: (id) => json<TaskUsageResponse>("GET", `/tasks/${encodeURIComponent(id)}/usage`),
+    taskOutcome: (id) => json<OutcomeResponse>("GET", `/tasks/${encodeURIComponent(id)}/outcome`),
     events: (after, signal) => streamEvents(doFetch, base, headers, after, signal),
   };
 }

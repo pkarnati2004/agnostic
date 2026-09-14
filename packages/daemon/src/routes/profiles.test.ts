@@ -1,6 +1,8 @@
+import { readFile, writeFile } from "node:fs/promises";
 import type { DoctorResponse, ProfilesResponse } from "@agnostic/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { createTestDaemon, fixtureDetection, type TestDaemon } from "../test-daemon.js";
+import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
+import { fixtureDetection } from "../test-detection.js";
 
 let daemon: TestDaemon;
 
@@ -73,6 +75,55 @@ describe("POST /doctor", () => {
       null,
       "sonnet-4.5",
       "opus-4.1",
+    ]);
+  });
+});
+
+describe("POST /doctor with a plan", () => {
+  it("writes the plan into config.yaml, keeps the port, and reports it back", async () => {
+    daemon = await createTestDaemon();
+    await writeFile(daemon.paths.config, "port: 7500\n");
+    const response = await daemon.request("/doctor", {
+      method: "POST",
+      body: JSON.stringify({ plans: { claude: "max20" } }),
+    });
+    expect(response.status).toBe(200);
+    expect(await body<DoctorResponse>(response)).toMatchObject({ plans: { claude: "max20" } });
+    const config = await readFile(daemon.paths.config, "utf8");
+    expect(config).toContain("claude: max20");
+    expect(config).toContain("port: 7500");
+  });
+
+  it("takes a plan the catalog has never heard of", async () => {
+    daemon = await createTestDaemon();
+    const response = await daemon.request("/doctor", {
+      method: "POST",
+      body: JSON.stringify({ plans: { chatgpt: "go" } }),
+    });
+    expect(response.status).toBe(200);
+    expect((await body<DoctorResponse>(response)).plans).toEqual({ chatgpt: "go" });
+  });
+
+  it("refuses a vendor it does not bill for", async () => {
+    daemon = await createTestDaemon();
+    const response = await daemon.request("/doctor", {
+      method: "POST",
+      body: JSON.stringify({ plans: { codex: "plus" } }),
+    });
+    expect(response.status).toBe(400);
+    expect(await body<{ error: { code: string } }>(response)).toMatchObject({
+      error: { code: "request-invalid" },
+    });
+  });
+
+  it("offers the plans the catalog knows, and nothing else", async () => {
+    daemon = await createTestDaemon();
+    const doctor = await body<DoctorResponse>(await daemon.request("/doctor", { method: "POST" }));
+    expect(doctor.planOptions).toEqual([
+      { vendor: "claude", id: "pro", displayName: "Pro" },
+      { vendor: "claude", id: "max5", displayName: "Max 5x" },
+      { vendor: "claude", id: "max20", displayName: "Max 20x" },
+      { vendor: "chatgpt", id: "plus", displayName: "Plus" },
     ]);
   });
 });

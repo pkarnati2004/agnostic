@@ -17,14 +17,17 @@ type ProfileRequest = { profile?: string; model?: string };
 /**
  * One place turns what a caller typed into a profile, so the CLI, the UI and any adapter get the
  * same rules: a whole profile id, a bare harness id meaning its default model on the native route,
- * or the repo's `default_profile`, with `--model` replacing the model segment either way.
+ * the repo's `default_profile`, and finally the fallback the caller brought - the recommendation,
+ * for a run with neither (ADR 019). `--model` replaces the model segment whichever won.
  */
 export async function resolveProfile(
   ctx: DaemonContext,
   repo: Repo,
   req: ProfileRequest,
+  fallback: string | null = null,
 ): Promise<Profile> {
-  const asked = req.profile ?? (await readRepoConfig(repo.path))?.defaultProfileId ?? null;
+  const asked =
+    req.profile ?? (await readRepoConfig(repo.path))?.defaultProfileId ?? fallback ?? null;
   if (asked === null) {
     throw new DaemonError(`no profile was given and ${repo.name} has no default`, {
       code: "profile-required",

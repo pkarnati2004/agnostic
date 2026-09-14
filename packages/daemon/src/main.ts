@@ -54,12 +54,19 @@ async function main(argv: string[]): Promise<number | null> {
   }
 }
 
-/** Exit 0 running, 2 stale, 1 stopped, so a shell script can branch without parsing the text. */
+/** Exit 0 running, 2 stale or foreign, 1 stopped, so a script can branch without parsing text. */
 async function status(): Promise<number> {
   const probe = await daemonStatus({});
   if (probe.state === "running" && probe.info !== null) {
     process.stdout.write(`running pid=${probe.info.pid} port=${probe.info.port}\n`);
     return 0;
+  }
+  if (probe.state === "foreign") {
+    const home = probe.health?.home ?? "an unknown home";
+    process.stdout.write(
+      `foreign (pid ${probe.health?.pid ?? "?"} on port ${probe.info?.port ?? "?"} serves ${home})\n`,
+    );
+    return 2;
   }
   if (probe.state === "stale") {
     process.stdout.write(`stale (pid ${probe.info?.pid ?? "?"} not answering)\n`);

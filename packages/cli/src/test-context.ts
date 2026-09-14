@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { type AgnosticPaths, agnosticPaths, type DaemonClient, type spawn } from "@agnostic/core";
 import type { CliContext } from "./context.js";
@@ -26,6 +27,8 @@ export function createTestContext(
     paths?: AgnosticPaths;
     env?: Record<string, string>;
     spawn?: typeof spawn;
+    /** The lines a prompt reads; the default is a closed pipe, which answers nothing. */
+    stdin?: string[];
   } = {},
 ): TestCli {
   const out: string[] = [];
@@ -38,8 +41,20 @@ export function createTestContext(
     exitCode: 0,
     io: { out: (line) => out.push(line), err: (line) => err.push(line) },
     entry: stubEntry(),
+    stdin: fakeStdin(opts.stdin),
     spawn: opts.spawn ?? refuseToSpawn,
     client: () => Promise.resolve(opts.client as DaemonClient),
   };
   return { ctx, out, err };
+}
+
+/** A terminal is a terminal only when the test says so, because that is what doctor branches on. */
+function fakeStdin(lines: string[] | undefined): CliContext["stdin"] {
+  const stream: CliContext["stdin"] = Readable.from(
+    (lines ?? []).map((line) => `${line}\n`),
+  ) as CliContext["stdin"];
+  if (lines !== undefined) {
+    stream.isTTY = true;
+  }
+  return stream;
 }

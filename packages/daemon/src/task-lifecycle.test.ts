@@ -1,6 +1,8 @@
-import { rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  newId,
   type Repo,
   run,
   type Task,
@@ -9,6 +11,7 @@ import {
 } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
+import { writeClaudeTranscript } from "./test-transcripts.js";
 
 const PROFILE = "claude-code:default:native";
 
@@ -68,6 +71,76 @@ describe("exit detection", () => {
     // The pane dies after the stop, and its exit must not add a second transition.
     await new Promise((done) => setTimeout(done, 1_000));
     expect(statusEvents(task.id)).toEqual(["running", "stopped"]);
+  });
+});
+
+describe("usage at close", () => {
+  it("has recorded the task's usage by the time the close is answered", async () => {
+    const task = await start();
+    // The harness's cwd is resolved, and on macOS a worktree under /tmp resolves elsewhere.
+    const cwd = await realpath(task.worktreePath ?? "");
+    await writeClaudeTranscript(daemon.paths.home, [{ session: "s-close", cwd }]);
+
+    const response = await daemon.request(`/tasks/${task.id}/stop`, { method: "POST" });
+
+    expect(response.status).toBe(200);
+    // Chunk 15 reads this sum straight after the transition, with nothing to wait for.
+    expect(daemon.ledger.usage.sumForTask(task.id).tokens).toBe(1_500);
+  });
+});
+
+describe("close work that fails", () => {
+  it("still settles the task and logs why nothing was recorded", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agn-usage-fail-"));
+    const failing = await createTestDaemon({
+      userHome: home,
+      // Whatever throws inside the scan (here, detection itself) must not block the transition.
+      detect: () => Promise.reject(new Error("detection unavailable")),
+    });
+    const repoId = newId();
+    failing.ledger.repos.insert({
+      id: repoId,
+      path: "/tmp/agn-usage-fail-repo",
+      kind: "git",
+      name: "beta",
+      addedAt: new Date().toISOString(),
+    });
+    const now = new Date().toISOString();
+    const task = failing.ledger.tasks.insert({
+      id: newId(),
+      repoId,
+      title: "a task whose usage scan will fail",
+      prompt: "p",
+      profileId: PROFILE,
+      worktreePath: null,
+      branch: null,
+      status: "running",
+      origin: "agn",
+      baseCommit: null,
+      createdAt: now,
+      updatedAt: now,
+      session: {
+        harness: "claude-code",
+        sessionId: "s-fail",
+        tmuxSession: null,
+        tmuxSocket: null,
+        launchId: null,
+        pid: null,
+        cwd: "/tmp/agn-usage-fail-repo",
+        lastSeenAt: now,
+      },
+    });
+
+    try {
+      const response = await failing.request(`/tasks/${task.id}/stop`, { method: "POST" });
+
+      expect(response.status).toBe(200);
+      expect(((await response.json()) as TaskResponse).task.status).toBe("stopped");
+      expect(await failing.readLog()).toContain("outcome not recorded");
+    } finally {
+      await failing.close();
+      await rm(home, { recursive: true, force: true });
+    }
   });
 });
 
@@ -168,6 +241,7 @@ describe("start-up reconcile", () => {
           branch: null,
           status: "running",
           origin: "agn",
+          baseCommit: null,
           createdAt: now,
           updatedAt: now,
         });

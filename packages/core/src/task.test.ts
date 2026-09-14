@@ -11,6 +11,7 @@ const task: Task = {
   branch: "agn/t3n9v2wxyz",
   status: "running",
   origin: "agn",
+  baseCommit: null,
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:31:00.000Z",
 };
@@ -39,6 +40,13 @@ describe("TaskSchema", () => {
         alternative: null,
         worthTrying: null,
         riskNote: null,
+        taskClass: {
+          intent: "debug",
+          scope: "small",
+          risk: [],
+          needsBrowser: false,
+          automaticIntent: null,
+        },
       },
     };
     expect(TaskSchema.parse(handoff)).toEqual(handoff);

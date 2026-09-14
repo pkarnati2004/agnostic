@@ -22,6 +22,7 @@ const context = createContext({
     err: (line) => process.stderr.write(`${line}\n`),
   },
   entry: resolveDaemonEntry(),
+  stdin: process.stdin,
 });
 
 process.exitCode = await runMain(process.argv, context);

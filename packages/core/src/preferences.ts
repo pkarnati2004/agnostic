@@ -44,9 +44,10 @@ export type Preferences = z.infer<typeof PreferencesSchema>;
 
 /** The areas where a second opinion is worth the tokens, in the words the recommender matches. */
 function defaultRiskRules(): RiskRule[] {
+  // A keyword matches at a word start, so "payment" covers "payments" and "db" covers "dbs".
   const areas: Record<string, string[]> = {
     auth: ["auth", "login", "session", "oauth", "password", "credential"],
-    db: ["database", "migration", "schema", "sql"],
+    db: ["db", "database", "migration", "schema", "sql"],
     payments: ["payment", "billing", "stripe", "invoice", "checkout"],
     infra: ["deploy", "terraform", "kubernetes", "docker", "dockerfile"],
   };

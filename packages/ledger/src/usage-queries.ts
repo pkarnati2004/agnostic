@@ -1,4 +1,10 @@
-import { type Event, type HarnessId, HarnessIdSchema } from "@agnostic/core";
+import {
+  type Event,
+  type HarnessId,
+  HarnessIdSchema,
+  type UsageBreakdown,
+  type UsageSum,
+} from "@agnostic/core";
 import type { Database } from "better-sqlite3";
 import { rowInvalid } from "./error.js";
 import type { EventQueries } from "./event-queries.js";
@@ -21,15 +27,6 @@ export type UsageRecord = {
   ref: string | null;
 };
 
-export type UsageSum = {
-  tokens: number;
-  tokensInput: number | null;
-  tokensOutput: number | null;
-  tokensCacheRead: number | null;
-  tokensCacheWrite: number | null;
-  costUsd: number | null;
-};
-
 type SumRow = {
   tokens: number;
   tokens_input: number | null;
@@ -39,6 +36,8 @@ type SumRow = {
   cost_usd: number | null;
 };
 
+type BreakdownRow = SumRow & { harness: string; model: string | null; attributed: number };
+
 export type UsageInput = Omit<UsageRecord, "id" | "taskId">;
 
 export type UsageQueries = {
@@ -47,8 +46,10 @@ export type UsageQueries = {
     rows: UsageInput[],
   ): { inserted: number; event: Event<"usage.recorded"> | null };
   sumForTask(taskId: string): UsageSum;
+  /** What the harness actually ran: the newest row that names a model, null when none does. */
+  latestModelForTask(taskId: string): string | null;
   /** Half-open window `[since, until)`; the caller owns day and week boundaries. */
-  sumByHarness(window: { since: string; until?: string }): Array<UsageSum & { harness: HarnessId }>;
+  summarize(window: { since: string; until: string }): UsageBreakdown[];
 };
 
 const SUMS =
@@ -56,18 +57,35 @@ const SUMS =
 
 export function createUsageQueries(db: Database, events: EventQueries): UsageQueries {
   const sumTask = db.prepare(`SELECT ${SUMS} FROM usage WHERE task_id = ?`);
+  const latestModel = db.prepare(
+    `SELECT model FROM usage WHERE task_id = ? AND model IS NOT NULL
+      ORDER BY ts DESC, id DESC LIMIT 1`,
+  );
+  // Attributed and unattributed rows never merge: only the first kind can be shown on a task.
+  const summarizeRows = db.prepare(
+    `SELECT harness, model, task_id IS NOT NULL AS attributed, ${SUMS}
+       FROM usage WHERE ts >= ? AND ts < ?
+      GROUP BY harness, model, attributed
+      ORDER BY harness, model, attributed`,
+  );
 
   return {
     record: recordUsage(db, events),
     sumForTask(taskId: string): UsageSum {
       return toSum(sumTask.get(taskId) as SumRow);
     },
-    sumByHarness(window: { since: string; until?: string }) {
-      const until = window.until === undefined ? "" : " AND ts < ?";
-      const values = window.until === undefined ? [window.since] : [window.since, window.until];
-      const sql = `SELECT harness, ${SUMS} FROM usage WHERE ts >= ?${until} GROUP BY harness ORDER BY harness`;
-      const rows = db.prepare(sql).all(...values) as (SumRow & { harness: string })[];
-      return rows.map((row) => ({ ...toSum(row), harness: toHarness(row.harness) }));
+    latestModelForTask(taskId: string): string | null {
+      const row = latestModel.get(taskId) as { model: string } | undefined;
+      return row?.model ?? null;
+    },
+    summarize(window: { since: string; until: string }): UsageBreakdown[] {
+      const rows = summarizeRows.all(window.since, window.until) as BreakdownRow[];
+      return rows.map((row) => ({
+        ...toSum(row),
+        harness: toHarness(row.harness),
+        model: row.model,
+        attributed: row.attributed === 1,
+      }));
     },
   };
 }

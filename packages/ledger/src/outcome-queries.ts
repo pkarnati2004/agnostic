@@ -22,6 +22,12 @@ export type OutcomeQueries = {
   /** An upsert: the human edit ratio only arrives once someone has reviewed the diff. */
   record(outcome: Outcome): Outcome;
   get(taskId: string): Outcome | null;
+  /**
+   * What the repo's test command said about this commit when another task last ran it, so a task
+   * starting from a commit agn has already tested launches without running it again (ADR 022).
+   * Null is "nothing recorded", never "the tests failed".
+   */
+  testedAtCommit(repoId: string, baseCommit: string): boolean | null;
 };
 
 const COLUMNS =
@@ -29,12 +35,22 @@ const COLUMNS =
 
 export function createOutcomeQueries(db: Database, events: EventQueries): OutcomeQueries {
   const selectByTask = db.prepare("SELECT * FROM outcomes WHERE task_id = ?");
+  const selectTested = db.prepare(
+    `SELECT outcomes.tests_before AS tests_before FROM outcomes
+       JOIN tasks ON tasks.id = outcomes.task_id
+      WHERE tasks.repo_id = ? AND tasks.base_commit = ? AND outcomes.tests_before IS NOT NULL
+      ORDER BY outcomes.recorded_at DESC LIMIT 1`,
+  );
 
   return {
     record: recordOutcome(db, events),
     get(taskId: string): Outcome | null {
       const row = selectByTask.get(taskId) as OutcomeRow | undefined;
       return row === undefined ? null : toOutcome(row);
+    },
+    testedAtCommit(repoId: string, baseCommit: string): boolean | null {
+      const row = selectTested.get(repoId, baseCommit) as { tests_before: number } | undefined;
+      return row === undefined ? null : row.tests_before !== 0;
     },
   };
 }

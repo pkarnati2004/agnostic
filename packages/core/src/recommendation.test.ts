@@ -15,6 +15,13 @@ const recommendation: Recommendation = {
     enable: "start the local model server",
   },
   riskNote: null,
+  taskClass: {
+    intent: "refactor",
+    scope: "small",
+    risk: [],
+    needsBrowser: false,
+    automaticIntent: null,
+  },
 };
 
 describe("RecommendationSchema", () => {

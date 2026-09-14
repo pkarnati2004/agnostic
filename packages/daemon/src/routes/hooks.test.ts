@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type HooksInstallResponse, newId, type Repo } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTestDaemon, fixtureDetection, type TestDaemon } from "../test-daemon.js";
+import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
+import { fixtureDetection } from "../test-detection.js";
 
 let daemon: TestDaemon;
 let repo: Repo;
@@ -84,11 +85,13 @@ describe("POST /repos/:id/hooks", () => {
         branch: null,
         status: "queued",
         origin: "agn",
+        baseCommit: null,
         createdAt: now,
         updatedAt: now,
       });
       daemon.ledger.tasks.start(id, {
         branch: null,
+        baseCommit: null,
         session: {
           harness: "claude-code",
           sessionId: null,

@@ -1,6 +1,6 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { readYamlFile, writeYamlFile } from "./yaml-file.js";
@@ -57,5 +57,27 @@ describe("writeYamlFile", () => {
     expect(text.split("\n")[0]).toBe("# what this file is for");
     expect(text.endsWith("\n")).toBe(true);
     expect(await readYamlFile(file, Schema, HINT)).toEqual({ name: "agnostic", count: 2 });
+  });
+
+  it("keeps the permissions the file already had", async () => {
+    const file = await tempFile("name: agnostic\ncount: 1\n");
+    await chmod(file, 0o600);
+    await writeYamlFile(file, { name: "agnostic", count: 2 }, "header");
+    expect((await stat(file)).mode & 0o777).toBe(0o600);
+  });
+
+  it("leaves the previous file and no litter behind when the write fails", async () => {
+    const file = await tempFile("name: agnostic\ncount: 1\n");
+    const directory = dirname(file);
+    // A directory nothing may write to is the simplest real failure: the temporary file cannot be
+    // created, and the file already there is still readable.
+    await chmod(directory, 0o500);
+    try {
+      await expect(writeYamlFile(file, { name: "replaced", count: 9 }, "header")).rejects.toThrow();
+      expect(await readFile(file, "utf8")).toBe("name: agnostic\ncount: 1\n");
+    } finally {
+      await chmod(directory, 0o700);
+    }
+    expect(await readdir(directory)).toEqual(["settings.yaml"]);
   });
 });

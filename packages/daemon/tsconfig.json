@@ -8,11 +8,14 @@
   },
   "include": ["src/**/*.ts"],
   "references": [
+    { "path": "../catalog" },
     { "path": "../core" },
     { "path": "../executor-tmux" },
     { "path": "../hooks" },
     { "path": "../ledger" },
+    { "path": "../recommender" },
     { "path": "../registry" },
-    { "path": "../sync" }
+    { "path": "../sync" },
+    { "path": "../usage" }
   ]
 }

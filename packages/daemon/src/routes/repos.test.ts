@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RegisterRepoResponse, RepoListResponse } from "@agnostic/core";
-import { run } from "@agnostic/core";
+import { defaultRepoConfig, newId, run, writeRepoConfig } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
 
@@ -45,6 +45,25 @@ describe("GET /repos", () => {
     await post({ path: await gitRepo("alpha") });
     const body = (await (await daemon.request("/repos")).json()) as RepoListResponse;
     expect(body.repos.map((repo) => repo.name)).toEqual(["alpha"]);
+  });
+
+  it("carries each repo's test command, so the CLI never opens the file itself", async () => {
+    const path = await gitRepo("alpha");
+    await writeRepoConfig(path, { ...defaultRepoConfig(newId()), testCommand: "pnpm test" });
+    await post({ path });
+    const body = (await (await daemon.request("/repos")).json()) as RepoListResponse;
+    expect(body.repos[0]?.testCommand).toBe("pnpm test");
+  });
+
+  it("lists a repo whose config is malformed or gone, with no command", async () => {
+    const broken = await gitRepo("broken");
+    await post({ path: broken });
+    await mkdir(join(broken, ".ag"), { recursive: true });
+    await writeFile(join(broken, ".ag", "agnostic.yaml"), "id: [unclosed\n");
+    await post({ path: await gitRepo("plain") });
+
+    const body = (await (await daemon.request("/repos")).json()) as RepoListResponse;
+    expect(body.repos.map((repo) => repo.testCommand)).toEqual([null, null]);
   });
 });
 
