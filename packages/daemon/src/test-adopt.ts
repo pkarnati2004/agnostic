@@ -1,7 +1,15 @@
 import { chmod, copyFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type DetectedHarness, type Repo, run, type SessionsResponse, spawn } from "@agnostic/core";
+import {
+  type DetectedHarness,
+  newId,
+  type Repo,
+  run,
+  type SessionsResponse,
+  spawn,
+  type Task,
+} from "@agnostic/core";
 import { type TestDaemon, waitFor } from "./test-daemon.js";
 
 // Not part of the package's exports: this is how an adopt test gets a session agn did not start.
@@ -86,4 +94,33 @@ export function fakeSessions(daemon: TestDaemon): FakeSessions {
 
 export function errorOf(response: Response): Promise<{ error: { code: string; message: string } }> {
   return response.json() as Promise<{ error: { code: string; message: string } }>;
+}
+
+/** A task row as an adopt writes one, for the states a live detection can no longer reproduce. */
+export function seedAdopted(daemon: TestDaemon, repo: Repo, pid: number, cwd: string): Task {
+  const now = new Date().toISOString();
+  const task = daemon.ledger.tasks.insert({
+    id: newId(),
+    repoId: repo.id,
+    title: "adopted claude-code session",
+    prompt: "",
+    profileId: "claude-code:default:native",
+    worktreePath: null,
+    branch: "main",
+    status: "running",
+    origin: "adopted",
+    baseCommit: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return daemon.ledger.tasks.setSession(task.id, {
+    harness: "claude-code",
+    sessionId: null,
+    tmuxSession: null,
+    tmuxSocket: null,
+    launchId: null,
+    pid,
+    cwd,
+    lastSeenAt: now,
+  });
 }

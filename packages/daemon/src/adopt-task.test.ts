@@ -10,7 +10,7 @@ import {
   type TaskResponse,
 } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { errorOf, type FakeSessions, fakeSessions } from "./test-adopt.js";
+import { errorOf, type FakeSessions, fakeSessions, seedAdopted } from "./test-adopt.js";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
 
 let daemon: TestDaemon;
@@ -134,6 +134,21 @@ describe("POST /repos/:id/adopt", () => {
     expect(body.error.code).toBe("adopt-already-adopted");
     expect(body.error.message).toContain(task.id);
     expect(daemon.ledger.tasks.list({ repoId: repo.id })).toHaveLength(1);
+  });
+
+  it("names the task that owns a pid detection cannot see, rather than calling it missing", async () => {
+    const repo = await daemon.addRepo();
+    const cwd = join(repo.path, "sub");
+    await mkdir(cwd, { recursive: true });
+    // Alive, and never a harness to the scan: the pid is only ever found through the ledger.
+    const task = seedAdopted(daemon, repo, process.pid, cwd);
+
+    const response = await adopt(repo, { path: repo.path, pid: process.pid });
+
+    expect(response.status).toBe(409);
+    const body = await errorOf(response);
+    expect(body.error.code).toBe("adopt-already-adopted");
+    expect(body.error.message).toContain(task.id);
   });
 
   it("registers a pid once when two adopts of it arrive together", async () => {

@@ -47,6 +47,7 @@ export async function listSessions(
     for (const session of found) {
       assertUnwatched(ctx, session.pid);
     }
+    await assertNoTaskUnder(ctx, under);
   }
   return sessions;
 }
@@ -144,6 +145,27 @@ function watchedPids(ctx: DaemonContext): Map<number, string> {
     }
   }
   return pids;
+}
+
+/**
+ * The scan is not the only thing that knows: a process it missed - `ps` and `lsof` disagreeing for
+ * a moment, a session moved since it was adopted - is still a task in the ledger, and the ledger's
+ * answer is better than reporting an empty directory.
+ */
+async function assertNoTaskUnder(ctx: DaemonContext, under: string): Promise<void> {
+  for (const task of ctx.ledger.tasks.list({ status: LIVE })) {
+    const cwd = task.session?.cwd;
+    if (cwd === undefined) {
+      continue;
+    }
+    const real = await resolved(cwd);
+    if (real === under || isUnder(under, real)) {
+      throw new DaemonError(`task ${task.id} is already running under ${cwd}`, {
+        code: "adopt-already-adopted",
+        hint: `Run \`agn status ${task.id}\` to see it.`,
+      });
+    }
+  }
 }
 
 /** A pid agn is already watching belongs to a task; adopting it again would be a second one. */

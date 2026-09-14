@@ -1,6 +1,7 @@
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { errorOf, type FakeSessions, fakeSessions } from "./test-adopt.js";
+import { errorOf, type FakeSessions, fakeSessions, seedAdopted } from "./test-adopt.js";
 import { createTestDaemon, type TestDaemon } from "./test-daemon.js";
 
 let daemon: TestDaemon;
@@ -47,6 +48,22 @@ describe("GET /repos/:id/sessions", () => {
     // One of the two is a task now; the list is still an answer, not the already-adopted refusal.
     const sessions = await agents.waitForCount(repo, repo.path, 1);
     expect(sessions.map((session) => session.pid)).toEqual([free]);
+  });
+
+  it("names the task that owns the path when detection cannot see its process", async () => {
+    const repo = await daemon.addRepo();
+    // A live process detection never reports as a harness, the way a real one goes missing when
+    // the process table or `lsof` answers too late to matter.
+    const cwd = join(repo.path, "sub");
+    await mkdir(cwd, { recursive: true });
+    const task = seedAdopted(daemon, repo, process.pid, cwd);
+
+    const response = await agents.list(repo, repo.path);
+
+    expect(response.status).toBe(409);
+    const body = await errorOf(response);
+    expect(body.error.code).toBe("adopt-already-adopted");
+    expect(body.error.message).toContain(task.id);
   });
 
   it("refuses a path that is not inside the repo", async () => {

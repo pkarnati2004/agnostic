@@ -22,7 +22,7 @@
 
 **`agn adopt` lists several agents.** More than one agent is running under that path, and agn does not pick for you. Run it again with the pid from the first column: `agn adopt <path> --pid <n>`. If the pid you pass is no longer listed, the process has exited or is not an agent agn knows.
 
-**`agn adopt` says the session is already task <id>.** The agent running under that path is registered already, so there is nothing to adopt. `agn status <id>` shows it. A retry of an adopt whose reply was lost says this too, which is not the same as agn finding no agent there.
+**`agn adopt` says the session is already task <id>.** The agent running under that path is registered already, so there is nothing to adopt. `agn status <id>` shows it. A retry of an adopt whose reply was lost says this too, which is not the same as agn finding no agent there. agn answers from its own task records, so it names the task even in the moments the process scan does not list the agent.
 
 **`agn adopt` says the path is not inside the repo.** Adopt registers a session in a repo you have already added. Pass a path inside that repo, or `--repo <id or path>` to say which repo it belongs to.
 
