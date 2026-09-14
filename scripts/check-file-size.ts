@@ -15,7 +15,7 @@ function typescriptFilesIn(dir: string, recursive: boolean): string[] {
       if (recursive) {
         files.push(...typescriptFilesIn(path, recursive));
       }
-    } else if (entry.name.endsWith(".ts")) {
+    } else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) {
       files.push(path);
     }
   }

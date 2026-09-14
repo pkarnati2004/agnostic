@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { agnosticPaths } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureAuthToken } from "./auth.js";
+import { ensureAuthToken, isUiPath } from "./auth.js";
 import { createLogger, type Logger } from "./log.js";
 import { createTestDaemon, TEST_TOKEN, type TestDaemon } from "./test-daemon.js";
 
@@ -79,5 +79,26 @@ describe("bearerAuth", () => {
       port: 0,
       version: "0.0.0-test",
     });
+  });
+
+  it("lets the workspace page through without a token", async () => {
+    // Not built in this daemon, so the answer is the route's own 404 rather than a 401.
+    const response = await daemon.app.request("/ui");
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ error: { code: "ui-not-built" } });
+  });
+});
+
+describe("isUiPath", () => {
+  it("is the page and everything under it", () => {
+    expect(isUiPath("/ui")).toBe(true);
+    expect(isUiPath("/ui/")).toBe(true);
+    expect(isUiPath("/ui/assets/a.js")).toBe(true);
+  });
+
+  it("is nothing else, however the path starts", () => {
+    for (const path of ["/uix", "/ui-events", "/health", "/repos", "/", "/tasks/ui"]) {
+      expect(isUiPath(path)).toBe(false);
+    }
   });
 });

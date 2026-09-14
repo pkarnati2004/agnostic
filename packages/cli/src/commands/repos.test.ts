@@ -15,7 +15,9 @@ function repo(id: string, name: string, kind: Repo["kind"]): RepoListRow {
 }
 
 function run(repos: RepoListRow[]) {
-  const cli = createTestContext({ client: { listRepos: () => Promise.resolve({ repos }) } });
+  const cli = createTestContext({
+    client: { listRepos: () => Promise.resolve({ repos, cursor: 0 }) },
+  });
   return { cli, done: () => reposCommand(cli.ctx).parseAsync([], { from: "user" }) };
 }
 
@@ -36,10 +38,13 @@ describe("agn repos", () => {
     expect(cli.out).toEqual(["no repos yet; run agn add <path>"]);
   });
 
-  it("prints the response verbatim with --json", async () => {
+  it("prints the response verbatim with --json, snapshot cursor and all", async () => {
     const { cli, done } = run([repo("r1", "api", "git")]);
     cli.ctx.json = true;
     await done();
-    expect(JSON.parse(cli.out.join("\n"))).toEqual({ repos: [repo("r1", "api", "git")] });
+    expect(JSON.parse(cli.out.join("\n"))).toEqual({
+      repos: [repo("r1", "api", "git")],
+      cursor: 0,
+    });
   });
 });

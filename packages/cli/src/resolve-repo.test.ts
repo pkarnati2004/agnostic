@@ -30,7 +30,7 @@ function context(cwd: string, repos: RepoListRow[]) {
   return createTestContext({
     cwd,
     paths: agnosticPaths(join(root, "home")),
-    client: { listRepos: () => Promise.resolve({ repos }) },
+    client: { listRepos: () => Promise.resolve({ repos, cursor: 0 }) },
   });
 }
 

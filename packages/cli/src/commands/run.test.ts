@@ -49,7 +49,7 @@ function cli(over: Partial<Task> = {}, repo = REPO) {
   const test = createTestContext({
     cwd: repo.path,
     client: {
-      listRepos: () => Promise.resolve({ repos: [repo] }),
+      listRepos: () => Promise.resolve({ repos: [repo], cursor: 0 }),
       runTask: (repoId, body) => {
         sent.push({ repoId, body });
         return Promise.resolve({ task: task(over) });

@@ -60,7 +60,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn outcomes <task>` | What the task changed, what passed, what you kept |
 | `agn open [<task>]` | Open the task's directory in your editor. `--editor <id>` |
 | `agn catalog show <profile>` / `agn catalog update` | Print the benchmark rows behind a recommendation, or fetch the latest catalog |
-| `agn ui` | Open the workspace |
+| `agn ui` | Open the workspace in your browser. `--no-open` prints the address instead |
 
 Every command prints plain text: one aligned table for a list, `key: value` lines for a single
 thing, no colours. `--json` prints the daemon's response body instead, so scripts read the same

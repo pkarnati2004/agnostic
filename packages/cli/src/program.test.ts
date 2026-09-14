@@ -60,12 +60,12 @@ describe("runMain", () => {
       ["repos", "--json"],
     ]) {
       const cli = createTestContext({
-        client: { listRepos: () => Promise.resolve({ repos: [] }) },
+        client: { listRepos: () => Promise.resolve({ repos: [], cursor: 0 }) },
       });
       const code = await runMain(["node", "agn", ...args], cli.ctx);
       expect(code).toBe(0);
       expect(cli.ctx.json).toBe(true);
-      expect(JSON.parse(cli.out.join("\n"))).toEqual({ repos: [] });
+      expect(JSON.parse(cli.out.join("\n"))).toEqual({ repos: [], cursor: 0 });
     }
   });
 

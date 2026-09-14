@@ -24,7 +24,7 @@ function cli(tasks: Task[]) {
   const asked: { id: string; body: CleanTaskRequest }[] = [];
   const test = createTestContext({
     client: {
-      listAllTasks: () => Promise.resolve({ tasks }),
+      listAllTasks: () => Promise.resolve({ tasks, cursor: 0 }),
       cleanTask: (id, body) => {
         asked.push({ id, body });
         const found = tasks.find((row) => row.id === id) ?? task(id, "done", null);

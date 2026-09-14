@@ -39,13 +39,23 @@ async function warnOnLooseMode(file: string, log: Logger): Promise<void> {
 }
 
 /**
- * `/health` is the only route without a token: it carries nothing secret, and `agn daemon status`
- * needs it to tell a stale daemon from one whose token this user cannot read (Q4).
+ * The built page and everything it loads: it carries nothing secret, so it needs no token
+ * (ADR 026). Both middlewares that guard the daemon read this one predicate - `bearerAuth` below
+ * and the Origin check - so the list of open paths has a single home.
+ */
+export function isUiPath(path: string): boolean {
+  return path === "/ui" || path.startsWith("/ui/");
+}
+
+/**
+ * `/health` is the only API route without a token: it carries nothing secret, and `agn daemon
+ * status` needs it to tell a stale daemon from one whose token this user cannot read (Q4). The
+ * Origin check keeps `/health`; only `/ui` is exempt from that one.
  */
 export function bearerAuth(token: string): MiddlewareHandler {
   const expected = tokenDigest(token);
   return async (c, next) => {
-    if (c.req.path === "/health") {
+    if (c.req.path === "/health" || isUiPath(c.req.path)) {
       return next();
     }
     const header = c.req.header("authorization") ?? "";

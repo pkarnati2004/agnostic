@@ -123,6 +123,15 @@ export default defineConfig({
       },
       {
         test: {
+          // The page's own logic: token, client, frames, reducer, grouping. No DOM, no rendering.
+          name: "ui",
+          root: "packages/ui",
+          // The dev proxy's Origin rewrite is tested where it is written, beside the config.
+          include: ["src/**/*.test.ts", "vite.config.test.ts"],
+        },
+      },
+      {
+        test: {
           name: "scripts",
           root: ".",
           include: ["scripts/**/*.test.ts"],
