@@ -119,6 +119,7 @@ function stubExecutor(): ExecutorProvider {
     launch: () => Promise.reject(new Error("not used by buildRecommendInput")),
     sessionState: () => Promise.resolve("gone" as const),
     attach: () => ({ kind: "tmux", argv: [] }),
+    terminal: () => Promise.reject(new Error("not used by buildRecommendInput")),
     stop: () => Promise.resolve(),
     clean: () => Promise.resolve(),
     detect: () => Promise.resolve([]),

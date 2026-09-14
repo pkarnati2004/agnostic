@@ -43,14 +43,14 @@ async function warnOnLooseMode(file: string, log: Logger): Promise<void> {
  * needs it to tell a stale daemon from one whose token this user cannot read (Q4).
  */
 export function bearerAuth(token: string): MiddlewareHandler {
-  const expected = digest(token);
+  const expected = tokenDigest(token);
   return async (c, next) => {
     if (c.req.path === "/health") {
       return next();
     }
     const header = c.req.header("authorization") ?? "";
     const presented = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
-    if (!timingSafeEqual(digest(presented), expected)) {
+    if (!tokenMatches(presented, expected)) {
       throw new DaemonError("this request carries no valid agn auth token", {
         code: "unauthorized",
         hint: "The token is in ~/.agnostic/auth-token; the agn CLI reads it for you.",
@@ -60,9 +60,17 @@ export function bearerAuth(token: string): MiddlewareHandler {
   };
 }
 
-/** Hashing first keeps the comparison constant time whatever length the caller presented. */
-function digest(value: string): Buffer {
-  return createHash("sha256").update(value).digest();
+/**
+ * The one comparison for the auth token, whether it arrived as a Bearer header or as the terminal
+ * socket's subprotocol (ADR 026). Hashing the presented value keeps the compare constant time
+ * whatever its length; the expected digest is taken once, when the caller is built.
+ */
+export function tokenMatches(presented: string, expected: Buffer): boolean {
+  return timingSafeEqual(tokenDigest(presented), expected);
+}
+
+export function tokenDigest(token: string): Buffer {
+  return createHash("sha256").update(token).digest();
 }
 
 function isExists(cause: unknown): boolean {

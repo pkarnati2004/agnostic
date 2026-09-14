@@ -19,6 +19,7 @@
     "@biomejs/biome": "2.5.12",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "22.20.2",
+    "@types/ws": "8.18.1",
     "knip": "5.88.1",
     "tsx": "4.23.13",
     "typescript": "5.9.3",

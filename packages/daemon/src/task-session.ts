@@ -1,4 +1,12 @@
-import type { HarnessId, SessionHandle, TaskSession } from "@agnostic/core";
+import {
+  type ExecutorProvider,
+  type HarnessId,
+  type SessionHandle,
+  sessionHandle,
+  type Task,
+  type TaskSession,
+} from "@agnostic/core";
+import { DaemonError } from "./error.js";
 
 /**
  * What the ledger records after a launch, for a first run and for a resume alike. `sessionId` is
@@ -20,4 +28,28 @@ export function launchedSession(
     cwd: handle.cwd,
     lastSeenAt: new Date().toISOString(),
   };
+}
+
+/**
+ * The handle a client may put in a terminal, for `GET /tasks/:id/attach` and for the terminal
+ * socket alike. ADR 014: a session started outside tmux is agn's to watch, never agn's to attach.
+ */
+export async function attachableHandle(
+  executor: ExecutorProvider,
+  task: Task,
+): Promise<SessionHandle> {
+  const handle = sessionHandle(task);
+  if (handle === null && task.session?.tmuxSession === null) {
+    throw new DaemonError(`task ${task.id} was started outside tmux and cannot be attached to`, {
+      code: "session-not-attachable",
+      hint: `When it exits, run \`agn resume ${task.id}\` to continue it here.`,
+    });
+  }
+  if (handle === null || (await executor.sessionState(handle)) !== "running") {
+    throw new DaemonError(`task ${task.id} has no session running`, {
+      code: "session-not-running",
+      hint: `Run \`agn resume ${task.id}\` to start it again.`,
+    });
+  }
+  return handle;
 }

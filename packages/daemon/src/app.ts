@@ -33,9 +33,10 @@ import type { CatalogStore } from "./catalog-store.js";
 import { closeOutcome } from "./close-outcome.js";
 import { readDaemonConfig } from "./daemon-config.js";
 import { createDetectionCache, type Detection, type DetectionCache } from "./detection-cache.js";
-import { errorBody } from "./error.js";
+import { errorBody, noRoute } from "./error.js";
 import type { EventFeed } from "./event-feed.js";
 import { type Logger, requestLog } from "./log.js";
+import { originCheck } from "./origin.js";
 import { adoptRoutes } from "./routes/adopt.js";
 import { catalogRoutes } from "./routes/catalog.js";
 import { editorRoutes } from "./routes/editors.js";
@@ -50,6 +51,7 @@ import { syncRoutes } from "./routes/sync.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { usageRoutes } from "./routes/usage.js";
 import { createTaskLifecycle, type TaskLifecycle } from "./task-lifecycle.js";
+import { createTerminalSocket, type UpgradeHandler } from "./terminal-socket.js";
 import { createUsageScanner, type UsageScanner } from "./usage-scan.js";
 import type { VerdictSweep } from "./verdict-sweep.js";
 
@@ -93,8 +95,15 @@ export type DaemonContext = DaemonDeps & {
   catalogChecker: CatalogChecker;
 };
 
-/** The app owns the catalog checker and the closes still running, which is what `close` waits on. */
-export function createApp(deps: DaemonDeps): { app: Hono; close: () => Promise<void> } {
+/**
+ * The app owns the catalog checker, the terminal sockets and the closes still running, so the
+ * caller gets back what it has to close, and the upgrade handler to put on its own http server.
+ */
+export function createApp(deps: DaemonDeps): {
+  app: Hono;
+  close: () => Promise<void>;
+  upgrade: UpgradeHandler;
+} {
   const detection = createDetectionCache(deps.detect, deps.ledger, () => authFilesStamp(deps.home));
   const usage = createUsageScanner({ ...deps, detection });
   // A task that has just closed has written its last turn, and its worktree is nobody else's:
@@ -139,8 +148,12 @@ export function createApp(deps: DaemonDeps): { app: Hono; close: () => Promise<v
       deps.log.error("start-up reconcile failed", { message: reason(cause) });
     });
 
+  const terminalSocket = createTerminalSocket(ctx);
+
   const app = new Hono();
   app.use("*", requestLog(deps.log));
+  // Before the token check, and over /health too: a foreign page learns nothing, not even the home.
+  app.use("*", originCheck(deps.port));
   app.use("*", bearerAuth(deps.token));
   app.route("/", healthRoutes(ctx));
   app.route("/", repoRoutes(ctx));
@@ -156,9 +169,10 @@ export function createApp(deps: DaemonDeps): { app: Hono; close: () => Promise<v
   app.route("/", outcomeRoutes(ctx));
   app.route("/", catalogRoutes(ctx));
 
-  app.notFound((c) =>
-    c.json({ error: { code: "not-found", message: `no route for ${c.req.path}` } }, 404),
-  );
+  app.notFound((c) => {
+    const { status, body } = errorBody(noRoute(c.req.path));
+    return c.json(body, status as ContentfulStatusCode);
+  });
   app.onError((err, c) => {
     const { status, body } = errorBody(err);
     if (status >= 500) {
@@ -169,8 +183,12 @@ export function createApp(deps: DaemonDeps): { app: Hono; close: () => Promise<v
   });
   return {
     app,
-    // A close that is still scanning writes through the ledger, so the caller's shutdown waits.
+    upgrade: terminalSocket.upgrade,
+    // The sockets go first: an upgraded socket is not an http connection, so the server's own
+    // `closeAllConnections` never sees it and `close` would wait for it forever. A close that is
+    // still scanning writes through the ledger, so the caller's shutdown waits for it last.
     close: async () => {
+      terminalSocket.close();
       ctx.catalogChecker.close();
       await lifecycle.drain();
     },

@@ -228,6 +228,25 @@ TASK="$(awk 'NR == 1 { print $2 }' "$WORK/run.txt")"
 agx status | grep -q "running"
 agx status "$TASK" | grep -q "^tmux: *agn-$TASK"
 
+echo "smoke: the terminal socket against the running pane"
+PORT="$(node -e "process.stdout.write(String(require('$AGNOSTIC_HOME/daemon.json').port))")"
+TOKEN="$(cat "$AGNOSTIC_HOME/auth-token")"
+# The client reads the pane width from the same tmux the daemon launched into, so it needs the
+# smoke's PATH; TMUX_TMPDIR is already exported for it.
+PATH="$SMOKE_PATH" "$NODE" tests/fixtures/bin/terminal-roundtrip.mjs \
+  "ws://127.0.0.1:$PORT/tasks/$TASK/terminal" "$TOKEN" "$WORK/agent.log"
+# The socket closing ends that tmux client and nothing else: the task is still running.
+test -z "$(PATH="$SMOKE_PATH" tmux -L agn list-clients -t "agn-$TASK")"
+agx status "$TASK" | grep -q "running"
+# A page on another origin is refused before its token is looked at, on a route and on an upgrade.
+test "$(curl -s -o /dev/null -w '%{http_code}' -H "Origin: http://evil.example" \
+  -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/repos")" = "403"
+curl -s -i -o "$WORK/upgrade.txt" -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  "http://127.0.0.1:$PORT/tasks/$TASK/terminal" || true
+head -n 1 "$WORK/upgrade.txt" | grep -q "^HTTP/1.1 401"
+grep -q '"code":"unauthorized"' "$WORK/upgrade.txt"
+
 echo "smoke: the hook chain, from the installed config to a waiting task"
 agx doctor | grep -q "^tools: gh"
 agx hooks install --repo "$WORK/runrepo" | grep -q "^installed claude-code hooks"
