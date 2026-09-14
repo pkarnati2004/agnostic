@@ -5,6 +5,7 @@ export * from "./daemon-api.js";
 export * from "./daemon-client.js";
 export * from "./daemon-probe.js";
 export { describeIssues } from "./describe-issues.js";
+export * from "./doctor-api.js";
 export * from "./editor.js";
 export * from "./error.js";
 export * from "./event.js";

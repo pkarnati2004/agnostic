@@ -10,6 +10,8 @@ import type {
   RunTaskRequest,
   TaskListResponse,
   TaskResponse,
+  TaskUsageResponse,
+  UsageResponse,
 } from "@agnostic/core";
 import { apiError, isAbortError, unreachable } from "./error";
 import { streamEvents } from "./event-stream";
@@ -26,6 +28,9 @@ export type WorkspaceClient = {
   /** The pick for a prompt, with nothing started; `signal` aborts the call the next keystroke replaces. */
   recommend(body: RecommendRequest, signal: AbortSignal): Promise<RecommendResponse>;
   runTask(repoId: string, body: RunTaskRequest): Promise<TaskResponse>;
+  /** Both windows in one body; the daemon scans the transcripts before it answers (ADR 021). */
+  usage(): Promise<UsageResponse>;
+  taskUsage(id: string): Promise<TaskUsageResponse>;
   /** Ends when `signal` aborts; resumes from the last id seen while it does not. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -86,6 +91,8 @@ export function createClient(opts: {
     recommend: (body, signal) => json<RecommendResponse>("POST", "/recommend", body, signal),
     runTask: (repoId, body) =>
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/tasks`, body),
+    usage: () => json<UsageResponse>("GET", "/usage"),
+    taskUsage: (id) => json<TaskUsageResponse>("GET", `/tasks/${encodeURIComponent(id)}/usage`),
     events: (after, signal) =>
       streamEvents({ fetch: doFetch, baseUrl: base, token: opts.token, after, signal }),
   };

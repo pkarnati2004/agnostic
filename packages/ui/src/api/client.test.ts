@@ -38,6 +38,8 @@ describe("createClient", () => {
     await client.stopTask("t1");
     await client.resumeTask("t1");
     await client.handoffTask("t1", { profile: "codex:gpt-5:native" });
+    await client.usage();
+    await client.taskUsage("abc");
     expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
       "GET /repos",
       "GET /tasks",
@@ -46,6 +48,8 @@ describe("createClient", () => {
       "POST /tasks/t1/stop",
       "POST /tasks/t1/resume",
       "POST /tasks/t1/handoff",
+      "GET /usage",
+      "GET /tasks/abc/usage",
     ]);
     expect(calls.every((call) => call.token === "Bearer tok")).toBe(true);
   });
@@ -122,6 +126,16 @@ describe("createClient", () => {
       .runTask("r1", { prompt: "add a retry budget" })
       .catch((cause: unknown) => cause);
     expect(failure).toMatchObject({ code: "folder-busy", hint: "Stop it first.", status: 409 });
+  it("reports a usage scan the daemon could not finish", async () => {
+    const { client } = stubClient(() =>
+      Response.json(
+        { error: { code: "usage-scan-failed", message: "a transcript could not be read" } },
+        { status: 500 },
+      ),
+    );
+    const failure = await client.usage().catch((cause: unknown) => cause);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(failure).toMatchObject({ code: "usage-scan-failed", status: 500 });
   });
 
   it("turns the daemon's error body into an ApiError", async () => {

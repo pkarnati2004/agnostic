@@ -5,8 +5,6 @@ import {
   type AttachResponse,
   type CleanTaskRequest,
   type CleanTaskResponse,
-  type DoctorRequest,
-  type DoctorResponse,
   type EditorsResponse,
   type HandoffTaskRequest,
   type HandoffTaskResponse,
@@ -34,6 +32,7 @@ import {
   type TaskUsageResponse,
   type UsageResponse,
 } from "./daemon-api.js";
+import type { DoctorRequest, DoctorResponse } from "./doctor-api.js";
 import type { EditorId } from "./editor.js";
 import { DaemonApiError } from "./error.js";
 import type { Event } from "./event.js";

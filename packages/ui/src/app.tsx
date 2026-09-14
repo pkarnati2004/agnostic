@@ -20,6 +20,10 @@ import {
 import { TaskTabs } from "./tabs/task-tabs";
 import { NewTaskDialog } from "./task/new-task-dialog";
 import { TaskHeader } from "./task/task-header";
+import { TaskCost } from "./usage/task-cost";
+import { UsageBar } from "./usage/usage-bar";
+import { useTaskUsage } from "./usage/use-task-usage";
+import { useUsage } from "./usage/use-usage";
 
 const TOOLTIP_DELAY_MS = 400;
 

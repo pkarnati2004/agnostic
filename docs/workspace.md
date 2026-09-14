@@ -20,7 +20,7 @@ than the page.
 - **Left:** your repos and their tasks. Dot = status: running, waiting for you, queued, done.
 - **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback.
 - **+ Task:** describe the work, see the recommendation, pick or accept, run.
-- **Bottom:** usage per plan and today's API spend.
+- **Bottom:** tokens and cost per plan, for today and for this week.
 
 Everything the workspace shows comes from the local daemon; closing the tab loses nothing.
 
@@ -56,6 +56,19 @@ When a session is over the tab says so and offers Resume, which starts the agent
 same worktree. If the daemon restarts, the tab reconnects by itself: tmux held the session while
 it was gone. A session that was adopted from outside tmux cannot be attached to, and the tab says
 that instead.
+
+## The usage bar
+
+Along the bottom there is one cell per plan: tokens and cost for today and for this week, and for
+Claude the share of those tokens that ran on Fable. The figures are the ones `agn usage` prints,
+from the same scan of your transcripts on this machine. Hover a cell for the week figures when the
+window is too narrow to show them, and for tokens from sessions agn did not start - your plan's
+meter counts those and agn cannot price them. Both windows are calendar windows in your own time
+zone: today is today, and the week starts on Monday. Vendors measure their limits over rolling
+windows, so these numbers and the ones your harness reports will differ.
+
+The selected task's own tokens and cost sit in its header, beside Stop and Resume. A task billed to
+a subscription reads `included in plan` rather than a price.
 
 ## Write spec
 

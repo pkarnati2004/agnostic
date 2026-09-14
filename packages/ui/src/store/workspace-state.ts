@@ -1,5 +1,11 @@
 import type { Event, EventKind, Repo, RepoListRow, Task } from "@agnostic/core";
 
+/**
+ * How many `usage.recorded` events have landed, in total and per task. The figures themselves come
+ * from `GET /usage`, so the feed only has to say that there is something new to read.
+ */
+export type UsageStamp = { plans: number; byTask: Record<string, number> };
+
 /** Everything the shell draws. The ledger is the truth; this is the page's copy of it. */
 export type WorkspaceState = {
   repos: RepoListRow[];
@@ -7,6 +13,7 @@ export type WorkspaceState = {
   /** The last event id applied, which is where the feed resumes from. */
   cursor: number;
   loaded: boolean;
+  usageStamp: UsageStamp;
 };
 
 export type WorkspaceAction =
@@ -14,7 +21,13 @@ export type WorkspaceAction =
   | { type: "task"; task: Task }
   | { type: "event"; event: Event };
 
-export const EMPTY_WORKSPACE: WorkspaceState = { repos: [], tasks: {}, cursor: 0, loaded: false };
+export const EMPTY_WORKSPACE: WorkspaceState = {
+  repos: [],
+  tasks: {},
+  cursor: 0,
+  loaded: false,
+  usageStamp: { plans: 0, byTask: {} },
+};
 
 /** Kinds whose effect on a task is more than the event carries, so the page re-reads the row. */
 export const REFETCH_KINDS: ReadonlySet<EventKind> = new Set<EventKind>([
@@ -31,6 +44,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         tasks: byId(action.tasks),
         cursor: action.cursor,
         loaded: true,
+        usageStamp: { plans: 0, byTask: {} },
       };
     case "task":
       return { ...state, tasks: { ...state.tasks, [action.task.id]: action.task } };
@@ -55,8 +69,20 @@ function applied(state: WorkspaceState, event: Event): WorkspaceState {
   if (isKind(event, "repo.registered") || isKind(event, "repo.updated")) {
     return { ...state, repos: upsertRepo(state.repos, event.payload.repo) };
   }
-  // Every other kind is about something the shell does not draw: usage, outcomes, plans.
+  if (isKind(event, "usage.recorded")) {
+    return { ...state, usageStamp: bumped(state.usageStamp, event.taskId) };
+  }
+  // Every other kind is about something the shell does not draw: outcomes, plans, recommendations.
   return state;
+}
+
+/** An event with no task is a session agn did not start: it moves the plans, nobody's task cost. */
+function bumped(stamp: UsageStamp, taskId: string | undefined): UsageStamp {
+  const plans = stamp.plans + 1;
+  if (taskId === undefined) {
+    return { ...stamp, plans };
+  }
+  return { plans, byTask: { ...stamp.byTask, [taskId]: (stamp.byTask[taskId] ?? 0) + 1 } };
 }
 
 /** A task the page has never seen is not invented from a patch: the feed refetches it instead. */
