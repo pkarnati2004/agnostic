@@ -8,6 +8,8 @@ import type {
   RepoListResponse,
   ResumeTaskResponse,
   RunTaskRequest,
+  SpecRequest,
+  SpecResponse,
   TaskListResponse,
   TaskResponse,
   TaskUsageResponse,
@@ -28,6 +30,8 @@ export type WorkspaceClient = {
   /** The pick for a prompt, with nothing started; `signal` aborts the call the next keystroke replaces. */
   recommend(body: RecommendRequest, signal: AbortSignal): Promise<RecommendResponse>;
   runTask(repoId: string, body: RunTaskRequest): Promise<TaskResponse>;
+  /** A spec for a task that does not exist yet; the user approves it before Run (ADR 028). */
+  writeSpec(repoId: string, body: SpecRequest): Promise<SpecResponse>;
   /** Both windows in one body; the daemon scans the transcripts before it answers (ADR 021). */
   usage(): Promise<UsageResponse>;
   taskUsage(id: string): Promise<TaskUsageResponse>;
@@ -91,6 +95,8 @@ export function createClient(opts: {
     recommend: (body, signal) => json<RecommendResponse>("POST", "/recommend", body, signal),
     runTask: (repoId, body) =>
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/tasks`, body),
+    writeSpec: (repoId, body) =>
+      json<SpecResponse>("POST", `/repos/${encodeURIComponent(repoId)}/spec`, body),
     usage: () => json<UsageResponse>("GET", "/usage"),
     taskUsage: (id) => json<TaskUsageResponse>("GET", `/tasks/${encodeURIComponent(id)}/usage`),
     events: (after, signal) =>

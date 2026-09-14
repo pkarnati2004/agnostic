@@ -77,8 +77,10 @@ acceptance criteria. agn runs one of your own agents in the repo, headless and r
 same repo state a launched agent gets: recent tasks, what is in flight, and your recorded decisions.
 It edits nothing and runs nothing.
 
-The three fields are yours to edit before you run. Run writes them into the task note's Spec and
-Acceptance sections, which is what the agent reads first. The one-liner stays the task's prompt.
+The three fields - title, spec and acceptance - appear once a spec arrives; **Write it yourself**
+opens them empty. They are yours to edit before you run, and a field you empty is left out. Run
+writes them into the task note's Spec and Acceptance sections, which is what the agent reads first.
+The one-liner stays the task's prompt.
 
 agn picks the cheapest model you already pay a subscription for, Claude Code first. A model metered
 on credits is never picked for you. To name one yourself, set `spec_writer` in

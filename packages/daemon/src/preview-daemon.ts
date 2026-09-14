@@ -1,10 +1,13 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { newId, type TaskStatus } from "@agnostic/core";
 import type { Ledger, UsageInput } from "@agnostic/ledger";
 import { usageWindow } from "@agnostic/usage";
+import type { Detection } from "./detection-cache.js";
 import { createTestDaemon, TEST_TOKEN } from "./test-daemon.js";
+import { fixtureDetection } from "./test-detection.js";
 import { resolveUiDist } from "./ui-dist.js";
 
 /**
@@ -27,6 +30,18 @@ const TASKS: { status: TaskStatus; title: string; profileId: string }[] = [
 ];
 
 const DEV_PORT = 5173;
+
+// The fixture harness that answers one spec, so Write spec can be tried with no agent installed.
+const SPEC_WRITER = fileURLToPath(
+  new URL("../../../tests/fixtures/bin/spec/claude", import.meta.url),
+);
+
+// Every harness row is pointed at the fixture spec writer, so Write spec answers whichever profile
+// the recommender picks.
+function previewDetection(): Detection {
+  const found = fixtureDetection();
+  return { ...found, harnesses: found.harnesses.map((row) => ({ ...row, path: SPEC_WRITER })) };
+}
 
 /** Enough rows for the bar and the task header to draw: three plans, two of them on the first repo. */
 function seedUsage(ledger: Ledger, taskIds: string[]): void {
@@ -123,6 +138,9 @@ async function main(): Promise<void> {
   const dist = resolveUiDist();
   const daemon = await createTestDaemon({
     ...(dist === null ? {} : { uiDist: dist }),
+    detect: () => Promise.resolve(previewDetection()),
+    // The fixture harness is a shell script, so it needs a PATH with a shell's tools on it.
+    env: { PATH: "/usr/bin:/bin" },
     seed: (ledger) => {
       const ids = repos.map((repo, index) => seedRepo(ledger, repo.name, repo.path, index));
       seedUsage(ledger, ids[0] ?? []);
@@ -130,7 +148,11 @@ async function main(): Promise<void> {
   });
   // The ChatGPT plan nothing on this machine declares, so the codex cell is labelled like a real one.
   await mkdir(daemon.paths.home, { recursive: true });
-  await writeFile(daemon.paths.config, "plans:\n  chatgpt: plus\n", "utf8");
+  await writeFile(
+    daemon.paths.config,
+    "plans:\n  chatgpt: plus\nspec_writer: claude-code:sonnet-4.5:native\n",
+    "utf8",
+  );
   const url = await daemon.serve();
   const port = new URL(url).port;
   console.log(`DAEMON_PORT=${port}`);

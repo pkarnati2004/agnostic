@@ -90,7 +90,8 @@ function asIntent(value: string): NewTaskForm["intent"] {
   return INTENT_OPTIONS.find((intent) => intent === value) ?? "automatic";
 }
 
-function Field({
+/** One labelled control, the shape of every field in this dialog. */
+export function Field({
   label,
   htmlFor,
   children,
