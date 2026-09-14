@@ -14,6 +14,11 @@ describe("httpStatus", () => {
     expect(httpStatus("ag-file-malformed")).toBe(400);
   });
 
+  it("calls a profile with no headless form a conflict, like the choice that precedes it", () => {
+    expect(httpStatus("headless-unsupported")).toBe(409);
+    expect(httpStatus("spec-writer-unavailable")).toBe(409);
+  });
+
   it("calls an ambiguous prefix a bad request, not a conflict", () => {
     expect(httpStatus("ambiguous-id")).toBe(400);
   });

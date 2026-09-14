@@ -22,6 +22,8 @@ export { harnessDefinition, harnesses } from "./harness-list.js";
 export { isHeadlessInvocation } from "./headless.js";
 export { installCommand } from "./install-commands.js";
 export {
+  type HeadlessSpec,
+  headlessSpec,
   type LaunchOptions,
   type LaunchSpec,
   launchSpec,

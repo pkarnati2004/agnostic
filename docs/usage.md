@@ -19,6 +19,9 @@ The files are read when you ask for usage and once when a task closes. A file ag
 is not opened again unless its size or its modification time changed. On a machine with a long
 history, the first read covers the last two weeks.
 
+Writing a spec runs one of your agents, so its tokens are counted the same way: as a session agn
+did not start, on the plan's total and on no task.
+
 Sessions you started yourself, outside agn, are counted too: they are on the same plan and the
 vendor meters them the same way. They appear in the per-plan totals and never on a task. Codex
 Desktop sessions are the exception: they report a total with no per-bucket split, so they do not

@@ -103,6 +103,20 @@ describe("RunTaskRequestSchema", () => {
       false,
     );
   });
+
+  it("carries the approved spec and acceptance, and refuses empty ones", () => {
+    expect(
+      RunTaskRequestSchema.parse({
+        prompt: "ship it",
+        spec: "## What\n\nship it",
+        acceptance: "- [ ] it ships",
+      }),
+    ).toMatchObject({ spec: "## What\n\nship it", acceptance: "- [ ] it ships" });
+    expect(RunTaskRequestSchema.safeParse({ prompt: "ship it", spec: "" }).success).toBe(false);
+    expect(RunTaskRequestSchema.safeParse({ prompt: "ship it", acceptance: "" }).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("RecommendRequestSchema", () => {

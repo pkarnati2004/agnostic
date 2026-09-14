@@ -57,6 +57,25 @@ same worktree. If the daemon restarts, the tab reconnects by itself: tmux held t
 it was gone. A session that was adopted from outside tmux cannot be attached to, and the tab says
 that instead.
 
+## Write spec
+
+In the new-task dialog, **Write spec** turns your one-liner into a title, a spec and a checklist of
+acceptance criteria. agn runs one of your own agents in the repo, headless and read-only, with the
+same repo state a launched agent gets: recent tasks, what is in flight, and your recorded decisions.
+It edits nothing and runs nothing.
+
+The three fields are yours to edit before you run. Run writes them into the task note's Spec and
+Acceptance sections, which is what the agent reads first. The one-liner stays the task's prompt.
+
+agn picks the cheapest model you already pay a subscription for, Claude Code first. A model metered
+on credits is never picked for you. To name one yourself, set `spec_writer` in
+`~/.agnostic/config.yaml`. If nothing on the machine qualifies, agn says so and you write the spec
+in the dialog.
+
+Spec writing was verified with Claude Code. The headless flags for Codex, Pi and OpenCode follow
+each vendor's documented headless form and have not been run here. If one of them rejects a flag,
+report it; the flag will be dropped.
+
 ## After a task
 
 `agn outcomes <task>` prints what one finished task cost and what became of it: how long the agent ran, its tokens and cost, the model it resolved to, the test results from before and after, how many lines it changed, and how many lines you changed afterwards. The verdict is `accepted` once the task's branch is merged into the base branch, by a merge commit or a squash; `reverted` once the branch is deleted or its worktree is removed without a merge; `not merged` until one of those happens. agn rechecks the open ones every five minutes and again whenever you ask for them, so a branch you merged a moment ago reads as accepted. A task that ran in a folder workspace has no branch of agn's, so its verdict and line counts print as `-`.

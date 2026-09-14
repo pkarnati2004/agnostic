@@ -22,6 +22,8 @@ export { readTextFile } from "./read-text-file.js";
 export * from "./recommendation.js";
 export * from "./repo.js";
 export * from "./repo-config.js";
+export * from "./spec-api.js";
+export * from "./spec-prompt.js";
 export * from "./task.js";
 export * from "./task-class.js";
 export * from "./task-intent.js";

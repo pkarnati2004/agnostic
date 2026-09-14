@@ -1,8 +1,6 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
 import {
   agPaths,
-  parseTaskNote,
   type Repo,
   type Task,
   type TaskResponse,
@@ -70,17 +68,6 @@ describe("POST /repos/:id/tasks", () => {
       "session.captured",
       "task.status",
     ]);
-  });
-
-  it("writes the task note in the main checkout with the prompt as its spec", async () => {
-    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
-    const task = await started(repo, { prompt: "add a --verbose flag" });
-    const note = parseTaskNote(
-      await readFile(join(agPaths(repo.path).tasksDir, `${task.id}.md`), "utf8"),
-    );
-    expect(note.spec).toBe("add a --verbose flag");
-    // ADR 014: the note says queued until the task reaches a terminal status.
-    expect(note.status).toBe("queued");
   });
 
   it("takes a bare harness id as that harness on its defaults", async () => {

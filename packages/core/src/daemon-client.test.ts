@@ -50,6 +50,48 @@ describe("createDaemonClient", () => {
     await daemon.close();
   });
 
+  it("posts a spec request to the repo it is about", async () => {
+    let seen = "";
+    const daemon = await stubDaemon((url) => {
+      seen = url;
+      return {
+        status: 200,
+        body: {
+          title: "Add a flag",
+          spec: "add it",
+          acceptance: null,
+          profileId: "claude-code:haiku:native",
+          model: "haiku",
+        },
+      };
+    });
+    const client = createDaemonClient({ baseUrl: daemon.baseUrl, token: "sekrit" });
+    const response = await client.writeSpec("repo a", { prompt: "add a flag" });
+    expect(seen).toBe("/repos/repo%20a/spec");
+    expect(response.profileId).toBe("claude-code:haiku:native");
+    await daemon.close();
+  });
+
+  it("turns the daemon's 409 into an ApiError carrying its code and hint", async () => {
+    const daemon = await stubDaemon(() => ({
+      status: 409,
+      body: {
+        error: {
+          code: "spec-writer-unavailable",
+          message: "no subscription-billed agent can write specs on this machine",
+          hint: "Write the spec yourself in the dialog.",
+        },
+      },
+    }));
+    const client = createDaemonClient({ baseUrl: daemon.baseUrl, token: "sekrit" });
+    await expect(client.writeSpec("repoaaaaaa", { prompt: "go" })).rejects.toMatchObject({
+      code: "spec-writer-unavailable",
+      status: 409,
+      hint: "Write the spec yourself in the dialog.",
+    });
+    await daemon.close();
+  });
+
   it("asks for usage without a window, and for one task by id", async () => {
     const seen: string[] = [];
     const daemon = await stubDaemon((url) => {

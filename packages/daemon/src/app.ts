@@ -47,6 +47,7 @@ import { outcomeRoutes } from "./routes/outcomes.js";
 import { profileRoutes } from "./routes/profiles.js";
 import { recommendRoutes } from "./routes/recommend.js";
 import { repoRoutes } from "./routes/repos.js";
+import { specRoutes } from "./routes/spec.js";
 import { syncRoutes } from "./routes/sync.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { uiRoutes } from "./routes/ui.js";
@@ -88,6 +89,8 @@ export type DaemonDeps = {
   /** Owned by the caller for the same reason: its timer writes outcome rows (ADR 022). */
   verdicts: VerdictSweep;
   heartbeatMs?: number;
+  /** How long a headless spec call may take before it is given up on; 90 s unless a test says. */
+  specTimeoutMs?: number;
 };
 
 /** What a route gets: the deps plus the things the app owns for the life of the process. */
@@ -164,6 +167,7 @@ export function createApp(deps: DaemonDeps): {
   app.route("/", adoptRoutes(ctx));
   app.route("/", profileRoutes(ctx));
   app.route("/", recommendRoutes(ctx));
+  app.route("/", specRoutes(ctx));
   app.route("/", editorRoutes(ctx));
   app.route("/", eventRoutes(ctx));
   app.route("/", hookRoutes(ctx));

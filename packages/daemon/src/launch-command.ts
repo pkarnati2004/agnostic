@@ -4,6 +4,7 @@ import {
   type LaunchPromptInput,
   type Profile,
   type Repo,
+  type RepoStateInput,
   readAgText,
   readTaskNote,
   type Task,
@@ -72,19 +73,33 @@ export function resumeLaunchCommand(
 }
 
 /**
+ * What the repo was doing, for a launch prompt or for a spec call. The task being launched is
+ * excluded from the in-flight list; a spec is written before any task exists, so it excludes none.
+ */
+export async function repoStateInput(
+  ctx: DaemonContext,
+  repo: Repo,
+  excludeTaskId: string | null,
+): Promise<RepoStateInput> {
+  const done = ctx.ledger.tasks.list({ repoId: repo.id, status: "done", limit: DONE_SHOWN });
+  return {
+    done: done.map((row) => ({ task: row, outcome: ctx.ledger.outcomes.get(row.id) })),
+    inFlight: ctx.ledger.tasks
+      .list({ repoId: repo.id, status: OPEN })
+      .filter((row) => row.id !== excludeTaskId),
+    decisions: await readAgText(repo.path, "decisions.md"),
+  };
+}
+
+/**
  * The spec comes from the note on disk, so a task the human edited is launched with what they
  * wrote; a note deleted since the run falls back to the prompt the task was created with.
  */
 async function promptInput(ctx: DaemonContext, repo: Repo, task: Task): Promise<LaunchPromptInput> {
-  const done = ctx.ledger.tasks.list({ repoId: repo.id, status: "done", limit: DONE_SHOWN });
   return {
     task,
     note: (await readTaskNote(repo.path, task.id)) ?? initialTaskNote(task, task.prompt),
-    done: done.map((row) => ({ task: row, outcome: ctx.ledger.outcomes.get(row.id) })),
-    inFlight: ctx.ledger.tasks
-      .list({ repoId: repo.id, status: OPEN })
-      .filter((row) => row.id !== task.id),
-    decisions: await readAgText(repo.path, "decisions.md"),
+    ...(await repoStateInput(ctx, repo, task.id)),
     handoff: await parentHandoff(repo, task),
   };
 }

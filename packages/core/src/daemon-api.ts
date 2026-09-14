@@ -86,6 +86,9 @@ export const RunTaskRequestSchema = z.strictObject({
   intent: TaskIntentSchema.optional(),
   /** Skips the repo's `test_command` before launch, so the agent starts at once (ADR 022). */
   skipTests: z.boolean().optional(),
+  /** The approved spec, written by hand or by a model; absent means the prompt is the spec. */
+  spec: z.string().min(1).optional(),
+  acceptance: z.string().min(1).optional(),
 });
 export type RunTaskRequest = z.infer<typeof RunTaskRequestSchema>;
 

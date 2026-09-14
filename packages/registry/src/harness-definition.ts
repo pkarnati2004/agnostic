@@ -39,6 +39,8 @@ export type HarnessDefinition = {
   processNames: string[];
   /** Tokens after the binary for a bare interactive start, e.g. `["chat", "--tui"]`. */
   launch: string[];
+  /** Tokens after the binary for one read-only answer on stdout, prompt on stdin; null = no headless form. */
+  headless: string[] | null;
   prompt: PromptDelivery;
   modelFlag: string | null;
   modelSource: ModelProbe | null;

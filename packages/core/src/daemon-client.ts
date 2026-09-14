@@ -38,6 +38,7 @@ import type { EditorId } from "./editor.js";
 import { DaemonApiError } from "./error.js";
 import type { Event } from "./event.js";
 import { readFrames } from "./event-frames.js";
+import type { SpecRequest, SpecResponse } from "./spec-api.js";
 
 const RECONNECT_MS = 1_000;
 const START_HINT = "Run `agn daemon start`.";
@@ -63,6 +64,8 @@ export type DaemonClient = {
   profiles(): Promise<ProfilesResponse>;
   /** The pick for a prompt, without starting anything; `agn run` records one of its own. */
   recommend(body: RecommendRequest): Promise<RecommendResponse>;
+  /** A spec written by a headless agent, for the caller to approve before any task exists. */
+  writeSpec(repoId: string, body: SpecRequest): Promise<SpecResponse>;
   /** The editors this machine has, and which one an open with no `--editor` would use. */
   editors(): Promise<EditorsResponse>;
   /** Where a task lives and what command opens it there; the caller runs the command. */
@@ -145,6 +148,8 @@ export function createDaemonClient(opts: {
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/adopt`, body),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),
     recommend: (body) => json<RecommendResponse>("POST", "/recommend", body),
+    writeSpec: (repoId, body) =>
+      json<SpecResponse>("POST", `/repos/${encodeURIComponent(repoId)}/spec`, body),
     editors: () => json<EditorsResponse>("GET", "/editors"),
     openInfo: (id, editor) =>
       json<OpenTaskResponse>(

@@ -1,0 +1,4 @@
+#!/bin/sh
+# A harness that never answers, so a test can watch the daemon give up on it. `exec` so that
+# the process the daemon kills is the one that is sleeping.
+exec sleep 30

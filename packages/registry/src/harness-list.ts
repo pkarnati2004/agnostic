@@ -13,7 +13,8 @@ import {
 /**
  * The binary names, launch tokens, prompt delivery, resume argv and hook payload keys below are
  * ported from Orca's agent table (`src/shared/tui-agent.ts`, `tui-agent-config.ts`,
- * `agent-session-resume.ts`, `agent-process-recognition.ts`).
+ * `agent-session-resume.ts`, `agent-process-recognition.ts`), and the headless argv from its
+ * `commit-message-agent-specs-primary.ts`.
  *
  * MIT License, Copyright (c) Lovecast Inc.
  */
@@ -30,6 +31,8 @@ const tier1: HarnessDefinition[] = [
     aliases: [],
     processNames: ["claude"],
     launch: [],
+    // Checked against `claude --help` here: `-p` takes `--output-format` and `--permission-mode`.
+    headless: ["-p", "--output-format", "text", "--permission-mode", "plan"],
     prompt: argv,
     modelFlag: "--model",
     modelSource: {
@@ -54,6 +57,8 @@ const tier1: HarnessDefinition[] = [
     // node-pty reports Codex's packaged platform binary, e.g. `codex-aarch64-apple-darwin`.
     processNames: ["codex", "codex-"],
     launch: [],
+    // `exec -s read-only` is unverified here (no codex installed): drop a flag this build rejects.
+    headless: ["exec", "--skip-git-repo-check", "-s", "read-only"],
     prompt: argv,
     modelFlag: "-m",
     modelSource: { args: ["debug", "models"], stdin: null, parse: parseCodexModelList },
@@ -73,6 +78,8 @@ const tier1: HarnessDefinition[] = [
     aliases: [],
     processNames: ["pi"],
     launch: [],
+    // `--no-session --mode text` is unverified here (no pi installed): drop a flag it rejects.
+    headless: ["--print", "--no-session", "--mode", "text"],
     prompt: argv,
     modelFlag: "--model",
     modelSource: { args: ["--list-models"], stdin: null, parse: parsePiModelList },
@@ -94,6 +101,8 @@ const tier1: HarnessDefinition[] = [
     aliases: [],
     processNames: ["opencode"],
     launch: [],
+    // `run --format default` is unverified here (no opencode installed): drop a flag it rejects.
+    headless: ["run", "--format", "default"],
     prompt: { kind: "flag", flag: "--prompt" },
     modelFlag: "--model",
     modelSource: { args: ["models"], stdin: null, parse: parseOpenCodeModelList },
@@ -175,6 +184,8 @@ function tier2Definition(source: Tier2Source): HarnessDefinition {
     aliases,
     processNames: source.processNames ?? [binary, ...aliases],
     launch: source.launch ?? [],
+    // Tier 2 is launch and attach only: agn knows no read-only form to ask one for a spec.
+    headless: null,
     prompt: source.prompt ?? typeAfterStart,
     modelFlag: null,
     modelSource: null,
@@ -228,6 +239,7 @@ function openHarness(binary: string): HarnessDefinition {
     aliases: [],
     processNames: [binary],
     launch: [],
+    headless: null,
     prompt: typeAfterStart,
     modelFlag: null,
     modelSource: null,

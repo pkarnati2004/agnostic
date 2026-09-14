@@ -14,6 +14,9 @@ export type LaunchPromptInput = {
   handoff: TaskNoteHandoff | null;
 };
 
+/** The rows a "## Repo state" block is built from, which a launch and a spec call read alike. */
+export type RepoStateInput = Pick<LaunchPromptInput, "done" | "inFlight" | "decisions">;
+
 const DONE_LIMIT = 5;
 const DECISION_LIMIT = 5;
 
@@ -27,7 +30,7 @@ export function composeLaunchPrompt(input: LaunchPromptInput): string {
     `# Task ${input.task.id}: ${input.task.title}`,
     section("Spec", input.note.spec),
     input.note.acceptance === null ? null : section("Acceptance", input.note.acceptance),
-    repoState(input),
+    repoStateSection(input),
     input.handoff === null || input.task.parentTaskId === undefined
       ? null
       : section(`Handoff from ${input.task.parentTaskId}`, input.handoff.body),
@@ -56,7 +59,8 @@ function accepted(outcome: Outcome): string {
   return outcome.reverted === true ? "reverted" : "not merged";
 }
 
-function repoState(input: LaunchPromptInput): string | null {
+/** What the repo was doing when the task started: recent work, live work, and recorded decisions. */
+export function repoStateSection(input: RepoStateInput): string | null {
   const blocks = [
     block(
       "Done recently",

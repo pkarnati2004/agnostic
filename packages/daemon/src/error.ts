@@ -47,8 +47,13 @@ const statusByCode: Record<string, number> = {
   "branch-gone": 409,
   // The session found under the path is already a task: the request was right, it is just done.
   "adopt-already-adopted": 409,
+  // Nothing on this machine may write a spec: the user writes it themselves, or names a profile.
+  "spec-writer-unavailable": 409,
+  // The named profile's harness or route has no one-shot form: the same refusal from the registry.
+  "headless-unsupported": 409,
   // The daemon reached out and the far side did not answer: neither a bad request nor a bug.
   "catalog-fetch-failed": 502,
+  "spec-writer-failed": 502,
   "request-invalid": 400,
   "ambiguous-id": 400,
   "path-not-found": 400,

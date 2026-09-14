@@ -50,6 +50,14 @@ export type TaskNote = {
 
 type Section = { heading: string; body: string };
 
+/**
+ * Every line that would start a note section becomes a level-three heading, fences included: the
+ * parser splits on any `## ` line, so text that carries one cannot go into a section unchanged.
+ */
+export function demoteSectionHeadings(body: string): string {
+  return body.replace(/^## /gm, "### ");
+}
+
 export function parseTaskNote(text: string, file: string = INLINE): TaskNote {
   const lines = text.split("\n");
   if (lines[0] !== FENCE) {
