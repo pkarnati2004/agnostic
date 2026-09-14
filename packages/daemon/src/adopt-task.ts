@@ -20,7 +20,8 @@ const LIVE: Task["status"][] = ["running", "waiting"];
 
 /**
  * The harness processes a person started themselves under `path`. Headless one-shots are dropped:
- * adopting one would register a task that is already over. So are processes agn already tracks.
+ * adopting one would register a task that is already over. So are processes agn already tracks -
+ * and when they were all there was, that is the answer, not an empty list.
  */
 export async function listSessions(
   ctx: DaemonContext,
@@ -37,9 +38,17 @@ export async function listSessions(
   }
   const found = await ctx.executor.detect(under, matchers());
   const watched = watchedPids(ctx);
-  return found.filter(
+  const sessions = found.filter(
     (session) => !watched.has(session.pid) && !isHeadlessInvocation(session.harness, session.args),
   );
+  if (sessions.length === 0) {
+    // "nothing is running here" and "what is running here is already yours" are different
+    // answers, and a retry after a lost response only ever gets the second.
+    for (const session of found) {
+      assertUnwatched(ctx, session.pid);
+    }
+  }
+  return sessions;
 }
 
 /**
@@ -51,6 +60,7 @@ export async function adoptTask(ctx: DaemonContext, repo: Repo, req: AdoptReques
   const sessions = await listSessions(ctx, repo, req.path);
   const session = sessions.find((candidate) => candidate.pid === req.pid);
   if (session === undefined) {
+    assertUnwatched(ctx, req.pid);
     throw new DaemonError(`no coding agent with pid ${req.pid} is running under ${req.path}`, {
       code: "adopt-pid-not-found",
       hint: "Run `agn adopt <path>` with no --pid to see what agn can see.",
@@ -136,13 +146,14 @@ function watchedPids(ctx: DaemonContext): Map<number, string> {
   return pids;
 }
 
+/** A pid agn is already watching belongs to a task; adopting it again would be a second one. */
 function assertUnwatched(ctx: DaemonContext, pid: number): void {
   const owner = watchedPids(ctx).get(pid);
   if (owner === undefined) {
     return;
   }
   throw new DaemonError(`pid ${pid} is already the session of task ${owner}`, {
-    code: "adopt-pid-not-found",
+    code: "adopt-already-adopted",
     hint: `Run \`agn status ${owner}\` to see it.`,
   });
 }

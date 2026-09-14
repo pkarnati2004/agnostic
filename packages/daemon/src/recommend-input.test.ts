@@ -106,6 +106,8 @@ function stubLifecycle(): TaskLifecycle {
     reconcile: (task: Task) => Promise.resolve(task),
     reconcileAll: () => Promise.resolve(),
     failQueued: () => Promise.resolve(),
+    settled: () => Promise.resolve(),
+    drain: () => Promise.resolve(),
   };
 }
 

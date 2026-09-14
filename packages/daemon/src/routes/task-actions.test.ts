@@ -99,7 +99,9 @@ describe("POST /tasks/:id/clean", () => {
     const response = await clean(task, { deleteBranch: true });
     expect(((await response.json()) as CleanTaskResponse).removed).toBe(true);
     expect(await branchExists(task)).toBe(false);
-    const event = daemon.ledger.events.forTask(task.id).at(-1);
+    const event = daemon.ledger.events
+      .forTask(task.id)
+      .findLast((row) => row.kind === "task.cleaned");
     expect(event?.payload).toEqual({ deletedBranch: true });
   });
 

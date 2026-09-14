@@ -11,6 +11,9 @@ import type { TranscriptTurn } from "./transcript-parser.js";
 
 export type TranscriptRoot = { harness: HarnessId; dir: string };
 
+/** How many files a scan opens before handing the event loop back. */
+const YIELD_EVERY = 20;
+
 /** What a file looked like when it was last parsed; one memo lives for the life of the process. */
 export type ScanMemo = Map<string, { size: number; mtimeMs: number }>;
 
@@ -36,6 +39,7 @@ export async function scanTranscripts(opts: {
   const problems: UsageError[] = [];
   let parsedFiles = 0;
   let skipped = 0;
+  let opened = 0;
   for (const root of opts.roots) {
     const parser = transcriptParser(root.harness);
     if (parser === null) {
@@ -58,6 +62,12 @@ export async function scanTranscripts(opts: {
       } catch (cause) {
         // One unreadable transcript is not a reason to report no usage at all.
         problems.push(unreadable(path, cause));
+      }
+      opened += 1;
+      if (opened % YIELD_EVERY === 0) {
+        // The daemon answers on one thread: a scan that never gives the event loop a turn holds
+        // up /health and every other request for as long as it runs.
+        await new Promise((resume) => setImmediate(resume));
       }
     }
   }

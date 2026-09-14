@@ -51,6 +51,7 @@ export function usageRoutes(ctx: DaemonContext): Hono {
 async function plansInUse(ctx: DaemonContext): Promise<Plans> {
   const { plans } = await readDaemonConfig(ctx.paths);
   const detected: Plans = { ...plans };
+  // One probe per request, outside the scan's snapshot: the label is the plan detection reads now.
   for (const report of (await ctx.detection.current()).harnesses) {
     if (report.planVendor !== null && report.plan !== null) {
       detected[report.planVendor] = report.plan.value;

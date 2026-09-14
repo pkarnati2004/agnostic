@@ -93,7 +93,7 @@ export async function runDaemon(
   try {
     ({ server, port } = await listen(app, wanted));
   } catch (cause) {
-    closeApp();
+    await closeApp();
     feed.close();
     verdicts.close();
     await executor.close();
@@ -133,8 +133,8 @@ function listen(app: Hono, port: number): Promise<{ server: ServerType; port: nu
 
 function closer(parts: {
   server: ServerType;
-  /** Stops the catalog checker's timers; every other resource here is the caller's own. */
-  closeApp: () => void;
+  /** Stops the catalog checker and waits for any close still running; the rest is the caller's. */
+  closeApp: () => Promise<void>;
   feed: EventFeed;
   verdicts: VerdictSweep;
   executor: ExecutorProvider;
@@ -150,7 +150,7 @@ function closer(parts: {
         parts.server.closeAllConnections();
       }
       await new Promise<void>((done) => parts.server.close(() => done()));
-      parts.closeApp();
+      await parts.closeApp();
       parts.feed.close();
       // The exit watcher and the sweep write through the ledger, so both stop before it does.
       parts.verdicts.close();

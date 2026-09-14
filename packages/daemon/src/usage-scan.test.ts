@@ -1,9 +1,10 @@
-import { chmod, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { newId, type Task, type TaskSession, type TaskStatus } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon } from "./test-daemon.js";
+import { fixtureDetection } from "./test-detection.js";
 import { writeClaudeTranscript, writeCodexRollout } from "./test-transcripts.js";
 
 let daemon: TestDaemon;
@@ -79,7 +80,70 @@ async function scan(): Promise<number> {
   return everyRow().length;
 }
 
+describe("the daemon while a scan runs", () => {
+  it("answers /health before a scan of a large transcript tree has finished", async () => {
+    // Enough files that the scan takes hundreds of milliseconds: a scan that never handed the
+    // event loop back would hold every other request for that whole time.
+    await writeClaudeTranscript(
+      home,
+      Array.from({ length: 3_000 }, (_unused, index) => ({
+        session: `s-${index}`,
+        cwd: WORKTREE,
+        message: `${index}`,
+      })),
+    );
+    let scanned = false;
+    const scanning = daemon.request("/usage").then((response) => {
+      scanned = true;
+      return response;
+    });
+
+    const started = Date.now();
+    const health = await daemon.request("/health");
+
+    expect(health.status).toBe(200);
+    expect(Date.now() - started).toBeLessThan(200);
+    expect(scanned).toBe(false);
+    expect((await scanning).status).toBe(200);
+  });
+});
+
 describe("the usage scanner", () => {
+  it("takes one detection snapshot per scan, however many tasks it prices", async () => {
+    // A harness that rewrites its auth file as it runs makes every cached detection stale, which
+    // is what a real Claude Code session does while a task is open.
+    await daemon.close();
+    const authFile = join(home, ".claude.json");
+    daemon = await createTestDaemon({
+      userHome: home,
+      detect: async () => {
+        await writeFile(authFile, JSON.stringify({ rewritten: Date.now() }), "utf8");
+        return fixtureDetection();
+      },
+    });
+    repoId = newId();
+    daemon.ledger.repos.insert({
+      id: repoId,
+      path: "/tmp/alpha",
+      kind: "git",
+      name: "alpha",
+      addedAt: new Date().toISOString(),
+    });
+    seedTask({});
+    await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE }]);
+
+    const before = daemon.detectCalls();
+    await scan();
+    const forOneTask = daemon.detectCalls() - before;
+    for (let more = 0; more < 4; more += 1) {
+      seedTask({ session: { sessionId: `s-${more}` } });
+    }
+    const beforeMany = daemon.detectCalls();
+    await scan();
+
+    expect(daemon.detectCalls() - beforeMany).toBe(forOneTask);
+  });
+
   it("gives a turn to the task whose session id it carries", async () => {
     const task = seedTask({ session: { cwd: "/somewhere/else" } });
     await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: "/private/tmp/petal" }]);

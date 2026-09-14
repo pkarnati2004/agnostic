@@ -93,8 +93,8 @@ export type DaemonContext = DaemonDeps & {
   catalogChecker: CatalogChecker;
 };
 
-/** The app owns the catalog checker, so the caller gets back the one thing it has to close. */
-export function createApp(deps: DaemonDeps): { app: Hono; close: () => void } {
+/** The app owns the catalog checker and the closes still running, which is what `close` waits on. */
+export function createApp(deps: DaemonDeps): { app: Hono; close: () => Promise<void> } {
   const detection = createDetectionCache(deps.detect, deps.ledger, () => authFilesStamp(deps.home));
   const usage = createUsageScanner({ ...deps, detection });
   // A task that has just closed has written its last turn, and its worktree is nobody else's:
@@ -167,7 +167,14 @@ export function createApp(deps: DaemonDeps): { app: Hono; close: () => void } {
     }
     return c.json(body, status as ContentfulStatusCode);
   });
-  return { app, close: ctx.catalogChecker.close };
+  return {
+    app,
+    // A close that is still scanning writes through the ledger, so the caller's shutdown waits.
+    close: async () => {
+      ctx.catalogChecker.close();
+      await lifecycle.drain();
+    },
+  };
 }
 
 /**

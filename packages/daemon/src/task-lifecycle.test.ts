@@ -8,6 +8,7 @@ import {
   type Task,
   type TaskListResponse,
   type TaskResponse,
+  type TaskUsageResponse,
 } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
@@ -84,8 +85,10 @@ describe("usage at close", () => {
     const response = await daemon.request(`/tasks/${task.id}/stop`, { method: "POST" });
 
     expect(response.status).toBe(200);
-    // Chunk 15 reads this sum straight after the transition, with nothing to wait for.
-    expect(daemon.ledger.usage.sumForTask(task.id).tokens).toBe(1_500);
+    // The usage route scans for itself, so this is the closed task owning the turns its
+    // transcript holds; close-outcome.test.ts is where the wait for the close work is tested.
+    const usage = await daemon.request(`/tasks/${task.id}/usage`);
+    expect(((await usage.json()) as TaskUsageResponse).usage.tokens).toBe(1_500);
   });
 });
 
@@ -136,7 +139,9 @@ describe("close work that fails", () => {
 
       expect(response.status).toBe(200);
       expect(((await response.json()) as TaskResponse).task.status).toBe("stopped");
-      expect(await failing.readLog()).toContain("outcome not recorded");
+      await waitFor("the failed close to be logged", async () =>
+        (await failing.readLog()).includes("outcome not recorded"),
+      );
     } finally {
       await failing.close();
       await rm(home, { recursive: true, force: true });
