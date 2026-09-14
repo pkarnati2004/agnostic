@@ -47,6 +47,9 @@ export const TaskSchema = z.object({
   branch: z.string().nullable(),
   status: TaskStatusSchema,
   origin: TaskOriginSchema.default("agn"),
+  // The commit the branch started from. Null for a folder task, an adopted one, and rows written
+  // before agn recorded it; everything derived from the diff is null with it.
+  baseCommit: z.string().nullable().default(null),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   recommendation: RecommendationSchema.optional(),

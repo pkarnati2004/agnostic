@@ -16,6 +16,9 @@ pnpm vitest run --project ledger
 echo "smoke: catalog unit tests"
 pnpm vitest run --project catalog
 
+echo "smoke: usage unit tests"
+pnpm vitest run --project usage
+
 echo "smoke: registry unit tests"
 pnpm vitest run --project registry
 
@@ -191,8 +194,13 @@ chmod +x "$FAKEBIN/claude"
 # /usr/sbin is where macOS keeps lsof, which is how the executor reads a process's directory.
 SMOKE_PATH="$FAKEBIN:$(dirname "$NODE"):$(dirname "$(command -v tmux)"):/usr/bin:/bin:/usr/sbin:/sbin"
 
+# A home of its own: the daemon reads transcript directories under HOME when a task closes and
+# when usage is asked for, and a smoke run must never read the author's.
+USAGE_HOME="$WORK/usage-home"
+mkdir -p "$USAGE_HOME/.claude/projects/-work-usage"
+
 agx() {
-  PATH="$SMOKE_PATH" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
+  HOME="$USAGE_HOME" PATH="$SMOKE_PATH" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
 }
 
 mkdir -p "$WORK/runrepo" "$WORK/runfolder"
@@ -236,7 +244,40 @@ agx status | grep -q "stopped"
 agx resume "$TASK" --json > "$WORK/resume.json"
 grep -q '"via": "native"' "$WORK/resume.json"
 agx status "$TASK" | grep -q "running"
+
+echo "smoke: agn outcomes for a task whose branch was merged"
+# What the agent would leave behind: a commit on the task's branch, made while it is still running.
+WORKTREE="$(agx status "$TASK" | awk '$1 == "worktree:" { print $2 }')"
+BRANCH="$(agx status "$TASK" | awk '$1 == "branch:" { print $2 }')"
+printf 'one\ntwo\nthree\n' > "$WORKTREE/agent.txt"
+git -C "$WORKTREE" add agent.txt
+git -C "$WORKTREE" -c user.email=t@agn.test -c user.name=agn commit -q -m "the agent's work"
 agx stop "$TASK" | grep -q "^stopped $TASK"
+
+agx outcomes "$TASK" > "$WORK/outcomes.txt"
+grep -q "^tests:" "$WORK/outcomes.txt"
+grep -q "^agent lines: *3$" "$WORK/outcomes.txt"
+grep -q "^verdict: *not merged$" "$WORK/outcomes.txt"
+git -C "$WORK/runrepo" merge --no-ff -q -m "merge the task" "$BRANCH"
+agx outcomes "$TASK" | grep -q "^verdict: *accepted"
+agx outcomes "$TASK" --json | grep -q '"accepted": true'
+
+echo "smoke: agn handoff to the next agent"
+HANDOFF_NOTE="the parser is done, the printer is not"
+agx handoff "$TASK" --to claude-code --note "$HANDOFF_NOTE" > "$WORK/handoff.txt"
+grep -q "^handed off $TASK to " "$WORK/handoff.txt"
+CHILD="$(awk 'NR == 1 { print $5 }' "$WORK/handoff.txt")"
+grep -q "## Handoff to claude-code:default:native at " "$WORK/runrepo/.ag/tasks/$TASK.md"
+# The child is launched with the section as part of its first prompt; the fake agent logs it.
+for _ in 1 2 3 4 5; do
+  grep -q "## Handoff from $TASK" "$WORK/agent.log" && break
+  sleep 1
+done
+grep -q "## Handoff from $TASK" "$WORK/agent.log"
+grep -q "$HANDOFF_NOTE" "$WORK/agent.log"
+agx status "$CHILD" | grep -q "^parent: *$TASK"
+agx stop "$CHILD" | grep -q "^stopped $CHILD"
+
 agx clean | grep -q "^cleaned $TASK"
 
 agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"
@@ -245,6 +286,9 @@ FOLDER_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/folder.txt")"
 ! agx run "second folder task" --profile claude-code --repo "$WORK/runfolder" 2> "$WORK/folder-error.txt"
 grep -q "folder workspaces run one task at a time" "$WORK/folder-error.txt"
 agx stop "$FOLDER_TASK" | grep -q "^stopped"
+# A folder task has no branch of agn's, so it has no lines and no verdict to report.
+agx outcomes "$FOLDER_TASK" | grep -q "^agent lines: *-$"
+agx outcomes "$FOLDER_TASK" | grep -q "^verdict: *-$"
 
 echo "smoke: agn adopt of an agent started outside agn"
 # ps reports the script's own name, so this copy of the fake agent has to be called `claude`; the
@@ -268,4 +312,20 @@ agx status "$ADOPTED" | grep -q "^origin: *adopted"
 agx status "$ADOPTED" | grep -q "^tmux: *smoke-adopt"
 agx stop "$ADOPTED" | grep -q "^stopped $ADOPTED"
 
+agx daemon stop | grep -q "^agnd stopped"
+
+echo "smoke: agn usage over a transcript the agent left behind"
+# A session agn did not start, written where Claude Code writes: it counts against the plan and
+# belongs to no task.
+NOW="$("$NODE" -e "process.stdout.write(new Date().toISOString())")"
+printf '{"type":"assistant","sessionId":"s-smoke","timestamp":"%s","cwd":"%s","requestId":"req_s","message":{"id":"msg_s","model":"claude-fable-5-1","usage":{"input_tokens":1000,"output_tokens":500,"cache_read_input_tokens":200,"cache_creation_input_tokens":0}}}\n' \
+  "$NOW" "$WORK/runrepo" > "$USAGE_HOME/.claude/projects/-work-usage/s-smoke.jsonl"
+
+agx usage > "$WORK/usage.txt"
+grep -q "^today (" "$WORK/usage.txt"
+grep -q "^this week (from " "$WORK/usage.txt"
+grep -q "^unknown plan  claude-code " "$WORK/usage.txt"
+grep -q "1,700" "$WORK/usage.txt"
+agx usage --json > "$WORK/usage.json"
+grep -q '"unattributedTokens": 1700' "$WORK/usage.json"
 agx daemon stop | grep -q "^agnd stopped"

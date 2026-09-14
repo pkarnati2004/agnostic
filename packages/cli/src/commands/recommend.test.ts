@@ -44,6 +44,7 @@ function cliWith(answer: Recommendation, sent: RecommendRequest[] = []) {
               path: "/work",
               kind: "git" as const,
               addedAt: "2026-09-01T00:00:00.000Z",
+              testCommand: null,
             },
           ],
         }),

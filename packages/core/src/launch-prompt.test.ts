@@ -17,6 +17,7 @@ function task(id: string, over: Partial<Task> = {}): Task {
     branch: `agn/task-${id}`,
     status: "running",
     origin: "agn",
+    baseCommit: null,
     createdAt: NOW,
     updatedAt: NOW,
     ...over,

@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { agnosticPaths, type Repo } from "@agnostic/core";
+import { agnosticPaths, type RepoListRow } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CliError } from "./error.js";
 import { resolveRepo, worktreeTask } from "./resolve-repo.js";
@@ -15,11 +15,18 @@ beforeEach(async () => {
 
 afterEach(() => rm(root, { recursive: true, force: true }));
 
-function repo(id: string, path: string): Repo {
-  return { id, path, kind: "git", name: "fixture", addedAt: "2026-09-11T10:00:00.000Z" };
+function repo(id: string, path: string): RepoListRow {
+  return {
+    id,
+    path,
+    kind: "git",
+    name: "fixture",
+    addedAt: "2026-09-11T10:00:00.000Z",
+    testCommand: null,
+  };
 }
 
-function context(cwd: string, repos: Repo[]) {
+function context(cwd: string, repos: RepoListRow[]) {
   return createTestContext({
     cwd,
     paths: agnosticPaths(join(root, "home")),

@@ -23,8 +23,12 @@ import { readDaemonConfig } from "./daemon-config.js";
 import { DaemonError } from "./error.js";
 import { createEventFeed, type EventFeed } from "./event-feed.js";
 import { createLogger, type Logger } from "./log.js";
+import { createVerdictSweep, type VerdictSweep } from "./verdict-sweep.js";
 
 const LOG_FILE = "agnd.log";
+
+/** How often a merged or deleted branch is noticed without anyone asking (ADR 022). */
+const SWEEP_MS = 5 * 60_000;
 
 // The version the health route reports comes from the package that is actually running.
 const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
@@ -51,6 +55,7 @@ export async function runDaemon(
   // troubleshooting.md says so too.
   const env = scrubEnv(process.env);
   const executor = createTmuxExecutor({ paths });
+  const verdicts = createVerdictSweep({ ledger, executor, log }, SWEEP_MS);
   const home = homedir();
   // Read once at start: a download replaces the file, and chunk 17 reloads it.
   const { catalog, origin, problems } = await loadCatalog({ downloaded: paths.catalog });
@@ -71,6 +76,7 @@ export async function runDaemon(
     env,
     home,
     catalog,
+    verdicts,
     port: () => port,
     detect: realDetect(env, home, paths, catalog),
   });
@@ -80,6 +86,7 @@ export async function runDaemon(
     ({ server, port } = await listen(app, wanted));
   } catch (cause) {
     feed.close();
+    verdicts.close();
     await executor.close();
     ledger.close();
     log.close();
@@ -89,7 +96,7 @@ export async function runDaemon(
   await writeFile(paths.daemon, `${JSON.stringify(info, null, 2)}\n`, "utf8");
   log.info("daemon listening", { port, pid: process.pid });
 
-  const close = closer({ server, feed, executor, ledger, log, paths });
+  const close = closer({ server, feed, verdicts, executor, ledger, log, paths });
   const shutdown = () => {
     void close().then(() => process.exit(0));
   };
@@ -118,6 +125,7 @@ function listen(app: Hono, port: number): Promise<{ server: ServerType; port: nu
 function closer(parts: {
   server: ServerType;
   feed: EventFeed;
+  verdicts: VerdictSweep;
   executor: ExecutorProvider;
   ledger: Ledger;
   log: Logger;
@@ -132,7 +140,8 @@ function closer(parts: {
       }
       await new Promise<void>((done) => parts.server.close(() => done()));
       parts.feed.close();
-      // The exit watcher writes through the ledger, so it stops before the ledger does.
+      // The exit watcher and the sweep write through the ledger, so both stop before it does.
+      parts.verdicts.close();
       await parts.executor.close();
       parts.ledger.close();
       await rm(parts.paths.daemon, { force: true });

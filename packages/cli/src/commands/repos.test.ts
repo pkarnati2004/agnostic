@@ -1,13 +1,20 @@
-import type { Repo } from "@agnostic/core";
+import type { Repo, RepoListRow } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { createTestContext } from "../test-context.js";
 import { reposCommand } from "./repos.js";
 
-function repo(id: string, name: string, kind: Repo["kind"]): Repo {
-  return { id, path: `/work/${name}`, kind, name, addedAt: "2026-09-11T10:00:00.000Z" };
+function repo(id: string, name: string, kind: Repo["kind"]): RepoListRow {
+  return {
+    id,
+    path: `/work/${name}`,
+    kind,
+    name,
+    addedAt: "2026-09-11T10:00:00.000Z",
+    testCommand: null,
+  };
 }
 
-function run(repos: Repo[]) {
+function run(repos: RepoListRow[]) {
   const cli = createTestContext({ client: { listRepos: () => Promise.resolve({ repos }) } });
   return { cli, done: () => reposCommand(cli.ctx).parseAsync([], { from: "user" }) };
 }

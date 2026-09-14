@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Outcome, OutcomeSchema } from "./outcome.js";
+import { type Outcome, OutcomeSchema, outcomeVerdict } from "./outcome.js";
 
 const outcome: Outcome = {
   taskId: "t3n9v2wxyz",
@@ -63,5 +63,18 @@ describe("OutcomeSchema", () => {
     for (const [field, value] of Object.entries(wrong)) {
       expect(OutcomeSchema.safeParse({ ...outcome, [field]: value }).success).toBe(false);
     }
+  });
+});
+
+describe("outcomeVerdict", () => {
+  it("reads the row's two flags, and says none when there is no row", () => {
+    expect(outcomeVerdict(null)).toBe("none");
+    expect(outcomeVerdict(outcome)).toBe("accepted");
+    expect(outcomeVerdict({ ...outcome, accepted: false, reverted: true })).toBe("reverted");
+    expect(outcomeVerdict({ ...outcome, accepted: false, reverted: false })).toBe("open");
+  });
+
+  it("calls a task nobody has decided about open, whichever way the nulls fall", () => {
+    expect(outcomeVerdict({ ...outcome, accepted: null, reverted: null })).toBe("open");
   });
 });

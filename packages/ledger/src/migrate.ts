@@ -1,10 +1,11 @@
 import type { Database } from "better-sqlite3";
 import { LedgerError } from "./error.js";
 import { initial } from "./migrations/001-initial.js";
+import { taskBaseCommit } from "./migrations/002-task-base-commit.js";
 
 export type Migration = { version: number; name: string; sql: string };
 
-const migrations: readonly Migration[] = [initial];
+const migrations: readonly Migration[] = [initial, taskBaseCommit];
 
 // migrate owns this table: it has to read the applied versions before any migration can run.
 const SCHEMA_VERSION = `CREATE TABLE IF NOT EXISTS schema_version (

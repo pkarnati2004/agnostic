@@ -31,6 +31,7 @@ export function testTask(repo: Repo, overrides: Partial<Task> = {}): Task {
     branch: null,
     status: "queued",
     origin: "agn",
+    baseCommit: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,

@@ -1,24 +1,8 @@
-import { type Task, TaskSchema, type TaskSession, type TaskStatus } from "@agnostic/core";
+import type { Task, TaskSession, TaskStatus } from "@agnostic/core";
 import type { Database } from "better-sqlite3";
-import { LedgerError, rowInvalid, writeFailure } from "./error.js";
+import { LedgerError, writeFailure } from "./error.js";
 import type { EventQueries } from "./event-queries.js";
-
-type TaskRow = {
-  id: string;
-  repo_id: string;
-  title: string;
-  prompt: string;
-  profile_id: string;
-  worktree_path: string | null;
-  branch: string | null;
-  status: string;
-  origin: string;
-  session_json: string | null;
-  recommendation_json: string | null;
-  parent_task_id: string | null;
-  created_at: string;
-  updated_at: string;
-};
+import { COLUMNS, filterSql, type TaskRow, toTask } from "./task-row.js";
 
 export type TaskFilter = {
   repoId?: string;
@@ -28,8 +12,13 @@ export type TaskFilter = {
   limit?: number;
 };
 
-/** What the executor decided at launch: the branch it chose and the session it is running in. */
-export type StartedTask = { branch: string | null; session: TaskSession };
+/** What the executor decided at launch: the branch, the commit it forked from, and the session. */
+export type StartedTask = {
+  branch: string | null;
+  /** Null when a worktree or branch was reused, or the task has no branch at all. */
+  baseCommit: string | null;
+  session: TaskSession;
+};
 
 export type TaskQueries = {
   insert(task: Task): Task;
@@ -42,9 +31,6 @@ export type TaskQueries = {
   get(id: string): Task | null;
   list(filter?: TaskFilter): Task[];
 };
-
-const COLUMNS =
-  "id, repo_id, title, prompt, profile_id, worktree_path, branch, status, origin, session_json, recommendation_json, parent_task_id, created_at, updated_at";
 
 export function createTaskQueries(db: Database, events: EventQueries): TaskQueries {
   const selectById = db.prepare("SELECT * FROM tasks WHERE id = ?");
@@ -87,7 +73,7 @@ function insertTask(
   get: (id: string) => Task | null,
 ): TaskQueries["insert"] {
   const insertRow = db.prepare(
-    `INSERT INTO tasks (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   return db.transaction((task: Task): Task => {
     // Checked here so a missing parent is not reported as a missing repo: both are the same
@@ -106,6 +92,7 @@ function insertTask(
         task.branch,
         task.status,
         task.origin,
+        task.baseCommit,
         task.session === undefined ? null : JSON.stringify(task.session),
         task.recommendation === undefined ? null : JSON.stringify(task.recommendation),
         task.parentTaskId ?? null,
@@ -178,12 +165,20 @@ function markStarted(
   requireTask: (id: string) => Task,
 ): TaskQueries["start"] {
   const updateRow = db.prepare(
-    "UPDATE tasks SET branch = ?, session_json = ?, status = 'running', updated_at = ? WHERE id = ?",
+    `UPDATE tasks SET branch = ?, base_commit = COALESCE(?, base_commit), session_json = ?,
+       status = 'running', updated_at = ? WHERE id = ?`,
   );
   return db.transaction((id: string, started: StartedTask): Task => {
     const current = requireTask(id);
     const updatedAt = new Date().toISOString();
-    updateRow.run(started.branch, JSON.stringify(started.session), updatedAt, id);
+    // A relaunch into an existing worktree has no base to report; the first one's stands.
+    updateRow.run(
+      started.branch,
+      started.baseCommit,
+      JSON.stringify(started.session),
+      updatedAt,
+      id,
+    );
     const meta = { ts: updatedAt, taskId: id, repoId: current.repoId } as const;
     events.append({ ...meta, kind: "session.captured", payload: { session: started.session } });
     if (current.status !== "running") {
@@ -193,7 +188,13 @@ function markStarted(
         payload: { from: current.status, to: "running" },
       });
     }
-    return { ...current, ...started, status: "running", updatedAt };
+    return {
+      ...current,
+      ...started,
+      baseCommit: started.baseCommit ?? current.baseCommit,
+      status: "running",
+      updatedAt,
+    };
   });
 }
 
@@ -235,54 +236,9 @@ function insertFailure(task: Task, cause: unknown): LedgerError {
   });
 }
 
-function filterSql(filter: TaskFilter): { where: string; values: (string | number)[] } {
-  const clauses: string[] = [];
-  const values: (string | number)[] = [];
-  if (filter.repoId !== undefined) {
-    clauses.push("repo_id = ?");
-    values.push(filter.repoId);
-  }
-  const statuses = filter.status === undefined ? [] : [filter.status].flat();
-  if (statuses.length > 0) {
-    clauses.push(`status IN (${statuses.map(() => "?").join(", ")})`);
-    values.push(...statuses);
-  }
-  if (filter.idPrefix !== undefined) {
-    // The id alphabet has no LIKE wildcards, so a prefix needs no escaping.
-    clauses.push("id LIKE ?");
-    values.push(`${filter.idPrefix}%`);
-  }
-  return { where: clauses.length === 0 ? "" : ` WHERE ${clauses.join(" AND ")}`, values };
-}
-
 function notFound(id: string): LedgerError {
   return new LedgerError(`no task with id ${id}`, {
     code: "task-not-found",
     hint: "Run agn status to see the tasks agn knows about.",
   });
-}
-
-function toTask(row: TaskRow): Task {
-  const parsed = TaskSchema.safeParse({
-    id: row.id,
-    repoId: row.repo_id,
-    title: row.title,
-    prompt: row.prompt,
-    profileId: row.profile_id,
-    worktreePath: row.worktree_path,
-    branch: row.branch,
-    status: row.status,
-    origin: row.origin,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    ...(row.session_json === null ? {} : { session: JSON.parse(row.session_json) as unknown }),
-    ...(row.recommendation_json === null
-      ? {}
-      : { recommendation: JSON.parse(row.recommendation_json) as unknown }),
-    ...(row.parent_task_id === null ? {} : { parentTaskId: row.parent_task_id }),
-  });
-  if (!parsed.success) {
-    throw rowInvalid("tasks", parsed.error);
-  }
-  return parsed.data;
 }

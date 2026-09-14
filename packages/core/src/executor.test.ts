@@ -12,6 +12,7 @@ const task: Task = {
   branch: "agn/add-a-verbose-flag-t3n9v2wxyz",
   status: "running",
   origin: "agn",
+  baseCommit: null,
   createdAt: "2026-09-10T12:30:00.000Z",
   updatedAt: "2026-09-10T12:30:00.000Z",
 };

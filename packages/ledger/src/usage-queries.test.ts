@@ -21,6 +21,7 @@ const task: Task = {
   branch: null,
   status: "running",
   origin: "agn",
+  baseCommit: null,
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:00:00.000Z",
 };
@@ -122,7 +123,7 @@ describe("usage.sumForTask", () => {
   });
 });
 
-describe("usage.sumByHarness", () => {
+describe("usage.summarize", () => {
   beforeEach(() => {
     ledger.usage.record(task.id, [
       row({ ts: "2026-09-09T23:00:00.000Z", tokens: 7 }),
@@ -133,22 +134,36 @@ describe("usage.sumByHarness", () => {
     ]);
   });
 
-  it("groups the window by harness and leaves the rest out", () => {
-    expect(
-      ledger.usage.sumByHarness({
-        since: "2026-09-10T00:00:00.000Z",
-        until: "2026-09-11T00:00:00.000Z",
-      }),
-    ).toEqual([
-      expect.objectContaining({ harness: "claude-code", tokens: 100, costUsd: 0.5 }),
-      // Every codex row was on a subscription, so the window has no cost to report.
-      expect.objectContaining({ harness: "codex", tokens: 50, costUsd: null }),
-    ]);
-  });
+  const day = { since: "2026-09-10T00:00:00.000Z", until: "2026-09-11T00:00:00.000Z" };
 
-  it("runs to the end when no until is given", () => {
-    const sums = ledger.usage.sumByHarness({ since: "2026-09-10T00:00:00.000Z" });
-    expect(sums.map((sum) => sum.tokens)).toEqual([109, 50]);
+  it("splits the window by harness, model and whether a task owns the row", () => {
+    ledger.usage.record(null, [
+      row({ ts: "2026-09-10T04:00:00.000Z", tokens: 40, costUsd: null }),
+      row({ ts: "2026-09-10T05:00:00.000Z", model: "fable-5", tokens: 3, costUsd: null }),
+    ]);
+    expect(ledger.usage.summarize(day)).toEqual([
+      expect.objectContaining({
+        harness: "claude-code",
+        model: "fable-5",
+        attributed: false,
+        tokens: 3,
+      }),
+      expect.objectContaining({
+        harness: "claude-code",
+        model: "sonnet-4.5",
+        attributed: false,
+        tokens: 40,
+      }),
+      expect.objectContaining({
+        harness: "claude-code",
+        model: "sonnet-4.5",
+        attributed: true,
+        tokens: 100,
+        costUsd: 0.5,
+      }),
+      // Every codex row was on a subscription, so the window has no cost to report.
+      expect.objectContaining({ harness: "codex", tokens: 50, costUsd: null, attributed: true }),
+    ]);
   });
 
   it("includes a row exactly at since and excludes one exactly at until", () => {
@@ -156,12 +171,33 @@ describe("usage.sumByHarness", () => {
       row({ ts: "2026-09-10T00:00:00.000Z", tokens: 1000 }),
       row({ ts: "2026-09-11T00:00:00.000Z", tokens: 2000 }),
     ]);
-    const sums = ledger.usage.sumByHarness({
-      since: "2026-09-10T00:00:00.000Z",
-      until: "2026-09-11T00:00:00.000Z",
-    });
-    const claudeCode = sums.find((sum) => sum.harness === "claude-code");
-    // 100 from the outer beforeEach plus the 1000 landing exactly on since; the 2000 at until is excluded.
-    expect(claudeCode?.tokens).toBe(1100);
+    const claudeCode = ledger.usage
+      .summarize(day)
+      .filter((line) => line.harness === "claude-code")
+      .reduce((total, line) => total + line.tokens, 0);
+    // 100 from the outer beforeEach plus the 1000 landing exactly on since; the 2000 at until is out.
+    expect(claudeCode).toBe(1100);
+  });
+
+  it("reports no cost when nothing in the group was priced", () => {
+    const codex = ledger.usage.summarize(day).find((line) => line.harness === "codex");
+    expect(codex).toMatchObject({ costUsd: null, tokensInput: 1800, tokensCacheRead: null });
+  });
+});
+
+describe("usage.latestModelForTask", () => {
+  it("reports the model of the newest row that names one", () => {
+    ledger.usage.record(task.id, [
+      row({ ts: "2026-09-10T12:10:00.000Z", model: "sonnet-4.5", ref: "a" }),
+      row({ ts: "2026-09-10T12:40:00.000Z", model: "opus-5", ref: "b" }),
+      row({ ts: "2026-09-10T12:50:00.000Z", model: null, ref: "c" }),
+    ]);
+    expect(ledger.usage.latestModelForTask(task.id)).toBe("opus-5");
+  });
+
+  it("is null for a task with no rows, and for rows that name no model", () => {
+    expect(ledger.usage.latestModelForTask(task.id)).toBeNull();
+    ledger.usage.record(task.id, [row({ model: null, ref: "d" })]);
+    expect(ledger.usage.latestModelForTask(task.id)).toBeNull();
   });
 });

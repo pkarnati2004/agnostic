@@ -2,7 +2,7 @@ import type { Catalog, PricingRow } from "@agnostic/catalog";
 import type { Profile, TaskScope } from "@agnostic/core";
 import { canonicalModel } from "./canonical-model.js";
 
-/** What a task of each size is assumed to read and write, until chunk 15 has real token counts. */
+/** What a task of each size is assumed to read and write, until a repo has token counts of its own. */
 const TOKENS_BY_SCOPE: Record<TaskScope, number> = {
   small: 150_000,
   medium: 400_000,

@@ -2,8 +2,12 @@ import type { HarnessId } from "./profile.js";
 import type { Repo } from "./repo.js";
 import type { Task } from "./task.js";
 
-/** Where the harness will run, and the branch it works on (null for a folder workspace). */
-export type Prepared = { cwd: string; branch: string | null };
+/**
+ * Where the harness will run, the branch it works on (null for a folder workspace), and the commit
+ * that branch started from - the only honest base for "what did the agent change" once the branch
+ * has been merged. Null when an existing worktree or branch was reused, which the ledger keeps.
+ */
+export type Prepared = { cwd: string; branch: string | null; baseCommit: string | null };
 
 export type PrepareInput = {
   task: Task;

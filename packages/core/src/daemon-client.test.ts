@@ -50,6 +50,19 @@ describe("createDaemonClient", () => {
     await daemon.close();
   });
 
+  it("asks for usage without a window, and for one task by id", async () => {
+    const seen: string[] = [];
+    const daemon = await stubDaemon((url) => {
+      seen.push(url);
+      return { status: 200, body: {} };
+    });
+    const client = createDaemonClient({ baseUrl: daemon.baseUrl, token: "sekrit" });
+    await client.usage();
+    await client.taskUsage("t3n9v2wxyz");
+    expect(seen).toEqual(["/usage", "/tasks/t3n9v2wxyz/usage"]);
+    await daemon.close();
+  });
+
   it("puts the status filter in the query string", async () => {
     let seen = "";
     const daemon = await stubDaemon((url) => {

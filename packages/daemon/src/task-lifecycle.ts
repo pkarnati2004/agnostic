@@ -10,7 +10,16 @@ import type { Ledger } from "@agnostic/ledger";
 import type { Logger } from "./log.js";
 import { syncTaskNote } from "./task-note-sync.js";
 
-type LifecycleDeps = { ledger: Ledger; executor: ExecutorProvider; log: Logger };
+type LifecycleDeps = {
+  ledger: Ledger;
+  executor: ExecutorProvider;
+  log: Logger;
+  /**
+   * Runs once a task has reached a terminal status and its harness is gone, before the caller is
+   * told it has: the test command at close needs the worktree to itself.
+   */
+  afterClose?: (task: Task) => Promise<void>;
+};
 
 export type TaskLifecycle = {
   /** The executor's one event kind, from the tmux pane-died hook or the scan at start. */
@@ -31,16 +40,28 @@ const TERMINAL: TaskStatus[] = ["done", "failed", "stopped"];
 export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
   const { ledger, executor, log } = deps;
 
-  const settle = async (task: Task, to: TaskStatus): Promise<Task> => {
+  // The transition stands whatever this does: an outcome is worth recording, not worth failing over.
+  const closed = async (task: Task): Promise<Task> => {
+    await deps.afterClose?.(task).catch((cause: unknown) => {
+      log.error("outcome not recorded", { taskId: task.id, message: reason(cause) });
+    });
+    return task;
+  };
+
+  const settle = async (task: Task, to: TaskStatus, defer = false): Promise<Task> => {
     if (!LIVE.includes(task.status)) {
       return task;
     }
     const updated = ledger.tasks.setStatus(task.id, to);
+    if (!TERMINAL.includes(to)) {
+      return updated;
+    }
     const repo = ledger.repos.get(task.repoId);
-    if (repo !== null && TERMINAL.includes(to)) {
+    if (repo !== null) {
       await syncTaskNote(repo.path, updated, log);
     }
-    return updated;
+    // `stop` defers: the harness is still in the worktree until the executor has killed it.
+    return defer ? updated : await closed(updated);
   };
 
   const reconcile = async (task: Task): Promise<Task> => {
@@ -75,12 +96,12 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
       }
       // Stopped is written first, so the exit event that follows finds a terminal task and no
       // second transition is recorded.
-      const stopped = await settle(task, "stopped");
+      const stopped = await settle(task, "stopped", true);
       const handle = sessionHandle(task);
       if (handle !== null) {
         await executor.stop(handle);
       }
-      return stopped;
+      return await closed(stopped);
     },
 
     reconcile,

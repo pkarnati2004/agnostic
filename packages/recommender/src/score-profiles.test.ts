@@ -1,6 +1,7 @@
 import { type Catalog, emptyCatalog } from "@agnostic/catalog";
-import type { OptimizePreset, TaskClass } from "@agnostic/core";
+import type { OptimizePreset, Outcome, TaskClass } from "@agnostic/core";
 import { beforeAll, describe, expect, it } from "vitest";
+import type { HistoryRow } from "./history-evidence.js";
 import { type ScoreInput, scoreProfiles } from "./score-profiles.js";
 import { fixtureCatalog, NOW, testPreferences, testProfile } from "./test-catalog.js";
 
@@ -38,6 +39,30 @@ const opusByKey = testProfile({ billing: "api-key" });
 // Weaker evidence, and nothing on top of what the user already pays for.
 const codex = testProfile({ harness: "codex", model: "gpt-5.6-sol" });
 
+const outcome: Outcome = {
+  taskId: "k3m8q2rstu",
+  testsBefore: true,
+  testsAfter: true,
+  accepted: true,
+  reverted: false,
+  agentLines: 100,
+  humanChangedLines: 0,
+  humanEditRatio: 0,
+  durationSec: 600,
+  costUsd: null,
+  tokens: 100,
+  resolvedModel: null,
+};
+
+/** `kept` of this repo's `total` tasks on a profile were merged and left alone. */
+function history(profileId: string, total: number, kept: number): HistoryRow[] {
+  return Array.from({ length: total }, (_unused, index) => ({
+    taskClass: debugSmall,
+    profileId,
+    outcome: index < kept ? outcome : { ...outcome, accepted: false, reverted: true },
+  }));
+}
+
 describe("scoreProfiles", () => {
   it("ranks the better evidence first when quality is what the repo optimizes for", () => {
     const ranked = scoreProfiles(preset("quality"), debugSmall, [opusByKey, codex]);
@@ -73,6 +98,29 @@ describe("scoreProfiles", () => {
     const withTask = scoreProfiles(input({ activeProfileIds: [pi.id] }), debugSmall, [claude, pi]);
     expect(withTask.map((row) => row.profile.id)).toEqual([pi.id, claude.id]);
     expect(withTask[0]?.score).toBeCloseTo(0.1, 10);
+  });
+
+  it("lets a repo's own results lead the catalog once there are thirty of them", () => {
+    const rows = [...history(codex.id, 30, 27), ...history(opusByKey.id, 30, 10)];
+    const ranked = scoreProfiles({ ...preset("quality"), history: rows }, debugSmall, [
+      opusByKey,
+      codex,
+    ]);
+    // The catalog ranks opus first for debug; this repo's own record moves codex ahead of it.
+    expect(ranked.map((row) => row.profile.id)).toEqual([codex.id, opusByKey.id]);
+    expect(ranked[0]?.own).toEqual({ kept: 0.9, tasks: 30 });
+    // The level still describes the catalog rows the summary was built from.
+    expect(ranked[0]?.evidence.level).toBe("some");
+  });
+
+  it("leaves the catalog's pick alone one row short of enough history", () => {
+    const rows = [...history(codex.id, 29, 29)];
+    const ranked = scoreProfiles({ ...preset("quality"), history: rows }, debugSmall, [
+      opusByKey,
+      codex,
+    ]);
+    expect(ranked.map((row) => row.profile.id)).toEqual([opusByKey.id, codex.id]);
+    expect(ranked.every((row) => row.own === null)).toBe(true);
   });
 
   it("prefers what the user is not billed for when two profiles score the same", () => {

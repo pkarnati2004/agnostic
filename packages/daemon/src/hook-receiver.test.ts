@@ -47,11 +47,13 @@ function seed(opts: SeedOptions = {}): Task {
     branch: null,
     status: "queued",
     origin: "agn",
+    baseCommit: null,
     createdAt: now,
     updatedAt: now,
   });
   const started = daemon.ledger.tasks.start(id, {
     branch: null,
+    baseCommit: null,
     session: {
       harness: opts.harness ?? "claude-code",
       sessionId: opts.sessionId ?? null,

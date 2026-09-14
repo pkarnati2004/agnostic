@@ -16,7 +16,7 @@ export type CliContext = {
   exitCode: number;
   io: Output;
   entry: DaemonEntry;
-  /** Read only by `agn doctor`, and only to ask a question a pipe cannot answer. */
+  /** The doctor prompt asks a question of it; `agn handoff --note -` reads it to the end. */
   stdin: Stdin;
   /** Injected so a test can watch `agn attach` hand the terminal over without running tmux. */
   spawn: typeof spawn;

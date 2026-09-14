@@ -9,7 +9,7 @@ function cli(writes: InitWrite[]) {
   const asked: { repoId: string; body: InitRequest }[] = [];
   const test = createTestContext({
     client: {
-      listRepos: () => Promise.resolve({ repos: [{ ...REPO, defaultProfile: null, addedAt: "" }] }),
+      listRepos: () => Promise.resolve({ repos: [{ ...REPO, addedAt: "", testCommand: null }] }),
       initRepo: (repoId, body) => {
         asked.push({ repoId, body });
         return Promise.resolve({ writes });

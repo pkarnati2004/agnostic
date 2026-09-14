@@ -1,15 +1,16 @@
-import type { AdoptRequest, DetectedHarness, Repo, Task } from "@agnostic/core";
+import type { AdoptRequest, DetectedHarness, RepoListRow, Task } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { runMain } from "../program.js";
 import { createTestContext } from "../test-context.js";
 import { adoptCommand } from "./adopt.js";
 
-const repo: Repo = {
+const repo: RepoListRow = {
   id: "r7k2m4pqrs",
   name: "api",
   path: "/work/api",
   kind: "git",
   addedAt: "2026-09-11T10:00:00.000Z",
+  testCommand: null,
 };
 
 const task: Task = {
@@ -22,6 +23,7 @@ const task: Task = {
   branch: "main",
   status: "running",
   origin: "adopted",
+  baseCommit: null,
   createdAt: "2026-09-11T10:00:00.000Z",
   updatedAt: "2026-09-11T10:00:00.000Z",
 };

@@ -1,11 +1,13 @@
 import { z } from "zod";
 import type { AttachInfo, DetectedHarness } from "./executor.js";
+import type { Outcome } from "./outcome.js";
 import { type Plan, type Plans, PlansSchema, type PlanVendor } from "./plans.js";
 import type { Billing, HarnessId, Profile } from "./profile.js";
 import type { Recommendation } from "./recommendation.js";
 import type { Repo } from "./repo.js";
 import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
 import { TaskIntentSchema } from "./task-intent.js";
+import type { PlanUsage, UsageSum, UsageWindow } from "./usage.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;
@@ -37,7 +39,12 @@ export const HealthResponseSchema = DaemonInfoSchema.extend({
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
-export type RepoListResponse = { repos: Repo[] };
+/**
+ * A registered repo plus the one `.ag/agnostic.yaml` field a client needs to say what a run will
+ * do. Read per request rather than stored: the file is the user's, and only the daemon reads it.
+ */
+export type RepoListRow = Repo & { testCommand: string | null };
+export type RepoListResponse = { repos: RepoListRow[] };
 
 export const RegisterRepoRequestSchema = z.strictObject({
   // Absolute, or relative to the client's cwd: the client resolves before sending.
@@ -72,6 +79,8 @@ export const RunTaskRequestSchema = z.strictObject({
   base: z.string().min(1).optional(),
   /** Replaces what the classifier read out of the prompt, for this task only. */
   intent: TaskIntentSchema.optional(),
+  /** Skips the repo's `test_command` before launch, so the agent starts at once (ADR 022). */
+  skipTests: z.boolean().optional(),
 });
 export type RunTaskRequest = z.infer<typeof RunTaskRequestSchema>;
 
@@ -87,6 +96,17 @@ export const RecommendRequestSchema = z.strictObject({
 export type RecommendRequest = z.infer<typeof RecommendRequestSchema>;
 
 export type RecommendResponse = { recommendation: Recommendation };
+
+// The daemon resolves `profile` exactly as it does for a run, so `--to` takes what `--profile` does.
+export const HandoffTaskRequestSchema = z.strictObject({
+  profile: z.string().min(1),
+  /** What the user wrote, or the outgoing agent's own summary; agn adds the mechanical context. */
+  note: z.string().min(1).optional(),
+});
+export type HandoffTaskRequest = z.infer<typeof HandoffTaskRequestSchema>;
+
+/** The child first, because it is what the caller goes on to attach to; the parent as it was left. */
+export type HandoffTaskResponse = { task: Task; parent: Task };
 
 export const CleanTaskRequestSchema = z.strictObject({ deleteBranch: z.boolean().optional() });
 export type CleanTaskRequest = z.infer<typeof CleanTaskRequestSchema>;
@@ -222,6 +242,22 @@ export type InitWrite = {
 };
 
 export type InitResponse = { writes: InitWrite[] };
+
+/**
+ * Both windows in one body (ADR 021): one scan of the transcripts answers the day and the week,
+ * so the CLI and the workspace's usage bar make one call. `scannedAt` is when that scan ran.
+ */
+export type UsageResponse = {
+  day: { window: UsageWindow; plans: PlanUsage[] };
+  week: { window: UsageWindow; plans: PlanUsage[] };
+  scannedAt: string;
+};
+
+/** One task's outcome row. `outcome` is null until the task closes and agn records one. */
+export type OutcomeResponse = { task: Task; outcome: Outcome | null };
+
+/** One task's tokens. `billing` comes from the task's profile; null when it cannot be resolved. */
+export type TaskUsageResponse = { task: Task; usage: UsageSum; billing: Billing | null };
 
 /** The files `agn sync` generates from `.ag/instructions.md`, relative to the repo root. */
 export type SyncTarget = "CLAUDE.md" | "AGENTS.md";

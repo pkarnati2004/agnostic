@@ -36,6 +36,7 @@ function addTask(id: string, repoId: string): Task {
     branch: null,
     status: "queued",
     origin: "agn",
+    baseCommit: null,
     createdAt: now,
     updatedAt: now,
   });

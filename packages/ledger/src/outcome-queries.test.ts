@@ -20,6 +20,7 @@ const task: Task = {
   branch: null,
   status: "done",
   origin: "agn",
+  baseCommit: null,
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:00:00.000Z",
 };
@@ -87,5 +88,29 @@ describe("outcomes.record", () => {
     const unresolved: Outcome = { ...outcome, resolvedModel: null };
     expect(ledger.outcomes.record(unresolved)).toEqual(unresolved);
     expect(ledger.outcomes.get(task.id)).toEqual(unresolved);
+  });
+});
+
+describe("outcomes.testedAtCommit", () => {
+  const tested: Task = { ...task, id: "t9v2wxyzab", baseCommit: "9f1c0de" };
+
+  it("reuses what another task off the same commit already measured", () => {
+    ledger.tasks.insert(tested);
+    ledger.outcomes.record({ ...outcome, taskId: tested.id, testsBefore: true });
+    expect(ledger.outcomes.testedAtCommit(repo.id, "9f1c0de")).toBe(true);
+  });
+
+  it("is null for a commit nobody tested, another repo, and a row with no result", () => {
+    ledger.tasks.insert(tested);
+    ledger.outcomes.record({ ...outcome, taskId: tested.id, testsBefore: null });
+    expect(ledger.outcomes.testedAtCommit(repo.id, "9f1c0de")).toBeNull();
+    expect(ledger.outcomes.testedAtCommit(repo.id, "0000000")).toBeNull();
+    expect(ledger.outcomes.testedAtCommit("r0000000zz", "9f1c0de")).toBeNull();
+  });
+
+  it("remembers a failure as a failure, not as nothing", () => {
+    ledger.tasks.insert(tested);
+    ledger.outcomes.record({ ...outcome, taskId: tested.id, testsBefore: false });
+    expect(ledger.outcomes.testedAtCommit(repo.id, "9f1c0de")).toBe(false);
   });
 });

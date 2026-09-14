@@ -1,17 +1,18 @@
-import { agnosticPaths, type Repo, type Task, type TaskStatus } from "@agnostic/core";
+import { agnosticPaths, type RepoListRow, type Task, type TaskStatus } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { createTestContext } from "../test-context.js";
 import { statusCommand } from "./status.js";
 
 const PATHS = agnosticPaths("/home/.agnostic");
 
-const repos: Repo[] = [
+const repos: RepoListRow[] = [
   {
     id: "r7k2m4pqrs",
     path: "/work/api",
     kind: "git",
     name: "api",
     addedAt: "2026-09-11T10:00:00.000Z",
+    testCommand: null,
   },
 ];
 
@@ -26,6 +27,7 @@ function task(id: string, status: TaskStatus, over: Partial<Task> = {}): Task {
     branch: `agn/flag-${id}`,
     status,
     origin: "agn",
+    baseCommit: null,
     createdAt: "2026-09-11T10:00:00.000Z",
     updatedAt: "2026-09-11T10:00:00.000Z",
     ...over,
@@ -83,6 +85,12 @@ describe("agn status", () => {
     await parse(test.ctx, ["--all"]);
     expect(test.out[0]).toContain("status");
     expect(test.out).toHaveLength(2);
+  });
+
+  it("names the task a handoff came from", async () => {
+    const test = cli([task("q4m8n2vwxy", "running", { parentTaskId: "t3n9v2wxyz" })]);
+    await parse(test.ctx, ["q4m8n2vwxy"]);
+    expect(test.out.join("\n")).toContain("parent:   t3n9v2wxyz");
   });
 
   it("shows a named task with its session", async () => {

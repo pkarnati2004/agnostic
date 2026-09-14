@@ -14,7 +14,7 @@ const debugSmall: TaskClass = {
 };
 
 function scored(over: Partial<Scored> & Pick<Scored, "evidence">): Scored {
-  return { profile: testProfile({}), costUsd: null, score: 0.5, ...over };
+  return { profile: testProfile({}), own: null, costUsd: null, score: 0.5, ...over };
 }
 
 const strong: EvidenceSummary = {
@@ -28,6 +28,12 @@ describe("explain", () => {
   it("names the class the evidence is for and what the run costs", () => {
     expect(explain(scored({ evidence: strong }), debugSmall)).toBe(
       "strong debug evidence for this agent and model; included in your plan",
+    );
+  });
+
+  it("names the repo's own record when there is enough of it to have counted", () => {
+    expect(explain(scored({ evidence: strong, own: { kept: 0.84, tasks: 31 } }), debugSmall)).toBe(
+      "strong debug evidence for this agent and model; your own results here: 31 tasks, 84% kept; included in your plan",
     );
   });
 

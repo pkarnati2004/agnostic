@@ -18,6 +18,10 @@ the ledger, and the detection it caches for the life of the process.
 - `POST /repos/:id/init` creates `.ag/`; `POST /repos/:id/sync` renders `CLAUDE.md` and `AGENTS.md`
   from it, or plans the render for a dry run. Every launch syncs the directory it is about to start
   an agent in, and logs the refusal rather than failing the run.
+- Every task that closes gets an outcome row: its live time, tokens, cost, model, the repo's
+  `test_command` before launch and after close, and the lines its branch changed. A sweep at start
+  and every five minutes reads git for the verdict, and `GET /tasks/:id/outcome` rechecks one task
+  before answering.
 - The log is `~/.agnostic/logs/agnd.log`: one line per request, with method, path, status and
   duration. No prompt, task title or token ever reaches it.
 

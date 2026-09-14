@@ -1,4 +1,4 @@
-import type { RunTaskRequest, Task } from "@agnostic/core";
+import type { DaemonClient, RunTaskRequest, Task } from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
 import { INTENT_FLAG_HELP, intentFlag } from "../intent-flag.js";
@@ -12,6 +12,7 @@ type RunFlags = {
   repo?: string;
   title?: string;
   base?: string;
+  skipTests?: boolean;
 };
 
 export function runCommand(ctx: CliContext): Command {
@@ -24,6 +25,7 @@ export function runCommand(ctx: CliContext): Command {
     .option("--repo <repo>", "repo id, prefix or path; defaults to the one you are in")
     .option("--title <title>", "a title for the task; defaults to the first line of the prompt")
     .option("--base <ref>", "a git ref or task id to branch from")
+    .option("--skip-tests", "do not run the repo's test_command before the agent starts")
     .option("--intent <intent>", INTENT_FLAG_HELP)
     .action(async (prompt: string, flags: RunFlags, command: Command) => {
       if (flags.profile !== undefined && flags.harness !== undefined) {
@@ -35,6 +37,7 @@ export function runCommand(ctx: CliContext): Command {
       const intent = intentFlag(flags.intent, command);
       const { repoId } = await resolveRepo(ctx, flags.repo);
       const client = await ctx.client();
+      await announceTests(ctx, client, repoId, flags);
       const response = await client.runTask(repoId, {
         ...body(prompt, flags),
         ...(intent === undefined ? {} : { intent }),
@@ -49,6 +52,26 @@ export function runCommand(ctx: CliContext): Command {
     });
 }
 
+/**
+ * The repo's own test command runs before the agent starts (ADR 022), and it can take minutes;
+ * this is the line that explains the wait, printed by the only part of agn with a terminal.
+ */
+async function announceTests(
+  ctx: CliContext,
+  client: DaemonClient,
+  repoId: string,
+  flags: RunFlags,
+): Promise<void> {
+  if (flags.skipTests === true || ctx.json) {
+    return;
+  }
+  const { repos } = await client.listRepos();
+  const command = repos.find((candidate) => candidate.id === repoId)?.testCommand ?? null;
+  if (command !== null) {
+    ctx.io.out(`running the tests first: ${command}`);
+  }
+}
+
 function body(prompt: string, flags: RunFlags): RunTaskRequest {
   // --harness is --profile spelled for the case where the harness is all you know.
   const profile = flags.profile ?? flags.harness;
@@ -58,10 +81,12 @@ function body(prompt: string, flags: RunFlags): RunTaskRequest {
     ...(profile === undefined ? {} : { profile }),
     ...(flags.model === undefined ? {} : { model: flags.model }),
     ...(flags.base === undefined ? {} : { base: flags.base }),
+    ...(flags.skipTests === true ? { skipTests: true } : {}),
   };
 }
 
-function started(task: Task): string[] {
+/** `agn handoff` prints these too: the child of a handoff started the same way a run does. */
+export function started(task: Task): string[] {
   const where =
     task.worktreePath === null
       ? [`in place: ${task.session?.cwd ?? "the repo"}`]

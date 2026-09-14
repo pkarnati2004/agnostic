@@ -28,6 +28,7 @@ const task: Task = {
   branch: null,
   status: "queued",
   origin: "agn",
+  baseCommit: null,
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:00:00.000Z",
 };
@@ -81,6 +82,7 @@ describe("tasks.insert", () => {
       worktreePath: "/Users/dev/.agnostic/worktrees/r7k2m4pqrs/t3n9v2wxyz",
       branch: "agn/t3n9v2wxyz",
       origin: "adopted",
+      baseCommit: null,
       recommendation,
       session,
       parentTaskId: parent.id,
@@ -215,7 +217,11 @@ describe("tasks.setSession", () => {
 describe("tasks.start", () => {
   it("writes branch, session and running status with both events in one transaction", () => {
     ledger.tasks.insert(task);
-    const started = ledger.tasks.start(task.id, { branch: "agn/split-t3n9v2wxyz", session });
+    const started = ledger.tasks.start(task.id, {
+      branch: "agn/split-t3n9v2wxyz",
+      baseCommit: "abc1234",
+      session,
+    });
     expect(started.status).toBe("running");
     expect(started.branch).toBe("agn/split-t3n9v2wxyz");
     expect(started.session).toEqual(session);
@@ -229,7 +235,7 @@ describe("tasks.start", () => {
 
   it("skips the status event when the task is already running", () => {
     ledger.tasks.insert({ ...task, status: "running" });
-    ledger.tasks.start(task.id, { branch: null, session });
+    ledger.tasks.start(task.id, { branch: null, baseCommit: null, session });
     expect(ledger.events.forTask(task.id).map((event) => event.kind)).toEqual([
       "task.created",
       "session.captured",
