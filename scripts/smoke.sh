@@ -101,6 +101,20 @@ test "$(agn repos | wc -l)" -eq 3
 agn repos --json > "$WORK/repos.json"
 "$NODE" -e "const { repos } = require('$WORK/repos.json'); if (repos.length !== 2) { throw new Error('expected two repos'); }"
 
+# A closed repo keeps its row and its history, and leaves the list until it is opened again.
+GITREPO_ID="$("$NODE" -e "
+const { repos } = require('$WORK/repos.json');
+const repo = repos.find((row) => row.name === 'gitrepo');
+if (!repo) { throw new Error('gitrepo is not registered'); }
+process.stdout.write(repo.id);
+")"
+agn repo close "$GITREPO_ID" | grep -q "^closed gitrepo $GITREPO_ID"
+test "$(agn repos | wc -l)" -eq 2
+test "$(agn repos --all | wc -l)" -eq 3
+agn repos --all | grep -q "archived"
+agn repo open "$GITREPO_ID" | grep -q "^opened gitrepo $GITREPO_ID"
+test "$(agn repos | wc -l)" -eq 3
+
 # The four tier-1 harnesses, none of them installed on this PATH, plus the gh row.
 test "$(agn doctor | grep -c "not installed")" -eq 5
 agn doctor | grep -q "^tools: gh"
@@ -271,6 +285,9 @@ agx run "smoke task" --profile claude-code --repo "$WORK/runrepo" > "$WORK/run.t
 grep -q "^started " "$WORK/run.txt"
 TASK="$(awk 'NR == 1 { print $2 }' "$WORK/run.txt")"
 agx status | grep -q "running"
+# A repo with a live task is not closable: the task would be hidden while it runs.
+! agx repo close "$RUNREPO_ID" > "$WORK/close-busy.txt" 2>&1
+grep -q "agn stop" "$WORK/close-busy.txt"
 agx status "$TASK" | grep -q "^tmux: *agn-$TASK"
 
 echo "smoke: the terminal socket against the running pane"

@@ -30,7 +30,14 @@ function git(args: string[]): Promise<unknown> {
 }
 
 function repo(kind: Repo["kind"] = "git"): Repo {
-  return { id: "r7k2m4pqrs", path, kind, name: "fixture", addedAt: "2026-09-12T10:00:00.000Z" };
+  return {
+    id: "r7k2m4pqrs",
+    path,
+    kind,
+    name: "fixture",
+    addedAt: "2026-09-12T10:00:00.000Z",
+    status: "active",
+  };
 }
 
 function task(over: Partial<Task> = {}): Task {

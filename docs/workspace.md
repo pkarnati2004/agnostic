@@ -17,7 +17,7 @@ If you pull a newer agn while a daemon from an older version is running, run `ag
 once. A daemon that started before this version answers `/ui` with an authentication error rather
 than the page.
 
-- **Left:** your repos and their tasks. Dot = status: running, waiting for you, queued, done.
+- **Left:** your repos and their tasks. Dot = status: running, waiting for you, queued, done. A repo you closed with `agn repo close` is not shown.
 - **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback.
 - **+ Task:** describe the work, see the recommendation, pick or accept, run.
 - **Bottom:** tokens and cost per plan, for today and for this week.

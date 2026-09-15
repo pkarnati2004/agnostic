@@ -61,15 +61,23 @@ async function processesDuring<T>(body: () => Promise<T>): Promise<{
   }
 }
 
+// branchName reads only the id, so one repo stands in for every case here.
+const repo: Repo = {
+  id: "r7k2m4pqrs",
+  path: "/tmp",
+  kind: "git",
+  name: "x",
+  addedAt: "",
+  status: "active",
+};
+
 describe("branchName", () => {
   it("slugs the title and keeps the task id", () => {
-    const repo = { id: "r7k2m4pqrs", path: "/tmp", kind: "git", name: "x", addedAt: "" } as Repo;
     const task = testTask(repo, { id: "t3n9v2wxyz", title: "Add a --verbose flag to the CLI!" });
     expect(branchName(task)).toBe("agn/add-a-verbose-flag-to-the-cli-t3n9v2wxyz");
   });
 
   it("cuts a long title at 40 characters and leaves no trailing dash", () => {
-    const repo = { id: "r7k2m4pqrs", path: "/tmp", kind: "git", name: "x", addedAt: "" } as Repo;
     const long = testTask(repo, {
       id: "t3n9v2wxyz",
       title: "Rewrite the recommender scoring so that every profile is ranked",
@@ -79,14 +87,12 @@ describe("branchName", () => {
   });
 
   it("falls back to `task` when nothing survives the slug", () => {
-    const repo = { id: "r7k2m4pqrs", path: "/tmp", kind: "git", name: "x", addedAt: "" } as Repo;
     expect(branchName(testTask(repo, { id: "t3n9v2wxyz", title: "!!!" }))).toBe(
       "agn/task-t3n9v2wxyz",
     );
   });
 
   it("takes the repo's own prefix", () => {
-    const repo = { id: "r7k2m4pqrs", path: "/tmp", kind: "git", name: "x", addedAt: "" } as Repo;
     const task = testTask(repo, { id: "t3n9v2wxyz", title: "Fix it" });
     expect(branchName(task, "feat/")).toBe("feat/fix-it-t3n9v2wxyz");
   });

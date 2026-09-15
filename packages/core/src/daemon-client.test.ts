@@ -117,6 +117,28 @@ describe("createDaemonClient", () => {
     await daemon.close();
   });
 
+  it("asks for every repo only when the caller says so, and posts close and open by id", async () => {
+    const seen: string[] = [];
+    const daemon = await stubDaemon((url) => {
+      seen.push(url);
+      return { status: 200, body: { repos: [], cursor: 0 } };
+    });
+    const client = createDaemonClient({ baseUrl: daemon.baseUrl, token: "sekrit" });
+    await client.listRepos();
+    await client.listRepos({ all: false });
+    await client.listRepos({ all: true });
+    await client.closeRepo("r7k2m4pqrs");
+    await client.openRepo("r7k2m4pqrs");
+    expect(seen).toEqual([
+      "/repos",
+      "/repos",
+      "/repos?all=1",
+      "/repos/r7k2m4pqrs/close",
+      "/repos/r7k2m4pqrs/open",
+    ]);
+    await daemon.close();
+  });
+
   it("builds the open url with and without an editor override", async () => {
     const seen: string[] = [];
     const daemon = await stubDaemon((url) => {

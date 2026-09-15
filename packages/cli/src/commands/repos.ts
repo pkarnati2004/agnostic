@@ -10,21 +10,30 @@ const COLUMNS: Column<Repo>[] = [
   { header: "path", value: (repo) => repo.path },
 ];
 
+// Status only says something once closed repos are in the list, so it is the flag's column.
+const STATUS: Column<Repo> = { header: "status", value: (repo) => repo.status };
+
+type ReposFlags = { all?: boolean };
+
 export function reposCommand(ctx: CliContext): Command {
-  return new Command("repos").description("list the registered repos").action(async () => {
-    const client = await ctx.client();
-    const response = await client.listRepos();
-    if (ctx.json) {
-      writeJson(ctx.io, response);
-      return;
-    }
-    if (response.repos.length === 0) {
-      ctx.io.out("no repos yet; run agn add <path>");
-      return;
-    }
-    const sorted = [...response.repos].sort((a, b) => a.name.localeCompare(b.name));
-    for (const line of renderTable(sorted, COLUMNS)) {
-      ctx.io.out(line);
-    }
-  });
+  return new Command("repos")
+    .description("list the registered repos")
+    .option("--all", "include closed repos")
+    .action(async (flags: ReposFlags) => {
+      const client = await ctx.client();
+      const all = flags.all === true;
+      const response = await client.listRepos({ all });
+      if (ctx.json) {
+        writeJson(ctx.io, response);
+        return;
+      }
+      if (response.repos.length === 0) {
+        ctx.io.out("no repos yet; run agn add <path>");
+        return;
+      }
+      const sorted = [...response.repos].sort((a, b) => a.name.localeCompare(b.name));
+      for (const line of renderTable(sorted, all ? [...COLUMNS, STATUS] : COLUMNS)) {
+        ctx.io.out(line);
+      }
+    });
 }

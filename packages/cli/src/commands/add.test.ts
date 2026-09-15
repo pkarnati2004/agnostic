@@ -9,16 +9,17 @@ const REPO: Repo = {
   kind: "git",
   name: "api",
   addedAt: "2026-09-11T10:00:00.000Z",
+  status: "active",
 };
 
-function harness(created: boolean) {
+function harness(created: boolean, repo: Repo = REPO) {
   const requests: RegisterRepoRequest[] = [];
   const cli = createTestContext({
     cwd: "/work",
     client: {
       registerRepo: (body) => {
         requests.push(body);
-        return Promise.resolve({ repo: REPO, created });
+        return Promise.resolve({ repo, created });
       },
     },
   });
@@ -45,6 +46,15 @@ describe("agn add", () => {
     const cli = harness(false);
     await addCommand(cli.ctx).parseAsync(["/work/api"], { from: "user" });
     expect(cli.out).toEqual(["already registered: api (git) r1a2b3c4d5"]);
+  });
+
+  it("names the command that shows a closed repo again", async () => {
+    const cli = harness(false, { ...REPO, status: "archived" });
+    await addCommand(cli.ctx).parseAsync(["/work/api"], { from: "user" });
+    expect(cli.out).toEqual(["already registered, closed: api (git) r1a2b3c4d5"]);
+    expect(cli.err).toEqual([
+      "  hint: Run `agn repo open r1a2b3c4d5` to show it in agn repos again.",
+    ]);
   });
 
   it("prints the response and nothing else with --json", async () => {

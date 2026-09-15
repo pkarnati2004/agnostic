@@ -5,7 +5,14 @@ import type { PrepareInput, Repo, Task } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { runSetupCommand } from "./setup-command.js";
 
-const repo: Repo = { id: "r7k2m4pqrs", path: "/tmp", kind: "git", name: "x", addedAt: "" };
+const repo: Repo = {
+  id: "r7k2m4pqrs",
+  path: "/tmp",
+  kind: "git",
+  name: "x",
+  addedAt: "",
+  status: "active",
+};
 const task: Task = {
   id: "t3n9v2wxyz",
   repoId: repo.id,

@@ -22,6 +22,7 @@ beforeEach(async () => {
     kind: "git",
     name: "alpha",
     addedAt: new Date().toISOString(),
+    status: "active",
   });
 });
 
@@ -116,6 +117,21 @@ describe("GET /usage", () => {
 
   it("ignores a query string it does not know", async () => {
     await expect(usage("/usage?window=day")).resolves.toMatchObject({ day: { plans: [] } });
+  });
+
+  it("still counts tokens from a task whose repo is closed", async () => {
+    seedTask();
+    daemon.ledger.repos.update(repoId, { status: "archived" });
+    await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE }]);
+
+    const body = await usage();
+
+    expect(body.day.plans).toEqual([
+      expect.objectContaining({
+        harness: "claude-code",
+        usage: expect.objectContaining({ tokens: 1_500 }),
+      }),
+    ]);
   });
 });
 

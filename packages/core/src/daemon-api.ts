@@ -49,6 +49,15 @@ export type RepoListRow = Repo & { testCommand: string | null };
 // a page opening `/events` there misses nothing the snapshot lacks (ADR 030); the CLI ignores it.
 export type RepoListResponse = { repos: RepoListRow[]; cursor: number };
 
+// `?all=1` is the one accepted value, so a typo is a 400 rather than a silently narrower list.
+export const RepoListQuerySchema = z
+  .strictObject({ all: z.literal("1").optional() })
+  .transform((query) => ({ all: query.all === "1" }));
+export type RepoListQuery = z.output<typeof RepoListQuerySchema>;
+
+/** The answer to close and open: the row as it is now, 200 whether or not it changed. */
+export type RepoResponse = { repo: Repo };
+
 export const RegisterRepoRequestSchema = z.strictObject({
   // Absolute, or relative to the client's cwd: the client resolves before sending.
   path: z.string().min(1),

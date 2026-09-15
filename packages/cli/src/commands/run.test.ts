@@ -1,4 +1,4 @@
-import type { RunTaskRequest, Task } from "@agnostic/core";
+import { DaemonApiError, type RunTaskRequest, type Task } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { runMain } from "../program.js";
 import { createTestContext } from "../test-context.js";
@@ -10,6 +10,7 @@ const REPO = {
   kind: "git" as const,
   name: "api",
   addedAt: "2026-09-11T10:00:00.000Z",
+  status: "active" as const,
   testCommand: null as string | null,
 };
 
@@ -142,6 +143,30 @@ describe("agn run", () => {
     );
     expect(code).toBe(2);
     expect(test.err.join("\n")).toContain("not both");
+  });
+
+  it("renders the daemon's refusal for a closed repo, and exits 1", async () => {
+    const test = createTestContext({
+      cwd: REPO.path,
+      client: {
+        listRepos: () => Promise.resolve({ repos: [REPO], cursor: 0 }),
+        runTask: () =>
+          Promise.reject(
+            new DaemonApiError("repo api is closed", {
+              code: "repo-closed",
+              status: 409,
+              hint: "Run `agn repo open r7k2m4pqrs` first.",
+            }),
+          ),
+      },
+    });
+    const code = await runMain(["node", "agn", "run", "add a --verbose flag"], test.ctx);
+    expect(code).toBe(1);
+    expect(test.err).toEqual([
+      "agn: repo api is closed",
+      "  hint: Run `agn repo open r7k2m4pqrs` first.",
+    ]);
+    expect(test.out).toEqual([]);
   });
 
   it("prints the daemon's body with --json", async () => {

@@ -7,6 +7,7 @@ const repo: Repo = {
   kind: "git",
   name: "agnostic",
   addedAt: "2026-09-10T12:00:00.000Z",
+  status: "active",
 };
 
 describe("RepoSchema", () => {
@@ -21,6 +22,7 @@ describe("RepoSchema", () => {
       kind: "svn",
       name: null,
       addedAt: "yesterday",
+      status: "gone",
     };
     for (const [field, value] of Object.entries(wrong)) {
       expect(RepoSchema.safeParse({ ...repo, [field]: value }).success).toBe(false);
@@ -29,5 +31,14 @@ describe("RepoSchema", () => {
 
   it("rejects an id that is not an agnostic id", () => {
     expect(RepoSchema.safeParse({ ...repo, id: "not-an-id" }).success).toBe(false);
+  });
+
+  it("reads a repo written before the status column as active", () => {
+    const { status, ...before } = repo;
+    expect(RepoSchema.parse(before).status).toBe("active");
+  });
+
+  it("parses an archived repo", () => {
+    expect(RepoSchema.parse({ ...repo, status: "archived" }).status).toBe("archived");
   });
 });

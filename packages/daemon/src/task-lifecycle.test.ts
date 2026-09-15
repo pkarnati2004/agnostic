@@ -107,6 +107,7 @@ describe("close work that fails", () => {
       kind: "git",
       name: "beta",
       addedAt: new Date().toISOString(),
+      status: "active",
     });
     const now = new Date().toISOString();
     const task = failing.ledger.tasks.insert({

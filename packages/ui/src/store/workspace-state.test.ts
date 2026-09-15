@@ -13,6 +13,7 @@ const REPO: RepoListRow = {
   kind: "git",
   name: "petal",
   addedAt: "2026-09-01T00:00:00.000Z",
+  status: "active",
   testCommand: "pnpm test",
 };
 
@@ -117,6 +118,7 @@ describe("workspaceReducer", () => {
       kind: "git",
       name: "katha",
       addedAt: "2026-09-02T00:00:00.000Z",
+      status: "active",
     };
     const renamed: Repo = { ...REPO, name: "petal-2" };
     const state = apply(

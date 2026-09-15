@@ -26,6 +26,7 @@ describe("start-up sweep of queued tasks", () => {
           kind: "git",
           name: "q",
           addedAt: now,
+          status: "active",
         });
         ledger.tasks.insert({
           id,
@@ -81,6 +82,7 @@ describe("start-up reconcile", () => {
           kind: "git",
           name: "r",
           addedAt: now,
+          status: "active",
         });
         ledger.tasks.insert({
           id,

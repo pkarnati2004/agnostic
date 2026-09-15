@@ -12,7 +12,8 @@ type Resolved = { repoId: string; taskId: string | null };
 /**
  * ADR 012: `--repo` first, as a path when it looks like one and as an id or prefix otherwise; then
  * the worktree the shell is sitting in, which names its task as well; then the registered repo
- * whose path is the longest prefix of the current directory.
+ * whose path is the longest prefix of the current directory. Closed repos are resolved too, so
+ * the daemon gets to say "repo <name> is closed" instead of the CLI saying it was never added.
  */
 export async function resolveRepo(ctx: CliContext, flag: string | undefined): Promise<Resolved> {
   if (flag !== undefined) {
@@ -73,7 +74,7 @@ export async function requireTaskId(
 
 async function repoIdAt(ctx: CliContext, path: string): Promise<string> {
   const real = await realpathOrSelf(path);
-  const { repos } = await (await ctx.client()).listRepos();
+  const { repos } = await (await ctx.client()).listRepos({ all: true });
   const match = repos.find((repo) => repo.path === real);
   if (match === undefined) {
     throw new CliError(`${real} is not a registered repo`, {
@@ -86,7 +87,7 @@ async function repoIdAt(ctx: CliContext, path: string): Promise<string> {
 
 /** Nested checkouts are legal, so the longest path that is a prefix of the cwd wins. */
 async function enclosingRepoId(ctx: CliContext, cwd: string): Promise<string | null> {
-  const { repos } = await (await ctx.client()).listRepos();
+  const { repos } = await (await ctx.client()).listRepos({ all: true });
   const enclosing = repos
     .filter((repo) => contains(repo.path, cwd))
     .sort((a, b) => b.path.length - a.path.length);

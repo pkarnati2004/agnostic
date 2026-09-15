@@ -23,6 +23,7 @@ beforeEach(async () => {
     kind: "git",
     name: "alpha",
     addedAt: new Date().toISOString(),
+    status: "active",
   });
 });
 
@@ -117,6 +118,7 @@ describe("GET /tasks", () => {
       kind: "folder",
       name: "beta",
       addedAt: new Date().toISOString(),
+      status: "active",
     });
     seedTask("mnpqrstuvw", "running");
     daemon.ledger.tasks.insert({

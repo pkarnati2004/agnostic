@@ -12,6 +12,7 @@ const repo: Repo = {
   kind: "git",
   name: "agnostic",
   addedAt: "2026-09-10T11:00:00.000Z",
+  status: "active",
 };
 
 const task: Task = {
@@ -62,6 +63,7 @@ describe("openLedger", () => {
     expect(db.prepare("SELECT version, name FROM schema_version ORDER BY version").all()).toEqual([
       { version: 1, name: "initial" },
       { version: 2, name: "task-base-commit" },
+      { version: 3, name: "repo-status" },
     ]);
     db.close();
   });

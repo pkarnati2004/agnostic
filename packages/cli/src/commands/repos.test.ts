@@ -10,15 +10,22 @@ function repo(id: string, name: string, kind: Repo["kind"]): RepoListRow {
     kind,
     name,
     addedAt: "2026-09-11T10:00:00.000Z",
+    status: "active",
     testCommand: null,
   };
 }
 
-function run(repos: RepoListRow[]) {
+function run(repos: RepoListRow[], argv: string[] = []) {
+  const asked: ({ all?: boolean } | undefined)[] = [];
   const cli = createTestContext({
-    client: { listRepos: () => Promise.resolve({ repos, cursor: 0 }) },
+    client: {
+      listRepos: (query) => {
+        asked.push(query);
+        return Promise.resolve({ repos, cursor: 0 });
+      },
+    },
   });
-  return { cli, done: () => reposCommand(cli.ctx).parseAsync([], { from: "user" }) };
+  return { cli, asked, done: () => reposCommand(cli.ctx).parseAsync(argv, { from: "user" }) };
 }
 
 describe("agn repos", () => {
@@ -29,6 +36,25 @@ describe("agn repos", () => {
       "id  name  kind    path",
       "r1  api   folder  /work/api",
       "r2  web   git     /work/web",
+    ]);
+  });
+
+  it("asks for the active repos only, and shows no status column", async () => {
+    const { cli, asked, done } = run([repo("r1", "api", "git")]);
+    await done();
+    expect(asked).toEqual([{ all: false }]);
+    expect(cli.out[0]).toBe("id  name  kind  path");
+  });
+
+  it("asks for every repo with --all, and names each one's status", async () => {
+    const closed: RepoListRow = { ...repo("r2", "web", "git"), status: "archived" };
+    const { cli, asked, done } = run([repo("r1", "api", "git"), closed], ["--all"]);
+    await done();
+    expect(asked).toEqual([{ all: true }]);
+    expect(cli.out).toEqual([
+      "id  name  kind  path       status",
+      "r1  api   git   /work/api  active",
+      "r2  web   git   /work/web  archived",
     ]);
   });
 

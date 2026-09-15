@@ -8,6 +8,7 @@ const repo: Repo = {
   kind: "git",
   name: "agnostic",
   addedAt: "2026-09-10T11:00:00.000Z",
+  status: "active",
 };
 
 const other: Repo = {
@@ -16,6 +17,7 @@ const other: Repo = {
   kind: "folder",
   name: "notes",
   addedAt: "2026-09-10T09:00:00.000Z",
+  status: "active",
 };
 
 let ledger: Ledger;
@@ -91,6 +93,31 @@ describe("repos.update", () => {
     expect(() => ledger.repos.update(other.id, { path: repo.path })).toThrowError(
       expect.objectContaining({ code: "repo-exists" }),
     );
+  });
+
+  it("closes a repo, keeps it findable by id, and hides it from the active list", () => {
+    ledger.repos.insert(repo);
+    ledger.repos.insert(other);
+    const closed = ledger.repos.update(repo.id, { status: "archived" });
+    expect(closed.status).toBe("archived");
+    expect(ledger.repos.get(repo.id)).toEqual(closed);
+    expect(ledger.repos.list({ status: "active" })).toEqual([other]);
+    expect(ledger.repos.list()).toEqual([other, closed]);
+    expect(ledger.repos.list({ status: "archived" })).toEqual([closed]);
+
+    const events = ledger.events.after(2);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ kind: "repo.updated", payload: { repo: closed } });
+  });
+
+  it("opens a closed repo again and writes nothing on a second close", () => {
+    ledger.repos.insert(repo);
+    ledger.repos.update(repo.id, { status: "archived" });
+    const latest = ledger.events.latestId();
+    expect(ledger.repos.update(repo.id, { status: "archived" }).status).toBe("archived");
+    expect(ledger.events.latestId()).toBe(latest);
+    expect(ledger.repos.update(repo.id, { status: "active" })).toEqual(repo);
+    expect(ledger.events.latestId()).toBe(latest + 1);
   });
 
   it("writes nothing when the patch restates what the repo already holds", () => {

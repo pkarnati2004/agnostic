@@ -18,6 +18,16 @@ const repos: RepoListRow[] = [
     kind: "git",
     name: "api",
     addedAt: "2026-09-11T10:00:00.000Z",
+    status: "active",
+    testCommand: null,
+  },
+  {
+    id: "r9x4t8bcde",
+    path: "/work/legacy",
+    kind: "git",
+    name: "legacy",
+    addedAt: "2026-09-11T10:00:00.000Z",
+    status: "archived",
     testCommand: null,
   },
 ];
@@ -45,7 +55,11 @@ function cli(tasks: Task[], cwd = "/work/api") {
     cwd,
     paths: PATHS,
     client: {
-      listRepos: () => Promise.resolve({ repos, cursor: 0 }),
+      listRepos: (query) => {
+        const visible =
+          query?.all === true ? repos : repos.filter((row) => row.status === "active");
+        return Promise.resolve({ repos: visible, cursor: 0 });
+      },
       listAllTasks: () => Promise.resolve({ tasks: tasks.map(listedRow), cursor: 0 }),
       getTask: (id) =>
         Promise.resolve({ task: tasks.find((row) => row.id === id) ?? task(id, "done") }),
@@ -65,6 +79,12 @@ describe("agn status", () => {
       "id          repo  status   title                 branch               profile",
     );
     expect(test.out[1]).toContain("t3n9v2wxyz  api   running");
+  });
+
+  it("names the repo of a task in a closed repo", async () => {
+    const test = cli([task("q4m8n2vwxy", "done", { repoId: "r9x4t8bcde" })]);
+    await parse(test.ctx, []);
+    expect(test.out[1]).toContain("q4m8n2vwxy  legacy  done");
   });
 
   it("says how to start one when there are none", async () => {
