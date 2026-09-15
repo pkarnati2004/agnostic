@@ -58,6 +58,8 @@ export function taskActionRoutes(ctx: DaemonContext): Hono {
         throw requestInvalid(parsed.error);
       }
       const task = await ctx.lifecycle.reconcile(resolveTaskId(ctx.ledger, c.req.param("id")));
+      // The close work reads the worktree this is about to remove, so it finishes first.
+      await ctx.lifecycle.settled(task.id);
       const repo = resolveRepoId(ctx.ledger, task.repoId);
       const response: CleanTaskResponse = await clean(
         ctx,

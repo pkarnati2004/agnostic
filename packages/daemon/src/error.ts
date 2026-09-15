@@ -40,6 +40,8 @@ const statusByCode: Record<string, number> = {
   "init-source-generated": 409,
   // The parent's branch was deleted, so there is nothing for the next agent to continue from.
   "branch-gone": 409,
+  // The session found under the path is already a task: the request was right, it is just done.
+  "adopt-already-adopted": 409,
   // The daemon reached out and the far side did not answer: neither a bad request nor a bug.
   "catalog-fetch-failed": 502,
   "request-invalid": 400,

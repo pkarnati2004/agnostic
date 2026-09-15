@@ -33,8 +33,9 @@ const TITLE_MAX_CHARS = 80;
 
 /**
  * One run, from the queued row to the live session. The row and its note exist before the worktree
- * does, so a daemon that dies during a long `setup_command` leaves a task `agn resume` can pick up
- * (ADR 014). Anything that fails after the row exists leaves the task failed, never queued.
+ * does, so a daemon that dies during a long `setup_command` leaves a row that explains itself; the
+ * next daemon fails it at start, because nothing is left to launch it. Anything that fails after
+ * the row exists leaves the task failed, never queued.
  */
 export async function startTask(
   ctx: DaemonContext,

@@ -257,7 +257,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     readLog: () => readFile(logFile, "utf8"),
     close: async () => {
       await server.stop();
-      closeApp();
+      await closeApp();
       feed.close();
       verdicts.close();
       await executor.close();

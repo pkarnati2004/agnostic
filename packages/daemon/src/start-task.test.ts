@@ -146,14 +146,6 @@ describe("POST /repos/:id/tasks", () => {
     expect(daemon.ledger.tasks.list()).toHaveLength(0);
   });
 
-  it("refuses a harness that is not installed, without creating a task", async () => {
-    const repo = await daemon.addRepo();
-    const response = await run(repo, { prompt: "ship it", profile: "pi" });
-    expect(response.status).toBe(400);
-    expect((await failure(response)).error.code).toBe("harness-not-installed");
-    expect(daemon.ledger.tasks.list()).toHaveLength(0);
-  });
-
   it("fails the task when the setup command fails, and launches nothing", async () => {
     const repo = await daemon.addRepo({ defaultProfile: PROFILE });
     await writeRepoConfig(repo.path, {

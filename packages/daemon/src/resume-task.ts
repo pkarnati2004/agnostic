@@ -32,6 +32,9 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
   if (live !== null && (await ctx.executor.sessionState(live)) === "running") {
     return { task: running(ctx, task), via: "live", attach: ctx.executor.attach(live) };
   }
+  // A stop answers as soon as the task is stopped, and the close work behind it runs the repo's
+  // test command in this worktree (ADR 021); the harness must not be started back up under it.
+  await ctx.lifecycle.settled(task.id);
   const repo = resolveRepoId(ctx.ledger, task.repoId);
   if (repo.kind === "folder") {
     // Refused before an agent is started, and again with the row below: this one is the message

@@ -1,87 +1,30 @@
-import { chmod, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   type AttachResponse,
   agPaths,
-  type DetectedHarness,
   parseTaskNote,
   type Repo,
-  run,
-  type SessionsResponse,
-  spawn,
   type Task,
   type TaskListResponse,
   type TaskResponse,
 } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { errorOf, type FakeSessions, fakeSessions, seedAdopted } from "./test-adopt.js";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
 
-const FAKE_AGENT = fileURLToPath(new URL("../../../tests/fixtures/fake-agent.sh", import.meta.url));
-
 let daemon: TestDaemon;
-let agents: ReturnType<typeof spawn>[] = [];
+let agents: FakeSessions;
 
 beforeEach(async () => {
   daemon = await createTestDaemon({ tmux: true });
-  agents = [];
+  agents = fakeSessions(daemon);
 });
 
 afterEach(async () => {
-  for (const agent of agents) {
-    agent.kill("SIGKILL");
-  }
-  await Promise.allSettled(agents);
+  await agents.killAll();
   await daemon.close();
 });
-
-/** ps reports the script's own name, so the fake agent is copied to the name detection matches. */
-async function harnessNamed(name: string): Promise<string> {
-  const bin = join(daemon.paths.home, "detect-bin");
-  await mkdir(bin, { recursive: true });
-  const path = join(bin, name);
-  await copyFile(FAKE_AGENT, path);
-  await chmod(path, 0o755);
-  return path;
-}
-
-async function startOutsideTmux(cwd: string, args: string[] = []): Promise<number> {
-  await mkdir(cwd, { recursive: true });
-  const agent = spawn(await harnessNamed("claude"), args, {
-    cwd,
-    env: daemon.launch?.env ?? {},
-    inheritEnv: false,
-  });
-  agents.push(agent);
-  return agent.pid ?? 0;
-}
-
-async function startUnderTmux(cwd: string, session: string): Promise<void> {
-  await mkdir(cwd, { recursive: true });
-  await run(
-    "tmux",
-    [
-      "-L",
-      daemon.launch?.socketName ?? "",
-      "new-session",
-      "-d",
-      "-s",
-      session,
-      "-c",
-      cwd,
-      await harnessNamed("claude"),
-    ],
-    { env: daemon.launch?.env ?? {}, inheritEnv: false },
-  );
-}
-
-async function sessionsUnder(repo: Repo, path: string): Promise<DetectedHarness[]> {
-  const response = await daemon.request(
-    `/repos/${repo.id}/sessions?path=${encodeURIComponent(path)}`,
-  );
-  expect(response.status).toBe(200);
-  return ((await response.json()) as SessionsResponse).sessions;
-}
 
 function adopt(repo: Repo, body: Record<string, unknown>): Promise<Response> {
   return daemon.request(`/repos/${repo.id}/adopt`, {
@@ -97,41 +40,11 @@ async function adopted(repo: Repo, body: Record<string, unknown>): Promise<Task>
   return ((await response.json()) as TaskResponse).task;
 }
 
-function errorOf(response: Response): Promise<{ error: { code: string; message: string } }> {
-  return response.json() as Promise<{ error: { code: string; message: string } }>;
-}
-
-describe("GET /repos/:id/sessions", () => {
-  it("lists the agents running under a path, in tmux or not, and drops one-shots", async () => {
-    const repo = await daemon.addRepo();
-    const bare = await startOutsideTmux(join(repo.path, "sub"));
-    await startOutsideTmux(join(repo.path, "sub"), ["-p", "one shot"]);
-    await startUnderTmux(join(repo.path, "other"), "manual");
-
-    const sessions = await waitForSessions(repo, repo.path, 2);
-    const outside = sessions.find((session) => session.pid === bare);
-    const inside = sessions.find((session) => session.tmux !== null);
-    expect(outside?.harness).toBe("claude-code");
-    expect(outside?.tmux).toBeNull();
-    expect(inside?.tmux?.session).toBe("manual");
-    expect(inside?.tmux?.socket).toBe(daemon.launch?.socketName);
-  });
-
-  it("refuses a path that is not inside the repo", async () => {
-    const repo = await daemon.addRepo();
-    const response = await daemon.request(
-      `/repos/${repo.id}/sessions?path=${encodeURIComponent(daemon.paths.home)}`,
-    );
-    expect(response.status).toBe(400);
-    expect((await errorOf(response)).error.code).toBe("path-outside-repo");
-  });
-});
-
 describe("POST /repos/:id/adopt", () => {
   it("registers a session started outside agn, with no worktree and the branch it is on", async () => {
     const repo = await daemon.addRepo();
-    const pid = await startOutsideTmux(join(repo.path, "sub"));
-    await waitForSessions(repo, repo.path, 1);
+    const pid = await agents.outsideTmux(join(repo.path, "sub"));
+    await agents.waitForCount(repo, repo.path, 1);
 
     const task = await adopted(repo, { path: repo.path, pid });
     expect(task.origin).toBe("adopted");
@@ -156,8 +69,10 @@ describe("POST /repos/:id/adopt", () => {
       await readFile(join(agPaths(repo.path).tasksDir, `${task.id}.md`), "utf8"),
     );
     expect(note.spec).toBe("adopted from running session");
-    // A process agn already watches is not offered again.
-    expect(await sessionsUnder(repo, repo.path)).toHaveLength(0);
+    // A process agn already watches is not offered again; it is named as the task it became.
+    const listed = await agents.list(repo, repo.path);
+    expect(listed.status).toBe(409);
+    expect((await errorOf(listed)).error.message).toContain(task.id);
 
     const attach = await daemon.request(`/tasks/${task.id}/attach`);
     expect(attach.status).toBe(409);
@@ -166,8 +81,8 @@ describe("POST /repos/:id/adopt", () => {
 
   it("gives a tmux session for an agent adopted from under the test socket, and attach works", async () => {
     const repo = await daemon.addRepo();
-    await startUnderTmux(join(repo.path, "sub"), "manual");
-    const [session] = await waitForSessions(repo, repo.path, 1);
+    await agents.underTmux(join(repo.path, "sub"), "manual");
+    const [session] = await agents.waitForCount(repo, repo.path, 1);
     if (session === undefined) {
       throw new Error("expected the tmux session to be found");
     }
@@ -184,8 +99,8 @@ describe("POST /repos/:id/adopt", () => {
 
   it("adopts the session even when its note cannot be written, and says so in the log", async () => {
     const repo = await daemon.addRepo();
-    const pid = await startOutsideTmux(join(repo.path, "sub"));
-    await waitForSessions(repo, repo.path, 1);
+    const pid = await agents.outsideTmux(join(repo.path, "sub"));
+    await agents.waitForCount(repo, repo.path, 1);
     // A file where the notes directory belongs: the row is already written when this fails, so the
     // adopt has to stand.
     await mkdir(agPaths(repo.path).dir, { recursive: true });
@@ -198,18 +113,48 @@ describe("POST /repos/:id/adopt", () => {
 
   it("refuses a pid that is not one of the sessions it listed", async () => {
     const repo = await daemon.addRepo();
-    await startOutsideTmux(join(repo.path, "sub"));
-    await waitForSessions(repo, repo.path, 1);
+    await agents.outsideTmux(join(repo.path, "sub"));
+    await agents.waitForCount(repo, repo.path, 1);
 
     const response = await adopt(repo, { path: repo.path, pid: process.pid });
     expect(response.status).toBe(400);
     expect((await errorOf(response)).error.code).toBe("adopt-pid-not-found");
   });
 
+  it("names the task a session already belongs to, so a retry is not a detection failure", async () => {
+    const repo = await daemon.addRepo();
+    const pid = await agents.outsideTmux(join(repo.path, "sub"));
+    await agents.waitForCount(repo, repo.path, 1);
+    const task = await adopted(repo, { path: repo.path, pid });
+
+    const response = await adopt(repo, { path: repo.path, pid });
+
+    expect(response.status).toBe(409);
+    const body = await errorOf(response);
+    expect(body.error.code).toBe("adopt-already-adopted");
+    expect(body.error.message).toContain(task.id);
+    expect(daemon.ledger.tasks.list({ repoId: repo.id })).toHaveLength(1);
+  });
+
+  it("names the task that owns a pid detection cannot see, rather than calling it missing", async () => {
+    const repo = await daemon.addRepo();
+    const cwd = join(repo.path, "sub");
+    await mkdir(cwd, { recursive: true });
+    // Alive, and never a harness to the scan: the pid is only ever found through the ledger.
+    const task = seedAdopted(daemon, repo, process.pid, cwd);
+
+    const response = await adopt(repo, { path: repo.path, pid: process.pid });
+
+    expect(response.status).toBe(409);
+    const body = await errorOf(response);
+    expect(body.error.code).toBe("adopt-already-adopted");
+    expect(body.error.message).toContain(task.id);
+  });
+
   it("registers a pid once when two adopts of it arrive together", async () => {
     const repo = await daemon.addRepo();
-    const pid = await startOutsideTmux(join(repo.path, "sub"));
-    await waitForSessions(repo, repo.path, 1);
+    const pid = await agents.outsideTmux(join(repo.path, "sub"));
+    await agents.waitForCount(repo, repo.path, 1);
 
     // Both read the candidate list before either writes; only the transaction can separate them.
     const [first, second] = await Promise.all([
@@ -217,14 +162,14 @@ describe("POST /repos/:id/adopt", () => {
       adopt(repo, { path: repo.path, pid }),
     ]);
     const codes = [first.status, second.status].sort();
-    expect(codes).toEqual([201, 400]);
+    expect(codes).toEqual([201, 409]);
     expect(daemon.ledger.tasks.list({ repoId: repo.id })).toHaveLength(1);
   });
 
   it("stops an adopted task when the process it watches goes away", async () => {
     const repo = await daemon.addRepo();
-    const pid = await startOutsideTmux(join(repo.path, "sub"));
-    await waitForSessions(repo, repo.path, 1);
+    const pid = await agents.outsideTmux(join(repo.path, "sub"));
+    await agents.waitForCount(repo, repo.path, 1);
     const task = await adopted(repo, { path: repo.path, pid });
 
     process.kill(pid, "SIGKILL");
@@ -236,8 +181,8 @@ describe("POST /repos/:id/adopt", () => {
 
   it("closes an adopted task with a duration and no diff fields, since it has no branch of agn's", async () => {
     const repo = await daemon.addRepo();
-    const pid = await startOutsideTmux(join(repo.path, "sub"));
-    await waitForSessions(repo, repo.path, 1);
+    const pid = await agents.outsideTmux(join(repo.path, "sub"));
+    await agents.waitForCount(repo, repo.path, 1);
     const task = await adopted(repo, { path: repo.path, pid });
 
     process.kill(pid, "SIGKILL");
@@ -263,8 +208,8 @@ describe("POST /repos/:id/adopt", () => {
 
   it("holds a folder workspace the way a launched task does", async () => {
     const repo = await daemon.addRepo({ git: false });
-    const pid = await startOutsideTmux(join(repo.path, "sub"));
-    await waitForSessions(repo, repo.path, 1);
+    const pid = await agents.outsideTmux(join(repo.path, "sub"));
+    await agents.waitForCount(repo, repo.path, 1);
     const task = await adopted(repo, { path: repo.path, pid });
     expect(task.branch).toBeNull();
 
@@ -277,16 +222,3 @@ describe("POST /repos/:id/adopt", () => {
     expect((await errorOf(response)).error.code).toBe("folder-busy");
   });
 });
-
-/** Detection reads the process table, so a just-spawned agent takes a moment to turn up. */
-async function waitForSessions(
-  repo: Repo,
-  path: string,
-  count: number,
-): Promise<DetectedHarness[]> {
-  await waitFor(
-    `${count} session(s) under ${path}`,
-    async () => (await sessionsUnder(repo, path)).length === count,
-  );
-  return await sessionsUnder(repo, path);
-}

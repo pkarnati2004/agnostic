@@ -22,11 +22,15 @@
 
 **`agn adopt` lists several agents.** More than one agent is running under that path, and agn does not pick for you. Run it again with the pid from the first column: `agn adopt <path> --pid <n>`. If the pid you pass is no longer listed, the process has exited or is not an agent agn knows.
 
+**`agn adopt` says the session is already task <id>.** The agent running under that path is registered already, so there is nothing to adopt. `agn status <id>` shows it. A retry of an adopt whose reply was lost says this too, which is not the same as agn finding no agent there. agn answers from its own task records, so it names the task even in the moments the process scan does not list the agent.
+
 **`agn adopt` says the path is not inside the repo.** Adopt registers a session in a repo you have already added. Pass a path inside that repo, or `--repo <id or path>` to say which repo it belongs to.
 
 **A second `agn run` in a folder says "folder workspaces run one task at a time".** A folder workspace has one working tree, so agn runs one task in it at a time. Stop the running task (`agn stop <task>`), or run `git init` in the folder: from the next `agn run` on, tasks get their own worktrees and branches and run in parallel.
 
 **`agn handoff` says the branch "no longer exists".** The task you are handing off was cleaned with `--delete-branch`, so there are no commits for the next agent to continue from. Start the work again with `agn run "<prompt>"`. A task whose worktree was cleaned but whose branch was kept hands off normally.
+
+**`agn outcomes` or `agn clean` hangs for a while right after `agn stop`.** The stop answers early and the task's accounting runs behind it, including the repo's `test_command`. Both commands wait for that work rather than read a half-written row. Run `agn outcomes <task>` again later, or shorten `test_command` in `.ag/agnostic.yaml`.
 
 **`agn clean` says the task is still running.** Clean removes a task's worktree, so the agent has to be out of it first. `agn stop <task>`, then clean. The branch survives either way unless you pass `--delete-branch`.
 

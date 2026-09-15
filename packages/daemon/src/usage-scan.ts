@@ -1,7 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
 import type { Catalog } from "@agnostic/catalog";
-import { type Billing, parseProfileId, type Task } from "@agnostic/core";
+import { type Billing, type Profile, parseProfileId, type Task } from "@agnostic/core";
 import type { UsageInput } from "@agnostic/ledger";
 import { harnesses } from "@agnostic/registry";
 import {
@@ -67,7 +67,10 @@ async function run(
   }
   const tasks = deps.ledger.tasks.list();
   const owners = await sessionOwners(tasks);
-  const billing = await billingByTask(deps, tasks);
+  // One snapshot for the whole scan: asking per task re-probes every installed harness whenever
+  // one of them has rewritten its auth file, which is every few seconds while a session runs.
+  const { profiles } = await deps.detection.current();
+  const billing = billingByTask(profiles, tasks);
   // Read once per scan: a catalog that reloads mid-scan must not price two turns differently.
   const { catalog } = deps.catalog.current();
   let inserted = 0;
@@ -139,7 +142,10 @@ export async function billingForProfile(
   detection: ScanDeps["detection"],
   profileId: string,
 ): Promise<Billing | null> {
-  const { profiles } = await detection.current();
+  return billingIn((await detection.current()).profiles, profileId);
+}
+
+function billingIn(profiles: Profile[], profileId: string): Billing | null {
   const detected = profiles.find((profile) => profile.id === profileId);
   if (detected !== undefined) {
     return detected.billing;
@@ -152,10 +158,10 @@ export async function billingForProfile(
   }
 }
 
-async function billingByTask(deps: ScanDeps, tasks: Task[]): Promise<Map<string, Billing | null>> {
+function billingByTask(profiles: Profile[], tasks: Task[]): Map<string, Billing | null> {
   const billing = new Map<string, Billing | null>();
   for (const task of tasks) {
-    billing.set(task.id, await billingForProfile(deps.detection, task.profileId));
+    billing.set(task.id, billingIn(profiles, task.profileId));
   }
   return billing;
 }

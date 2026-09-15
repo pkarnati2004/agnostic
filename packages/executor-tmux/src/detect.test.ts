@@ -1,4 +1,13 @@
-import { chmod, copyFile, mkdir, mkdtemp, realpath, symlink } from "node:fs/promises";
+import {
+  chmod,
+  copyFile,
+  mkdir,
+  mkdtemp,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -91,6 +100,25 @@ describe("processName", () => {
     expect(processName(["node", "--version"])).toBe("node");
     expect(processName([])).toBeNull();
   });
+
+  it("skips the interpreter's own flags and the script's extension", () => {
+    const wrapped = parsePsOutput(
+      "2310 1 node --enable-source-maps /Users/dev/.codex/packages/standalone/0.5.0/bin/codex.js",
+    );
+    expect(processName(wrapped[0]?.args ?? [])).toBe("codex");
+    expect(processName(["/bin/sh", "-e", "/Users/dev/.local/bin/codex"])).toBe("codex");
+  });
+
+  it("skips the value of a flag that takes one", () => {
+    expect(processName(["node", "-r", "./shim.js", "/Users/dev/.codex/codex.js"])).toBe("codex");
+    expect(processName(["node", "--require", "./shim.js", "/Users/dev/codex.js"])).toBe("codex");
+    expect(processName(["node", "--require=./shim.js", "/Users/dev/codex.js"])).toBe("codex");
+  });
+
+  it("keeps the interpreter when the code is inline, not a script", () => {
+    expect(processName(["node", "-e", "console.log('codex.js')"])).toBe("node");
+    expect(processName(["/bin/sh", "-c", "/Users/dev/.local/bin/codex --model gpt-5"])).toBe("sh");
+  });
 });
 
 describe("matchesName", () => {
@@ -151,6 +179,31 @@ describe("detect", () => {
     await symlink(root, link);
     const found = await pidsUnder(link, 2);
     expect(found.map((row) => row.harness).sort()).toEqual(["claude-code", "codex"]);
+  });
+
+  it("finds a harness its installer put behind a node wrapper", async () => {
+    // The shape a standalone install leaves in `ps`: an interpreter, its own flags, then a script
+    // whose file name carries an extension the registry's process names do not.
+    const install = await mkdtemp(join(tmpdir(), "agn-detect-standalone-"));
+    const bin = join(install, "packages", "standalone", "0.5.0", "bin");
+    await mkdir(bin, { recursive: true });
+    const script = join(bin, "codex.js");
+    await writeFile(script, "setInterval(() => {}, 1_000);\n", "utf8");
+    const cwd = join(install, "repo");
+    await mkdir(cwd);
+    const wrapped = spawn(process.execPath, ["--enable-source-maps", script], {
+      cwd,
+      env: tmux.env,
+      inheritEnv: false,
+    });
+    try {
+      const [found] = await pidsUnder(cwd);
+      expect(found).toMatchObject({ harness: "codex", pid: wrapped.pid, cwd: await realpath(cwd) });
+    } finally {
+      wrapped.kill("SIGKILL");
+      await Promise.allSettled([wrapped]);
+      await rm(install, { recursive: true, force: true });
+    }
   });
 
   it("finds nothing when no matcher names a running program", async () => {

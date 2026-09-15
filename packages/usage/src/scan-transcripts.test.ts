@@ -1,11 +1,61 @@
-import { chmod, cp, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readdir, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type ScanMemo, scanTranscripts, type TranscriptRoot } from "./scan-transcripts.js";
 
 const FIXTURES = fileURLToPath(new URL("../../../tests/fixtures/transcripts/", import.meta.url));
+
+/** Every `.jsonl` under the fixture home, for the tests that make them unreadable. */
+async function transcriptFiles(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true, recursive: true });
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl"))
+    .map((entry) => join(entry.parentPath, entry.name));
+}
+
+/** More transcripts than the scanner reads between two yields, spread over three projects. */
+const MANY = 45;
+
+function recordsFor(session: string): string {
+  const lines = [0, 1].map((n) =>
+    JSON.stringify({
+      type: "assistant",
+      sessionId: session,
+      timestamp: `2026-09-11T14:0${n}:00.000Z`,
+      cwd: "/Users/me/code/many",
+      requestId: `req_${session}_${n}`,
+      uuid: `u_${session}_${n}`,
+      message: {
+        id: `msg_${session}_${n}`,
+        role: "assistant",
+        model: "claude-fable-5-1",
+        usage: { input_tokens: 10, output_tokens: 5 },
+      },
+    }),
+  );
+  return `${lines.join("\n")}\n`;
+}
+
+/** The two refs the file for `session` holds, in the order its lines are written. */
+function refsFor(session: string): string[] {
+  return [0, 1].map((n) => `claude-code:msg_${session}_${n}:req_${session}_${n}`);
+}
+
+/** The transcripts, sorted by path: what a scan that never yielded would have read in order. */
+async function manyTranscripts(dir: string): Promise<string[]> {
+  const paths: string[] = [];
+  for (let n = 0; n < MANY; n += 1) {
+    const project = join(dir, `-Users-me-code-p${n % 3}`);
+    await mkdir(project, { recursive: true });
+    const session = `s-${String(n).padStart(2, "0")}`;
+    const path = join(project, `${session}.jsonl`);
+    await writeFile(path, recordsFor(session), "utf8");
+    paths.push(path);
+  }
+  return paths.sort();
+}
 
 describe("scanTranscripts", () => {
   let home = "";
@@ -64,11 +114,25 @@ describe("scanTranscripts", () => {
   });
 
   it("opens nothing the second time when nothing has changed", async () => {
-    await scanTranscripts({ roots, memo, modifiedSince: null });
+    const first = await scanTranscripts({ roots, memo, modifiedSince: null });
+    // Unreadable, so a rescan that opened any of them would report a problem for it.
+    for (const file of await transcriptFiles(home)) {
+      await chmod(file, 0o000);
+    }
 
     const again = await scanTranscripts({ roots, memo, modifiedSince: null });
 
+    expect(first.parsedFiles).toBeGreaterThan(0);
     expect(again).toMatchObject({ parsedFiles: 0, turns: [], problems: [] });
+  });
+
+  it("keeps skipping unchanged files when the floor has moved past them", async () => {
+    await scanTranscripts({ roots, memo, modifiedSince: null });
+
+    // What the daemon passes on every later scan: a floor computed from the time of that scan.
+    const again = await scanTranscripts({ roots, memo, modifiedSince: Date.now() });
+
+    expect(again.parsedFiles).toBe(0);
   });
 
   it("reopens only the file that changed", async () => {
@@ -125,5 +189,39 @@ describe("scanTranscripts", () => {
     });
 
     expect(turns).toEqual([]);
+  });
+
+  describe("over a tree bigger than one yield", () => {
+    let big: TranscriptRoot[] = [];
+    let expected: string[] = [];
+
+    beforeEach(async () => {
+      const dir = join(home, "many");
+      const paths = await manyTranscripts(dir);
+      big = [{ harness: "claude-code", dir }];
+      expected = paths.flatMap((path) => refsFor(basename(path, ".jsonl")));
+    });
+
+    it("reads every file, in the order and with the refs an unyielded scan would give", async () => {
+      const { turns, parsedFiles, problems } = await scanTranscripts({
+        roots: big,
+        memo,
+        modifiedSince: null,
+      });
+
+      expect({ parsedFiles, problems }).toEqual({ parsedFiles: MANY, problems: [] });
+      expect(turns.map((turn) => turn.ref)).toEqual(expected);
+    });
+
+    it("opens nothing on a rescan, and repeats the same refs when the memo is empty", async () => {
+      await scanTranscripts({ roots: big, memo, modifiedSince: null });
+
+      const again = await scanTranscripts({ roots: big, memo, modifiedSince: null });
+      // The ledger dedupes on the ref, so what makes a rescan safe is that the refs do not move.
+      const fresh = await scanTranscripts({ roots: big, memo: new Map(), modifiedSince: null });
+
+      expect(again).toMatchObject({ parsedFiles: 0, turns: [] });
+      expect(fresh.turns.map((turn) => turn.ref)).toEqual(expected);
+    });
   });
 });

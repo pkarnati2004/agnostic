@@ -1,6 +1,8 @@
+import { stat } from "node:fs/promises";
 import {
   type ExecutorProvider,
   isProcessAlive,
+  type Repo,
   type SessionEvent,
   sessionHandle,
   type Task,
@@ -15,8 +17,9 @@ type LifecycleDeps = {
   executor: ExecutorProvider;
   log: Logger;
   /**
-   * Runs once a task has reached a terminal status and its harness is gone, before the caller is
-   * told it has: the test command at close needs the worktree to itself.
+   * Runs once a task has reached a terminal status and its harness is gone: the usage scan and
+   * the test command at close both need the worktree and the last transcript line to be final.
+   * It runs in the background, because it can take tens of seconds (ADR 021); `settled` waits.
    */
   afterClose?: (task: Task) => Promise<void>;
 };
@@ -27,6 +30,12 @@ export type TaskLifecycle = {
   stop(task: Task): Promise<Task>;
   reconcile(task: Task): Promise<Task>;
   reconcileAll(): Promise<void>;
+  /** Resolves when the close work for a task is done, at once when there is none in flight. */
+  settled(taskId: string): Promise<void>;
+  /** Waits for every close still running, so nothing writes through a ledger that has closed. */
+  drain(): Promise<void>;
+  /** Runs once at start; see `failQueued` below for why a queued row there is nobody's. */
+  failQueued(): Promise<void>;
 };
 
 const LIVE: TaskStatus[] = ["running", "waiting"];
@@ -39,13 +48,28 @@ const TERMINAL: TaskStatus[] = ["done", "failed", "stopped"];
  */
 export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
   const { ledger, executor, log } = deps;
+  const closing = new Map<string, Promise<void>>();
 
-  // The transition stands whatever this does: an outcome is worth recording, not worth failing over.
-  const closed = async (task: Task): Promise<Task> => {
-    await deps.afterClose?.(task).catch((cause: unknown) => {
-      log.error("outcome not recorded", { taskId: task.id, message: reason(cause) });
-    });
-    return task;
+  /**
+   * The status transition is what the caller asked for and it is already written; the usage scan
+   * and the outcome row that follow it can take tens of seconds on a large transcript tree, and
+   * nothing waits on them but `settled`. The transition stands whatever they do.
+   */
+  const close = (task: Task): void => {
+    if (deps.afterClose === undefined) {
+      return;
+    }
+    const work: Promise<void> = deps
+      .afterClose(task)
+      .catch((cause: unknown) => {
+        log.error("outcome not recorded", { taskId: task.id, message: reason(cause) });
+      })
+      .finally(() => {
+        if (closing.get(task.id) === work) {
+          closing.delete(task.id);
+        }
+      });
+    closing.set(task.id, work);
   };
 
   const settle = async (task: Task, to: TaskStatus, defer = false): Promise<Task> => {
@@ -61,7 +85,23 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
       await syncTaskNote(repo.path, updated, log);
     }
     // `stop` defers: the harness is still in the worktree until the executor has killed it.
-    return defer ? updated : await closed(updated);
+    if (!defer) {
+      close(updated);
+    }
+    return updated;
+  };
+
+  /** Recorded in the ledger, so a verdict can tell a worktree agn removed from one deleted by hand. */
+  const release = async (task: Task, repo: Repo): Promise<void> => {
+    if (
+      task.worktreePath === null ||
+      repo.kind === "folder" ||
+      !(await isThere(task.worktreePath))
+    ) {
+      return;
+    }
+    await executor.clean({ task, repo, deleteBranch: false });
+    ledger.tasks.clean(task.id, false);
   };
 
   const reconcile = async (task: Task): Promise<Task> => {
@@ -101,10 +141,44 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
       if (handle !== null) {
         await executor.stop(handle);
       }
-      return await closed(stopped);
+      close(stopped);
+      return stopped;
     },
 
     reconcile,
+
+    settled: (taskId) => closing.get(taskId) ?? Promise.resolve(),
+
+    drain: async () => {
+      // A close that starts another one is not a case here, but a loop costs one comparison.
+      while (closing.size > 0) {
+        await Promise.all([...closing.values()]);
+      }
+    },
+
+    /**
+     * A queued row exists only inside the call that is launching it, so one found at start belongs
+     * to a daemon that died mid-launch: nothing will ever start it, and the worktree it reserved
+     * is nobody's. The branch stays, the way `agn clean` leaves it.
+     *
+     * The ledger is per AGNOSTIC_HOME, so the sweep can only ever see this daemon's queued rows,
+     * never a sibling's. The worktree is removed with force because no agent ever ran in it: the
+     * setup command's output is the only thing lost, and running the command again reproduces it.
+     */
+    async failQueued() {
+      for (const task of ledger.tasks.list({ status: ["queued"] })) {
+        log.warn("queued task failed: the daemon launching it did not finish", { taskId: task.id });
+        const failed = ledger.tasks.setStatus(task.id, "failed");
+        const repo = ledger.repos.get(task.repoId);
+        if (repo === null) {
+          continue;
+        }
+        await syncTaskNote(repo.path, failed, log);
+        await release(failed, repo).catch((cause: unknown) => {
+          log.error("worktree not removed", { taskId: task.id, message: reason(cause) });
+        });
+      }
+    },
 
     async reconcileAll() {
       for (const task of ledger.tasks.list({ status: LIVE })) {
@@ -138,6 +212,13 @@ function statusFor(exitCode: number | null): TaskStatus {
     return "stopped";
   }
   return exitCode === 0 ? "done" : "failed";
+}
+
+function isThere(path: string): Promise<boolean> {
+  return stat(path).then(
+    (stats) => stats.isDirectory(),
+    () => false,
+  );
 }
 
 function reason(cause: unknown): string {

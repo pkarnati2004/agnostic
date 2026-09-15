@@ -4,8 +4,31 @@ import type { DetectedHarness, ProcessMatcher } from "@agnostic/core";
 import { type ProcessRow, readCwds } from "./process-table.js";
 import type { TmuxClient } from "./tmux-client.js";
 
+/**
+ * Flags an interpreter reads before the script: `value` ones take the next token, so it is not the
+ * script, and `inline` ones mean the code itself is next and there is no script at all. Which is
+ * which depends on the interpreter - `-e` is node's eval but sh's errexit.
+ */
+type Flags = { value: string[]; inline: string[] };
+const JS: Flags = {
+  value: ["-r", "--require", "--loader", "--import", "--experimental-loader"],
+  inline: ["-e", "--eval", "-p", "--print"],
+};
+const DASH_C: Flags = { value: [], inline: ["-c"] };
+
 // A harness installed as a script runs under its interpreter, so the name is the script's.
-const INTERPRETERS = new Set(["node", "bun", "deno", "python", "python3", "sh", "bash", "zsh"]);
+const INTERPRETERS = new Map<string, Flags>([
+  ["node", JS],
+  ["bun", JS],
+  ["deno", JS],
+  ["python", DASH_C],
+  ["python3", DASH_C],
+  ["sh", DASH_C],
+  ["bash", DASH_C],
+  ["zsh", DASH_C],
+]);
+// What a script is called, not what its file is called: `codex.js` under node is codex running.
+const SCRIPT_SUFFIXES = [".js", ".mjs", ".cjs", ".ts", ".py", ".sh"];
 const MAX_PARENT_WALK = 20;
 
 export function processName(args: string[]): string | null {
@@ -14,11 +37,39 @@ export function processName(args: string[]): string | null {
     return null;
   }
   const name = basename(first);
-  if (!INTERPRETERS.has(name)) {
+  const flags = INTERPRETERS.get(name);
+  if (flags === undefined) {
     return name;
   }
-  const second = args[1];
-  return second === undefined || second.startsWith("-") ? name : basename(second);
+  const script = scriptArg(args.slice(1), flags);
+  return script === null ? name : scriptName(script);
+}
+
+/** `#!/usr/bin/env -S node --enable-source-maps` and `#!/bin/sh -e` put flags before the script. */
+function scriptArg(args: string[], flags: Flags): string | null {
+  let index = 0;
+  while (index < args.length) {
+    const arg = args[index] ?? "";
+    index += 1;
+    if (!arg.startsWith("-")) {
+      return arg;
+    }
+    const flag = arg.split("=")[0] ?? arg;
+    if (flags.inline.includes(flag)) {
+      return null;
+    }
+    // `--require=./shim.js` carries its own value; `--require ./shim.js` swallows the next token.
+    if (flags.value.includes(flag) && !arg.includes("=")) {
+      index += 1;
+    }
+  }
+  return null;
+}
+
+function scriptName(path: string): string {
+  const name = basename(path);
+  const suffix = SCRIPT_SUFFIXES.find((ending) => name.endsWith(ending));
+  return suffix === undefined ? name : name.slice(0, -suffix.length);
 }
 
 /** A registry name ending in `-` is a prefix: `codex-` matches the `codex-aarch64` builds. */

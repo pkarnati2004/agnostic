@@ -1,4 +1,10 @@
-import type { AdoptRequest, DetectedHarness, RepoListRow, Task } from "@agnostic/core";
+import {
+  type AdoptRequest,
+  DaemonApiError,
+  type DetectedHarness,
+  type RepoListRow,
+  type Task,
+} from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { runMain } from "../program.js";
 import { createTestContext } from "../test-context.js";
@@ -71,6 +77,31 @@ describe("agn adopt", () => {
     expect(test.err).toEqual(["agn: no coding agent is running under /work/api"]);
     expect(test.adopted).toEqual([]);
     expect(test.ctx.exitCode).toBe(1);
+  });
+
+  it("prints the daemon's answer when the session under the path is already a task", async () => {
+    const test = createTestContext({
+      cwd: "/work",
+      client: {
+        listRepos: () => Promise.resolve({ repos: [repo] }),
+        listSessions: () =>
+          Promise.reject(
+            new DaemonApiError(`task ${task.id} is already running under /work/api/sub`, {
+              code: "adopt-already-adopted",
+              hint: `Run \`agn status ${task.id}\` to see it.`,
+              status: 409,
+            }),
+          ),
+      },
+    });
+
+    const code = await runMain(["node", "agn", "adopt", "api"], test.ctx);
+
+    expect(code).toBe(1);
+    expect(test.err).toEqual([
+      `agn: task ${task.id} is already running under /work/api/sub`,
+      `  hint: Run \`agn status ${task.id}\` to see it.`,
+    ]);
   });
 
   it("lists the candidates and asks for --pid when there are several", async () => {

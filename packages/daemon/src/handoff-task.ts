@@ -33,6 +33,9 @@ export async function handoffTask(
   parent: Task,
   req: HandoffTaskRequest,
 ): Promise<HandoffTaskResponse> {
+  // A parent stopped a moment ago may still be closing, and that work reads its worktree and
+  // writes its outcome row; the changes this hands to the child are read after it (ADR 021).
+  await ctx.lifecycle.settled(parent.id);
   const repo = resolveRepoId(ctx.ledger, parent.repoId);
   const profile = await resolveProfile(ctx, repo, { profile: req.profile });
   const config = await readRepoConfig(repo.path);

@@ -1,5 +1,6 @@
 import { join } from "node:path";
-import { type Repo, run } from "@agnostic/core";
+import type { OutcomeResponse, Repo } from "@agnostic/core";
+import { run } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
 import {
@@ -78,6 +79,28 @@ describe("the outcome of a task that closes", () => {
     const outcome = await closedOutcome(daemon, task, "stopped");
     expect(outcome.testsBefore).toBe(false);
     expect(outcome.testsAfter).toBe(true);
+  });
+
+  it("answers a stop before the close work, and the outcome request waits for it", async () => {
+    // The close work - the usage scan and then this command - takes seconds; the stop must not.
+    const repo = await repoWith({ testCommand: "sleep 2" });
+    const task = await startTask(daemon, repo, { skipTests: true });
+    await waitFor("the fake agent to start", async () =>
+      ((await daemon.launch?.readLog()) ?? "").includes("ready cwd="),
+    );
+
+    const started = Date.now();
+    const response = await daemon.request(`/tasks/${task.id}/stop`, { method: "POST" });
+    expect(response.status).toBe(200);
+    expect(Date.now() - started).toBeLessThan(1_500);
+    expect(daemon.ledger.outcomes.get(task.id)).toBeNull();
+
+    // `agn outcomes` right after `agn stop`: the row is still being written, so this waits for it.
+    const outcome = await daemon.request(`/tasks/${task.id}/outcome`);
+    const body = (await outcome.json()) as OutcomeResponse;
+    expect(body.task.status).toBe("stopped");
+    expect(body.outcome?.testsAfter).toBe(true);
+    expect(body.outcome?.durationSec).toBeGreaterThan(0);
   });
 
   it("reuses the result of a test command another task already ran on the same commit", async () => {

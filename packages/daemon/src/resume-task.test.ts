@@ -11,6 +11,7 @@ import {
 } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
+import { repoWithConfig, startTask } from "./test-task-run.js";
 
 const PROFILE = "claude-code:default:native";
 
@@ -157,6 +158,20 @@ describe("POST /tasks/:id/resume", () => {
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error: { code: string } };
     expect(body.error.code).toBe("path-not-found");
+  });
+
+  it("waits for the close work of the stop before it starts the harness again", async () => {
+    // The close work runs this command in the worktree, and the resume launches an agent into the
+    // same directory: the stop answers first, the resume behind it does not.
+    const repo = await repoWithConfig(daemon, { testCommand: "sleep 2" });
+    const task = await startTask(daemon, repo, { skipTests: true });
+    expect((await post(`/tasks/${task.id}/stop`)).status).toBe(200);
+    expect(daemon.ledger.outcomes.get(task.id)).toBeNull();
+
+    const resumed = await resume(task);
+
+    expect(resumed.task.status).toBe("running");
+    expect(daemon.ledger.outcomes.get(task.id)?.durationSec).toBeGreaterThan(0);
   });
 
   it("still reaches a terminal status once a resumed session exits on its own", async () => {
