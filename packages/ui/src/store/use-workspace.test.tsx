@@ -1,8 +1,12 @@
+// @vitest-environment happy-dom
 import type { Event, RepoListRow, Task } from "@agnostic/core";
+import { act } from "react";
 import { describe, expect, it } from "vitest";
 import type { WorkspaceClient } from "../api/client";
 import { ApiError } from "../api/error";
-import { followWorkspace } from "./use-workspace";
+import { render } from "../test/render";
+import { noticeLine } from "./task-notices";
+import { followWorkspace, useWorkspace } from "./use-workspace";
 import type { WorkspaceAction } from "./workspace-state";
 
 const REPO: RepoListRow = {
@@ -102,5 +106,55 @@ describe("followWorkspace", () => {
     const { client } = stubClient({ repos: 7, tasks: 7 }, [replayed]);
     const actions = await run(client);
     expect(actions[1]).toEqual({ type: "event", event: replayed });
+  });
+});
+
+const BUSY = new ApiError("the session is already gone", {
+  code: "session-missing",
+  hint: "Reload the workspace.",
+  status: 409,
+});
+
+/** One task's header, wired the way the page wires Stop: the answer shows where the click was. */
+function Header({ client, stop }: { client: WorkspaceClient; stop: () => Promise<Task> }) {
+  const { state, notices, act: onStop } = useWorkspace(client);
+  const failure = notices[TASK.id];
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => void onStop({ taskId: TASK.id, action: "stop", host: "header" }, stop)}
+      >
+        {state.tasks[TASK.id]?.status ?? "unknown"}
+      </button>
+      {failure === undefined ? null : <p>{`${failure.host}: ${noticeLine(failure, TASK)}`}</p>}
+    </div>
+  );
+}
+
+async function clickStop(container: HTMLElement): Promise<void> {
+  await act(async () => {
+    container.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
+describe("act", () => {
+  it("shows the refusal under the host that asked, and clears it when the next call answers", async () => {
+    const stopped: Task = { ...TASK, status: "stopped" };
+    let refuse = true;
+    const stop = () => (refuse ? Promise.reject(BUSY) : Promise.resolve(stopped));
+    const { client } = stubClient({ repos: 3, tasks: 3 });
+    const { container, unmount } = render(<Header client={client} stop={stop} />);
+
+    await clickStop(container);
+    expect(container.textContent).toContain("header: Stop failed for Fix the parser");
+    expect(container.textContent).toContain("the session is already gone");
+
+    refuse = false;
+    await clickStop(container);
+    expect(container.textContent).not.toContain("Stop failed");
+    // The task the call answered with is applied too, so the header reads the new status.
+    expect(container.querySelector("button")?.textContent).toBe("stopped");
+    unmount();
   });
 });

@@ -18,16 +18,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/select";
+import type { TaskNotice } from "../store/task-notices";
+import { TaskNoticeLine } from "./task-notice-line";
 
 type HandoffDialogProps = {
   task: Task;
   profiles: Profile[];
-  /** Resolves when the handoff has been asked for; a failure lands in the notice, not here. */
-  onSubmit: (body: HandoffTaskRequest) => Promise<void>;
+  /** This task's latest failure, drawn in the dialog when that is where it was asked for. */
+  notice: TaskNotice | null;
+  /** False when the daemon refused: the dialog stays open where the profile can be changed. */
+  onSubmit: (body: HandoffTaskRequest) => Promise<boolean>;
 };
 
 /** Hands the task to another profile. The child starts from the note; the parent is stopped. */
-export function HandoffDialog({ task, profiles, onSubmit }: HandoffDialogProps) {
+export function HandoffDialog({ task, profiles, notice, onSubmit }: HandoffDialogProps) {
   const [open, setOpen] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -40,12 +44,17 @@ export function HandoffDialog({ task, profiles, onSubmit }: HandoffDialogProps) 
     }
     const trimmed = note.trim();
     setBusy(true);
-    void onSubmit({ profile: profileId, ...(trimmed === "" ? {} : { note: trimmed }) }).then(() => {
-      setBusy(false);
-      setOpen(false);
-      setProfileId(null);
-      setNote("");
-    });
+    void onSubmit({ profile: profileId, ...(trimmed === "" ? {} : { note: trimmed }) }).then(
+      (sent) => {
+        setBusy(false);
+        if (!sent) {
+          return;
+        }
+        setOpen(false);
+        setProfileId(null);
+        setNote("");
+      },
+    );
   };
 
   return (
@@ -92,6 +101,9 @@ export function HandoffDialog({ task, profiles, onSubmit }: HandoffDialogProps) 
             className="rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           />
         </label>
+        {notice !== null && notice.host === "dialog" && (
+          <TaskNoticeLine notice={notice} task={task} />
+        )}
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="ghost" size="sm">

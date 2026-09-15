@@ -1,4 +1,10 @@
-import { agnosticPaths, type RepoListRow, type Task, type TaskStatus } from "@agnostic/core";
+import {
+  agnosticPaths,
+  type RepoListRow,
+  type Task,
+  type TaskListRow,
+  type TaskStatus,
+} from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { createTestContext } from "../test-context.js";
 import { statusCommand } from "./status.js";
@@ -40,7 +46,7 @@ function cli(tasks: Task[], cwd = "/work/api") {
     paths: PATHS,
     client: {
       listRepos: () => Promise.resolve({ repos, cursor: 0 }),
-      listAllTasks: () => Promise.resolve({ tasks, cursor: 0 }),
+      listAllTasks: () => Promise.resolve({ tasks: tasks.map(listedRow), cursor: 0 }),
       getTask: (id) =>
         Promise.resolve({ task: tasks.find((row) => row.id === id) ?? task(id, "done") }),
     },
@@ -116,3 +122,8 @@ describe("agn status", () => {
     expect(printed).toContain("origin:   agn");
   });
 });
+
+/** The list route answers with rows, not bare tasks: the worktree of a seeded task is there. */
+function listedRow(task: Task): TaskListRow {
+  return { ...task, worktreePresent: task.worktreePath !== null };
+}

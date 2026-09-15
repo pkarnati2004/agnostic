@@ -1,4 +1,3 @@
-import { stat } from "node:fs/promises";
 import {
   type AttachResponse,
   CleanTaskRequestSchema,
@@ -14,6 +13,7 @@ import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { DaemonError, requestInvalid } from "../error.js";
 import { handoffTask } from "../handoff-task.js";
+import { isDirectory } from "../is-directory.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
 import { resumeTask } from "../resume-task.js";
 import { attachableHandle } from "../task-session.js";
@@ -106,13 +106,5 @@ async function body(request: Request): Promise<unknown> {
   } catch {
     // Not json at all: the schema below says so in the same words as every other bad request.
     return null;
-  }
-}
-
-async function isDirectory(path: string): Promise<boolean> {
-  try {
-    return (await stat(path)).isDirectory();
-  } catch {
-    return false;
   }
 }

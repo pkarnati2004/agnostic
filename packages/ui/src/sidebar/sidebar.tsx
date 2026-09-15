@@ -1,8 +1,9 @@
 import { PanelLeft, Plus } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Button } from "../components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
-import type { SidebarGroups } from "./group-tasks";
+import type { RepoGroup, SidebarGroups } from "./group-tasks";
+import { HistorySection } from "./history-section";
 import { TaskRow } from "./task-row";
 
 type SidebarProps = {
@@ -23,6 +24,16 @@ export function Sidebar({
   onNewTask,
   onToggle,
 }: SidebarProps) {
+  // Collapsed on every load: History is the part of a repo the page is not asking you to look at.
+  const [openHistory, setOpenHistory] = useState<ReadonlySet<string>>(new Set());
+  const toggleHistory = (repoId: string) =>
+    setOpenHistory((open) => {
+      const next = new Set(open);
+      if (!next.delete(repoId)) {
+        next.add(repoId);
+      }
+      return next;
+    });
   if (collapsed) {
     return (
       <aside className="flex flex-col items-center border-sidebar-border border-r bg-sidebar py-3">
@@ -58,24 +69,54 @@ export function Sidebar({
           </Section>
         )}
         {groups.repos.map((group) => (
-          <Section key={group.repo.id} title={group.repo.name}>
-            {group.tasks.length === 0 ? (
-              <p className="px-2 py-1.5 text-muted-foreground text-xs">No tasks yet.</p>
-            ) : (
-              group.tasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  repoName={null}
-                  selected={task.id === selectedId}
-                  onSelect={onSelect}
-                />
-              ))
-            )}
-          </Section>
+          <RepoSection
+            key={group.repo.id}
+            group={group}
+            selectedId={selectedId}
+            expanded={openHistory.has(group.repo.id)}
+            onToggle={toggleHistory}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     </aside>
+  );
+}
+
+type RepoSectionProps = {
+  group: RepoGroup;
+  selectedId: string | null;
+  expanded: boolean;
+  onToggle: (repoId: string) => void;
+  onSelect: (id: string) => void;
+};
+
+/** One repo: its live tasks, then whatever it has already finished and cleaned up after. */
+function RepoSection({ group, selectedId, expanded, onToggle, onSelect }: RepoSectionProps) {
+  const empty = group.tasks.length === 0 && group.history.length === 0;
+  // A section nobody opened still shows its rows while the task in front is one of them.
+  const showing = expanded || group.history.some((task) => task.id === selectedId);
+  return (
+    <Section title={group.repo.name}>
+      {empty && <p className="px-2 py-1.5 text-muted-foreground text-xs">No tasks yet.</p>}
+      {group.tasks.map((task) => (
+        <TaskRow
+          key={task.id}
+          task={task}
+          repoName={null}
+          selected={task.id === selectedId}
+          onSelect={onSelect}
+        />
+      ))}
+      <HistorySection
+        repoId={group.repo.id}
+        tasks={group.history}
+        selectedId={selectedId}
+        expanded={showing}
+        onToggle={onToggle}
+        onSelect={onSelect}
+      />
+    </Section>
   );
 }
 

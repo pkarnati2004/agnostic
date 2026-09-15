@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   newId,
   type Task,
@@ -25,7 +28,7 @@ beforeEach(async () => {
 
 afterEach(() => daemon.close());
 
-function seedTask(id: string, status: TaskStatus): Task {
+function seedTask(id: string, status: TaskStatus, worktreePath: string | null = null): Task {
   const now = new Date().toISOString();
   return daemon.ledger.tasks.insert({
     id,
@@ -33,7 +36,7 @@ function seedTask(id: string, status: TaskStatus): Task {
     title: "ship the thing",
     prompt: "a prompt that must never reach the log",
     profileId: "claude-code:default:native",
-    worktreePath: null,
+    worktreePath,
     branch: null,
     status,
     origin: "agn",
@@ -186,5 +189,47 @@ describe("GET /tasks/:id", () => {
     const failure = await body<{ error: { code: string; hint: string } }>(response);
     expect(failure.error.code).toBe("task-not-found");
     expect(failure.error.hint).toBeTruthy();
+  });
+});
+
+describe("worktreePresent", () => {
+  let worktrees: string;
+
+  beforeEach(async () => {
+    worktrees = await mkdtemp(join(tmpdir(), "agn-tasks-"));
+  });
+
+  afterEach(() => rm(worktrees, { recursive: true, force: true }));
+
+  async function listed(path: string): Promise<Record<string, boolean>> {
+    const response = await daemon.request(path);
+    const { tasks } = await body<TaskListResponse>(response);
+    return Object.fromEntries(tasks.map((task) => [task.id, task.worktreePresent]));
+  }
+
+  it("says which tasks still have the worktree they ran in", async () => {
+    const there = join(worktrees, "mnpqrstuvw");
+    await mkdir(there);
+    seedTask("mnpqrstuvw", "done", there);
+    seedTask("zyxwvutsrq", "done", join(worktrees, "gone"));
+    seedTask("abcdefghjk", "stopped");
+    expect(await listed("/tasks")).toEqual({
+      mnpqrstuvw: true,
+      zyxwvutsrq: false,
+      abcdefghjk: false,
+    });
+    expect(await listed(`/repos/${repoId}/tasks`)).toEqual({
+      mnpqrstuvw: true,
+      zyxwvutsrq: false,
+      abcdefghjk: false,
+    });
+  });
+
+  it("says true again once the worktree is back, which is what a resume does", async () => {
+    const path = join(worktrees, "mnpqrstuvw");
+    seedTask("mnpqrstuvw", "done", path);
+    expect(await listed("/tasks")).toEqual({ mnpqrstuvw: false });
+    await mkdir(path);
+    expect(await listed("/tasks")).toEqual({ mnpqrstuvw: true });
   });
 });

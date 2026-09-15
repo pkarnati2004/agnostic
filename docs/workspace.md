@@ -58,6 +58,25 @@ which branch it came from. If the daemon restarts, the tab reconnects by itself:
 it was gone. A session that was adopted from outside tmux cannot be attached to, and the tab says
 that instead.
 
+## History
+
+A finished task whose worktree is gone moves into a History section under its repo, below the
+repo's other tasks. The heading counts them: "History (3)". History is collapsed when the page
+loads; click the heading to list them, newest first. A row there opens in a tab like any other.
+The section holding the task you have open shows its rows without being clicked.
+
+Tasks reach History when `agn clean` removes their worktree, when the sweep does, and when you
+delete the directory yourself. A task that ran in a folder workspace never had a worktree of agn's,
+so it stays under its repo.
+
+## When an action fails
+
+Stop, Resume and Hand off answer where you asked for them: under the task header, on the terminal's
+overlay, or in the handoff dialog, which stays open so you can change the profile and try again.
+The line names the task and repeats the daemon's message and hint. It clears itself after a few
+seconds, or sooner if the next action on that task works. The only message across the whole page
+is the one for a workspace that could not load.
+
 ## The usage bar
 
 Along the bottom there is one cell per plan: tokens and cost for today and for this week, and for

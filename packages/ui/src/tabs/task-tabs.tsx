@@ -1,10 +1,9 @@
 import type { Task } from "@agnostic/core";
 import type { WorkspaceClient } from "../api/client";
+import type { TaskNotices } from "../store/task-notices";
 import { TerminalView } from "../terminal/terminal-view";
+import type { ResumeNotice } from "./resume-notice";
 import type { TabsState } from "./tabs-state";
-
-/** What a resume had to say, which the task's own tab shows above its pane (ADR 014, ADR 031). */
-export type ResumeNotice = { taskId: string; notice: string | null };
 
 type TaskTabsProps = {
   state: TabsState;
@@ -14,11 +13,14 @@ type TaskTabsProps = {
   client: WorkspaceClient;
   /** The last resume's answer, for whichever tab it was; only that tab shows it. */
   resumed: ResumeNotice | null;
+  /** Keyed by task: every tab is mounted, so each one draws only its own failure. */
+  notices: TaskNotices;
   onResume: (taskId: string) => Promise<void>;
 };
 
 /** Every open tab stays mounted: a hidden one keeps its scrollback and its tmux client. */
-export function TaskTabs({ state, tasks, token, client, resumed, onResume }: TaskTabsProps) {
+export function TaskTabs(props: TaskTabsProps) {
+  const { state, tasks, token, client, resumed, notices, onResume } = props;
   if (tasks.length === 0) {
     return null;
   }
@@ -32,6 +34,7 @@ export function TaskTabs({ state, tasks, token, client, resumed, onResume }: Tas
           client={client}
           active={task.id === state.active}
           resumeNotice={resumed?.taskId === task.id ? resumed.notice : null}
+          failure={notices[task.id] ?? null}
           onResume={() => onResume(task.id)}
         />
       ))}

@@ -1,4 +1,12 @@
-import type { Event, EventKind, Repo, RepoListRow, Task } from "@agnostic/core";
+import type {
+  Event,
+  EventKind,
+  Repo,
+  RepoListRow,
+  Task,
+  TaskListRow,
+  TaskStatus,
+} from "@agnostic/core";
 
 /**
  * How many `usage.recorded` events have landed, in total and per task. The figures themselves come
@@ -9,7 +17,7 @@ export type UsageStamp = { plans: number; byTask: Record<string, number> };
 /** Everything the shell draws. The ledger is the truth; this is the page's copy of it. */
 export type WorkspaceState = {
   repos: RepoListRow[];
-  tasks: Record<string, Task>;
+  tasks: Record<string, TaskListRow>;
   /** The last event id applied, which is where the feed resumes from. */
   cursor: number;
   loaded: boolean;
@@ -17,7 +25,7 @@ export type WorkspaceState = {
 };
 
 export type WorkspaceAction =
-  | { type: "loaded"; repos: RepoListRow[]; tasks: Task[]; cursor: number }
+  | { type: "loaded"; repos: RepoListRow[]; tasks: TaskListRow[]; cursor: number }
   | { type: "task"; task: Task }
   | { type: "event"; event: Event };
 
@@ -47,7 +55,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         usageStamp: { plans: 0, byTask: {} },
       };
     case "task":
-      return { ...state, tasks: { ...state.tasks, [action.task.id]: action.task } };
+      return { ...state, tasks: { ...state.tasks, [action.task.id]: listed(state, action.task) } };
     case "event":
       // Replay is idempotent, so the cursor advances whether or not the event changed anything.
       return { ...applied(state, action.event), cursor: action.event.id };
@@ -57,10 +65,20 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
 function applied(state: WorkspaceState, event: Event): WorkspaceState {
   if (isKind(event, "task.status")) {
     const to = event.payload.to;
-    return patchTask(state, event.taskId, (task) => ({ ...task, status: to, updatedAt: event.ts }));
+    return patchTask(state, event.taskId, (task) => ({
+      ...task,
+      status: to,
+      updatedAt: event.ts,
+      // A task that is live again ran from its worktree, whether it was just made or recreated.
+      worktreePresent: isLive(to) ? task.worktreePath !== null : task.worktreePresent,
+    }));
   }
   if (isKind(event, "task.created")) {
-    return { ...state, tasks: { ...state.tasks, [event.payload.task.id]: event.payload.task } };
+    const task = event.payload.task;
+    return { ...state, tasks: { ...state.tasks, [task.id]: withPath(task) } };
+  }
+  if (isKind(event, "task.cleaned")) {
+    return patchTask(state, event.taskId, (task) => ({ ...task, worktreePresent: false }));
   }
   if (isKind(event, "session.captured")) {
     const session = event.payload.session;
@@ -85,11 +103,32 @@ function bumped(stamp: UsageStamp, taskId: string | undefined): UsageStamp {
   return { plans, byTask: { ...stamp.byTask, [taskId]: (stamp.byTask[taskId] ?? 0) + 1 } };
 }
 
+/**
+ * A row from a response carries no `worktreePresent`, so the page keeps what it knows: a task it
+ * has never seen, or one arriving live, ran from its worktree (a resume recreates it, ADR 031).
+ */
+function listed(state: WorkspaceState, task: Task): TaskListRow {
+  const known = state.tasks[task.id];
+  if (known === undefined || isLive(task.status)) {
+    return withPath(task);
+  }
+  return { ...task, worktreePresent: known.worktreePresent };
+}
+
+/** The worktree a task was just launched or recreated in is there; a folder task has none. */
+function withPath(task: Task): TaskListRow {
+  return { ...task, worktreePresent: task.worktreePath !== null };
+}
+
+function isLive(status: TaskStatus): boolean {
+  return status === "running" || status === "waiting";
+}
+
 /** A task the page has never seen is not invented from a patch: the feed refetches it instead. */
 function patchTask(
   state: WorkspaceState,
   id: string | undefined,
-  patch: (task: Task) => Task,
+  patch: (task: TaskListRow) => TaskListRow,
 ): WorkspaceState {
   const task = id === undefined ? undefined : state.tasks[id];
   if (id === undefined || task === undefined) {
@@ -107,7 +146,7 @@ function upsertRepo(repos: RepoListRow[], repo: Repo): RepoListRow[] {
     : repos.map((row) => (row.id === repo.id ? updated : row));
 }
 
-function byId(tasks: Task[]): Record<string, Task> {
+function byId(tasks: TaskListRow[]): Record<string, TaskListRow> {
   return Object.fromEntries(tasks.map((task) => [task.id, task]));
 }
 
