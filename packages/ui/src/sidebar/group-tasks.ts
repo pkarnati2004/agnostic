@@ -8,14 +8,17 @@ const FINISHED: TaskStatus[] = ["done", "failed", "stopped"];
 
 /**
  * The sidebar in one pass: the tasks asking for an answer first, oldest question at the top, then
- * every repo with its own tasks. A waiting task is in both, so the repo list stays complete.
+ * every repo with its own tasks. A waiting task is in both, so the repo list stays complete. A
+ * closed repo is in neither, and neither are its tasks.
  */
 export function groupTasks(repos: RepoListRow[], tasks: TaskListRow[]): SidebarGroups {
+  const closed = new Set(repos.filter((repo) => repo.status === "archived").map((repo) => repo.id));
+  const shown = tasks.filter((task) => !closed.has(task.repoId));
   const byRepo = new Map<string, TaskListRow[]>();
-  for (const task of tasks) {
+  for (const task of shown) {
     byRepo.set(task.repoId, [...(byRepo.get(task.repoId) ?? []), task]);
   }
-  const needsYou = tasks
+  const needsYou = shown
     .filter((task) => task.status === "waiting")
     .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
   const groups = inSidebarOrder(repos).map((repo) => {
@@ -38,9 +41,22 @@ export function inHistory(task: TaskListRow): boolean {
   return FINISHED.includes(task.status) && task.worktreePath !== null && !task.worktreePresent;
 }
 
-/** By name, ignoring case: the order the sidebar reads, so "the first repo" means one thing. */
+/**
+ * By name, ignoring case, closed repos left out: the order the sidebar reads, so "the first repo"
+ * means one thing.
+ */
 export function inSidebarOrder(repos: RepoListRow[]): RepoListRow[] {
-  return [...repos].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  return activeRepos(repos).sort((a, b) =>
+    a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
+  );
+}
+
+/**
+ * The repos the page shows. A closed one keeps its row in state, so a `repo.updated` reopening it
+ * puts it back without a reload, and it appears nowhere until then.
+ */
+export function activeRepos(repos: RepoListRow[]): RepoListRow[] {
+  return repos.filter((repo) => repo.status === "active");
 }
 
 /** Open tasks before closed ones, each newest first: what is happening now is at the top. */

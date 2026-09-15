@@ -1,6 +1,6 @@
 import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
-import { groupTasks, inHistory, inSidebarOrder } from "./group-tasks";
+import { activeRepos, groupTasks, inHistory, inSidebarOrder } from "./group-tasks";
 
 function repo(id: string, name: string): RepoListRow {
   return {
@@ -95,6 +95,27 @@ describe("groupTasks", () => {
       "Petal",
       "zephyr",
     ]);
+  });
+});
+
+describe("a closed repo", () => {
+  const CLOSED = { ...PETAL, status: "archived" } as const;
+  const groups = groupTasks([CLOSED, KATHA], TASKS);
+
+  it("is in no group of its own", () => {
+    expect(groups.repos.map((group) => group.repo.name)).toEqual(["katha"]);
+    expect(inSidebarOrder([CLOSED, KATHA]).map((one) => one.name)).toEqual(["katha"]);
+    expect(activeRepos([CLOSED, KATHA])).toEqual([KATHA]);
+  });
+
+  it("takes its waiting tasks out of Needs you", () => {
+    expect(groups.needsYou.map((one) => one.id)).toEqual(["waiting-new"]);
+  });
+
+  it("comes back whole when it is opened again", () => {
+    const reopened = groupTasks([{ ...CLOSED, status: "active" }, KATHA], TASKS);
+    expect(reopened.repos.map((group) => group.repo.name)).toEqual(["katha", "Petal"]);
+    expect(reopened.needsYou.map((one) => one.id)).toEqual(["waiting-old", "waiting-new"]);
   });
 });
 

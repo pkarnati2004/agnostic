@@ -6,7 +6,7 @@ import { browserTokenSources, readToken } from "./auth/token";
 import { cn } from "./class-names";
 import { TooltipProvider } from "./components/tooltip";
 import { Notice } from "./notice";
-import { groupTasks, inSidebarOrder } from "./sidebar/group-tasks";
+import { activeRepos, groupTasks, inSidebarOrder } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
 import type { NoticeHost, TaskNotices } from "./store/task-notices";
 import { useWorkspace, type Workspace as WorkspaceStore } from "./store/use-workspace";
@@ -90,7 +90,7 @@ function Workspace({ token }: { token: string }) {
       <NewTaskDialog
         open={newTask}
         onOpenChange={setNewTask}
-        repos={state.repos}
+        repos={activeRepos(state.repos)}
         defaultRepoId={defaultRepoId(state, tabs.active)}
         profiles={profiles}
         client={client}

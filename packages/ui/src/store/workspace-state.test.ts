@@ -131,6 +131,19 @@ describe("workspaceReducer", () => {
     expect(state.repos[1]?.testCommand).toBeNull();
   });
 
+  it("replaces the row when a repo is closed, and again when it is opened", () => {
+    const closed = apply(
+      loaded(),
+      event(19, "repo.updated", { repo: { ...REPO, status: "archived" } }),
+    );
+    expect(closed.repos).toEqual([{ ...REPO, status: "archived" }]);
+    const opened = apply(
+      closed,
+      event(20, "repo.updated", { repo: { ...REPO, status: "active" } }),
+    );
+    expect(opened.repos).toEqual([REPO]);
+  });
+
   it("advances the cursor for a kind it draws nothing from", () => {
     const state = apply(
       loaded(),
