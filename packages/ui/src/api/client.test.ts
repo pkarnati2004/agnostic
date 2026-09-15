@@ -71,6 +71,59 @@ describe("createClient", () => {
     expect(sent).toBe(JSON.stringify({ profile: "codex:gpt-5:native", note: "over to you" }));
   });
 
+  it("asks for a recommendation with the signal the next keystroke aborts", async () => {
+    let sent: string | null = null;
+    let signal: AbortSignal | null = null;
+    const client = createClient({
+      token: "tok",
+      fetch: (_input, init) => {
+        sent = String(init?.body);
+        signal = init?.signal ?? null;
+        return Promise.resolve(ok({ recommendation: null }));
+      },
+    });
+    const controller = new AbortController();
+    await client.recommend({ repoId: "r1", prompt: "add a retry budget" }, controller.signal);
+    expect(sent).toBe(JSON.stringify({ repoId: "r1", prompt: "add a retry budget" }));
+    expect(signal).toBe(controller.signal);
+  });
+
+  it("passes an aborted fetch back as it was thrown", async () => {
+    const abort = new DOMException("aborted", "AbortError");
+    const client = createClient({ token: "tok", fetch: () => Promise.reject(abort) });
+    const failure = await client
+      .recommend({ repoId: "r1", prompt: "x" }, new AbortController().signal)
+      .catch((cause: unknown) => cause);
+    expect(failure).toBe(abort);
+  });
+
+  it("starts a task on the repo and returns the row the daemon created", async () => {
+    const { client, calls } = stubClient(() =>
+      Response.json({ task: { id: "t9" } }, { status: 201 }),
+    );
+    const { task } = await client.runTask("r 1", {
+      prompt: "add a retry budget",
+      profile: "claude-code:sonnet-4.5:native",
+    });
+    expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual(["POST /repos/r%201/tasks"]);
+    expect(task.id).toBe("t9");
+  });
+
+  it("turns a refused run into an ApiError", async () => {
+    const { client } = stubClient(() =>
+      Response.json(
+        {
+          error: { code: "folder-busy", message: "that folder is in use", hint: "Stop it first." },
+        },
+        { status: 409 },
+      ),
+    );
+    const failure = await client
+      .runTask("r1", { prompt: "add a retry budget" })
+      .catch((cause: unknown) => cause);
+    expect(failure).toMatchObject({ code: "folder-busy", hint: "Stop it first.", status: 409 });
+  });
+
   it("turns the daemon's error body into an ApiError", async () => {
     const { client } = stubClient(() =>
       Response.json(

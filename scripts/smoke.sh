@@ -418,6 +418,11 @@ grep -q 'id="root"' "$WORK/ui.html"
 curl -fsS "http://127.0.0.1:$UI_PORT/ui/" | grep -q 'id="root"'
 UI_ASSET="$(ls packages/ui/dist/assets | grep '\.js$' | head -1)"
 curl -fsS -o /dev/null "http://127.0.0.1:$UI_PORT/ui/assets/$UI_ASSET"
+# The terminal tabs are in the bundle: the socket's path and the subprotocol it authenticates with.
+test -n "$(grep -l '/terminal' packages/ui/dist/assets/*.js)"
+test -n "$(grep -l 'agn-token\.' packages/ui/dist/assets/*.js)"
+# And nothing of the daemon's own runtime is: the page imports types from core and never its code.
+test "$(grep -L execa packages/ui/dist/assets/*.js | wc -l)" = "$(ls packages/ui/dist/assets/*.js | wc -l)"
 test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$UI_PORT/ui/nope.js")" = 404
 # The server builds a URL from the request line, which collapses `..` before any route sees it:
 # this lands on `/` and the bearer check refuses it. Nothing outside dist is ever read.

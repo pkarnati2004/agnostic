@@ -17,10 +17,16 @@ export function groupTasks(repos: RepoListRow[], tasks: Task[]): SidebarGroups {
   const needsYou = tasks
     .filter((task) => task.status === "waiting")
     .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
-  const groups = [...repos]
-    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-    .map((repo) => ({ repo, tasks: inRepoOrder(byRepo.get(repo.id) ?? []) }));
+  const groups = inSidebarOrder(repos).map((repo) => ({
+    repo,
+    tasks: inRepoOrder(byRepo.get(repo.id) ?? []),
+  }));
   return { needsYou, repos: groups };
+}
+
+/** By name, ignoring case: the order the sidebar reads, so "the first repo" means one thing. */
+export function inSidebarOrder(repos: RepoListRow[]): RepoListRow[] {
+  return [...repos].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 }
 
 /** Open tasks before closed ones, each newest first: what is happening now is at the top. */

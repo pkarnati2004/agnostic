@@ -24,6 +24,39 @@ than the page.
 
 Everything the workspace shows comes from the local daemon; closing the tab loses nothing.
 
+## Starting a task
+
+"+ Task" at the top of the sidebar opens the dialog. Pick the repo, describe the work, and about a
+second after you stop typing agn shows its pick. The card holds the same five lines
+`agn recommend` prints: what agn made of the prompt, the recommended profile and why, the
+alternative, what would be worth trying if you enabled it, and the risk.
+
+The Profile select follows the pick until you change it, and then stays where you put it. What it
+shows is what runs: agn sends that profile with the task, so `agn outcomes` later says both what
+agn picked and what you chose. Intent is read from the prompt unless you set it yourself.
+
+Enter writes a newline; Cmd+Enter (Ctrl+Enter) runs, as does the Run button. If the repo has a
+`test_command`, agn runs it before the agent starts and the dialog says so while it waits. The
+task opens in a tab as soon as it starts.
+
+## Tabs
+
+Clicking a task opens it in a tab in the centre. The tab holds the agent's own session: what you
+type goes to the agent, and tool approvals, plan mode and model switches work as they do in a
+terminal. Closing a tab leaves the task running; it only drops the view of it.
+
+A tab keeps 5000 lines of scrollback while it is hidden, and tmux keeps the session's whole
+history behind that. Open the same task in two tabs and both resize the one pane, so the output
+wraps to the narrower of them; open a task once.
+
+The open tabs and the one in front are remembered per daemon address, so a reload comes back to
+the same tabs. A task you clean loses its tab.
+
+When a session is over the tab says so and offers Resume, which starts the agent again in the
+same worktree. If the daemon restarts, the tab reconnects by itself: tmux held the session while
+it was gone. A session that was adopted from outside tmux cannot be attached to, and the tab says
+that instead.
+
 ## After a task
 
 `agn outcomes <task>` prints what one finished task cost and what became of it: how long the agent ran, its tokens and cost, the model it resolved to, the test results from before and after, how many lines it changed, and how many lines you changed afterwards. The verdict is `accepted` once the task's branch is merged into the base branch, by a merge commit or a squash; `reverted` once the branch is deleted or its worktree is removed without a merge; `not merged` until one of those happens. agn rechecks the open ones every five minutes and again whenever you ask for them, so a branch you merged a moment ago reads as accepted. A task that ran in a folder workspace has no branch of agn's, so its verdict and line counts print as `-`.

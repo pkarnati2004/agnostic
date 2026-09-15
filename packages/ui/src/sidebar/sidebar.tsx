@@ -10,11 +10,19 @@ type SidebarProps = {
   selectedId: string | null;
   collapsed: boolean;
   onSelect: (id: string) => void;
+  onNewTask: () => void;
   onToggle: () => void;
 };
 
 /** Every repo and task the daemon knows, with the ones waiting for an answer at the top. */
-export function Sidebar({ groups, selectedId, collapsed, onSelect, onToggle }: SidebarProps) {
+export function Sidebar({
+  groups,
+  selectedId,
+  collapsed,
+  onSelect,
+  onNewTask,
+  onToggle,
+}: SidebarProps) {
   if (collapsed) {
     return (
       <aside className="flex flex-col items-center border-sidebar-border border-r bg-sidebar py-3">
@@ -28,17 +36,10 @@ export function Sidebar({ groups, selectedId, collapsed, onSelect, onToggle }: S
       <header className="flex items-center gap-2 px-3 py-3">
         <span className="font-semibold text-sidebar-foreground text-sm">agn</span>
         <div className="ml-auto flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Button variant="outline" size="sm" disabled>
-                  <Plus />
-                  Task
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Not available yet.</TooltipContent>
-          </Tooltip>
+          <Button variant="outline" size="sm" onClick={onNewTask}>
+            <Plus />
+            Task
+          </Button>
           <CollapseButton collapsed={false} onToggle={onToggle} />
         </div>
       </header>

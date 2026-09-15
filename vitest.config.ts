@@ -123,11 +123,18 @@ export default defineConfig({
       },
       {
         test: {
-          // The page's own logic: token, client, frames, reducer, grouping. No DOM, no rendering.
+          // The page's own logic: token, client, frames, reducers, grouping, and the few
+          // components with behaviour of their own, which opt into happy-dom file by file.
           name: "ui",
           root: "packages/ui",
           // The dev proxy's Origin rewrite is tested where it is written, beside the config.
-          include: ["src/**/*.test.ts", "vite.config.test.ts"],
+          // A .test.tsx file renders a component and asks for happy-dom in its own first line.
+          include: ["src/**/*.test.ts", "src/**/*.test.tsx", "vite.config.test.ts"],
+        },
+        resolve: {
+          // The page itself imports only types from core; a test that checks a request body
+          // against core's schemas needs the source behind them, as every other project does.
+          conditions: ["development"],
         },
       },
       {

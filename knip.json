@@ -11,7 +11,7 @@
       "project": ["src/**/*.ts"]
     },
     "packages/ui": {
-      "entry": ["src/**/*.test.ts"],
+      "entry": ["src/**/*.test.ts", "src/**/*.test.tsx"],
       "project": ["src/**/*.{ts,tsx}"],
       "ignoreDependencies": ["tailwindcss"]
     }

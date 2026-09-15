@@ -1,17 +1,25 @@
 import type { HandoffTaskRequest, Profile, RepoListRow, Task } from "@agnostic/core";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { createClient, type WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
 import { browserTokenSources, readToken } from "./auth/token";
 import { cn } from "./class-names";
 import { TooltipProvider } from "./components/tooltip";
 import { Notice } from "./notice";
-import { groupTasks } from "./sidebar/group-tasks";
+import { groupTasks, inSidebarOrder } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
-import { useWorkspace } from "./store/use-workspace";
+import { useWorkspace, type Workspace as WorkspaceStore } from "./store/use-workspace";
+import { TabStrip } from "./tabs/tab-strip";
+import {
+  readTabs,
+  type TabsAction,
+  type TabsState,
+  tabsReducer,
+  writeTabs,
+} from "./tabs/tabs-state";
+import { TaskTabs } from "./tabs/task-tabs";
+import { NewTaskDialog } from "./task/new-task-dialog";
 import { TaskHeader } from "./task/task-header";
-
-const SELECTED_KEY = "agn.selected";
 
 const TOOLTIP_DELAY_MS = 400;
 
@@ -33,28 +41,16 @@ function Workspace({ token }: { token: string }) {
   const { state, error, act } = useWorkspace(client);
   const profiles = useProfiles(client);
   const [collapsed, setCollapsed] = useState(false);
+  const [newTask, setNewTask] = useState(false);
   const [dismissed, setDismissed] = useState<ApiError | null>(null);
-  const [selectedId, setSelectedId] = useState(() => localStorage.getItem(SELECTED_KEY));
+  const [tabs, dispatchTabs] = useReducer(tabsReducer, undefined, () => readTabs(localStorage));
   const groups = useMemo(
     () => groupTasks(state.repos, Object.values(state.tasks)),
     [state.repos, state.tasks],
   );
-  const selected = selectedId === null ? undefined : state.tasks[selectedId];
+  useTabsStorage(tabs, state.loaded, state.tasks, dispatchTabs);
 
-  const select = (id: string) => {
-    localStorage.setItem(SELECTED_KEY, id);
-    setSelectedId(id);
-  };
-  const handoff = async (body: HandoffTaskRequest) => {
-    if (selected === undefined) {
-      return;
-    }
-    await act(async (api) => {
-      const { task } = await api.handoffTask(selected.id, body);
-      select(task.id);
-      return task;
-    });
-  };
+  const { handoff, started } = useTaskActions(act, dispatchTabs);
 
   return (
     <div
@@ -62,38 +58,145 @@ function Workspace({ token }: { token: string }) {
     >
       <Sidebar
         groups={groups}
-        selectedId={selectedId}
+        selectedId={tabs.active}
         collapsed={collapsed}
-        onSelect={select}
+        onSelect={(taskId) => dispatchTabs({ type: "open", taskId })}
+        onNewTask={() => setNewTask(true)}
         onToggle={() => setCollapsed(!collapsed)}
       />
-      <main className="flex min-w-[640px] flex-col overflow-hidden">
-        {selected !== undefined && (
-          <TaskHeader
-            task={selected}
-            repo={repoOf(state.repos, selected)}
-            profiles={profiles}
-            onStop={() => act((api) => api.stopTask(selected.id).then((body) => body.task))}
-            onResume={() => act((api) => api.resumeTask(selected.id).then((body) => body.task))}
-            onHandoff={handoff}
-          />
-        )}
-        {/* A failure before the first snapshot has no header to sit under, so the notice is outside it. */}
-        <Notice error={error === dismissed ? null : error} onDismiss={() => setDismissed(error)} />
-        <Centred>
-          {selected === undefined
-            ? emptyCentre(state.loaded, error !== null)
-            : "Terminal not available yet."}
-        </Centred>
-      </main>
+      <NewTaskDialog
+        open={newTask}
+        onOpenChange={setNewTask}
+        repos={state.repos}
+        defaultRepoId={defaultRepoId(state, tabs.active)}
+        profiles={profiles}
+        client={client}
+        onStarted={started}
+      />
+      <Centre
+        tabs={tabs}
+        dispatchTabs={dispatchTabs}
+        repos={state.repos}
+        tasks={state.tasks}
+        loaded={state.loaded}
+        profiles={profiles}
+        token={token}
+        client={client}
+        error={error === dismissed ? null : error}
+        onDismiss={() => setDismissed(error)}
+        onResume={(taskId) => act(async (api) => (await api.resumeTask(taskId)).task)}
+        onStop={(taskId) => act(async (api) => (await api.stopTask(taskId)).task)}
+        onHandoff={handoff}
+      />
     </div>
   );
 }
 
-/** With nothing selected the centre says where the page got to; the notice above it says why. */
+type CentreProps = {
+  tabs: TabsState;
+  dispatchTabs: (action: TabsAction) => void;
+  repos: RepoListRow[];
+  tasks: Record<string, Task>;
+  loaded: boolean;
+  profiles: Profile[];
+  token: string;
+  client: WorkspaceClient;
+  error: ApiError | null;
+  onDismiss: () => void;
+  onResume: (taskId: string) => Promise<unknown>;
+  onStop: (taskId: string) => Promise<unknown>;
+  onHandoff: (task: Task, body: HandoffTaskRequest) => Promise<void>;
+};
+
+/** The tab strip, the header for the tab in front, and every open terminal under them. */
+function Centre(props: CentreProps) {
+  const { tabs, dispatchTabs, tasks, loaded, client, token } = props;
+  const open = tabs.open.map((id) => tasks[id]).filter((task) => task !== undefined);
+  const active = tabs.active === null ? undefined : tasks[tabs.active];
+  const repoNames = new Map(props.repos.map((repo) => [repo.id, repo.name]));
+
+  return (
+    <main className="flex min-w-[640px] flex-col overflow-hidden">
+      <TabStrip
+        tabs={open}
+        activeId={tabs.active}
+        repoNames={repoNames}
+        onActivate={(taskId) => dispatchTabs({ type: "activate", taskId })}
+        onClose={(taskId) => dispatchTabs({ type: "close", taskId })}
+      />
+      {active !== undefined && (
+        <TaskHeader
+          task={active}
+          repo={props.repos.find((repo) => repo.id === active.repoId) ?? null}
+          profiles={props.profiles}
+          onStop={() => props.onStop(active.id).then(() => undefined)}
+          onResume={() => props.onResume(active.id).then(() => undefined)}
+          onHandoff={(body) => props.onHandoff(active, body)}
+        />
+      )}
+      {/* A failure before the first snapshot has no header to sit under, so the notice is outside it. */}
+      <Notice error={props.error} onDismiss={props.onDismiss} />
+      {open.length === 0 ? (
+        <Centred>{emptyCentre(loaded, props.error !== null)}</Centred>
+      ) : (
+        <TaskTabs
+          state={tabs}
+          tasks={open}
+          token={token}
+          client={client}
+          onResume={(taskId) => props.onResume(taskId).then(() => undefined)}
+        />
+      )}
+    </main>
+  );
+}
+
+/** The tab list outlives the page; a task that has been cleaned takes its tab with it. */
+function useTabsStorage(
+  tabs: TabsState,
+  loaded: boolean,
+  tasks: Record<string, Task>,
+  dispatchTabs: (action: TabsAction) => void,
+): void {
+  useEffect(() => {
+    writeTabs(localStorage, tabs);
+  }, [tabs]);
+  useEffect(() => {
+    if (loaded) {
+      dispatchTabs({ type: "prune", existing: new Set(Object.keys(tasks)) });
+    }
+  }, [loaded, tasks, dispatchTabs]);
+}
+
+/** The two actions that open a tab: a handoff opens the child, a run opens what it started. */
+function useTaskActions(act: WorkspaceStore["act"], dispatchTabs: (action: TabsAction) => void) {
+  const handoff = async (task: Task, body: HandoffTaskRequest) => {
+    const child = await act(async (api) => (await api.handoffTask(task.id, body)).task);
+    if (child !== undefined) {
+      dispatchTabs({ type: "open", taskId: child.id });
+    }
+  };
+  // The run answered with the row, so the task is in the store before its event arrives.
+  const started = (task: Task) => {
+    void act(() => Promise.resolve(task));
+    dispatchTabs({ type: "open", taskId: task.id });
+  };
+  return { handoff, started };
+}
+
+/** A new task starts in the repo the user is looking at, else in the first one on the left. */
+function defaultRepoId(
+  state: { repos: RepoListRow[]; tasks: Record<string, Task> },
+  activeId: string | null,
+): string | null {
+  const active = activeId === null ? undefined : state.tasks[activeId];
+  return active?.repoId ?? inSidebarOrder(state.repos)[0]?.id ?? null;
+}
+
+/** With no tab open the centre says where the page got to; the notice above it says why. */
 function emptyCentre(loaded: boolean, failed: boolean): string {
   if (loaded) {
-    return "Select a task.";
+    return "Pick a task on the left to open it.";
   }
   return failed ? "The workspace did not load." : "Loading the workspace…";
 }
@@ -118,10 +221,6 @@ function useProfiles(client: WorkspaceClient): Profile[] {
     };
   }, [client]);
   return profiles;
-}
-
-function repoOf(repos: RepoListRow[], task: Task): RepoListRow | null {
-  return repos.find((repo) => repo.id === task.repoId) ?? null;
 }
 
 function Centred({ children }: { children: string }) {

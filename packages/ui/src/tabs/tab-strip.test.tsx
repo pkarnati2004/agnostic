@@ -1,0 +1,96 @@
+// @vitest-environment happy-dom
+import type { Task } from "@agnostic/core";
+import { describe, expect, it, vi } from "vitest";
+import { TooltipProvider } from "../components/tooltip";
+import { click, render } from "../test/render";
+import { TabStrip } from "./tab-strip";
+
+function task(id: string, title: string): Task {
+  return {
+    id,
+    repoId: "r1",
+    title,
+    prompt: title,
+    profileId: "claude-code:sonnet-4.5:native",
+    worktreePath: null,
+    branch: null,
+    status: "running",
+    origin: "agn",
+    baseCommit: null,
+    createdAt: "2026-09-14T10:00:00.000Z",
+    updatedAt: "2026-09-14T10:00:00.000Z",
+  };
+}
+
+const REPOS = new Map([["r1", "petal"]]);
+
+function strip(onActivate = vi.fn(), onClose = vi.fn()) {
+  const tabs = [task("a", "Add the retry budget"), task("b", "Port the parser to zod")];
+  const rendered = render(
+    <TooltipProvider>
+      <TabStrip
+        tabs={tabs}
+        activeId="b"
+        repoNames={REPOS}
+        onActivate={onActivate}
+        onClose={onClose}
+      />
+    </TooltipProvider>,
+  );
+  return { ...rendered, onActivate, onClose };
+}
+
+describe("TabStrip", () => {
+  it("renders one tab per open task", () => {
+    const { container, unmount } = strip();
+    expect(container.textContent).toContain("Add the retry budget");
+    expect(container.querySelectorAll("[aria-label^='Close']")).toHaveLength(2);
+    unmount();
+  });
+
+  it("marks only the active tab, leaving the rest muted", () => {
+    const { container, unmount } = strip();
+    const inactive = container.querySelector(
+      "[aria-label='Close Add the retry budget']",
+    )?.parentElement;
+    const active = container.querySelector(
+      "[aria-label='Close Port the parser to zod']",
+    )?.parentElement;
+    expect(inactive?.className).toContain("text-muted-foreground");
+    expect(inactive?.className).not.toContain("bg-card");
+    expect(active?.className).toContain("bg-card");
+    expect(active?.className).not.toContain("text-muted-foreground");
+    unmount();
+  });
+
+  it("truncates a long title", () => {
+    const { container, unmount } = render(
+      <TooltipProvider>
+        <TabStrip
+          tabs={[task("a", "Rename every configuration key in the repo")]}
+          activeId="a"
+          repoNames={REPOS}
+          onActivate={vi.fn()}
+          onClose={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    expect(container.textContent).toContain("Rename every configurat…");
+    unmount();
+  });
+
+  it("carries the id to both callbacks", () => {
+    const { container, onActivate, onClose, unmount } = strip();
+    const buttons = container.querySelectorAll("button");
+    const activate = buttons[0];
+    const close = container.querySelector("[aria-label='Close Add the retry budget']");
+    if (activate === undefined || close === null) {
+      throw new Error("the strip rendered no tab");
+    }
+    click(activate);
+    click(close);
+    expect(onActivate).toHaveBeenCalledWith("a");
+    expect(onClose).toHaveBeenCalledWith("a");
+    unmount();
+  });
+});
