@@ -14,6 +14,9 @@ export type PrepareInput = {
   repo: Repo;
   /** A ref or commit to branch from; null takes the main checkout's HEAD commit. */
   base: string | null;
+  /** The branch to check out; null derives one from the title. A resume passes the row's own, so a
+   * worktree rebuilt after a clean lands on the branch the task ran on (ADR 031). */
+  branch: string | null;
   /** Replaces `agn/` in the branch name when the repo asks for it. */
   branchPrefix: string | null;
   setupCommand: string | null;

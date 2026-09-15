@@ -37,7 +37,7 @@ const task: Task = {
   },
 };
 
-function cli(via: ResumeTaskResponse["via"]) {
+function cli(via: ResumeTaskResponse["via"], recreatedFrom: string | null = null) {
   const spawned: { command: string; opts: ProcessOptions }[] = [];
   const fakeSpawn = ((command: string, _args: string[] = [], opts: ProcessOptions = {}) => {
     spawned.push({ command, opts });
@@ -48,7 +48,8 @@ function cli(via: ResumeTaskResponse["via"]) {
     paths: PATHS,
     spawn: fakeSpawn,
     client: {
-      resumeTask: () => Promise.resolve({ task, via, attach: { kind: "tmux", argv: ARGV } }),
+      resumeTask: () =>
+        Promise.resolve({ task, via, attach: { kind: "tmux", argv: ARGV }, recreatedFrom }),
     },
   });
   return { ...test, spawned };
@@ -71,6 +72,20 @@ describe("agn resume", () => {
     }
   });
 
+  it("names the branch a cleaned worktree was rebuilt from, before the fresh line", async () => {
+    const native = cli("native", "agn/x-t3n9v2wxyz");
+    await resumeCommand(native.ctx).parseAsync(["t3n9v2wxyz"], { from: "user" });
+    expect(native.err).toEqual(["agn: recreated from agn/x-t3n9v2wxyz"]);
+
+    const fresh = cli("fresh", "agn/x-t3n9v2wxyz");
+    await resumeCommand(fresh.ctx).parseAsync(["t3n9v2wxyz"], { from: "user" });
+    expect(fresh.err).toEqual([
+      "agn: recreated from agn/x-t3n9v2wxyz",
+      "agn: history was not recoverable; started claude-code fresh with the task context",
+    ]);
+    expect(fresh.spawned).toHaveLength(1);
+  });
+
   it("hands the terminal to tmux the way attach does", async () => {
     const test = cli("live");
     await resumeCommand(test.ctx).parseAsync(["t3n9v2wxyz"], { from: "user" });
@@ -83,6 +98,7 @@ describe("agn resume", () => {
     test.ctx.json = true;
     await resumeCommand(test.ctx).parseAsync(["t3n9v2wxyz"], { from: "user" });
     expect(JSON.parse(test.out.join("\n")).via).toBe("fresh");
+    expect(JSON.parse(test.out.join("\n")).recreatedFrom).toBeNull();
     expect(test.err).toEqual([]);
     expect(test.spawned).toEqual([]);
   });

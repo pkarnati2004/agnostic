@@ -178,11 +178,16 @@ describe("CleanTaskRequestSchema", () => {
       deleteBranch: false,
     });
     expect(CleanTaskRequestSchema.parse({ deleteBranch: true })).toEqual({ deleteBranch: true });
+    expect(CleanTaskRequestSchema.parse({ deleteBranch: true, force: true })).toEqual({
+      deleteBranch: true,
+      force: true,
+    });
   });
 
   it("rejects the wrong type and a field it does not know", () => {
     expect(CleanTaskRequestSchema.safeParse({ deleteBranch: "yes" }).success).toBe(false);
-    expect(CleanTaskRequestSchema.safeParse({ deleteBranch: true, force: true }).success).toBe(
+    expect(CleanTaskRequestSchema.safeParse({ force: "yes" }).success).toBe(false);
+    expect(CleanTaskRequestSchema.safeParse({ deleteBranch: true, forced: true }).success).toBe(
       false,
     );
   });

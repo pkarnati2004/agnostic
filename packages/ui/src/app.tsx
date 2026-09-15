@@ -17,7 +17,7 @@ import {
   tabsReducer,
   writeTabs,
 } from "./tabs/tabs-state";
-import { TaskTabs } from "./tabs/task-tabs";
+import { type Recreated, TaskTabs } from "./tabs/task-tabs";
 import { NewTaskDialog } from "./task/new-task-dialog";
 import { TaskHeader } from "./task/task-header";
 import { TaskCost } from "./usage/task-cost";
@@ -63,6 +63,15 @@ function Workspace({ token }: { token: string }) {
   useTabsStorage(tabs, state.loaded, state.tasks, dispatchTabs);
 
   const { handoff, started } = useTaskActions(act, dispatchTabs);
+  const [recreated, setRecreated] = useState<Recreated | null>(null);
+  // The recreate is the response's, not the row's, so the tab hears it from the call that resumed.
+  const resume = async (taskId: string): Promise<void> => {
+    await act(async (api) => {
+      const response = await api.resumeTask(taskId);
+      setRecreated({ taskId, branch: response.recreatedFrom });
+      return response.task;
+    });
+  };
 
   return (
     <div
@@ -98,7 +107,8 @@ function Workspace({ token }: { token: string }) {
         cost={<TaskCost usage={taskUsage} />}
         error={error === dismissed ? null : error}
         onDismiss={() => setDismissed(error)}
-        onResume={(taskId) => act(async (api) => (await api.resumeTask(taskId)).task)}
+        recreated={recreated}
+        onResume={resume}
         onStop={(taskId) => act(async (api) => (await api.stopTask(taskId)).task)}
         onHandoff={handoff}
       />
@@ -119,8 +129,10 @@ type CentreProps = {
   /** What the tab in front has spent; the page holds the hook that reads it. */
   cost: ReactNode;
   error: ApiError | null;
+  /** What the last resume rebuilt, for the tab it belongs to; the rest of the page ignores it. */
+  recreated: Recreated | null;
   onDismiss: () => void;
-  onResume: (taskId: string) => Promise<unknown>;
+  onResume: (taskId: string) => Promise<void>;
   onStop: (taskId: string) => Promise<unknown>;
   onHandoff: (task: Task, body: HandoffTaskRequest) => Promise<void>;
 };
@@ -148,7 +160,7 @@ function Centre(props: CentreProps) {
           profiles={props.profiles}
           cost={props.cost}
           onStop={() => props.onStop(active.id).then(() => undefined)}
-          onResume={() => props.onResume(active.id).then(() => undefined)}
+          onResume={() => props.onResume(active.id)}
           onHandoff={(body) => props.onHandoff(active, body)}
         />
       )}
@@ -162,7 +174,8 @@ function Centre(props: CentreProps) {
           tasks={open}
           token={token}
           client={client}
-          onResume={(taskId) => props.onResume(taskId).then(() => undefined)}
+          recreated={props.recreated}
+          onResume={props.onResume}
         />
       )}
       <UsageBar state={props.usage} />

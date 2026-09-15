@@ -34,7 +34,8 @@ const TERMINAL: TaskStatus[] = ["done", "failed", "stopped"];
  */
 export async function refreshVerdict(deps: VerdictDeps, task: Task): Promise<Outcome | null> {
   const outcome = deps.ledger.outcomes.get(task.id);
-  // A live task has no verdict to read yet: its tests-before row is a baseline, not a result.
+  // A live task has no verdict to read yet: its tests-before row is a baseline, not a result. It
+  // is also why the sweep never cleans a worktree a resume rebuilt from under its agent (ADR 031).
   if (!TERMINAL.includes(task.status)) {
     return outcome;
   }
@@ -98,7 +99,7 @@ function pending(deps: VerdictDeps): Task[] {
 /**
  * `clean_after_merge`: the worktree of merged work is disk nobody needs. The branch stays, as it
  * does for `agn clean` (ADR 013), and the removal is recorded so the row still says what ran.
- * Nothing a person has not committed is thrown away on a timer; `agn clean` still forces it.
+ * Nothing a person has not committed is thrown away on a timer; `agn clean --force` still forces it.
  */
 async function cleanIfMerged(
   deps: VerdictDeps,

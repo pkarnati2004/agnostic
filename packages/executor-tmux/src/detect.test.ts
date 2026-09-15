@@ -49,7 +49,7 @@ async function harnessNamed(name: string): Promise<string> {
 
 beforeAll(async () => {
   tmux = await createTestTmux();
-  executor = tmux.executor();
+  executor = await tmux.executor();
   root = await mkdtemp(join(tmpdir(), "agn-detect-"));
   underTmux = join(root, "under-tmux");
   outsideTmux = join(root, "outside-tmux");

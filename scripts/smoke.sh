@@ -213,6 +213,9 @@ SMOKE_PATH="$FAKEBIN:$(dirname "$NODE"):$(dirname "$(command -v tmux)"):/usr/bin
 # when usage is asked for, and a smoke run must never read the author's.
 USAGE_HOME="$WORK/usage-home"
 mkdir -p "$USAGE_HOME/.claude/projects/-work-usage"
+# A ~/.tmux.conf tmux cannot load, in place before the daemon starts its server: agn runs on its
+# own config, so every step below has to work as if this file were not here.
+printf 'set -g no-such-option 1\nbind-key -T nosuchtable "" nonsense\n' > "$USAGE_HOME/.tmux.conf"
 
 agx() {
   HOME="$USAGE_HOME" PATH="$SMOKE_PATH" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
@@ -277,6 +280,8 @@ TOKEN="$(cat "$AGNOSTIC_HOME/auth-token")"
 # smoke's PATH; TMUX_TMPDIR is already exported for it.
 PATH="$SMOKE_PATH" "$NODE" tests/fixtures/bin/terminal-roundtrip.mjs \
   "ws://127.0.0.1:$PORT/tasks/$TASK/terminal" "$TOKEN" "$WORK/agent.log"
+# agn's server took agn's config, not the broken one in the home the daemon was started with.
+HOME="$USAGE_HOME" PATH="$SMOKE_PATH" tmux -L agn show-options -g status | grep -q "^status off$"
 # The socket closing ends that tmux client and nothing else: the task is still running.
 test -z "$(PATH="$SMOKE_PATH" tmux -L agn list-clients -t "agn-$TASK")"
 agx status "$TASK" | grep -q "running"
@@ -351,7 +356,25 @@ grep -q "$HANDOFF_NOTE" "$WORK/agent.log"
 agx status "$CHILD" | grep -q "^parent: *$TASK"
 agx stop "$CHILD" | grep -q "^stopped $CHILD"
 
-agx clean | grep -q "^cleaned $TASK"
+# A worktree holding work no commit is keeping is kept until the person asking says --force.
+touch "$WORKTREE/scratch.txt"
+! agx clean "$TASK" 2> "$WORK/clean-error.txt"
+grep -q "uncommitted" "$WORK/clean-error.txt"
+agx clean "$TASK" --force | grep -q "^cleaned $TASK"
+
+# A resume after a clean rebuilds the worktree at the same path from the branch the clean kept.
+agx resume "$TASK" --json > "$WORK/resume-recreated.json"
+grep -q '"recreatedFrom": "agn/' "$WORK/resume-recreated.json"
+test -d "$WORKTREE"
+agx status "$TASK" | grep -q "running"
+agx stop "$TASK" | grep -q "^stopped $TASK"
+agx clean "$TASK" --force | grep -q "^cleaned $TASK"
+# With the branch gone too there is nothing left to rebuild from, and agn says so.
+git -C "$WORK/runrepo" branch -D "$BRANCH" > /dev/null
+! agx resume "$TASK" 2> "$WORK/resume-error.txt"
+grep -q "no longer exists" "$WORK/resume-error.txt"
+
+agx clean | grep -q "^cleaned $CHILD"
 
 agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"
 grep -q "^in place: " "$WORK/folder.txt"

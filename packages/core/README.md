@@ -4,7 +4,7 @@ The types every other package shares, and the two things they all need to do saf
 
 - The `.ag`-independent domain types - `Repo`, `Profile`, `Task`, `Event`, `Outcome`, `Recommendation` - each with a zod schema used at boundaries (HTTP, files, SQLite rows) and a `type` used everywhere else.
 - `CoreError`, the base for every typed error in the repo, and `ProcessError`.
-- `executor.ts`: the `ExecutorProvider` interface and the types either side of it (`PrepareInput`, `LaunchCommand`, `SessionHandle`, `SessionEvent`, `ProcessMatcher`, `TerminalSize`, `TerminalStream`), so the daemon and the executor share them without either importing the other.
+- `executor.ts`: the `ExecutorProvider` interface and the types either side of it (`PrepareInput`, `LaunchCommand`, `SessionHandle`, `SessionEvent`, `ProcessMatcher`, `TerminalSize`, `TerminalStream`), so the daemon and the executor share them without either importing the other. `PrepareInput.branch` is how a resume rebuilds a cleaned worktree on the branch the task ran on.
 - `newId` and the id alphabet; `agnosticPaths` and the `~/.agnostic` layout.
 - `launch-prompt.ts`: the pure composer that turns a task, its note and the ledger's repo state into
   the prompt a harness is launched with. Rows in, markdown out; it reads no file.

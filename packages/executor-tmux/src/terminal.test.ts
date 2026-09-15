@@ -15,7 +15,7 @@ let executor: ExecutorProvider;
 
 beforeAll(async () => {
   tmux = await createTestTmux();
-  executor = tmux.executor();
+  executor = await tmux.executor();
 });
 
 afterAll(async () => {
@@ -265,7 +265,7 @@ describe("executor.close", () => {
   it("ends every open stream and leaves the session running", async () => {
     const { handle } = await startAgent("termdownxy");
     // Its own executor on the same socket: closing the shared one would stop the other tests.
-    const doomed = createTmuxExecutor({
+    const doomed = await createTmuxExecutor({
       paths: { ...tmux.paths, sessions: join(tmux.home, "sessions-terminal-close") },
       socketName: tmux.socketName,
       env: tmux.env,
@@ -280,7 +280,7 @@ describe("executor.close", () => {
 
   it("is a no-op the second time, with no open stream left to end", async () => {
     const { handle } = await startAgent("termdown2xy");
-    const doomed = createTmuxExecutor({
+    const doomed = await createTmuxExecutor({
       paths: { ...tmux.paths, sessions: join(tmux.home, "sessions-terminal-close2") },
       socketName: tmux.socketName,
       env: tmux.env,

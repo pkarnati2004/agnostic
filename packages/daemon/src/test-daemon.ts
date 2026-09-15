@@ -157,7 +157,7 @@ async function createParts(opts: TestDaemonOptions) {
   const executor =
     launch === null
       ? idleExecutor()
-      : createTmuxExecutor({ paths, socketName: launch.socketName, env: launch.env });
+      : await createTmuxExecutor({ paths, socketName: launch.socketName, env: launch.env });
   return {
     home,
     userHome,

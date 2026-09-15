@@ -186,6 +186,8 @@ async function launch(
     task,
     repo,
     base: await resolveBase(ctx, opts),
+    // A first run has no branch to keep: the name comes from the title and the repo's prefix.
+    branch: null,
     branchPrefix: opts.config?.branchPrefix ?? null,
     setupCommand: opts.config?.setupCommand ?? null,
     logFile: taskLogPath(ctx.paths, task.id),

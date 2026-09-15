@@ -26,6 +26,7 @@ function input(overrides: Partial<PrepareInput> = {}): PrepareInput {
     task,
     repo,
     base: null,
+    branch: null,
     branchPrefix: null,
     setupCommand: null,
     logFile: null,

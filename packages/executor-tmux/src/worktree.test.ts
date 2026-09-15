@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   type AgnosticPaths,
@@ -14,7 +14,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createFolderRepo, createGitRepo, testTask } from "./test-repo.js";
 import { createTestTmux, type TestTmux } from "./test-tmux.js";
-import { branchName, cleanWorktree, parseWorktreeList, prepareWorktree } from "./worktree.js";
+import { branchName, parseWorktreeList, prepareWorktree } from "./worktree.js";
 
 let tmux: TestTmux;
 let paths: AgnosticPaths;
@@ -33,6 +33,7 @@ function prepareInput(repo: Repo, task: Task, overrides: Partial<PrepareInput> =
     task,
     repo,
     base: null,
+    branch: null,
     branchPrefix: null,
     setupCommand: null,
     logFile: null,
@@ -224,57 +225,6 @@ describe("setup_command", () => {
     );
     expect(await readFile(join(prepared.cwd, "deps.txt"), "utf8")).toBe("installed\n");
     expect(await readFile(logFile, "utf8")).toContain(prepared.cwd);
-  });
-});
-
-describe("cleanWorktree", () => {
-  it("removes the worktree and keeps the branch", async () => {
-    const repo = await createGitRepo();
-    const task = testTask(repo);
-    const prepared = await prepareWorktree(paths, prepareInput(repo, task));
-    const cleaned = { ...task, worktreePath: prepared.cwd, branch: prepared.branch };
-    await cleanWorktree(paths, { task: cleaned, repo, deleteBranch: false });
-    await expect(stat(prepared.cwd)).rejects.toThrowError();
-    expect((await run("git", ["-C", repo.path, "worktree", "list"])).stdout).not.toContain(
-      prepared.cwd,
-    );
-    expect((await run("git", ["-C", repo.path, "branch"])).stdout).toContain(prepared.branch ?? "");
-  });
-
-  it("deletes the branch when asked, and cleaning twice is not an error", async () => {
-    const repo = await createGitRepo();
-    const task = testTask(repo);
-    const prepared = await prepareWorktree(paths, prepareInput(repo, task));
-    const cleaned = { ...task, worktreePath: prepared.cwd, branch: prepared.branch };
-    await cleanWorktree(paths, { task: cleaned, repo, deleteBranch: true });
-    await cleanWorktree(paths, { task: cleaned, repo, deleteBranch: true });
-    expect((await run("git", ["-C", repo.path, "branch"])).stdout).not.toContain(
-      prepared.branch ?? "",
-    );
-  });
-
-  it("prunes and resolves when the directory was removed by hand", async () => {
-    const repo = await createGitRepo();
-    const task = testTask(repo);
-    const prepared = await prepareWorktree(paths, prepareInput(repo, task));
-    await rm(prepared.cwd, { recursive: true, force: true });
-    await cleanWorktree(paths, {
-      task: { ...task, worktreePath: prepared.cwd, branch: prepared.branch },
-      repo,
-      deleteBranch: false,
-    });
-    expect((await run("git", ["-C", repo.path, "worktree", "list"])).stdout).not.toContain(
-      prepared.cwd,
-    );
-  });
-
-  it("is a no-op for a folder workspace, with no git call", async () => {
-    const repo = await createFolderRepo();
-    const { entries } = await processesDuring(() =>
-      cleanWorktree(paths, { task: testTask(repo), repo, deleteBranch: true }),
-    );
-    expect(entries.map((entry) => entry.command)).not.toContain("git");
-    await expect(stat(repo.path)).resolves.toBeTruthy();
   });
 });
 

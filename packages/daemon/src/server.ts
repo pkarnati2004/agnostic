@@ -60,7 +60,7 @@ export async function runDaemon(
   const ledger = openLedger(paths.db);
   const feed = createEventFeed(ledger);
   const startedAt = new Date().toISOString();
-  const executor = createTmuxExecutor({ paths });
+  const executor = await createTmuxExecutor({ paths });
   const verdicts = createVerdictSweep({ ledger, executor, log }, SWEEP_MS);
   const home = homedir();
   // The store owns the reload, so a catalog downloaded while the daemon runs is served at once.

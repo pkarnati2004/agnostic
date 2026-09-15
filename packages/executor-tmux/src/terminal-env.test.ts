@@ -30,7 +30,10 @@ describe("the pty's environment", () => {
     process.env.TMUX_PANE = "%3";
     let leaky: ExecutorProvider | null = null;
     try {
-      leaky = createTmuxExecutor({ paths: agnosticPaths(home), socketName: "agn-terminal-stub" });
+      leaky = await createTmuxExecutor({
+        paths: agnosticPaths(home),
+        socketName: "agn-terminal-stub",
+      });
       const stream = await leaky.terminal(
         {
           taskId: "termenvwxy",
@@ -52,8 +55,9 @@ describe("the pty's environment", () => {
     const attach = (await logText(join(dir, "calls")))
       .split("\n")
       .filter((line) => line.includes("attach-session"));
+    // The pty's client carries agn's config too: it is one more client of the same server.
     expect(attach).toEqual([
-      "unset|unset|-u -L agn-terminal-stub attach-session -t agn-termenvwxy",
+      `unset|unset|-u -f ${join(home, "tmux.conf")} -L agn-terminal-stub attach-session -t agn-termenvwxy`,
     ]);
     await rm(dir, { recursive: true, force: true });
     await rm(home, { recursive: true, force: true });
@@ -73,7 +77,10 @@ describe("the pty's environment", () => {
     process.env.PATH = `${dir}:${saved.PATH ?? ""}`;
     let leaky: ExecutorProvider | null = null;
     try {
-      leaky = createTmuxExecutor({ paths: agnosticPaths(home), socketName: "agn-terminal-stub2" });
+      leaky = await createTmuxExecutor({
+        paths: agnosticPaths(home),
+        socketName: "agn-terminal-stub2",
+      });
       const stream = await leaky.terminal(
         {
           taskId: "termcwdxyz",
@@ -128,7 +135,10 @@ describe("the pty's size", () => {
         .filter((line) => line.trim() !== "")
         .at(-1);
     try {
-      leaky = createTmuxExecutor({ paths: agnosticPaths(home), socketName: "agn-terminal-stub3" });
+      leaky = await createTmuxExecutor({
+        paths: agnosticPaths(home),
+        socketName: "agn-terminal-stub3",
+      });
       const stream = await leaky.terminal(
         {
           taskId: "termsizeabc",

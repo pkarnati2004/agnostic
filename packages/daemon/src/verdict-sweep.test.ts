@@ -20,6 +20,11 @@ function exists(path: string): Promise<boolean> {
   );
 }
 
+/** The verdict recheck an accepted task still gets: `agn outcomes` reads it, the sweep skips it. */
+async function recheck(taskId: string): Promise<void> {
+  expect((await daemon.request(`/tasks/${taskId}/outcome`)).status).toBe(200);
+}
+
 function cleanedEvents(taskId: string) {
   return daemon.ledger.events.forTask(taskId).filter((event) => event.kind === "task.cleaned");
 }
@@ -136,6 +141,33 @@ describe("the verdict of a closed task", () => {
     expect(await exists(task.worktreePath ?? "")).toBe(true);
     expect(cleanedEvents(task.id)).toHaveLength(0);
     expect(await daemon.readLog()).toContain("worktree kept after merge");
+  });
+
+  it("sweeps a worktree a resume rebuilt the way it swept the first one", async () => {
+    const repo = await repoWithConfig(daemon, { cleanAfterMerge: true });
+    const { task } = await closedTask(daemon, repo, 10);
+    await gitIn(repo.path, ["merge", "--no-ff", "-q", "-m", "merge", task.branch ?? ""]);
+    await daemon.verdicts.runOnce();
+    expect(await exists(task.worktreePath ?? "")).toBe(false);
+
+    const resumed = await daemon.request(`/tasks/${task.id}/resume`, { method: "POST" });
+    expect(resumed.status).toBe(200);
+    // An accepted task is final to the sweep, so the recheck that still runs is the outcome read;
+    // it returns before reading anything while the task is live, worktree and all.
+    await recheck(task.id);
+    expect(await exists(task.worktreePath ?? "")).toBe(true);
+    expect(cleanedEvents(task.id)).toHaveLength(1);
+
+    await writeFile(join(task.worktreePath ?? "", "notes.txt"), "half an idea\n");
+    expect((await daemon.request(`/tasks/${task.id}/stop`, { method: "POST" })).status).toBe(200);
+    await recheck(task.id);
+    expect(await exists(task.worktreePath ?? "")).toBe(true);
+    expect(await daemon.readLog()).toContain("worktree kept after merge");
+
+    await rm(join(task.worktreePath ?? "", "notes.txt"));
+    await recheck(task.id);
+    expect(await exists(task.worktreePath ?? "")).toBe(false);
+    expect(cleanedEvents(task.id)).toHaveLength(2);
   });
 
   it("re-records nothing when a second sweep finds the branch exactly as it left it", async () => {
