@@ -48,7 +48,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn status [<task>]` | One task, or every task across your repos. `--all` lists everything from inside a worktree |
 | `agn attach [<task>]` | Join the session in your terminal; defaults to the task of the worktree you are in |
 | `agn stop <task>` | Stop the session |
-| `agn clean [<task>...]` | Remove the worktrees of closed tasks. `--delete-branch` removes the branch too |
+| `agn clean [<task>...]` | Remove the worktrees of closed tasks. `--delete-branch` removes the branch too; `--force` removes a worktree that still holds uncommitted work |
 | `agn resume [<task>]` | Bring a session back after a reboot, with its history where the agent supports it |
 | `agn adopt <path>` | Register an agent session you started outside agn. `--task "<title>"`, `--pid <n>`, `--repo <r>` |
 | `agn hooks install` | Install the status hook in a repo. `--repo <r>`, `--harness <id>` |

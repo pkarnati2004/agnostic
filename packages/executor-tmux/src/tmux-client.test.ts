@@ -27,9 +27,15 @@ async function stubClient(body: string) {
     `#!/bin/sh\nprintf '%s\\n' "$*" > "${dir}/argv"\npwd > "${dir}/cwd"\nprintf '%s' "\${TMUX-unset}" > "${dir}/tmux-env"\n${body}\n`,
   );
   await chmod(script, 0o755);
+  const configFile = join(dir, "tmux.conf");
   return {
     dir,
-    client: createTmuxClient({ socketName: "agn-stub", env: { PATH: dir, TMUX: "/tmp/leak,1,0" } }),
+    configFile,
+    client: createTmuxClient({
+      socketName: "agn-stub",
+      env: { PATH: dir, TMUX: "/tmp/leak,1,0" },
+      configFile,
+    }),
     argv: () => readFile(join(dir, "argv"), "utf8"),
   };
 }
@@ -45,10 +51,29 @@ afterAll(async () => {
 });
 
 describe("createTmuxClient", () => {
-  it("starts every argv with -u and the socket name", async () => {
+  it("starts every argv with -u, agn's config and the socket name", async () => {
     const stub = await stubClient("exit 0");
     await stub.client.run(["has-session", "-t", "agn-x"]);
-    expect(await stub.argv()).toBe("-u -L agn-stub has-session -t agn-x\n");
+    expect(await stub.argv()).toBe(`-u -f ${stub.configFile} -L agn-stub has-session -t agn-x\n`);
+  });
+
+  it("leaves the user's own server on the user's own config", async () => {
+    const stub = await stubClient("exit 0");
+    const user = createTmuxClient({ socketName: null, env: { PATH: stub.dir }, configFile: null });
+    await user.run(["list-sessions"]);
+    expect(await stub.argv()).toBe("-u list-sessions\n");
+  });
+
+  it("refuses to run on agn's socket without a config file, which would be a bug", async () => {
+    const stub = await stubClient("exit 0");
+    const unconfigured = createTmuxClient({
+      socketName: "agn-stub",
+      env: { PATH: stub.dir },
+      configFile: null,
+    });
+    await expect(unconfigured.run(["list-sessions"])).rejects.toMatchObject({
+      code: "tmux-failed",
+    });
   });
 
   it("runs tmux from / so the server never holds a directory that is later deleted", async () => {
@@ -66,7 +91,7 @@ describe("createTmuxClient", () => {
 
   it("refuses the user's default server", () => {
     try {
-      createTmuxClient({ socketName: "default", env: {} });
+      createTmuxClient({ socketName: "default", env: {}, configFile: null });
       expect.unreachable("default must be refused");
     } catch (error) {
       expect(error).toMatchObject({ name: "ExecutorError", code: "socket-name-invalid" });
@@ -74,14 +99,18 @@ describe("createTmuxClient", () => {
   });
 
   it("refuses a socket name that is a path", () => {
-    expect(() => createTmuxClient({ socketName: "../agn", env: {} })).toThrowError(
-      /not a usable tmux socket name/,
-    );
+    expect(() =>
+      createTmuxClient({ socketName: "../agn", env: {}, configFile: null }),
+    ).toThrowError(/not a usable tmux socket name/);
   });
 
   it("says how to install tmux when it is not on PATH", async () => {
     const empty = await mkdtemp(join(stubDir, "empty-"));
-    const client = createTmuxClient({ socketName: "agn-missing", env: { PATH: empty } });
+    const client = createTmuxClient({
+      socketName: "agn-missing",
+      env: { PATH: empty },
+      configFile: join(empty, "tmux.conf"),
+    });
     await expect(client.run(["list-sessions"])).rejects.toMatchObject({
       code: "tmux-not-found",
       hint: expect.stringContaining("brew install tmux"),
@@ -94,7 +123,11 @@ describe("createTmuxClient", () => {
     await expect(
       stub.client.run(["has-session", "-t", "agn-x"], { timeoutMs: 300 }),
     ).rejects.toMatchObject({ code: "tmux-failed" });
-    const slow = createTmuxClient({ socketName: "agn-stub", env: { PATH: stub.dir } });
+    const slow = createTmuxClient({
+      socketName: "agn-stub",
+      env: { PATH: stub.dir },
+      configFile: stub.configFile,
+    });
     await expect(hasSession(slow, "agn-x")).rejects.toMatchObject({ code: "tmux-failed" });
   });
 });
@@ -143,7 +176,11 @@ describe("parsePaneValue", () => {
 
 describe("a socket with no server", () => {
   it("has no session, no sessions, and kill-session on it is success", async () => {
-    const idle = createTmuxClient({ socketName: `${tmux.socketName}-idle`, env: tmux.env });
+    const idle = createTmuxClient({
+      socketName: `${tmux.socketName}-idle`,
+      env: tmux.env,
+      configFile: tmux.paths.tmuxConf,
+    });
     expect(await hasSession(idle, "agn-nothing")).toBe(false);
     expect(await listSessions(idle)).toEqual([]);
     await expect(killSession(idle, "agn-nothing")).resolves.toBeUndefined();

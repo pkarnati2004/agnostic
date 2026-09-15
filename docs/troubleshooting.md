@@ -18,7 +18,9 @@
 
 **`agn attach` says the session "was started outside tmux".** The task was adopted from an agent running in a plain terminal, and agn cannot put that process in another terminal. Work in the terminal it is already in; when it exits, `agn resume <task>` starts the agent again in the same directory, under agn's tmux this time.
 
-**`agn resume` says the worktree "has been cleaned".** The worktree is gone but the branch is not. Continue the work in a new task from that branch: `agn run "<prompt>" --base <task>`.
+**`agn resume` says the branch "no longer exists".** The worktree was cleaned and the branch went with it, so there is nothing left to rebuild the task from. Start the work again: `agn run "<prompt>"`. A clean deletes the branch only when you pass `--delete-branch`.
+
+**`agn resume` on a task you cleaned.** It rebuilds the worktree at the same path from the branch the clean kept, runs the repo's `setup_command` again because the installed dependencies went with the directory, and reopens the conversation where the agent supports it. The first line of the resume names the branch it came from.
 
 **`agn resume` says history was not recoverable.** Only agents that report a session id can reopen a conversation, and only if one was captured before the session ended. The agent restarts in the same directory with the task's spec, recent repo state and decisions as its first prompt; the transcript of the old run is not lost, it is just not reloaded.
 
@@ -34,7 +36,11 @@
 
 **`agn outcomes` or `agn clean` hangs for a while right after `agn stop`.** The stop answers early and the task's accounting runs behind it, including the repo's `test_command`. Both commands wait for that work rather than read a half-written row. Run `agn outcomes <task>` again later, or shorten `test_command` in `.ag/agnostic.yaml`.
 
-**`agn clean` says the task is still running.** Clean removes a task's worktree, so the agent has to be out of it first. `agn stop <task>`, then clean. The branch survives either way unless you pass `--delete-branch`.
+**`agn clean` says the task is still running.** Clean removes a task's worktree, so the agent has to be out of it first. `agn stop <task>`, then clean. The branch survives either way unless you pass `--delete-branch`, and so does the worktree unless you pass `--force`.
+
+**`agn clean` says the worktree has uncommitted changes.** Removing it would throw that work away, so agn stops. Commit or stash it in the worktree the message names, or run `agn clean <task> --force` to discard it. `agn clean` with no task named keeps that worktree, prints one `kept` line for it and cleans the rest.
+
+**The workspace terminal or `agn attach` shows a blank pane, or your tmux keys do nothing.** agn's tmux server reads `~/.agnostic/tmux.conf`, not your `~/.tmux.conf`: your prefix key, bindings and colours are not in effect there, and an error in your own config cannot break an agn session. agn rewrites that file at every daemon start, so edits to it do not survive. A server started before this version keeps the config it started with until it stops: `tmux -L agn kill-server` ends every agn session and the next `agn run` starts a server on the new config.
 
 **`agn sync` says a file "was written by hand and agn will not overwrite that".** The file no longer starts with agn's generated header, so agn treats it as yours. Copy what you want to keep into `.ag/instructions.md`, then run `agn sync --force` to regenerate it. During `agn run` or `agn resume` the same case is not an error: the task starts on the file that is there, and the daemon log records `sync skipped`.
 
@@ -60,6 +66,6 @@ package next to it, and that package has no `dist` until it is built. From a che
 
 **You want to script agn.** `--json` prints the daemon's response body instead of a table, on `agn add`, `agn repos`, `agn doctor`, `agn profiles`, `agn run`, `agn status`, `agn stop`, `agn clean`, `agn handoff`, `agn adopt`, `agn hooks install`, `agn init` and `agn sync`; on `agn attach` and `agn resume` it prints the tmux command instead of running it, and on `agn open` the editor command instead of running it. Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
 
-**Where things live.** Task database `~/.agnostic/agnostic.db`; worktrees `~/.agnostic/worktrees/<repo>/<task>`; the daemon log `~/.agnostic/logs/agnd.log`.
+**Where things live.** Task database `~/.agnostic/agnostic.db`; worktrees `~/.agnostic/worktrees/<repo>/<task>`; the daemon log `~/.agnostic/logs/agnd.log`; the tmux config agn's server runs on `~/.agnostic/tmux.conf`.
 
 **Reading the daemon log.** `tail -f ~/.agnostic/logs/agnd.log`. One line per request, with the method, path, status and duration. Prompts, task titles and your auth token are never written there.

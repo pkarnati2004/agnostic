@@ -26,6 +26,8 @@ export type TmuxClient = {
 export function createTmuxClient(opts: {
   socketName: string | null;
   env: Record<string, string>;
+  /** agn's own config, on every argv for agn's socket; null only for the user's default server. */
+  configFile: string | null;
 }): TmuxClient {
   const socket = opts.socketName === null ? null : checkedSocketName(opts.socketName);
   // tmux runs from "/" so the server never inherits a directory that is later deleted.
@@ -33,7 +35,7 @@ export function createTmuxClient(opts: {
   return {
     socket,
     async run(args, runOpts = {}) {
-      const argv = socket === null ? ["-u", ...args] : ["-u", "-L", socket, ...args];
+      const argv = clientArgv(socket, opts.configFile, args);
       try {
         return await run("tmux", argv, {
           ...base,
@@ -49,6 +51,24 @@ export function createTmuxClient(opts: {
       }
     },
   };
+}
+
+/**
+ * tmux reads `-f` only when it starts a server, and the server on agn's socket is started by one
+ * of these commands, so the flag goes on all of them. The user's default server is theirs: agn
+ * never starts it, and an adopted session there keeps the config it was started with.
+ */
+function clientArgv(socket: string | null, configFile: string | null, args: string[]): string[] {
+  if (socket === null) {
+    return ["-u", ...args];
+  }
+  if (configFile === null) {
+    throw new ExecutorError("a tmux client on agn's socket was built without a config file", {
+      code: "tmux-failed",
+      hint: "This is a bug in agn: the executor writes ~/.agnostic/tmux.conf before it builds a client.",
+    });
+  }
+  return ["-u", "-f", configFile, "-L", socket, ...args];
 }
 
 function checkedSocketName(name: string): string {

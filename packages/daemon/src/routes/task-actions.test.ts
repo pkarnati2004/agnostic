@@ -1,4 +1,5 @@
-import { stat } from "node:fs/promises";
+import { stat, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { AttachResponse, CleanTaskResponse, Repo, Task, TaskResponse } from "@agnostic/core";
 import { run } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -110,6 +111,74 @@ describe("POST /tasks/:id/clean", () => {
     const response = await clean(task);
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: { code: "task-active" } });
+  });
+
+  it("refuses a worktree with an untracked file and names --force", async () => {
+    const task = await stop(await start());
+    await writeFile(join(task.worktreePath ?? "", "scratch.txt"), "work in progress", "utf8");
+    const response = await clean(task);
+    expect(response.status).toBe(409);
+    const failure = (await response.json()) as {
+      error: { code: string; message: string; hint: string };
+    };
+    expect(failure.error.code).toBe("worktree-unsaved");
+    expect(failure.error.message).toMatch(/it has uncommitted changes$/);
+    expect(failure.error.hint).toContain(`agn clean ${task.id} --force`);
+    expect(await exists(task.worktreePath ?? "")).toBe(true);
+    expect(
+      daemon.ledger.events.forTask(task.id).filter((event) => event.kind === "task.cleaned"),
+    ).toHaveLength(0);
+  });
+
+  it("refuses a worktree whose tracked file was modified", async () => {
+    const task = await stop(await start());
+    await writeFile(join(task.worktreePath ?? "", "README.md"), "changed\n", "utf8");
+    const response = await clean(task);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: { code: "worktree-unsaved", message: /uncommitted changes/ },
+    });
+  });
+
+  it("refuses a worktree with a merge in progress", async () => {
+    const task = await stop(await start());
+    const gitDir = await run(
+      "git",
+      ["-C", task.worktreePath ?? "", "rev-parse", "--absolute-git-dir"],
+      { env: daemon.launch?.env, inheritEnv: false },
+    );
+    await writeFile(join(gitDir.stdout.trim(), "MERGE_HEAD"), "deadbeef\n", "utf8");
+    const response = await clean(task);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: { code: "worktree-unsaved", message: /a merge is in progress$/ },
+    });
+  });
+
+  it("removes a worktree with uncommitted work when force is set", async () => {
+    const task = await stop(await start());
+    await writeFile(join(task.worktreePath ?? "", "scratch.txt"), "work in progress", "utf8");
+    const response = await clean(task, { force: true });
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as CleanTaskResponse).removed).toBe(true);
+    expect(await exists(task.worktreePath ?? "")).toBe(false);
+    expect(
+      daemon.ledger.events.forTask(task.id).filter((event) => event.kind === "task.cleaned"),
+    ).toHaveLength(1);
+  });
+
+  it("refuses a running task even with force, which only skips the unsaved check", async () => {
+    const task = await start();
+    const response = await clean(task, { force: true });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "task-active" } });
+  });
+
+  it("rejects a body whose force is not a boolean", async () => {
+    const task = await stop(await start());
+    const response = await clean(task, { force: "yes" });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "request-invalid" } });
   });
 
   it("rejects a body whose deleteBranch is not a boolean", async () => {
