@@ -43,6 +43,33 @@ export function launchSpec(
   return { command: def.binary, args, env: routeEnv(def, profile, opts.env), promptAfterStart };
 }
 
+/** A one-shot read-only run: the prompt goes in on stdin, the whole answer comes back on stdout. */
+export type HeadlessSpec = LaunchSpec & { input: string };
+
+/**
+ * The same profile as a launch, asked to answer once and exit. Nothing of the interactive start
+ * survives: no launch tokens, no prompt on argv, no session for anyone to attach to.
+ */
+export function headlessSpec(
+  profile: Profile,
+  opts: { prompt: string; env: Record<string, string> },
+): HeadlessSpec {
+  const def = supportedDefinition(profile);
+  // A local route builds its provider overrides from a server list a headless call does not have.
+  if (def.headless === null || profile.route === "local") {
+    throw new RegistryError(`${def.name} has no headless form agn can run`, {
+      code: "headless-unsupported",
+      hint: "Name another profile in spec_writer in ~/.agnostic/config.yaml.",
+    });
+  }
+  return {
+    command: def.binary,
+    args: [...def.headless, ...routeArgs(def, profile, [])],
+    env: routeEnv(def, profile, opts.env),
+    input: opts.prompt,
+  };
+}
+
 export function resumeSpec(
   profile: Profile,
   sessionId: string,

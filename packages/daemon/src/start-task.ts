@@ -1,4 +1,5 @@
 import {
+  demoteSectionHeadings,
   newId,
   type Prepared,
   type Profile,
@@ -27,9 +28,8 @@ import { resolveProfile } from "./resolve-profile.js";
 import { ensureSynced } from "./sync-repo.js";
 import { syncTaskNote } from "./task-note-sync.js";
 import { launchedSession } from "./task-session.js";
+import { titleFromPrompt } from "./task-title.js";
 import { runTestCommand } from "./test-command.js";
-
-const TITLE_MAX_CHARS = 80;
 
 /**
  * One run, from the queued row to the live session. The row and its note exist before the worktree
@@ -62,7 +62,13 @@ export async function startTask(
     profile,
     config,
     base: req.base ?? null,
-    note: initialTaskNote(task, task.prompt),
+    // A `## ` line would split the note into a section agn cannot read, in an approved spec or in
+    // a prompt standing in for one, so both go through the demotion.
+    note: initialTaskNote(
+      task,
+      demoteSectionHeadings(req.spec ?? task.prompt),
+      req.acceptance === undefined ? null : demoteSectionHeadings(req.acceptance),
+    ),
     skipTests: req.skipTests === true,
   });
 }
@@ -115,7 +121,7 @@ function insertQueued(
     const task = ctx.ledger.tasks.insert({
       id,
       repoId: repo.id,
-      title: req.title ?? titleFrom(req.prompt),
+      title: req.title ?? titleFromPrompt(req.prompt),
       prompt: req.prompt,
       profileId,
       worktreePath: repo.kind === "git" ? worktreePath(ctx.paths, repo.id, id) : null,
@@ -252,11 +258,4 @@ async function resolveBase(ctx: DaemonContext, opts: LaunchOptions): Promise<str
     });
   }
   return task.branch;
-}
-
-/** The first line of the prompt, cut at a width a task list can print. */
-function titleFrom(prompt: string): string {
-  const first = prompt.split("\n")[0]?.trim() ?? "";
-  const title = first.length > TITLE_MAX_CHARS ? first.slice(0, TITLE_MAX_CHARS).trimEnd() : first;
-  return title === "" ? "untitled task" : title;
 }

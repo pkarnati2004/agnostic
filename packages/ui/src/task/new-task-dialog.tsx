@@ -2,24 +2,25 @@ import type { Profile, RepoListRow, RunTaskRequest, Task } from "@agnostic/core"
 import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { type ApiError, asApiError } from "../api/error";
-import { Button } from "../components/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "../components/dialog";
+import { NewTaskFooter } from "./new-task-footer";
 import { NewTaskFields } from "./new-task-form";
 import {
   followRecommendation,
   type NewTaskForm,
   recommendRequest,
   runRequest,
+  specRequest,
 } from "./new-task-request";
+import { SpecFields } from "./spec-fields";
 import { useRecommendation } from "./use-recommendation";
+import { useSpecWriter } from "./use-spec-writer";
 
 type NewTaskDialogProps = {
   open: boolean;
@@ -42,6 +43,18 @@ export function NewTaskDialog(props: NewTaskDialogProps) {
   const body = runRequest({ ...form, profileId });
   const repo = props.repos.find((row) => row.id === form.repoId) ?? null;
   const { run, busy, error } = useRunTask(props, form.repoId, body);
+  const spec = specRequest(form);
+  const writer = useSpecWriter({
+    client: props.client,
+    open: props.open,
+    onWritten: (written) =>
+      setForm((current) => ({
+        ...current,
+        title: written.title,
+        spec: written.spec,
+        acceptance: written.acceptance ?? "",
+      })),
+  });
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -75,51 +88,24 @@ export function NewTaskDialog(props: NewTaskDialogProps) {
               }
             }}
           />
+          {writer.shown && (
+            <SpecFields
+              draft={form}
+              onChange={(draft) => setForm({ ...form, ...draft })}
+              writtenBy={writer.writtenBy}
+            />
+          )}
         </div>
-        <RunFooter
+        <NewTaskFooter
           error={error}
           testing={busy ? (repo?.testCommand ?? null) : null}
-          disabled={body === null || busy}
+          runDisabled={body === null || busy}
           onRun={run}
+          writer={writer}
+          onWriteSpec={spec === null ? null : () => writer.write(form.repoId, spec)}
         />
       </DialogContent>
     </Dialog>
-  );
-}
-
-type RunFooterProps = {
-  error: ApiError | null;
-  /** The repo's test command while it runs, which is what a slow start is waiting on (ADR 022). */
-  testing: string | null;
-  disabled: boolean;
-  onRun: () => void;
-};
-
-function RunFooter({ error, testing, disabled, onRun }: RunFooterProps) {
-  return (
-    <div className="flex flex-col gap-3">
-      {error !== null && (
-        <div>
-          <p className="text-destructive text-sm">{error.message}</p>
-          {error.hint !== null && (
-            <p className="mt-1 text-muted-foreground text-xs">{error.hint}</p>
-          )}
-        </div>
-      )}
-      {testing !== null && (
-        <p className="text-muted-foreground text-xs">Running the tests first: {testing}</p>
-      )}
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button variant="ghost" size="sm">
-            Cancel
-          </Button>
-        </DialogClose>
-        <Button size="sm" onClick={onRun} disabled={disabled}>
-          Run
-        </Button>
-      </DialogFooter>
-    </div>
   );
 }
 
@@ -183,5 +169,13 @@ function useNewTaskForm(open: boolean, defaultRepoId: string | null) {
 }
 
 function blank(repoId: string | null): NewTaskForm {
-  return { repoId: repoId ?? "", prompt: "", intent: "automatic", profileId: null };
+  return {
+    repoId: repoId ?? "",
+    prompt: "",
+    intent: "automatic",
+    profileId: null,
+    title: "",
+    spec: "",
+    acceptance: "",
+  };
 }

@@ -187,6 +187,12 @@ EOF
 {
   echo '#!/bin/sh'
   echo 'case "$1" in --version) echo 1.0.0; exit 0 ;; esac'
+  # The spec call is `-p --output-format text ...`; the model probe is `-p --input-format ...`.
+  echo 'case "${2:-}" in --output-format)'
+  echo "  cat > $WORK/spec-prompt.txt"
+  echo "  printf '# Add a verbose flag\\n\\n## Spec\\n\\nAdd --verbose to the CLI.\\n\\n## Acceptance\\n\\n- [ ] the flag prints a line per step\\n'"
+  echo '  exit 0 ;;'
+  echo 'esac'
   echo "hook=\"\$(node '$WORK/hook-command.cjs' \"\$PWD/.claude/settings.local.json\" 2> /dev/null)\""
   echo 'if [ -n "$hook" ]; then'
   echo "  exec $PWD/tests/fixtures/fake-agent.sh --log $WORK/agent.log --hook-command \"\$hook\" \"\$@\""
@@ -224,6 +230,39 @@ grep -q "^Task: debug, small, risk: auth$" "$WORK/recommend.txt"
 grep -q "^Recommended: claude-code:" "$WORK/recommend.txt"
 grep -q "^Risk: touches auth" "$WORK/recommend.txt"
 agx recommend "fix the flaky auth test" --repo "$WORK/runrepo" --json | grep -q '"taskClass"'
+
+echo "smoke: agn spec, from no eligible agent to an approved spec in the note"
+SPEC_PORT="$("$NODE" -e "process.stdout.write(String(require('$AGNOSTIC_HOME/daemon.json').port))")"
+SPEC_TOKEN="$(cat "$AGNOSTIC_HOME/auth-token")"
+RUNREPO_ID="$(agx repos --json | "$NODE" -e "
+const { repos } = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+const repo = repos.find((row) => row.path.endsWith('/runrepo'));
+if (!repo) { throw new Error('runrepo is not registered'); }
+process.stdout.write(repo.id);
+")"
+post() {
+  curl -sS -o "$2" -w '%{http_code}' -X POST -H "Authorization: Bearer $SPEC_TOKEN" \
+    -H 'content-type: application/json' -d "$3" "http://127.0.0.1:$SPEC_PORT/repos/$RUNREPO_ID/$1"
+}
+# The smoke's home has no logged-in harness, so no profile is billed to a subscription agn knows.
+test "$(post spec "$WORK/spec-409.json" '{"prompt":"add a verbose flag"}')" = "409"
+grep -q '"code":"spec-writer-unavailable"' "$WORK/spec-409.json"
+
+printf 'port: %s\nspec_writer: claude-code:default:native\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+test "$(post spec "$WORK/spec.json" '{"prompt":"add a verbose flag"}')" = "200"
+grep -q '"title":"Add a verbose flag"' "$WORK/spec.json"
+grep -q '"profileId":"claude-code:default:native"' "$WORK/spec.json"
+grep -q "^Task: add a verbose flag$" "$WORK/spec-prompt.txt"
+grep -q "^## Acceptance$" "$WORK/spec-prompt.txt"
+printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+
+# The approved text reaches the note; the prompt stays the one-liner.
+test "$(post tasks "$WORK/spec-task.json" '{"prompt":"add a verbose flag","profile":"claude-code","spec":"Add --verbose to the CLI.","acceptance":"- [ ] the flag prints a line per step"}')" = "201"
+SPEC_TASK="$("$NODE" -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('$WORK/spec-task.json', 'utf8')).task.id)")"
+grep -q "^## Acceptance$" "$WORK/runrepo/.ag/tasks/$SPEC_TASK.md"
+grep -q "^- \[ \] the flag prints a line per step$" "$WORK/runrepo/.ag/tasks/$SPEC_TASK.md"
+agx stop "$SPEC_TASK" | grep -q "^stopped $SPEC_TASK"
+agx clean "$SPEC_TASK" | grep -q "^cleaned $SPEC_TASK"
 
 agx run "smoke task" --profile claude-code --repo "$WORK/runrepo" > "$WORK/run.txt"
 grep -q "^started " "$WORK/run.txt"

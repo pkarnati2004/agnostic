@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ConfigError } from "./error.js";
 import {
+  demoteSectionHeadings,
   formatTaskNote,
   parseTaskNote,
   readTaskNote,
@@ -203,5 +204,29 @@ describe("writeTaskNote", () => {
     } finally {
       await rm(repo, { recursive: true, force: true });
     }
+  });
+});
+
+describe("demoteSectionHeadings", () => {
+  it("demotes every line that would start a note section, fences included", () => {
+    expect(demoteSectionHeadings("## Spec\n\ntext\n\n```\n## Acceptance\n```\n")).toBe(
+      "### Spec\n\ntext\n\n```\n### Acceptance\n```\n",
+    );
+  });
+
+  it("leaves deeper headings, inline hashes and indented lines alone", () => {
+    expect(demoteSectionHeadings("### Notes\n#### Detail\nsee ## Spec\n  ## Indented\n")).toBe(
+      "### Notes\n#### Detail\nsee ## Spec\n  ## Indented\n",
+    );
+  });
+
+  it("survives a note round trip: the demoted body is one section again", () => {
+    const note = {
+      ...(parseTaskNote(
+        `---\nid: q4m8n2vwxy\ntitle: t\nstatus: queued\nprofile: claude-code:default:native\ncreated: 2026-09-14T10:00:00.000Z\n---\n\n## Spec\n\nx\n`,
+      ) as TaskNote),
+      spec: demoteSectionHeadings("## Background\n\nwhy\n\n## Plan\n\nhow"),
+    };
+    expect(parseTaskNote(formatTaskNote(note)).spec).toBe(note.spec);
   });
 });

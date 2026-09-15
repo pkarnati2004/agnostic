@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createClient } from "./client";
 import { ApiError } from "./error";
 
-type Call = { method: string; url: string; token: string | undefined };
+type Call = { method: string; url: string; token: string | undefined; body: string | null };
 
 function stubClient(answer: (call: Call) => Response | Promise<Response>) {
   const calls: Call[] = [];
@@ -13,6 +13,7 @@ function stubClient(answer: (call: Call) => Response | Promise<Response>) {
         method: init?.method ?? "GET",
         url: String(input),
         token: new Headers(init?.headers).get("authorization") ?? undefined,
+        body: typeof init?.body === "string" ? init.body : null,
       };
       calls.push(call);
       return Promise.resolve(answer(call));
@@ -38,6 +39,8 @@ describe("createClient", () => {
     await client.stopTask("t1");
     await client.resumeTask("t1");
     await client.handoffTask("t1", { profile: "codex:gpt-5:native" });
+    await client.usage();
+    await client.taskUsage("abc");
     expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
       "GET /repos",
       "GET /tasks",
@@ -46,6 +49,8 @@ describe("createClient", () => {
       "POST /tasks/t1/stop",
       "POST /tasks/t1/resume",
       "POST /tasks/t1/handoff",
+      "GET /usage",
+      "GET /tasks/abc/usage",
     ]);
     expect(calls.every((call) => call.token === "Bearer tok")).toBe(true);
   });
@@ -109,6 +114,53 @@ describe("createClient", () => {
     expect(task.id).toBe("t9");
   });
 
+  it("asks the daemon for a spec and hands back what it wrote", async () => {
+    const { client, calls } = stubClient(() =>
+      ok({
+        title: "Add a retry budget",
+        spec: "Change the client.",
+        acceptance: "- [ ] the client retries",
+        profileId: "claude-code:opus:native",
+        model: "opus",
+      }),
+    );
+    const spec = await client.writeSpec("r 1", { prompt: "add a retry budget", intent: "debug" });
+    expect(calls).toEqual([
+      {
+        method: "POST",
+        url: "/repos/r%201/spec",
+        token: "Bearer tok",
+        body: JSON.stringify({ prompt: "add a retry budget", intent: "debug" }),
+      },
+    ]);
+    expect(spec.title).toBe("Add a retry budget");
+    expect(spec.profileId).toBe("claude-code:opus:native");
+  });
+
+  it("reports a machine with no agent that can write specs", async () => {
+    const { client } = stubClient(() =>
+      Response.json(
+        {
+          error: {
+            code: "spec-writer-unavailable",
+            message: "no subscription-billed agent can write specs on this machine",
+            hint: "Write the spec yourself in the dialog.",
+          },
+        },
+        { status: 409 },
+      ),
+    );
+    const failure = await client
+      .writeSpec("r1", { prompt: "add a retry budget" })
+      .catch((cause: unknown) => cause);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(failure).toMatchObject({
+      code: "spec-writer-unavailable",
+      hint: "Write the spec yourself in the dialog.",
+      status: 409,
+    });
+  });
+
   it("turns a refused run into an ApiError", async () => {
     const { client } = stubClient(() =>
       Response.json(
@@ -122,6 +174,18 @@ describe("createClient", () => {
       .runTask("r1", { prompt: "add a retry budget" })
       .catch((cause: unknown) => cause);
     expect(failure).toMatchObject({ code: "folder-busy", hint: "Stop it first.", status: 409 });
+  });
+
+  it("reports a usage scan the daemon could not finish", async () => {
+    const { client } = stubClient(() =>
+      Response.json(
+        { error: { code: "usage-scan-failed", message: "a transcript could not be read" } },
+        { status: 500 },
+      ),
+    );
+    const failure = await client.usage().catch((cause: unknown) => cause);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(failure).toMatchObject({ code: "usage-scan-failed", status: 500 });
   });
 
   it("turns the daemon's error body into an ApiError", async () => {

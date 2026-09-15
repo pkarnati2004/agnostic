@@ -1,0 +1,26 @@
+#!/bin/sh
+# A harness that answers one spec and exits. It records what it was asked, where, and under which
+# task id, so a test can check the prompt and the environment the daemon built.
+if [ -n "$SPEC_LOG" ]; then
+  {
+    echo "PWD=$PWD"
+    echo "AGN_TASK_ID=${AGN_TASK_ID:-}"
+    echo "ARGS=$*"
+    echo "--- prompt ---"
+    cat
+  } > "$SPEC_LOG"
+else
+  cat > /dev/null
+fi
+cat <<'ANSWER'
+# Add a verbose flag
+
+## Spec
+
+Add `--verbose` to the CLI in `src/main.ts` and print one line per step.
+
+## Acceptance
+
+- [ ] `agn --verbose` prints a line per step
+- [ ] the existing output is unchanged without the flag
+ANSWER

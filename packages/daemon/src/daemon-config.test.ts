@@ -20,6 +20,7 @@ describe("readDaemonConfig", () => {
       plans: {},
       editor: null,
       catalogCheck: true,
+      specWriter: null,
     });
   });
 
@@ -30,6 +31,7 @@ describe("readDaemonConfig", () => {
       plans: {},
       editor: null,
       catalogCheck: true,
+      specWriter: null,
     });
   });
 
@@ -104,6 +106,7 @@ describe("writeDaemonConfigPlans", () => {
       editor: "cursor",
       plans: { claude: "max20", chatgpt: "plus" },
       catalogCheck: true,
+      specWriter: null,
     });
   });
 
@@ -115,6 +118,27 @@ describe("writeDaemonConfigPlans", () => {
       editor: null,
       plans: { claude: "pro" },
       catalogCheck: true,
+      specWriter: null,
+    });
+  });
+
+  it("reads the profile that writes specs and refuses an id that is not one", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "spec_writer: claude-code:haiku:native\n");
+    expect(await readDaemonConfig(paths)).toMatchObject({
+      specWriter: "claude-code:haiku:native",
+    });
+    await writeFile(paths.config, "spec_writer: haiku\n");
+    await expect(readDaemonConfig(paths)).rejects.toBeInstanceOf(ConfigError);
+  });
+
+  it("keeps the spec writer when agn doctor --plan rewrites the file", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "spec_writer: claude-code:haiku:native\n");
+    await writeDaemonConfigPlans(paths, { claude: "pro" });
+    expect(await readDaemonConfig(paths)).toMatchObject({
+      specWriter: "claude-code:haiku:native",
+      plans: { claude: "pro" },
     });
   });
 

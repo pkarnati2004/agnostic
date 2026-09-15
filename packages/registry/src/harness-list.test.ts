@@ -32,6 +32,26 @@ describe("the harness table", () => {
     expect(withLaunchTokens).toEqual(["other:kiro", "other:command-code", "other:hermes"]);
   });
 
+  it("gives every tier-1 harness a headless form and no tier-2 row one", () => {
+    expect(harnessDefinition("claude-code").headless).toEqual([
+      "-p",
+      "--output-format",
+      "text",
+      "--permission-mode",
+      "plan",
+    ]);
+    expect(harnessDefinition("codex").headless).toEqual([
+      "exec",
+      "--skip-git-repo-check",
+      "-s",
+      "read-only",
+    ]);
+    expect(harnessDefinition("pi").headless).toEqual(["--print", "--no-session", "--mode", "text"]);
+    expect(harnessDefinition("opencode").headless).toEqual(["run", "--format", "default"]);
+    expect(harnesses.filter((def) => def.headless !== null).map((def) => def.id)).toEqual(TIER_1);
+    expect(harnessDefinition("other:anything").headless).toBeNull();
+  });
+
   it("pins every binary that differs from the harness id", () => {
     expect(harnessDefinition("claude-code").binary).toBe("claude");
     expect(harnessDefinition("other:kiro").binary).toBe("kiro-cli");
@@ -132,6 +152,7 @@ describe("an open harness id", () => {
       aliases: [],
       processNames: ["mytool"],
       launch: [],
+      headless: null,
       prompt: { kind: "type-after-start" },
       modelFlag: null,
       modelSource: null,

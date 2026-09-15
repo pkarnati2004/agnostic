@@ -1,5 +1,5 @@
 import type { HandoffTaskRequest, Profile, RepoListRow, Task } from "@agnostic/core";
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useReducer, useState } from "react";
 import { createClient, type WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
 import { browserTokenSources, readToken } from "./auth/token";
@@ -20,6 +20,11 @@ import {
 import { TaskTabs } from "./tabs/task-tabs";
 import { NewTaskDialog } from "./task/new-task-dialog";
 import { TaskHeader } from "./task/task-header";
+import { TaskCost } from "./usage/task-cost";
+import { UsageBar } from "./usage/usage-bar";
+import type { UsageState } from "./usage/usage-state";
+import { useTaskUsage } from "./usage/use-task-usage";
+import { useUsage } from "./usage/use-usage";
 
 const TOOLTIP_DELAY_MS = 400;
 
@@ -47,6 +52,13 @@ function Workspace({ token }: { token: string }) {
   const groups = useMemo(
     () => groupTasks(state.repos, Object.values(state.tasks)),
     [state.repos, state.tasks],
+  );
+  const usage = useUsage(client, state.usageStamp.plans);
+  const activeId = tabs.active;
+  const taskUsage = useTaskUsage(
+    client,
+    activeId,
+    activeId === null ? 0 : (state.usageStamp.byTask[activeId] ?? 0),
   );
   useTabsStorage(tabs, state.loaded, state.tasks, dispatchTabs);
 
@@ -82,6 +94,8 @@ function Workspace({ token }: { token: string }) {
         profiles={profiles}
         token={token}
         client={client}
+        usage={usage}
+        cost={<TaskCost usage={taskUsage} />}
         error={error === dismissed ? null : error}
         onDismiss={() => setDismissed(error)}
         onResume={(taskId) => act(async (api) => (await api.resumeTask(taskId)).task)}
@@ -101,6 +115,9 @@ type CentreProps = {
   profiles: Profile[];
   token: string;
   client: WorkspaceClient;
+  usage: UsageState;
+  /** What the tab in front has spent; the page holds the hook that reads it. */
+  cost: ReactNode;
   error: ApiError | null;
   onDismiss: () => void;
   onResume: (taskId: string) => Promise<unknown>;
@@ -129,6 +146,7 @@ function Centre(props: CentreProps) {
           task={active}
           repo={props.repos.find((repo) => repo.id === active.repoId) ?? null}
           profiles={props.profiles}
+          cost={props.cost}
           onStop={() => props.onStop(active.id).then(() => undefined)}
           onResume={() => props.onResume(active.id).then(() => undefined)}
           onHandoff={(body) => props.onHandoff(active, body)}
@@ -147,6 +165,7 @@ function Centre(props: CentreProps) {
           onResume={(taskId) => props.onResume(taskId).then(() => undefined)}
         />
       )}
+      <UsageBar state={props.usage} />
     </main>
   );
 }

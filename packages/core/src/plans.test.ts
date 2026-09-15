@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DoctorRequestSchema } from "./daemon-api.js";
+import { DoctorRequestSchema } from "./doctor-api.js";
 import { PlansSchema, PlanVendorSchema } from "./plans.js";
 
 describe("PlansSchema", () => {

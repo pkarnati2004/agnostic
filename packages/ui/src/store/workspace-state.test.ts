@@ -129,9 +129,50 @@ describe("workspaceReducer", () => {
   it("advances the cursor for a kind it draws nothing from", () => {
     const state = apply(
       loaded(),
-      event(19, "usage.recorded", { tokens: 10, costUsd: 0.1, source: "transcript" }),
+      event(20, "plan.changed", {
+        harness: "claude-code",
+        from: null,
+        to: "max20",
+        source: "detected",
+      }),
     );
-    expect(state).toEqual({ ...loaded(), cursor: 19 });
+    expect(state).toEqual({ ...loaded(), cursor: 20 });
+  });
+
+  it("counts a task's usage events against the task and the plans", () => {
+    const recorded = event(19, "usage.recorded", {
+      tokens: 10,
+      costUsd: 0.1,
+      source: "transcript",
+    });
+    const state = apply(loaded(), recorded, { ...recorded, id: 21 });
+    expect(state.usageStamp).toEqual({ plans: 2, byTask: { [TASK.id]: 2 } });
+    expect(state.cursor).toBe(21);
+  });
+
+  it("counts a usage event with no task against the plans alone", () => {
+    const recorded = event(19, "usage.recorded", {
+      tokens: 10,
+      costUsd: null,
+      source: "transcript",
+    });
+    const state = apply(loaded(), { ...recorded, taskId: undefined });
+    expect(state.usageStamp).toEqual({ plans: 1, byTask: {} });
+  });
+
+  it("resets the usage counters when a new snapshot lands", () => {
+    const recorded = event(19, "usage.recorded", {
+      tokens: 10,
+      costUsd: null,
+      source: "transcript",
+    });
+    const state = workspaceReducer(apply(loaded(), recorded), {
+      type: "loaded",
+      repos: [REPO],
+      tasks: [TASK],
+      cursor: 30,
+    });
+    expect(state.usageStamp).toEqual({ plans: 0, byTask: {} });
   });
 
   it("refetches the rows an event does not carry", () => {

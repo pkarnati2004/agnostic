@@ -63,6 +63,8 @@ describe("the daemon reading a plan off disk", () => {
         [null, "subscription"],
         // The fixture catalog meters this model on plus, so it is credits and not subscription.
         ["gpt-6-astra", "credits"],
+        // No entitlement row for it, which reads as included.
+        ["gpt-6-mini", "subscription"],
       ],
     );
   });

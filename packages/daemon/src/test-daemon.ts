@@ -138,6 +138,10 @@ type TestDaemonOptions = {
   editors?: Editor[];
   /** A directory standing in for `packages/ui/dist`; null is a checkout nobody has built. */
   uiDist?: string;
+  /** Merged over the base environment every harness is launched with, for a fixture to read. */
+  env?: Record<string, string>;
+  /** Short enough that a test can watch a hanging harness be given up on. */
+  specTimeoutMs?: number;
 };
 
 /** Everything a test daemon owns on disk and in memory, before any route exists. */
@@ -210,7 +214,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     catalogSource: catalogSource({ AGNOSTIC_CATALOG_URL: opts.catalogUrl ?? "http://127.0.0.1:1" }),
     catalogCheck: opts.catalogCheck ?? false,
     // HOME is always the test's own: an installer that writes per user must never find the real one.
-    env: launch?.env ?? { PATH: "/opt/bin", HOME: userHome },
+    env: { ...(launch?.env ?? { PATH: "/opt/bin", HOME: userHome }), ...opts.env },
     token: TEST_TOKEN,
     log,
     version: "0.0.0-test",
@@ -223,6 +227,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     detectEditors: () => Promise.resolve(opts.editors ?? fixtureEditors),
     uiDist: opts.uiDist ?? null,
     ...(opts.heartbeatMs === undefined ? {} : { heartbeatMs: opts.heartbeatMs }),
+    ...(opts.specTimeoutMs === undefined ? {} : { specTimeoutMs: opts.specTimeoutMs }),
   });
   const server = listener(app, upgrade, (bound) => {
     port = bound;

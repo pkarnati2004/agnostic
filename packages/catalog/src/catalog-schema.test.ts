@@ -23,7 +23,7 @@ describe("parseCatalog", () => {
   it("reads a complete catalog and an empty one", async () => {
     const complete = parseCatalog(await fixture("complete"));
     expect(complete.version).toBe(2);
-    expect(complete.models).toHaveLength(4);
+    expect(complete.models).toHaveLength(6);
     expect(complete.plans.map((plan) => plan.id)).toEqual(["pro", "max5", "max20", "plus"]);
     const empty = parseCatalog(await fixture("empty"));
     expect(empty.benchmarks).toEqual([]);

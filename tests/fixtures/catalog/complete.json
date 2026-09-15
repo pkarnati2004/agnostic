@@ -80,6 +80,20 @@
       "route": "native",
       "canonical": "openai/gpt-6-astra",
       "legacy": false
+    },
+    {
+      "harness": "claude-code",
+      "model": "haiku",
+      "route": "native",
+      "canonical": "anthropic/claude-haiku-5",
+      "legacy": false
+    },
+    {
+      "harness": "codex",
+      "model": "gpt-6-mini",
+      "route": "native",
+      "canonical": "openai/gpt-6-mini",
+      "legacy": false
     }
   ],
   "plans": [
@@ -136,6 +150,13 @@
       "vendor": "chatgpt",
       "plan": "plus",
       "access": "credits"
+    },
+    {
+      "harness": "claude-code",
+      "model": "haiku",
+      "vendor": "claude",
+      "plan": "pro",
+      "access": "credits"
     }
   ],
   "pricing": [
@@ -154,6 +175,24 @@
       "outputPerMillion": 50,
       "cacheReadPerMillion": 1,
       "cacheWritePerMillion": 12.5,
+      "source": "curated",
+      "asOf": "2026-09-01"
+    },
+    {
+      "model": "anthropic/claude-haiku-5",
+      "inputPerMillion": 1,
+      "outputPerMillion": 5,
+      "cacheReadPerMillion": 0.1,
+      "cacheWritePerMillion": 1.25,
+      "source": "openrouter",
+      "asOf": "2026-09-01"
+    },
+    {
+      "model": "openai/gpt-6-mini",
+      "inputPerMillion": 2,
+      "outputPerMillion": 10,
+      "cacheReadPerMillion": 0.2,
+      "cacheWritePerMillion": 2.5,
       "source": "curated",
       "asOf": "2026-09-01"
     }

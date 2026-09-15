@@ -10,6 +10,7 @@ import {
   type NewTaskForm,
   recommendRequest,
   runRequest,
+  specRequest,
 } from "./new-task-request";
 
 const FORM: NewTaskForm = {
@@ -17,6 +18,9 @@ const FORM: NewTaskForm = {
   prompt: "  add a retry budget  ",
   intent: "automatic",
   profileId: "claude-code:opus:native",
+  title: "",
+  spec: "",
+  acceptance: "",
 };
 
 function profile(id: string): Profile {
@@ -66,6 +70,44 @@ describe("runRequest", () => {
 
   it("sends nothing the daemon does not take", () => {
     expect(RunTaskRequestSchema.safeParse(runRequest(FORM)).success).toBe(true);
+  });
+
+  it("sends the approved spec, trimmed, and leaves out a field the user cleared", () => {
+    const request = runRequest({
+      ...FORM,
+      title: "  Add a retry budget  ",
+      spec: "  Change the client.  ",
+      acceptance: "   ",
+    });
+    expect(request).toEqual({
+      prompt: "add a retry budget",
+      profile: "claude-code:opus:native",
+      title: "Add a retry budget",
+      spec: "Change the client.",
+    });
+    expect(RunTaskRequestSchema.safeParse(request).success).toBe(true);
+  });
+
+  it("sends no spec fields when the dialog has none", () => {
+    expect(runRequest(FORM)).toEqual({
+      prompt: "add a retry budget",
+      profile: "claude-code:opus:native",
+    });
+  });
+});
+
+describe("specRequest", () => {
+  it("waits for a prompt and a repo", () => {
+    expect(specRequest({ ...FORM, prompt: " " })).toBeNull();
+    expect(specRequest({ ...FORM, repoId: "" })).toBeNull();
+  });
+
+  it("sends the trimmed one-liner, with the intent only when the user chose one", () => {
+    expect(specRequest(FORM)).toEqual({ prompt: "add a retry budget" });
+    expect(specRequest({ ...FORM, intent: "debug" })).toEqual({
+      prompt: "add a retry budget",
+      intent: "debug",
+    });
   });
 });
 

@@ -4,6 +4,7 @@ import {
   EditorIdSchema,
   type Plans,
   PlansSchema,
+  ProfileIdSchema,
   readYamlFile,
   writeYamlFile,
 } from "@agnostic/core";
@@ -15,6 +16,7 @@ const DaemonConfigFileSchema = z.strictObject({
   plans: PlansSchema.optional(),
   editor: EditorIdSchema.optional(),
   catalog_check: z.boolean().optional(),
+  spec_writer: ProfileIdSchema.optional(),
 });
 
 type DaemonConfig = {
@@ -22,6 +24,8 @@ type DaemonConfig = {
   plans: Plans;
   editor: EditorId | null;
   catalogCheck: boolean;
+  /** The profile that writes specs, overriding the automatic choice (ADR 028). */
+  specWriter: string | null;
 };
 
 const HEADER = "agn machine settings. agn doctor --plan rewrites the plans section.";
@@ -42,12 +46,13 @@ export async function readDaemonConfig(paths: AgnosticPaths): Promise<DaemonConf
     editor: file?.editor ?? null,
     // Absent means on: the check is opt-out, so a file that says nothing about it keeps it.
     catalogCheck: file?.catalog_check ?? true,
+    specWriter: file?.spec_writer ?? null,
   };
 }
 
 /**
  * Records what the user told `agn doctor --plan`, one vendor at a time, keeping the port, the
- * editor, the catalog setting and the vendors they did not mention. The file is rewritten from its parsed contents, so a comment in it
+ * editor, the catalog setting, the spec writer and the vendors they did not mention. The file is rewritten from its parsed contents, so a comment in it
  * does not survive being edited this way.
  */
 export async function writeDaemonConfigPlans(paths: AgnosticPaths, plans: Plans): Promise<Plans> {
@@ -62,6 +67,9 @@ export async function writeDaemonConfigPlans(paths: AgnosticPaths, plans: Plans)
   }
   if (!current.catalogCheck) {
     file.catalog_check = false;
+  }
+  if (current.specWriter !== null) {
+    file.spec_writer = current.specWriter;
   }
   await writeYamlFile(paths.config, file, HEADER);
   return merged;

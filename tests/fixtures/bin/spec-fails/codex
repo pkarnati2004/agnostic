@@ -1,0 +1,5 @@
+#!/bin/sh
+# A harness that refuses: no answer on stdout, a non-zero exit the daemon reports as it is.
+cat > /dev/null
+echo "not logged in" >&2
+exit 3

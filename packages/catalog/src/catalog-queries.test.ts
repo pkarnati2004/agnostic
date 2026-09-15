@@ -18,6 +18,7 @@ describe("modelRows", () => {
     expect(modelRows(catalog, "claude-code", "native").map((row) => row.model)).toEqual([
       "fable",
       "opus",
+      "haiku",
     ]);
     expect(modelRows(catalog, "claude-code", "anthropic-gateway").map((row) => row.model)).toEqual([
       "kimi-k2.6",
@@ -32,7 +33,9 @@ describe("entitlement", () => {
     expect(entitlement(catalog, "claude-code", "fable", "max20")).toBe("included");
     expect(entitlement(catalog, "claude-code", "opus", "pro")).toBe("unavailable");
     expect(entitlement(catalog, "claude-code", "opus", "max20")).toBeNull();
-    expect(entitlement(catalog, "claude-code", "haiku", "pro")).toBeNull();
+    expect(entitlement(catalog, "claude-code", "haiku", "pro")).toBe("credits");
+    // A model the entitlement table has no row for at all.
+    expect(entitlement(catalog, "claude-code", "sonnet", "pro")).toBeNull();
   });
 });
 

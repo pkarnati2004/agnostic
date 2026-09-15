@@ -20,7 +20,7 @@ than the page.
 - **Left:** your repos and their tasks. Dot = status: running, waiting for you, queued, done.
 - **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback.
 - **+ Task:** describe the work, see the recommendation, pick or accept, run.
-- **Bottom:** usage per plan and today's API spend.
+- **Bottom:** tokens and cost per plan, for today and for this week.
 
 Everything the workspace shows comes from the local daemon; closing the tab loses nothing.
 
@@ -56,6 +56,40 @@ When a session is over the tab says so and offers Resume, which starts the agent
 same worktree. If the daemon restarts, the tab reconnects by itself: tmux held the session while
 it was gone. A session that was adopted from outside tmux cannot be attached to, and the tab says
 that instead.
+
+## The usage bar
+
+Along the bottom there is one cell per plan: tokens and cost for today and for this week, and for
+Claude the share of those tokens that ran on Fable. The figures are the ones `agn usage` prints,
+from the same scan of your transcripts on this machine. Hover a cell for the week figures when the
+window is too narrow to show them, and for tokens from sessions agn did not start - your plan's
+meter counts those and agn cannot price them. Both windows are calendar windows in your own time
+zone: today is today, and the week starts on Monday. Vendors measure their limits over rolling
+windows, so these numbers and the ones your harness reports will differ.
+
+The selected task's own tokens and cost sit in its header, beside Stop and Resume. A task billed to
+a subscription reads `included in plan` rather than a price.
+
+## Write spec
+
+In the new-task dialog, **Write spec** turns your one-liner into a title, a spec and a checklist of
+acceptance criteria. agn runs one of your own agents in the repo, headless and read-only, with the
+same repo state a launched agent gets: recent tasks, what is in flight, and your recorded decisions.
+It edits nothing and runs nothing.
+
+The three fields - title, spec and acceptance - appear once a spec arrives; **Write it yourself**
+opens them empty. They are yours to edit before you run, and a field you empty is left out. Run
+writes them into the task note's Spec and Acceptance sections, which is what the agent reads first.
+The one-liner stays the task's prompt.
+
+agn picks the cheapest model you already pay a subscription for, Claude Code first. A model metered
+on credits is never picked for you. To name one yourself, set `spec_writer` in
+`~/.agnostic/config.yaml`. If nothing on the machine qualifies, agn says so and you write the spec
+in the dialog.
+
+Spec writing was verified with Claude Code. The headless flags for Codex, Pi and OpenCode follow
+each vendor's documented headless form and have not been run here. If one of them rejects a flag,
+report it; the flag will be dropped.
 
 ## After a task
 

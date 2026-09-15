@@ -1,19 +1,30 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Catalog, type LoadedCatalog, readCatalogFile } from "@agnostic/catalog";
-import type { Editor, HarnessId, HarnessReport, Profile } from "@agnostic/core";
+import {
+  type Billing,
+  type Editor,
+  formatProfileId,
+  type HarnessId,
+  type HarnessReport,
+  type Profile,
+} from "@agnostic/core";
 import { harnessDefinition, type LocalServer } from "@agnostic/registry";
 import type { CatalogStore } from "./catalog-store.js";
 import type { Detection } from "./detection-cache.js";
 
 // Not part of the package's exports: this is what a daemon test detects instead of a real machine.
-export function fixtureProfile(model: string | null): Profile {
+export function fixtureProfile(
+  model: string | null,
+  opts: { harness?: HarnessId; billing?: Billing } = {},
+): Profile {
+  const harness = opts.harness ?? "claude-code";
   return {
-    id: `claude-code:${model ?? "default"}:native`,
-    harness: "claude-code",
+    id: formatProfileId(harness, model, "native"),
+    harness,
     model,
     route: "native",
-    billing: "subscription",
+    billing: opts.billing ?? "subscription",
     available: true,
     evidence: "binary",
     tier: 1,
@@ -73,7 +84,7 @@ export function fixtureDetection(
 ): Detection {
   return {
     harnesses: harnesses.map((harness) => fixtureReport(models, harness)),
-    profiles: [null, ...models].map(fixtureProfile),
+    profiles: [null, ...models].map((model) => fixtureProfile(model)),
     tools: [],
     servers: [],
     detectedAt: new Date().toISOString(),

@@ -1,5 +1,5 @@
 import type { HandoffTaskRequest, Profile, RepoListRow, Task, TaskStatus } from "@agnostic/core";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Badge } from "../components/badge";
 import { Button } from "../components/button";
 import { STATUS_DOT } from "../sidebar/status-dot";
@@ -9,6 +9,8 @@ type TaskHeaderProps = {
   task: Task;
   repo: RepoListRow | null;
   profiles: Profile[];
+  /** What this task has spent, filled by the page that knows how to read it. */
+  cost: ReactNode;
   /** None of these reject: a failure lands in the notice below this header. */
   onStop: () => Promise<void>;
   onResume: () => Promise<void>;
@@ -18,7 +20,8 @@ type TaskHeaderProps = {
 const STOPPABLE: TaskStatus[] = ["running", "waiting"];
 const RESUMABLE: TaskStatus[] = ["done", "failed", "stopped"];
 
-export function TaskHeader({ task, repo, profiles, onStop, onResume, onHandoff }: TaskHeaderProps) {
+export function TaskHeader(props: TaskHeaderProps) {
+  const { task, repo, profiles, cost, onStop, onResume, onHandoff } = props;
   const [busy, setBusy] = useState(false);
   const run = (action: () => Promise<void>) => {
     setBusy(true);
@@ -46,6 +49,7 @@ export function TaskHeader({ task, repo, profiles, onStop, onResume, onHandoff }
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        {cost}
         <Button
           variant="outline"
           size="sm"
