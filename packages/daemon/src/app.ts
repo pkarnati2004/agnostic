@@ -26,13 +26,12 @@ import {
 } from "@agnostic/registry";
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { createContext } from "./app-context.js";
 import { bearerAuth } from "./auth.js";
-import { authFilesStamp } from "./auth-files.js";
-import { type CatalogChecker, createCatalogChecker } from "./catalog-check.js";
+import type { CatalogChecker } from "./catalog-check.js";
 import type { CatalogStore } from "./catalog-store.js";
-import { closeOutcome } from "./close-outcome.js";
 import { readDaemonConfig } from "./daemon-config.js";
-import { createDetectionCache, type Detection, type DetectionCache } from "./detection-cache.js";
+import type { Detection, DetectionCache } from "./detection-cache.js";
 import { errorBody, noRoute } from "./error.js";
 import type { EventFeed } from "./event-feed.js";
 import { type Logger, requestLog } from "./log.js";
@@ -52,9 +51,9 @@ import { syncRoutes } from "./routes/sync.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { uiRoutes } from "./routes/ui.js";
 import { usageRoutes } from "./routes/usage.js";
-import { createTaskLifecycle, type TaskLifecycle } from "./task-lifecycle.js";
+import type { TaskLifecycle } from "./task-lifecycle.js";
 import { createTerminalSocket, type UpgradeHandler } from "./terminal-socket.js";
-import { createUsageScanner, type UsageScanner } from "./usage-scan.js";
+import type { UsageScanner } from "./usage-scan.js";
 import type { VerdictSweep } from "./verdict-sweep.js";
 
 export type DaemonDeps = {
@@ -110,50 +109,7 @@ export function createApp(deps: DaemonDeps): {
   close: () => Promise<void>;
   upgrade: UpgradeHandler;
 } {
-  const detection = createDetectionCache(deps.detect, deps.ledger, () => authFilesStamp(deps.home));
-  const usage = createUsageScanner({ ...deps, detection });
-  // A task that has just closed has written its last turn, and its worktree is nobody else's:
-  // the usage rows are read first, then the outcome row is priced from them.
-  const lifecycle = createTaskLifecycle({
-    ...deps,
-    afterClose: async (task) => {
-      await usage.scan({ taskId: task.id });
-      await closeOutcome(ctx, task);
-    },
-  });
-  const ctx: DaemonContext = {
-    ...deps,
-    detection,
-    lifecycle,
-    usage,
-    // Its timers are unref'd, so nothing waits on a check that is still in flight at shutdown.
-    catalogChecker: createCatalogChecker({
-      store: deps.catalog,
-      source: deps.catalogSource,
-      paths: deps.paths,
-      log: deps.log,
-      enabled: deps.catalogCheck,
-      // A newer catalog can move model lists and entitlements, which is what detection reports.
-      onUpdated: () => detection.refresh().then(() => undefined),
-    }),
-  };
-  // The subscription ends when the executor closes, which the daemon does before the ledger.
-  deps.executor.onEvent(lifecycle.onExited);
-  // Detection shells out; starting it here means the first `agn doctor` does not wait for it.
-  ctx.detection.refresh().catch((cause: unknown) => {
-    deps.log.error("detection failed", { message: reason(cause) });
-  });
-  // A task the ledger calls running may have died while the daemon was down (ADR 014), and one
-  // still queued was being launched by that daemon. The verdict sweep runs after both, so a task
-  // settled here is swept in the same pass.
-  lifecycle
-    .reconcileAll()
-    .then(() => lifecycle.failQueued())
-    .then(() => deps.verdicts.runOnce())
-    .catch((cause: unknown) => {
-      deps.log.error("start-up reconcile failed", { message: reason(cause) });
-    });
-
+  const ctx = createContext(deps);
   const terminalSocket = createTerminalSocket(ctx);
 
   const app = new Hono();
@@ -198,7 +154,7 @@ export function createApp(deps: DaemonDeps): {
     close: async () => {
       terminalSocket.close();
       ctx.catalogChecker.close();
-      await lifecycle.drain();
+      await ctx.lifecycle.drain();
     },
   };
 }
