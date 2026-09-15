@@ -26,5 +26,6 @@ export * from "./task.js";
 export * from "./task-class.js";
 export * from "./task-intent.js";
 export * from "./task-note.js";
+export * from "./terminal-frames.js";
 export * from "./usage.js";
 export * from "./yaml-file.js";

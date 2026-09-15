@@ -69,7 +69,11 @@ export async function runDaemon(
     log,
   });
   let port = wanted;
-  const { app, close: closeApp } = createApp({
+  const {
+    app,
+    close: closeApp,
+    upgrade,
+  } = createApp({
     ledger,
     paths,
     token,
@@ -92,6 +96,7 @@ export async function runDaemon(
   let server: ServerType;
   try {
     ({ server, port } = await listen(app, wanted));
+    server.on("upgrade", upgrade);
   } catch (cause) {
     await closeApp();
     feed.close();
@@ -133,7 +138,7 @@ function listen(app: Hono, port: number): Promise<{ server: ServerType; port: nu
 
 function closer(parts: {
   server: ServerType;
-  /** Stops the catalog checker and waits for any close still running; the rest is the caller's. */
+  /** Stops the catalog checker's timers and the open terminal sockets, then waits for any close still running; the rest is the caller's. */
   closeApp: () => Promise<void>;
   feed: EventFeed;
   verdicts: VerdictSweep;
@@ -145,12 +150,14 @@ function closer(parts: {
   let closed: Promise<void> | null = null;
   return () => {
     closed ??= (async () => {
-      // Open SSE streams would hold `close` forever, so the sockets go first.
+      // Open SSE streams and terminal sockets would both hold `close` forever. The terminal
+      // sockets are the app's, and an upgraded socket is not an http connection, so they are told
+      // to go away before the server stops counting what it still has open.
+      await parts.closeApp();
       if ("closeAllConnections" in parts.server) {
         parts.server.closeAllConnections();
       }
       await new Promise<void>((done) => parts.server.close(() => done()));
-      await parts.closeApp();
       parts.feed.close();
       // The exit watcher and the sweep write through the ledger, so both stop before it does.
       parts.verdicts.close();

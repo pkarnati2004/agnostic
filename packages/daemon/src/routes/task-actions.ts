@@ -7,7 +7,6 @@ import {
   type HandoffTaskResponse,
   type Repo,
   type ResumeTaskResponse,
-  sessionHandle,
   type Task,
   type TaskResponse,
 } from "@agnostic/core";
@@ -17,19 +16,14 @@ import { DaemonError, requestInvalid } from "../error.js";
 import { handoffTask } from "../handoff-task.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
 import { resumeTask } from "../resume-task.js";
+import { attachableHandle } from "../task-session.js";
 
 /** What `agn attach`, `agn resume`, `agn handoff`, `agn stop` and `agn clean` do to a task. */
 export function taskActionRoutes(ctx: DaemonContext): Hono {
   return new Hono()
     .get("/tasks/:id/attach", async (c) => {
       const task = await ctx.lifecycle.reconcile(resolveTaskId(ctx.ledger, c.req.param("id")));
-      const handle = sessionHandle(task);
-      if (handle === null && task.session?.tmuxSession === null) {
-        throw notAttachable(task);
-      }
-      if (handle === null || (await ctx.executor.sessionState(handle)) !== "running") {
-        throw notRunning(task);
-      }
+      const handle = await attachableHandle(ctx.executor, task);
       const body: AttachResponse = { task, attach: ctx.executor.attach(handle) };
       return c.json(body);
     })
@@ -92,21 +86,6 @@ async function clean(
   }
   await ctx.executor.clean({ task, repo, deleteBranch });
   return { task: ctx.ledger.tasks.clean(task.id, deleteBranch), removed: true };
-}
-
-/** ADR 014: a session started outside tmux is agn's to watch, never agn's to put in a terminal. */
-function notAttachable(task: Task): DaemonError {
-  return new DaemonError(`task ${task.id} was started outside tmux and cannot be attached to`, {
-    code: "session-not-attachable",
-    hint: `When it exits, run \`agn resume ${task.id}\` to continue it here.`,
-  });
-}
-
-function notRunning(task: Task): DaemonError {
-  return new DaemonError(`task ${task.id} has no session running`, {
-    code: "session-not-running",
-    hint: `Run \`agn resume ${task.id}\` to start it again.`,
-  });
 }
 
 /** A POST with no body at all is the common case for an action with only optional fields. */

@@ -21,6 +21,7 @@ import { createCatalogStore } from "./catalog-store.js";
 import type { Detection } from "./detection-cache.js";
 import { createEventFeed } from "./event-feed.js";
 import { createLogger } from "./log.js";
+import type { UpgradeHandler } from "./terminal-socket.js";
 import {
   fixtureCatalog,
   fixtureCatalogPath,
@@ -71,7 +72,7 @@ export async function waitFor(
 }
 
 /** A real loopback listener, for the tests that need frames on the wire and not just a Response. */
-function listener(app: Hono, onPort: (port: number) => void) {
+function listener(app: Hono, upgrade: UpgradeHandler, onPort: (port: number) => void) {
   let server: ServerType | null = null;
   return {
     start: (): Promise<string> =>
@@ -80,6 +81,7 @@ function listener(app: Hono, onPort: (port: number) => void) {
           onPort(address.port);
           ready(`http://127.0.0.1:${address.port}`);
         });
+        server.on("upgrade", upgrade);
       }),
     stop: async (): Promise<void> => {
       if (server === null) {
@@ -102,6 +104,7 @@ function idleExecutor(): ExecutorProvider {
     launch: refuse,
     sessionState: () => Promise.resolve("gone" as const),
     attach: () => ({ kind: "tmux", argv: [] }),
+    terminal: refuse,
     stop: () => Promise.resolve(),
     clean: () => Promise.resolve(),
     detect: () => Promise.resolve([]),
@@ -179,7 +182,11 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
   let calls = 0;
   let port = 0;
 
-  const { app, close: closeApp } = createApp({
+  const {
+    app,
+    close: closeApp,
+    upgrade,
+  } = createApp({
     ledger,
     paths,
     feed,
@@ -214,7 +221,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     detectEditors: () => Promise.resolve(opts.editors ?? fixtureEditors),
     ...(opts.heartbeatMs === undefined ? {} : { heartbeatMs: opts.heartbeatMs }),
   });
-  const server = listener(app, (bound) => {
+  const server = listener(app, upgrade, (bound) => {
     port = bound;
   });
   // createApp starts the first detection; every test may assume it has already finished.
@@ -256,8 +263,9 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     },
     readLog: () => readFile(logFile, "utf8"),
     close: async () => {
-      await server.stop();
+      // The app's terminal sockets first: the server does not count them, so it would wait forever.
       await closeApp();
+      await server.stop();
       feed.close();
       verdicts.close();
       await executor.close();

@@ -68,6 +68,20 @@ export function sessionHandle(task: Task): SessionHandle | null {
 /** The argv a terminal runs to attach; the caller inherits stdio and unsets TMUX first. */
 export type AttachInfo = { kind: "tmux"; argv: string[] };
 
+export type TerminalSize = { cols: number; rows: number };
+
+/** One tmux client in a pty. Bytes both ways; the tmux server holds the only history. */
+export type TerminalStream = {
+  write(data: Uint8Array): void;
+  /** Sent to the pty; tmux's window-size (default latest) lets the newest client's size win. */
+  resize(size: TerminalSize): void;
+  onData(cb: (data: Uint8Array) => void): () => void;
+  /** Fires once, when the tmux client exits: detach, session killed, or the server gone. */
+  onExit(cb: (exitCode: number) => void): () => void;
+  /** Ends this client only; the session and the harness go on. Idempotent; onExit still fires. */
+  close(): void;
+};
+
 /** exitCode is null when a signal killed the harness or the tmux server went away. */
 export type SessionEvent = {
   kind: "exited";
@@ -99,6 +113,9 @@ export interface ExecutorProvider {
   /** Running, ended with its exit code still to come, or gone without a trace. */
   sessionState(handle: SessionHandle): Promise<SessionState>;
   attach(handle: SessionHandle): AttachInfo;
+  /** Throws `session-not-running` when the session is gone; a session that dies afterwards ends
+   * the stream with exit instead. */
+  terminal(handle: SessionHandle, size: TerminalSize): Promise<TerminalStream>;
   /** Idempotent; the exited event still fires exactly once. */
   stop(handle: SessionHandle): Promise<void>;
   /** Removes the worktree, keeps the branch unless asked; a no-op for folders. */

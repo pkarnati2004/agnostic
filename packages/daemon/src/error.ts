@@ -21,6 +21,9 @@ export class DaemonError extends CoreError {
  */
 const statusByCode: Record<string, number> = {
   unauthorized: 401,
+  // ADR 026: a page on another origin may not reach a daemon that answers on loopback.
+  "origin-forbidden": 403,
+  "not-found": 404,
   "repo-not-found": 404,
   "hook-unsupported": 404,
   "hook-task-unknown": 404,
@@ -96,6 +99,14 @@ export function errorBody(err: unknown): { status: number; body: ApiErrorBody } 
       },
     },
   };
+}
+
+/** The one 404 for a path nobody serves, whether it arrived as a request or as an upgrade. */
+export function noRoute(path: string): DaemonError {
+  return new DaemonError(`no route for ${path}`, {
+    code: "not-found",
+    hint: "Check the path against the agn API; a task's terminal is at /tasks/<id>/terminal.",
+  });
 }
 
 /** Zod is the only thing that decides a request is malformed, so this is the only 400 for shape. */

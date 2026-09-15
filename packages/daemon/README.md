@@ -15,6 +15,9 @@ the ledger, and the detection it caches for the life of the process.
 - `POST /tasks/:id/resume` walks the resume tree (live session, recorded session id, fresh with the
   task context); `GET /repos/:id/sessions` and `POST /repos/:id/adopt` take over a session someone
   started outside agn.
+- `WS /tasks/:id/terminal` puts one tmux client on the wire per socket: bytes as binary frames,
+  resize up and ready/exit down as JSON. The token travels as the `agn-token.<token>` subprotocol,
+  and every route and every upgrade refuses an Origin that is not the daemon's own.
 - `POST /repos/:id/init` creates `.ag/`; `POST /repos/:id/sync` renders `CLAUDE.md` and `AGENTS.md`
   from it, or plans the render for a dry run. Every launch syncs the directory it is about to start
   an agent in, and logs the refusal rather than failing the run.

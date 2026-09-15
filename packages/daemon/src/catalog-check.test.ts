@@ -99,17 +99,44 @@ function fakeTimers(): void {
   vi.useFakeTimers({ toFake: ["setTimeout", "setInterval", "clearTimeout", "clearInterval"] });
 }
 
+/** Rounds of the event loop with nothing to wait for, so whatever is queued gets to run. */
+async function drain(rounds = 20): Promise<void> {
+  for (let round = 0; round < rounds; round += 1) {
+    await new Promise((done) => setImmediate(done));
+  }
+}
+
 /**
- * Drains the I/O a check queues; a faked clock does not move file writes along. The extra rounds
- * after the condition holds let the check finish, not just reach the point being waited for.
+ * Drains the I/O a check queues; a faked clock does not move file writes along. The wait is on the
+ * real clock, not on a count of event-loop turns: a loaded machine runs through a thousand of them
+ * while one write is still in flight. The extra rounds after the condition holds let the check
+ * finish, not just reach the point being waited for.
  */
 async function settle(until: () => boolean): Promise<void> {
-  for (let round = 0; round < 500 && !until(); round += 1) {
+  const deadline = Date.now() + 10_000;
+  while (!until() && Date.now() < deadline) {
     await new Promise((done) => setImmediate(done));
   }
-  for (let round = 0; round < 20; round += 1) {
+  await drain();
+}
+
+/**
+ * Waits until a check has been recorded and is no longer in flight. The state file is written last,
+ * so a run that reloaded the store may still be inside `record`; advancing the clock then would
+ * hand the timer the check already running instead of starting the next one.
+ */
+async function settleCheck(outcome: CatalogCheckState["outcome"]): Promise<void> {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const recorded = await readState().catch(() => null);
+    if (recorded?.outcome === outcome) {
+      // Only microtasks stand between the written file and the checker releasing its slot.
+      await drain();
+      return;
+    }
     await new Promise((done) => setImmediate(done));
   }
+  throw new Error(`no ${outcome} check was recorded within 10 s`);
 }
 
 async function readState(): Promise<CatalogCheckState> {
@@ -196,7 +223,7 @@ describe("createCatalogChecker", () => {
     create({ fetch: await published(), startDelayMs: 5_000 });
     expect(checker?.lastCheck()).toBeNull();
     await vi.advanceTimersByTimeAsync(5_000);
-    await settle(() => checker?.lastCheck() !== null);
+    await settleCheck("updated");
     expect(checker?.lastCheck()).toMatchObject({ outcome: "updated" });
   });
 
@@ -205,7 +232,7 @@ describe("createCatalogChecker", () => {
     fakeTimers();
     create({ fetch: await published() });
     await vi.advanceTimersByTimeAsync(60_000);
-    await settle(() => false);
+    await drain(500);
     // The state file is the one from an hour ago, untouched: no check ran.
     expect(checker?.lastCheck()?.remoteVersion).toBe(1);
     expect(reloads).toBe(0);
@@ -224,7 +251,7 @@ describe("createCatalogChecker", () => {
       },
     });
     await vi.advanceTimersByTimeAsync(5_000);
-    await settle(() => reloads === 1);
+    await settleCheck("updated");
     expect(reloads).toBe(1);
     expect(manifests).toBe(1);
     await vi.advanceTimersByTimeAsync(24 * HOUR_MS);
@@ -238,7 +265,7 @@ describe("createCatalogChecker", () => {
     fakeTimers();
     const off = create({ enabled: false, fetch: await published() });
     await vi.advanceTimersByTimeAsync(48 * HOUR_MS);
-    await settle(() => false);
+    await drain(500);
     expect(reloads).toBe(0);
     expect(await readFile(paths.catalogCheck, "utf8").catch(() => null)).toBeNull();
 
