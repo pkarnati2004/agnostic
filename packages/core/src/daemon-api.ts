@@ -45,7 +45,10 @@ export type HealthResponse = z.infer<typeof HealthResponseSchema>;
  * do. Read per request rather than stored: the file is the user's, and only the daemon reads it.
  */
 export type RepoListRow = Repo & { testCommand: string | null };
-export type RepoListResponse = { repos: RepoListRow[] };
+
+// `cursor` is the ledger's latest event id, read before the rows in the same read transaction, so
+// a page opening `/events` there misses nothing the snapshot lacks (ADR 030); the CLI ignores it.
+export type RepoListResponse = { repos: RepoListRow[]; cursor: number };
 
 export const RegisterRepoRequestSchema = z.strictObject({
   // Absolute, or relative to the client's cwd: the client resolves before sending.
@@ -65,7 +68,8 @@ export const TaskListQuerySchema = z
   .pipe(z.strictObject({ status: z.array(TaskStatusSchema).min(1).optional() }));
 export type TaskListQuery = z.output<typeof TaskListQuerySchema>;
 
-export type TaskListResponse = { tasks: Task[] };
+/** `cursor` is the same snapshot cursor as the repo list's. */
+export type TaskListResponse = { tasks: Task[]; cursor: number };
 export type TaskResponse = { task: Task };
 
 // The daemon resolves `profile`, so the CLI, the UI and any adapter get one set of rules: a whole

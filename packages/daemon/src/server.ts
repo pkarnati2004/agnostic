@@ -24,6 +24,7 @@ import { readDaemonConfig } from "./daemon-config.js";
 import { DaemonError } from "./error.js";
 import { createEventFeed, type EventFeed } from "./event-feed.js";
 import { createLogger, type Logger } from "./log.js";
+import { resolveUiDist } from "./ui-dist.js";
 import { createVerdictSweep, type VerdictSweep } from "./verdict-sweep.js";
 
 const LOG_FILE = "agnd.log";
@@ -86,6 +87,7 @@ export async function runDaemon(
     home,
     catalog,
     verdicts,
+    uiDist: resolveUiDist(),
     catalogSource: source,
     catalogCheck: config.catalogCheck,
     port: () => port,

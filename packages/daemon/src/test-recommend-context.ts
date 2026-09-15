@@ -67,6 +67,7 @@ export async function recommendContext(
     env: { PATH: "/opt/bin" },
     home,
     feed: stubFeed(),
+    uiDist: null,
     detection: {
       current: () => Promise.resolve(detection),
       refresh: () => Promise.resolve(detection),

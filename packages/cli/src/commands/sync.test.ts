@@ -12,7 +12,8 @@ function cli(response: { writes: SyncWrite[]; applied: boolean }, cwd = "/work/a
   const asked: { repoId: string; body: SyncRequest }[] = [];
   const test = createTestContext({
     client: {
-      listRepos: () => Promise.resolve({ repos: [{ ...REPO, addedAt: "", testCommand: null }] }),
+      listRepos: () =>
+        Promise.resolve({ repos: [{ ...REPO, addedAt: "", testCommand: null }], cursor: 0 }),
       syncRepo: (repoId, body) => {
         asked.push({ repoId, body });
         return Promise.resolve(response);

@@ -21,14 +21,12 @@ A row moves here from Planned when the file exists.
 | `packages/registry/src/model-list-parsers.ts`, `probe-models.ts` | stablyai/orca `src/shared/claude-model-list-probe.ts`, `commit-message-model-parsers.ts`; `src/main/text-generation/commit-message-model-discovery.ts`, `commit-message-model-discovery-policy.ts` (ported) | MIT © Lovecast Inc. |
 | `packages/usage/src/claude-code/parse.ts`, `scan-transcripts.ts` (the assistant-record shape, the prefilter, the dedupe key and max-per-bucket merge, the `*.jsonl` walk and the size-and-mtime skip) | stablyai/orca `src/main/claude-usage/transcript-record-parser.ts`, `transcript-file-discovery.ts`, `scanner.ts` (ported) | MIT © Lovecast Inc. |
 | `packages/usage/src/pricing.ts` (the logic only: the `-YYYYMMDD` normalisation and the per-bucket cost sum; the rates are catalog data, ADR 011) | asheshgoplani/agent-deck `internal/costs/pricing.go` (ported) | MIT © Ashesh Goplani |
+| `packages/ui/src/styles/tokens.css` (the shadcn set, the sidebar family, the radius scale and the agent-question hue; the families agn has no surface for were dropped) | stablyai/orca `src/renderer/src/assets/main.css` lines 130-366 (copied) | MIT © Lovecast Inc. |
+| `packages/ui/src/components/button.tsx`, `badge.tsx`, `dialog.tsx`, `select.tsx`, `tooltip.tsx` (copied, with the variant tables as plain records instead of class-variance-authority and only the parts the workspace uses) | shadcn-ui/ui `apps/v4/registry/new-york-v4/ui/button.tsx`, `badge.tsx`, `dialog.tsx`, `select.tsx`, `tooltip.tsx` | MIT © shadcn |
 
 ## Planned
 
-Files we intend to copy or port. Names are provisional until the file lands.
-
-| Our file | From | License |
-|---|---|---|
-| `packages/ui/src/styles/tokens.css` | stablyai/orca `src/renderer/src/assets/main.css` (tokens only) | MIT © Lovecast Inc. |
+Files we intend to copy or port. Names are provisional until the file lands. Nothing is pending.
 
 ## Ideas, no code
 

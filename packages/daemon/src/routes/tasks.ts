@@ -49,10 +49,14 @@ function listed(
   if (!parsed.success) {
     throw requestInvalid(parsed.error);
   }
-  return {
-    tasks: ctx.ledger.tasks.list({
-      ...(repoId === null ? {} : { repoId }),
-      ...(parsed.data.status === undefined ? {} : { status: parsed.data.status }),
-    }),
+  const filter = {
+    ...(repoId === null ? {} : { repoId }),
+    ...(parsed.data.status === undefined ? {} : { status: parsed.data.status }),
   };
+  // One read transaction, cursor first: the rows are then never older than the cursor the page
+  // resumes `/events` from, and an event that lands between the two is replayed (ADR 030).
+  return ctx.ledger.transaction(() => {
+    const cursor = ctx.ledger.events.latestId();
+    return { tasks: ctx.ledger.tasks.list(filter), cursor };
+  });
 }

@@ -39,8 +39,8 @@ function cli(tasks: Task[], cwd = "/work/api") {
     cwd,
     paths: PATHS,
     client: {
-      listRepos: () => Promise.resolve({ repos }),
-      listAllTasks: () => Promise.resolve({ tasks }),
+      listRepos: () => Promise.resolve({ repos, cursor: 0 }),
+      listAllTasks: () => Promise.resolve({ tasks, cursor: 0 }),
       getTask: (id) =>
         Promise.resolve({ task: tasks.find((row) => row.id === id) ?? task(id, "done") }),
     },

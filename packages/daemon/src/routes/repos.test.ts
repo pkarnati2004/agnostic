@@ -55,6 +55,19 @@ describe("GET /repos", () => {
     expect(body.repos[0]?.testCommand).toBe("pnpm test");
   });
 
+  it("carries the ledger's latest event id as the cursor, never older than the rows", async () => {
+    await post({ path: await gitRepo("alpha") });
+    const body = (await (await daemon.request("/repos")).json()) as RepoListResponse;
+    expect(body.cursor).toBe(daemon.ledger.events.latestId());
+    const registered = daemon.ledger.events.latest("repo.registered");
+    expect(registered?.id).toBeLessThanOrEqual(body.cursor);
+
+    await post({ path: await gitRepo("beta") });
+    const after = (await (await daemon.request("/repos")).json()) as RepoListResponse;
+    expect(after.cursor).toBeGreaterThan(body.cursor);
+    expect(after.repos).toHaveLength(2);
+  });
+
   it("lists a repo whose config is malformed or gone, with no command", async () => {
     const broken = await gitRepo("broken");
     await post({ path: broken });

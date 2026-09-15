@@ -14,7 +14,15 @@ import { registerRepo } from "../register-repo.js";
 export function repoRoutes(ctx: DaemonContext): Hono {
   return new Hono()
     .get("/repos", async (c) => {
-      const body: RepoListResponse = { repos: await Promise.all(ctx.ledger.repos.list().map(row)) };
+      // One read transaction, cursor first (ADR 030); reading each repo's config is not part of it.
+      const snapshot = ctx.ledger.transaction(() => {
+        const cursor = ctx.ledger.events.latestId();
+        return { repos: ctx.ledger.repos.list(), cursor };
+      });
+      const body: RepoListResponse = {
+        repos: await Promise.all(snapshot.repos.map(row)),
+        cursor: snapshot.cursor,
+      };
       return c.json(body);
     })
     .post("/repos", async (c) => {

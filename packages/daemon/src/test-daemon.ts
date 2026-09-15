@@ -136,6 +136,8 @@ type TestDaemonOptions = {
   userHome?: string;
   /** The editors the stub detection reports; `[]` is a machine with none installed. */
   editors?: Editor[];
+  /** A directory standing in for `packages/ui/dist`; null is a checkout nobody has built. */
+  uiDist?: string;
 };
 
 /** Everything a test daemon owns on disk and in memory, before any route exists. */
@@ -219,6 +221,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
       return detect();
     },
     detectEditors: () => Promise.resolve(opts.editors ?? fixtureEditors),
+    uiDist: opts.uiDist ?? null,
     ...(opts.heartbeatMs === undefined ? {} : { heartbeatMs: opts.heartbeatMs }),
   });
   const server = listener(app, upgrade, (bound) => {

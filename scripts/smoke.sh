@@ -34,6 +34,9 @@ pnpm vitest run --project sync
 echo "smoke: cli unit tests"
 pnpm vitest run --project cli
 
+echo "smoke: workspace page unit tests"
+pnpm vitest run --project ui
+
 echo "smoke: executor-tmux against a real tmux on a private socket"
 command -v tmux > /dev/null || {
   echo "tmux is not installed: brew install tmux (macOS) or apt install tmux (Linux)" >&2
@@ -403,6 +406,27 @@ unset AGNOSTIC_CATALOG_URL
 kill "$CATALOG_PID" 2> /dev/null || true
 # Reaped here so the shell does not announce the kill in the middle of the smoke's output.
 wait "$CATALOG_PID" 2> /dev/null || true
+
+echo "smoke: the workspace is built and served at /ui"
+pnpm --filter @agnostic/ui build
+agx daemon start > /dev/null
+UI_PORT="$("$NODE" -e "process.stdout.write(String(require('$AGNOSTIC_HOME/daemon.json').port))")"
+# No Authorization header on any of these: the page is served to the browser before it has a token.
+curl -fsS -D "$WORK/ui.h" "http://127.0.0.1:$UI_PORT/ui" > "$WORK/ui.html"
+grep -qi "^content-type: text/html" "$WORK/ui.h"
+grep -q 'id="root"' "$WORK/ui.html"
+curl -fsS "http://127.0.0.1:$UI_PORT/ui/" | grep -q 'id="root"'
+UI_ASSET="$(ls packages/ui/dist/assets | grep '\.js$' | head -1)"
+curl -fsS -o /dev/null "http://127.0.0.1:$UI_PORT/ui/assets/$UI_ASSET"
+test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$UI_PORT/ui/nope.js")" = 404
+# The server builds a URL from the request line, which collapses `..` before any route sees it:
+# this lands on `/` and the bearer check refuses it. Nothing outside dist is ever read.
+test "$(curl -s -o /dev/null -w '%{http_code}' --path-as-is "http://127.0.0.1:$UI_PORT/ui/../")" = 401
+agx ui --no-open | grep -q "^http://127.0.0.1:$UI_PORT/ui#token=$(cat "$AGNOSTIC_HOME/auth-token")$"
+# The token reaches the browser through the fragment and nothing else: not a request line, not a log.
+! grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$AGNOSTIC_HOME/logs/agnd.log"
+grep -q "http GET /ui" "$AGNOSTIC_HOME/logs/agnd.log"
+agx daemon stop > /dev/null
 
 echo "smoke: nothing in agn calls out except the catalog check"
 # This grep catches a new naked fetch call: the two files it finds both talk to loopback (ADR 002).

@@ -9,7 +9,8 @@ function cli(installs: HookInstallResult[]) {
   const asked: { repoId: string; body: HooksInstallRequest }[] = [];
   const test = createTestContext({
     client: {
-      listRepos: () => Promise.resolve({ repos: [{ ...REPO, addedAt: "", testCommand: null }] }),
+      listRepos: () =>
+        Promise.resolve({ repos: [{ ...REPO, addedAt: "", testCommand: null }], cursor: 0 }),
       installHooks: (repoId, body) => {
         asked.push({ repoId, body });
         return Promise.resolve({ installs });

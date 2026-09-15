@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { agnosticPaths } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureAuthToken } from "./auth.js";
+import { ensureAuthToken, isUiRead } from "./auth.js";
 import { createLogger, type Logger } from "./log.js";
 import { createTestDaemon, TEST_TOKEN, type TestDaemon } from "./test-daemon.js";
 
@@ -79,5 +79,49 @@ describe("bearerAuth", () => {
       port: 0,
       version: "0.0.0-test",
     });
+  });
+
+  it("lets the workspace page through without a token", async () => {
+    // Not built in this daemon, so the answer is the route's own 404 rather than a 401.
+    const response = await daemon.app.request("/ui");
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ error: { code: "ui-not-built" } });
+  });
+
+  it("still refuses a path that merely starts with /ui, unlike the page itself", async () => {
+    // No route answers /ui-events, but the 401 has to come from bearerAuth before that would
+    // matter: isUiRead is false for it, so it is not the exemption that is doing the refusing.
+    const response = await daemon.app.request("/ui-events");
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ error: { code: "unauthorized" } });
+  });
+
+  it("refuses a write to the page's own path: the exemption is for reads", async () => {
+    const response = await daemon.app.request("/ui", { method: "POST" });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ error: { code: "unauthorized" } });
+  });
+});
+
+describe("isUiRead", () => {
+  it("is a GET or a HEAD of the page and everything under it", () => {
+    for (const method of ["GET", "HEAD"]) {
+      expect(isUiRead(method, "/ui")).toBe(true);
+      expect(isUiRead(method, "/ui/")).toBe(true);
+      expect(isUiRead(method, "/ui/assets/a.js")).toBe(true);
+    }
+  });
+
+  it("is no other method, so both guards refuse a write under /ui", () => {
+    for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
+      expect(isUiRead(method, "/ui")).toBe(false);
+      expect(isUiRead(method, "/ui/assets/a.js")).toBe(false);
+    }
+  });
+
+  it("is nothing else, however the path starts", () => {
+    for (const path of ["/uix", "/ui-events", "/health", "/repos", "/", "/tasks/ui"]) {
+      expect(isUiRead("GET", path)).toBe(false);
+    }
   });
 });

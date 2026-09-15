@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/knip/schema.json",
+  "ignoreExportsUsedInFile": { "type": true },
   "workspaces": {
     ".": {
       "entry": ["scripts/*.ts"],
@@ -8,6 +9,11 @@
     "packages/*": {
       "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts"]
+    },
+    "packages/ui": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["tailwindcss"]
     }
   }
 }

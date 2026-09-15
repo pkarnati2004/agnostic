@@ -138,6 +138,21 @@ describe("GET /tasks", () => {
     const tasks = (await body<TaskListResponse>(response)).tasks;
     expect(tasks.map((task) => task.status).sort()).toEqual(["done", "failed"]);
   });
+
+  it("carries the ledger's latest event id as the cursor, never older than the rows", async () => {
+    seedTask("mnpqrstuvw", "running");
+    const listed = await body<TaskListResponse>(await daemon.request("/tasks"));
+    expect(listed.cursor).toBe(daemon.ledger.events.latestId());
+    // The row is in the snapshot, so the event that created it is at or before the cursor: a page
+    // resuming the feed there cannot miss it.
+    const created = daemon.ledger.events.forTask("mnpqrstuvw").map((event) => event.id);
+    expect(Math.max(...created)).toBeLessThanOrEqual(listed.cursor);
+
+    seedTask("zyxwvutsrq", "done");
+    const again = await body<TaskListResponse>(await daemon.request("/tasks"));
+    expect(again.cursor).toBeGreaterThan(listed.cursor);
+    expect(again.tasks).toHaveLength(2);
+  });
 });
 
 describe("GET /tasks/:id", () => {

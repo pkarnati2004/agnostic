@@ -28,6 +28,8 @@ const statusByCode: Record<string, number> = {
   "hook-unsupported": 404,
   "hook-task-unknown": 404,
   "task-not-found": 404,
+  // Nothing was built to serve: the route exists, the files do not.
+  "ui-not-built": 404,
   "repo-exists": 409,
   "repo-id-registered": 409,
   // A task or a workspace is busy: the request was right, the moment was not.

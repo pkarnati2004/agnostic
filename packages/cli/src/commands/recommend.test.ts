@@ -47,6 +47,7 @@ function cliWith(answer: Recommendation, sent: RecommendRequest[] = []) {
               testCommand: null,
             },
           ],
+          cursor: 0,
         }),
       recommend: (body) => {
         sent.push(body);

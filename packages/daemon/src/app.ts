@@ -49,6 +49,7 @@ import { recommendRoutes } from "./routes/recommend.js";
 import { repoRoutes } from "./routes/repos.js";
 import { syncRoutes } from "./routes/sync.js";
 import { taskRoutes } from "./routes/tasks.js";
+import { uiRoutes } from "./routes/ui.js";
 import { usageRoutes } from "./routes/usage.js";
 import { createTaskLifecycle, type TaskLifecycle } from "./task-lifecycle.js";
 import { createTerminalSocket, type UpgradeHandler } from "./terminal-socket.js";
@@ -80,6 +81,8 @@ export type DaemonDeps = {
   env: Record<string, string>;
   /** The user's home, where the harnesses keep their auth files. */
   home: string;
+  /** Where `packages/ui/dist` sits, or null when the workspace has not been built. */
+  uiDist: string | null;
   /** Owned by the caller: it polls the ledger, so it has to stop before the ledger closes. */
   feed: EventFeed;
   /** Owned by the caller for the same reason: its timer writes outcome rows (ADR 022). */
@@ -168,6 +171,7 @@ export function createApp(deps: DaemonDeps): {
   app.route("/", usageRoutes(ctx));
   app.route("/", outcomeRoutes(ctx));
   app.route("/", catalogRoutes(ctx));
+  app.route("/", uiRoutes(ctx));
 
   app.notFound((c) => {
     const { status, body } = errorBody(noRoute(c.req.path));
