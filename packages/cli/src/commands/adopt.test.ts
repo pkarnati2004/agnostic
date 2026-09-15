@@ -83,7 +83,7 @@ describe("agn adopt", () => {
     const test = createTestContext({
       cwd: "/work",
       client: {
-        listRepos: () => Promise.resolve({ repos: [repo] }),
+        listRepos: () => Promise.resolve({ repos: [repo], cursor: 0 }),
         listSessions: () =>
           Promise.reject(
             new DaemonApiError(`task ${task.id} is already running under /work/api/sub`, {
