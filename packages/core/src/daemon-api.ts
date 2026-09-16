@@ -115,7 +115,11 @@ export type HandoffTaskRequest = z.infer<typeof HandoffTaskRequestSchema>;
 /** The child first, because it is what the caller goes on to attach to; the parent as it was left. */
 export type HandoffTaskResponse = { task: Task; parent: Task };
 
-export const CleanTaskRequestSchema = z.strictObject({ deleteBranch: z.boolean().optional() });
+export const CleanTaskRequestSchema = z.strictObject({
+  deleteBranch: z.boolean().optional(),
+  /** Remove a worktree that still holds uncommitted work; only a person asking for it sets this. */
+  force: z.boolean().optional(),
+});
 export type CleanTaskRequest = z.infer<typeof CleanTaskRequestSchema>;
 
 /** `removed` is false when there was nothing to remove: a folder task, or a worktree already gone. */
@@ -128,6 +132,9 @@ export type ResumeTaskResponse = {
   task: Task;
   via: "live" | "native" | "fresh";
   attach: AttachInfo;
+  /** The branch a cleaned worktree was rebuilt from, null when it was still there. Orthogonal to
+   * `via`: a rebuilt worktree still resumes natively when the harness gave us a session id. */
+  recreatedFrom: string | null;
 };
 
 /** Detected editors in the daemon's preference order, and the one `agn open` would use. */

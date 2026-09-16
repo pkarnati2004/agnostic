@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTmuxExecutor } from "./executor.js";
 import { createGitRepo, testTask } from "./test-repo.js";
 import { createTestTmux, type TestTmux, waitFor } from "./test-tmux.js";
+import { tmuxConfig } from "./tmux-config.js";
 
 const FAKE_AGENT = fileURLToPath(new URL("../../../tests/fixtures/fake-agent.sh", import.meta.url));
 
@@ -21,7 +22,7 @@ let executor: ExecutorProvider;
 
 beforeAll(async () => {
   tmux = await createTestTmux();
-  executor = tmux.executor();
+  executor = await tmux.executor();
 });
 
 afterAll(async () => {
@@ -33,23 +34,39 @@ function handle(taskId: string, socket: string | null): SessionHandle {
 }
 
 describe("createTmuxExecutor", () => {
-  it("is the tmux-local provider and refuses the user's own server", () => {
+  it("is the tmux-local provider and refuses the user's own server", async () => {
     expect(executor.id).toBe("tmux-local");
-    expect(() =>
+    await expect(
       createTmuxExecutor({ paths: tmux.paths, socketName: "default", env: tmux.env }),
-    ).toThrowError(/default/);
+    ).rejects.toThrowError(/default/);
+  });
+
+  it("writes agn's tmux config before anything can start a server", async () => {
+    // Which of the two terminal names it carries is this machine's terminfo, not the executor's.
+    const written = await readFile(tmux.paths.tmuxConf, "utf8");
+    expect([tmuxConfig("tmux-256color"), tmuxConfig("screen-256color")]).toContain(written);
   });
 });
 
 describe("attach", () => {
-  it("names the socket the session was created on", () => {
+  it("names agn's config and the socket the session was created on", () => {
     expect(executor.attach(handle("t3n9v2wxyz", "agn"))).toEqual({
       kind: "tmux",
-      argv: ["tmux", "-u", "-L", "agn", "attach-session", "-t", "agn-t3n9v2wxyz"],
+      argv: [
+        "tmux",
+        "-u",
+        "-f",
+        tmux.paths.tmuxConf,
+        "-L",
+        "agn",
+        "attach-session",
+        "-t",
+        "agn-t3n9v2wxyz",
+      ],
     });
   });
 
-  it("omits -L for an adopted session on the default server", () => {
+  it("omits -f and -L for an adopted session on the default server", () => {
     expect(executor.attach(handle("t3n9v2wxyz", null)).argv).toEqual([
       "tmux",
       "-u",
@@ -68,6 +85,7 @@ describe("a task from prepare to clean", () => {
       task,
       repo,
       base: null,
+      branch: null,
       branchPrefix: null,
       setupCommand: null,
       logFile: null,
@@ -129,7 +147,7 @@ describe("sessionState", () => {
   it("is exited, not gone, for a dead pane the watcher has not reaped yet", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "agn-alive-"));
     // No watcher: the dead session stays until something asks about it.
-    const unwatched = createTmuxExecutor({
+    const unwatched = await createTmuxExecutor({
       paths: { ...tmux.paths, sessions: join(tmux.home, "sessions-alive") },
       socketName: tmux.socketName,
       env: tmux.env,
@@ -156,7 +174,7 @@ describe("sessionState", () => {
 
   it("is gone for a dead pane of a session agn never launched", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "agn-adopted-"));
-    const unwatched = createTmuxExecutor({
+    const unwatched = await createTmuxExecutor({
       paths: { ...tmux.paths, sessions: join(tmux.home, "sessions-adopted") },
       socketName: tmux.socketName,
       env: tmux.env,
@@ -203,7 +221,10 @@ describe("the default client env (no `env` override)", () => {
     process.env.TMUX_PANE = "%3";
     let leaky: ExecutorProvider | null = null;
     try {
-      leaky = createTmuxExecutor({ paths: agnosticPaths(home), socketName: "agn-clientenv-test" });
+      leaky = await createTmuxExecutor({
+        paths: agnosticPaths(home),
+        socketName: "agn-clientenv-test",
+      });
       await leaky.sessionState({
         taskId: "clientenvxy",
         tmuxSession: "agn-clientenvxy",

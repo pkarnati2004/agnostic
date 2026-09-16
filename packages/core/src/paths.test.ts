@@ -30,6 +30,7 @@ describe("agnosticPaths", () => {
       daemon: "/tmp/agnostic-test/daemon.json",
       catalog: "/tmp/agnostic-test/catalog.json",
       catalogCheck: "/tmp/agnostic-test/catalog-check.json",
+      tmuxConf: "/tmp/agnostic-test/tmux.conf",
     });
   });
 });

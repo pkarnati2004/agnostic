@@ -16,17 +16,20 @@ type TerminalViewProps = {
   /** A hidden tab keeps its terminal, its buffer and its socket; only the element is hidden. */
   active: boolean;
   client: WorkspaceClient;
+  /** The branch a resume rebuilt this task's worktree from, null when it was still there. */
+  recreatedFrom: string | null;
   onResume: () => Promise<void>;
 };
 
 /** One tab's pane: the terminal, the socket behind it, and what to say when there is none. */
-export function TerminalView({ task, token, active, client, onResume }: TerminalViewProps) {
+export function TerminalView(props: TerminalViewProps) {
+  const { task, token, active, client, onResume } = props;
   const terminal = useTerminal(useMemo(pageTheme, []));
   const sizeRef = useRef<TerminalSize | null>(null);
   const sessionRef = useRef<TerminalSession | null>(null);
   const [sized, setSized] = useState(false);
   const [phase, setPhase] = useState<SessionPhase>("connecting");
-  const [notice, setNotice] = useState<string | null>(null);
+  const [closeNotice, setCloseNotice] = useState<string | null>(null);
   const target = sessionTarget(task);
 
   const measure = useCallback(() => {
@@ -46,13 +49,13 @@ export function TerminalView({ task, token, active, client, onResume }: Terminal
     if (target !== "attach" || !sized || size === null) {
       return;
     }
-    setNotice(null);
+    setCloseNotice(null);
     const session = startSession({
       taskId: task.id,
       token,
       size,
       readStatus: (id) => client.getTask(id).then(({ task: row }) => row.status, noAnswer),
-      events: { onPhase: setPhase, onNotice: setNotice, onData: terminal.write },
+      events: { onPhase: setPhase, onNotice: setCloseNotice, onData: terminal.write },
     });
     sessionRef.current = session;
     const stopInput = terminal.onInput(session.write);
@@ -74,6 +77,9 @@ export function TerminalView({ task, token, active, client, onResume }: Terminal
   }, [active, phase, target, measure, terminal]);
 
   const overlay = overlayPhase(target, phase);
+  // The recreate stands until the socket's next close has something of its own to say.
+  const notice =
+    closeNotice ?? (props.recreatedFrom === null ? null : `Recreated from ${props.recreatedFrom}.`);
   return (
     <div ref={paneRef} hidden={!active} className="relative min-h-0 flex-1 overflow-hidden p-2">
       {overlay !== null && <SessionOverlay phase={overlay} notice={notice} onResume={onResume} />}

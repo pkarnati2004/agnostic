@@ -13,6 +13,7 @@ export type AgnosticPaths = {
   hooks: string;
   catalog: string;
   catalogCheck: string;
+  tmuxConf: string;
 };
 
 export function agnosticHome(env: NodeJS.ProcessEnv = process.env): string {
@@ -38,6 +39,8 @@ export function agnosticPaths(home: string = agnosticHome()): AgnosticPaths {
     catalog: join(home, "catalog.json"),
     // When the daemon last asked whether a newer catalog exists, so a restart is not a new ask.
     catalogCheck: join(home, "catalog-check.json"),
+    // agn's tmux config; the user's ~/.tmux.conf is never read by agn's server.
+    tmuxConf: join(home, "tmux.conf"),
   };
 }
 

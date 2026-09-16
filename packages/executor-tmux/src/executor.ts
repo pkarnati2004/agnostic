@@ -20,6 +20,7 @@ import { createEventFanout } from "./session-events.js";
 import { stopSession } from "./stop.js";
 import { openTerminal } from "./terminal.js";
 import { createTmuxClient, hasSession, paneDead, type TmuxClient } from "./tmux-client.js";
+import { ensureTmuxConfig } from "./tmux-config.js";
 import { cleanWorktree, prepareWorktree } from "./worktree.js";
 
 export type TmuxExecutorOptions = {
@@ -30,10 +31,12 @@ export type TmuxExecutorOptions = {
   env?: Record<string, string>;
 };
 
-export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider {
+export async function createTmuxExecutor(opts: TmuxExecutorOptions): Promise<ExecutorProvider> {
   const env = opts.env ?? clientEnv();
-  const client = createTmuxClient({ socketName: opts.socketName ?? "agn", env });
-  const defaultServer = createTmuxClient({ socketName: null, env });
+  // The config names a terminal the machine's terminfo has to know, so writing it asks first.
+  const configFile = await ensureTmuxConfig(opts.paths);
+  const client = createTmuxClient({ socketName: opts.socketName ?? "agn", env, configFile });
+  const defaultServer = createTmuxClient({ socketName: null, env, configFile: null });
   mkdirSync(opts.paths.sessions, { recursive: true });
 
   const events = createEventFanout();
@@ -51,7 +54,7 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
     }
     return handle.tmuxSocket === null
       ? defaultServer
-      : createTmuxClient({ socketName: handle.tmuxSocket, env });
+      : createTmuxClient({ socketName: handle.tmuxSocket, env, configFile });
   }
 
   return {
@@ -70,7 +73,7 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
       return (await hasExitFile(opts.paths.sessions, handle.tmuxSession)) ? "exited" : "gone";
     },
     attach(handle): AttachInfo {
-      return { kind: "tmux", argv: attachArgv(handle) };
+      return { kind: "tmux", argv: attachArgv(handle, configFile) };
     },
     async terminal(handle, size: TerminalSize): Promise<TerminalStream> {
       if (!(await hasSession(clientFor(handle), handle.tmuxSession))) {
@@ -79,7 +82,7 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
           hint: `Run \`agn resume ${handle.taskId}\` to start one.`,
         });
       }
-      const stream = openTerminal({ argv: attachArgv(handle), env, size });
+      const stream = openTerminal({ argv: attachArgv(handle, configFile), env, size });
       terminals.add(stream);
       stream.onExit(() => terminals.delete(stream));
       return stream;
@@ -101,8 +104,9 @@ export function createTmuxExecutor(opts: TmuxExecutorOptions): ExecutorProvider 
   };
 }
 
-function attachArgv(handle: SessionHandle): string[] {
-  const socket = handle.tmuxSocket === null ? [] : ["-L", handle.tmuxSocket];
+/** The user's default server keeps the user's config: `-f` belongs only to a server agn starts. */
+function attachArgv(handle: SessionHandle, configFile: string): string[] {
+  const socket = handle.tmuxSocket === null ? [] : ["-f", configFile, "-L", handle.tmuxSocket];
   return ["tmux", "-u", ...socket, "attach-session", "-t", handle.tmuxSession];
 }
 

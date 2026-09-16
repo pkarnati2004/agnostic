@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type AgnosticPaths, agnosticPaths, type ExecutorProvider, run } from "@agnostic/core";
 import { createTmuxExecutor } from "./executor.js";
 import { createTmuxClient, killSession, listSessions, type TmuxClient } from "./tmux-client.js";
+import { ensureTmuxConfig } from "./tmux-config.js";
 
 export type TestTmux = {
   home: string;
@@ -13,7 +14,7 @@ export type TestTmux = {
   env: Record<string, string>;
   client: TmuxClient;
   /** Built on first use: a test that never asks for one never has an exit watcher running. */
-  executor(): ExecutorProvider;
+  executor(): Promise<ExecutorProvider>;
   cleanup(): Promise<void>;
 };
 
@@ -41,22 +42,24 @@ export async function createTestTmux(): Promise<TestTmux> {
     TMUX_TMPDIR: tmuxTmpdir,
   };
   const paths = agnosticPaths(home);
-  const client = createTmuxClient({ socketName, env });
-  let executor: ExecutorProvider | null = null;
+  // The same file the executor writes: whichever client starts the server, it starts on agn's config.
+  const configFile = await ensureTmuxConfig(paths);
+  const client = createTmuxClient({ socketName, env, configFile });
+  let executor: Promise<ExecutorProvider> | null = null;
   return {
     home,
     paths,
     socketName,
     env,
     client,
-    executor(): ExecutorProvider {
+    executor(): Promise<ExecutorProvider> {
       executor ??= createTmuxExecutor({ paths, socketName, env });
       return executor;
     },
     async cleanup(): Promise<void> {
-      await executor?.close();
+      await executor?.then((built) => built.close());
       for (const socket of await socketsUnder(tmuxTmpdir)) {
-        const server = createTmuxClient({ socketName: socket, env });
+        const server = createTmuxClient({ socketName: socket, env, configFile });
         for (const session of await listSessions(server)) {
           await killSession(server, session);
         }

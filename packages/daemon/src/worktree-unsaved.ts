@@ -12,9 +12,9 @@ const IN_PROGRESS: { path: string; reason: string }[] = [
 ];
 
 /**
- * Why a worktree must not be removed while nobody is watching, or null when there is none.
- * `git worktree remove --force` discards whatever is not committed, which is the right thing when
- * a person typed `agn clean` and the wrong thing for a sweep that runs on a timer (ADR 022).
+ * Why a worktree must not be removed, or null when there is none. `git worktree remove --force`
+ * discards whatever is not committed, so neither the sweep nor `agn clean` does it behind the
+ * user's back (ADR 022); `agn clean --force` still forces it.
  */
 export async function unsavedWork(worktreePath: string): Promise<string | null> {
   const status = await git(worktreePath, ["status", "--porcelain"]);

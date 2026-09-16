@@ -17,6 +17,7 @@ import { handoffTask } from "../handoff-task.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
 import { resumeTask } from "../resume-task.js";
 import { attachableHandle } from "../task-session.js";
+import { unsavedWork } from "../worktree-unsaved.js";
 
 /** What `agn attach`, `agn resume`, `agn handoff`, `agn stop` and `agn clean` do to a task. */
 export function taskActionRoutes(ctx: DaemonContext): Hono {
@@ -55,12 +56,10 @@ export function taskActionRoutes(ctx: DaemonContext): Hono {
       // The close work reads the worktree this is about to remove, so it finishes first.
       await ctx.lifecycle.settled(task.id);
       const repo = resolveRepoId(ctx.ledger, task.repoId);
-      const response: CleanTaskResponse = await clean(
-        ctx,
-        repo,
-        task,
-        parsed.data.deleteBranch === true,
-      );
+      const response: CleanTaskResponse = await clean(ctx, repo, task, {
+        deleteBranch: parsed.data.deleteBranch === true,
+        force: parsed.data.force === true,
+      });
       return c.json(response);
     });
 }
@@ -73,7 +72,7 @@ async function clean(
   ctx: DaemonContext,
   repo: Repo,
   task: Task,
-  deleteBranch: boolean,
+  opts: { deleteBranch: boolean; force: boolean },
 ): Promise<CleanTaskResponse> {
   if (task.status === "running" || task.status === "waiting") {
     throw new DaemonError(`task ${task.id} is still ${task.status}`, {
@@ -84,8 +83,16 @@ async function clean(
   if (task.worktreePath === null || !(await isDirectory(task.worktreePath))) {
     return { task, removed: false };
   }
-  await ctx.executor.clean({ task, repo, deleteBranch });
-  return { task: ctx.ledger.tasks.clean(task.id, deleteBranch), removed: true };
+  // The same check the verdict sweep makes: removing a worktree discards whatever no commit holds.
+  const unsaved = opts.force ? null : await unsavedWork(task.worktreePath);
+  if (unsaved !== null) {
+    throw new DaemonError(`the worktree for task ${task.id} was not removed: ${unsaved}`, {
+      code: "worktree-unsaved",
+      hint: `Commit or stash in ${task.worktreePath}, or run \`agn clean ${task.id} --force\` to discard it.`,
+    });
+  }
+  await ctx.executor.clean({ task, repo, deleteBranch: opts.deleteBranch });
+  return { task: ctx.ledger.tasks.clean(task.id, opts.deleteBranch), removed: true };
 }
 
 /** A POST with no body at all is the common case for an action with only optional fields. */

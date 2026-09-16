@@ -19,7 +19,7 @@ let sequence = 0;
 
 beforeAll(async () => {
   tmux = await createTestTmux();
-  executor = tmux.executor();
+  executor = await tmux.executor();
 });
 
 afterAll(async () => {
@@ -101,7 +101,7 @@ describe("the exit watcher", () => {
     const sessions = join(tmux.home, "sessions-downtime");
     await mkdir(sessions, { recursive: true });
     await writeFile(join(sessions, "agn-exitdowntm.exit"), "7 \n");
-    const restarted = createTmuxExecutor({
+    const restarted = await createTmuxExecutor({
       paths: { ...tmux.paths, sessions },
       socketName: tmux.socketName,
       env: tmux.env,
@@ -115,7 +115,7 @@ describe("the exit watcher", () => {
   it("emits nothing once it is closed", async () => {
     // Its own sessions directory, so the exit it waits for can only come from this executor.
     const sessions = join(tmux.home, "sessions-closed");
-    const closed = createTmuxExecutor({
+    const closed = await createTmuxExecutor({
       paths: { ...tmux.paths, sessions },
       socketName: tmux.socketName,
       env: tmux.env,
@@ -137,7 +137,7 @@ describe("the exit watcher", () => {
   });
 
   it("stops delivering to a listener that unsubscribed", async () => {
-    const own = createTmuxExecutor({
+    const own = await createTmuxExecutor({
       paths: { ...tmux.paths, sessions: join(tmux.home, "sessions-unsubscribed") },
       socketName: tmux.socketName,
       env: tmux.env,

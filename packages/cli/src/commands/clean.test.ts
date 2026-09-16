@@ -1,4 +1,5 @@
 import type { CleanTaskRequest, Task, TaskStatus } from "@agnostic/core";
+import { DaemonApiError } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { createTestContext } from "../test-context.js";
 import { cleanCommand } from "./clean.js";
@@ -20,7 +21,19 @@ function task(id: string, status: TaskStatus, worktreePath: string | null): Task
   };
 }
 
-function cli(tasks: Task[]) {
+/** The 409 the daemon answers with when a worktree still holds work no commit is keeping. */
+function unsaved(id: string, path: string): DaemonApiError {
+  return new DaemonApiError(
+    `the worktree for task ${id} was not removed: it has uncommitted changes`,
+    {
+      code: "worktree-unsaved",
+      status: 409,
+      hint: `Commit or stash in ${path}, or run \`agn clean ${id} --force\` to discard it.`,
+    },
+  );
+}
+
+function cli(tasks: Task[], refuse: string[] = []) {
   const asked: { id: string; body: CleanTaskRequest }[] = [];
   const test = createTestContext({
     client: {
@@ -28,6 +41,9 @@ function cli(tasks: Task[]) {
       cleanTask: (id, body) => {
         asked.push({ id, body });
         const found = tasks.find((row) => row.id === id) ?? task(id, "done", null);
+        if (refuse.includes(id) && body.force !== true) {
+          return Promise.reject(unsaved(id, found.worktreePath ?? ""));
+        }
         return Promise.resolve({ task: found, removed: found.worktreePath !== null });
       },
     },
@@ -52,7 +68,48 @@ describe("agn clean", () => {
   it("passes --delete-branch through for the tasks it was given", async () => {
     const test = cli([task("t3n9v2wxyz", "done", "/w/one")]);
     await cleanCommand(test.ctx).parseAsync(["t3n9v2wxyz", "--delete-branch"], { from: "user" });
-    expect(test.asked).toEqual([{ id: "t3n9v2wxyz", body: { deleteBranch: true } }]);
+    expect(test.asked).toEqual([{ id: "t3n9v2wxyz", body: { deleteBranch: true, force: false } }]);
+  });
+
+  it("passes --force through", async () => {
+    const test = cli([task("t3n9v2wxyz", "done", "/w/one")], ["t3n9v2wxyz"]);
+    await cleanCommand(test.ctx).parseAsync(["t3n9v2wxyz", "--force"], { from: "user" });
+    expect(test.asked).toEqual([{ id: "t3n9v2wxyz", body: { deleteBranch: false, force: true } }]);
+    expect(test.out).toEqual(["cleaned t3n9v2wxyz /w/one"]);
+  });
+
+  it("lets a named task's refusal end the command", async () => {
+    const test = cli([task("t3n9v2wxyz", "done", "/w/one")], ["t3n9v2wxyz"]);
+    await expect(
+      cleanCommand(test.ctx).parseAsync(["t3n9v2wxyz"], { from: "user" }),
+    ).rejects.toMatchObject({ code: "worktree-unsaved" });
+    expect(test.out).toEqual([]);
+  });
+
+  it("keeps going past a worktree it may not remove and says how to force it", async () => {
+    const test = cli(
+      [task("t3n9v2wxyz", "done", "/w/one"), task("q4m8n2vwxy", "done", "/w/two")],
+      ["t3n9v2wxyz"],
+    );
+    await cleanCommand(test.ctx).parseAsync([], { from: "user" });
+    expect(test.out).toEqual([
+      "kept t3n9v2wxyz /w/one: it has uncommitted changes (agn clean t3n9v2wxyz --force)",
+      "cleaned q4m8n2vwxy /w/two",
+    ]);
+    expect(test.ctx.exitCode).toBe(0);
+  });
+
+  it("puts the daemon's error body in the array with --json", async () => {
+    const test = cli(
+      [task("t3n9v2wxyz", "done", "/w/one"), task("q4m8n2vwxy", "done", "/w/two")],
+      ["t3n9v2wxyz"],
+    );
+    test.ctx.json = true;
+    await cleanCommand(test.ctx).parseAsync([], { from: "user" });
+    const printed = JSON.parse(test.out.join("\n"));
+    expect(printed[0]).toMatchObject({ error: { code: "worktree-unsaved" } });
+    expect(printed[0].error.hint).toContain("--force");
+    expect(printed[1]).toMatchObject({ task: { id: "q4m8n2vwxy" }, removed: true });
   });
 
   it("prints an array of the daemon's responses with --json", async () => {

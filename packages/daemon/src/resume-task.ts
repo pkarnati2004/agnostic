@@ -1,22 +1,18 @@
-import { stat } from "node:fs/promises";
 import {
-  type Prepared,
   type Profile,
   type Repo,
   type ResumeTaskResponse,
-  readRepoConfig,
   type SessionHandle,
   sessionHandle,
   type Task,
-  taskLogPath,
 } from "@agnostic/core";
 import type { DaemonContext } from "./app.js";
-import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
 import { ensureHooks } from "./hooks-install.js";
 import { freshLaunchCommand, resumeLaunchCommand } from "./launch-command.js";
 import { resolveRepoId } from "./resolve-id.js";
 import { resolveProfile } from "./resolve-profile.js";
+import { assertDirectory, ensureWorktree } from "./resume-worktree.js";
 import { ensureSynced } from "./sync-repo.js";
 import { launchedSession } from "./task-session.js";
 
@@ -25,12 +21,19 @@ const TERMINAL: Task["status"][] = ["done", "failed", "stopped"];
 /**
  * ADR 014's three-way tree, and the daemon owns it: a session still running is attached to, a
  * session id the harness gave us is handed back for its own history, and anything else starts the
- * harness again in the same directory with the task context composed into one prompt.
+ * harness again in the same directory with the task context composed into one prompt. A worktree
+ * that was cleaned is rebuilt from its branch before any of that, so a resume after a clean takes
+ * the same three ways as a resume after a stop (ADR 031).
  */
 export async function resumeTask(ctx: DaemonContext, task: Task): Promise<ResumeTaskResponse> {
   const live = sessionHandle(task);
   if (live !== null && (await ctx.executor.sessionState(live)) === "running") {
-    return { task: running(ctx, task), via: "live", attach: ctx.executor.attach(live) };
+    return {
+      task: running(ctx, task),
+      via: "live",
+      attach: ctx.executor.attach(live),
+      recreatedFrom: null,
+    };
   }
   // A stop answers as soon as the task is stopped, and the close work behind it runs the repo's
   // test command in this worktree (ADR 021); the harness must not be started back up under it.
@@ -43,7 +46,7 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
     assertFolderFree(ctx.ledger, repo, task.id);
   }
   const profile = await resolveProfile(ctx, repo, { profile: task.profileId });
-  const prepared = await prepareIfQueued(ctx, repo, task);
+  const { prepared, recreatedFrom } = await ensureWorktree(ctx, repo, task);
   const cwd = prepared?.cwd ?? task.session?.cwd ?? task.worktreePath ?? repo.path;
   await assertDirectory(task, cwd);
   // Whether the harness picks its conversation up or starts over, it reads its instructions and
@@ -63,6 +66,7 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
     }),
     via: native === null ? "fresh" : "native",
     attach: ctx.executor.attach(handle),
+    recreatedFrom,
   };
 }
 
@@ -111,48 +115,4 @@ async function relaunched(
     });
     throw cause;
   }
-}
-
-/** A task the daemon never got to launch has no worktree yet; `prepare` is idempotent. */
-async function prepareIfQueued(
-  ctx: DaemonContext,
-  repo: Repo,
-  task: Task,
-): Promise<Prepared | null> {
-  if (task.status !== "queued" || task.origin !== "agn") {
-    return null;
-  }
-  const config = await readRepoConfig(repo.path);
-  return await ctx.executor.prepare({
-    task,
-    repo,
-    base: config?.baseBranch ?? null,
-    branchPrefix: config?.branchPrefix ?? null,
-    setupCommand: config?.setupCommand ?? null,
-    logFile: taskLogPath(ctx.paths, task.id),
-  });
-}
-
-/**
- * ADR 014: a cleaned worktree is not recreated. The branch is still there, so continuing the work
- * is a new task based on this one, which is what the hint says.
- */
-async function assertDirectory(task: Task, cwd: string): Promise<void> {
-  const there = await stat(cwd).then(
-    (stats) => stats.isDirectory(),
-    () => false,
-  );
-  if (there) {
-    return;
-  }
-  if (task.worktreePath !== null) {
-    throw new DaemonError(`the worktree for task ${task.id} has been cleaned`, {
-      code: "worktree-cleaned",
-      hint: `Run \`agn run "<prompt>" --base ${task.id}\` to continue from its branch.`,
-    });
-  }
-  throw new DaemonError(`${cwd} no longer exists`, {
-    code: "path-not-found",
-    hint: "The directory this task ran in is gone; start a new task in the repo.",
-  });
 }

@@ -70,6 +70,7 @@ describe("POST /tasks/:id/resume", () => {
 
     const resumed = await resume(task);
     expect(resumed.via).toBe("live");
+    expect(resumed.recreatedFrom).toBeNull();
     expect(resumed.task.status).toBe("running");
     expect(resumed.task.session?.tmuxSession).toBe(task.session?.tmuxSession);
     expect(resumed.attach.argv).toContain(`agn-${task.id}`);
@@ -87,6 +88,7 @@ describe("POST /tasks/:id/resume", () => {
 
     const resumed = await resume(task);
     expect(resumed.via).toBe("native");
+    expect(resumed.recreatedFrom).toBeNull();
     expect(resumed.task.status).toBe("running");
     expect(resumed.task.session?.sessionId).toBe("sess-42");
     expect(resumed.task.session?.tmuxSession).toBe(`agn-${task.id}`);
@@ -135,17 +137,15 @@ describe("POST /tasks/:id/resume", () => {
     expect(await agentLog("ready cwd=")).toContain(queued.worktreePath ?? "no worktree");
   });
 
-  it("refuses a task whose worktree was cleaned, and names the way to continue it", async () => {
+  it("rebuilds a worktree that was removed by hand, from the branch that outlived it", async () => {
     const repo = await daemon.addRepo({ defaultProfile: PROFILE });
     const task = await runTask(repo);
     await stop(task);
     await rm(task.worktreePath ?? "", { recursive: true, force: true });
 
-    const response = await post(`/tasks/${task.id}/resume`);
-    expect(response.status).toBe(409);
-    const body = (await response.json()) as { error: { code: string; hint: string } };
-    expect(body.error.code).toBe("worktree-cleaned");
-    expect(body.error.hint).toContain(`--base ${task.id}`);
+    const resumed = await resume(task);
+    expect(resumed.recreatedFrom).toBe(task.branch);
+    expect(resumed.task.worktreePath).toBe(task.worktreePath);
   });
 
   it("says the path is gone when a folder task's own directory has vanished", async () => {

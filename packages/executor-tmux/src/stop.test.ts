@@ -24,7 +24,7 @@ const seen: SessionEvent[] = [];
 
 beforeAll(async () => {
   tmux = await createTestTmux();
-  executor = tmux.executor();
+  executor = await tmux.executor();
   executor.onEvent((event) => seen.push(event));
 });
 

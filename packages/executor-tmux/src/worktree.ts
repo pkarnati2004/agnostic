@@ -42,7 +42,9 @@ export async function prepareWorktree(
     return { cwd: repo.path, branch: null, baseCommit: null };
   }
   const path = worktreePath(paths, repo.id, task.id);
-  const branch = branchName(task, input.branchPrefix);
+  // A resume names the branch the row already ran on; deriving it again would follow a
+  // `branch_prefix` that changed since, and branch a second time from HEAD without a word.
+  const branch = input.branch ?? branchName(task, input.branchPrefix);
   await git(repo.path, ["worktree", "prune"]);
   const listed = await git(repo.path, ["worktree", "list", "--porcelain"]);
   const registered = parseWorktreeList(listed.stdout);
@@ -58,7 +60,7 @@ export async function prepareWorktree(
   if (await exists(path)) {
     throw occupied(path, "a directory is already there");
   }
-  const { args, base } = await addArgs(repo.path, path, branch, input.base);
+  const { args, base } = await addArgs(repo.path, path, branch, input);
   await git(repo.path, args);
   await runSetupCommand(input, path);
   return { cwd: path, branch, baseCommit: base };
@@ -101,7 +103,7 @@ async function addArgs(
   repoPath: string,
   path: string,
   branch: string,
-  base: string | null,
+  input: PrepareInput,
 ): Promise<{ args: string[]; base: string | null }> {
   const known = await git(repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`], {
     allowFailure: true,
@@ -109,7 +111,15 @@ async function addArgs(
   if (known.exitCode === 0) {
     return { args: ["worktree", "add", path, branch], base: null };
   }
-  const commit = await baseCommit(repoPath, base);
+  if (input.branch !== null) {
+    // The caller named a branch to continue, so it must be the branch that exists: one deleted
+    // since the daemon looked would come back from HEAD under the old name and lose the work.
+    throw new ExecutorError(`branch ${branch} no longer exists in ${repoPath}`, {
+      code: "worktree-failed",
+      hint: 'Nothing is left to continue from; run `agn run "<prompt>"` to start over.',
+    });
+  }
+  const commit = await baseCommit(repoPath, input.base);
   return { args: ["worktree", "add", "-b", branch, path, commit], base: commit };
 }
 

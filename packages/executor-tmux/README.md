@@ -9,6 +9,11 @@ The one `ExecutorProvider` (`tmux-local`): it gives a task a place to run and a 
 - Exit is reported without scraping the terminal: `remain-on-exit` plus a `pane-died` hook writes
   the status under `~/.agnostic/sessions/`, and the watcher turns that into an `exited` event even
   when the exit happened while the daemon was down.
+- Every tmux command for agn's socket carries `-f ~/.agnostic/tmux.conf`, a three-line file the
+  executor rewrites at start: agn's server never reads the user's `~/.tmux.conf`, and the user's
+  own server, where an adopted session may live, is never given agn's. Its `default-terminal` is
+  `tmux-256color` where the machine's terminfo has that entry and `screen-256color` where it does
+  not, which is why building the executor is asynchronous.
 - `terminal` attaches one more tmux client, under a pty, and hands back its bytes: the session and
   the pane are untouched, so closing a terminal ends that client and nothing else.
 - `detect` finds harness processes running under a path, whether or not agn started them, for

@@ -1,7 +1,10 @@
 import { stat } from "node:fs/promises";
 import { ProcessError, run, type Task } from "@agnostic/core";
+import { DaemonError } from "./error.js";
 
 const GIT_TIMEOUT_MS = 30_000;
+/** What `rev-parse --verify` says when the ref is the thing that is missing, rather than git. */
+const REF_NOT_FOUND = /Needed a single revision|unknown revision/i;
 
 /** What the repo says about a task's branch right now. Every field is read in the main checkout. */
 export type BranchFacts = {
@@ -33,9 +36,9 @@ export async function readBranchFacts(
   if (branch === null) {
     return { agentTip: null, agentLines: null, branchExists: false, worktreeExists };
   }
-  const branchExists = (await revParse(repoPath, `refs/heads/${branch}`)) !== null;
-  if (!branchExists) {
-    return { agentTip: null, agentLines: null, branchExists, worktreeExists };
+  const exists = await branchExists(repoPath, branch);
+  if (!exists) {
+    return { agentTip: null, agentLines: null, branchExists: exists, worktreeExists };
   }
   const agentTip = first(
     await git(repoPath, ["rev-list", "-1", `--before=${closedAt}`, `refs/heads/${branch}`]),
@@ -43,7 +46,42 @@ export async function readBranchFacts(
   const base = task.baseCommit;
   const agentLines =
     base === null || agentTip === null ? null : await changedLines(repoPath, base, agentTip);
-  return { agentTip, agentLines, branchExists, worktreeExists };
+  return { agentTip, agentLines, branchExists: exists, worktreeExists };
+}
+
+/**
+ * Whether the main checkout still has the branch: what a clean kept, or a `--delete-branch` took.
+ * Only a git that answered may say "gone"; a lock, a timeout or a git that would not run throws,
+ * because a caller that acts on a false here destroys or refuses the user's work.
+ */
+export async function branchExists(repoPath: string, branch: string): Promise<boolean> {
+  const args = ["-C", repoPath, "rev-parse", "--verify", "--quiet", `refs/heads/${branch}`];
+  try {
+    const { stdout } = await run("git", args, { timeoutMs: GIT_TIMEOUT_MS });
+    return first(stdout) !== null;
+  } catch (cause) {
+    if (refNotFound(cause)) {
+      return false;
+    }
+    throw gitUnavailable(branch, cause);
+  }
+}
+
+/** Exit 1 with nothing on stderr is `--quiet` reporting the ref; anything else is git itself. */
+function refNotFound(cause: unknown): boolean {
+  if (!(cause instanceof ProcessError) || cause.exitCode !== 1) {
+    return false;
+  }
+  const stderr = cause.stderr.trim();
+  return stderr === "" || REF_NOT_FOUND.test(stderr);
+}
+
+function gitUnavailable(branch: string, cause: unknown): DaemonError {
+  return new DaemonError(`whether the branch ${branch} still exists could not be checked`, {
+    code: "git-unavailable",
+    hint: "git did not answer; another git process may hold the repo. Try again in a moment.",
+    cause,
+  });
 }
 
 /**
@@ -113,10 +151,6 @@ async function changedLines(repoPath: string, from: string, to: string): Promise
 function count(field: string | undefined): number {
   const value = Number(field);
   return Number.isInteger(value) ? value : 0;
-}
-
-async function revParse(repoPath: string, ref: string): Promise<string | null> {
-  return first(await git(repoPath, ["rev-parse", "--verify", "--quiet", ref]));
 }
 
 /** Null is "git could not answer", which every caller here reads as "nothing to record". */

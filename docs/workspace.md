@@ -53,7 +53,8 @@ The open tabs and the one in front are remembered per daemon address, so a reloa
 the same tabs. A task you clean loses its tab.
 
 When a session is over the tab says so and offers Resume, which starts the agent again in the
-same worktree. If the daemon restarts, the tab reconnects by itself: tmux held the session while
+same worktree, rebuilding it from the task's branch first if the worktree was cleaned and saying
+which branch it came from. If the daemon restarts, the tab reconnects by itself: tmux held the session while
 it was gone. A session that was adopted from outside tmux cannot be attached to, and the tab says
 that instead.
 

@@ -48,12 +48,12 @@ describe("start-up sweep of queued tasks", () => {
         "the start-up sweep to fail it",
         () => seeded.ledger.tasks.get(id)?.status === "failed",
       );
-      await waitFor("the worktree to be removed", () =>
-        stat(worktree).then(
-          () => false,
-          () => true,
-        ),
+      // The directory goes while `git worktree remove` is still exiting, so waiting on it can
+      // read the events before the release recorded them: the ledger row is what says it is done.
+      await waitFor("the worktree to be released", () =>
+        seeded.ledger.events.forTask(id).some((event) => event.kind === "task.cleaned"),
       );
+      await expect(stat(worktree)).rejects.toThrowError();
       const events = seeded.ledger.events.forTask(id);
       expect(events.filter((event) => event.kind === "task.status")).toMatchObject([
         { payload: { from: "queued", to: "failed" } },

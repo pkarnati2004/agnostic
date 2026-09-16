@@ -37,8 +37,11 @@ const statusByCode: Record<string, number> = {
   "task-active": 409,
   "session-not-running": 409,
   "session-not-attachable": 409,
-  // The worktree a task ran in is gone; the branch is not, so the work continues as a new task.
+  // The worktree a task ran in is gone and so is the branch a resume would rebuild it from, so
+  // there is nothing left to continue; a worktree gone on its own is rebuilt, not refused.
   "worktree-cleaned": 409,
+  // The worktree still holds work no commit is keeping: the user decides, with --force or a commit.
+  "worktree-unsaved": 409,
   // A generated file was written by hand, or two instructions files disagree: the user decides.
   "sync-conflict": 409,
   "init-ambiguous-source": 409,
@@ -54,6 +57,9 @@ const statusByCode: Record<string, number> = {
   // The daemon reached out and the far side did not answer: neither a bad request nor a bug.
   "catalog-fetch-failed": 502,
   "spec-writer-failed": 502,
+  // git could not be asked - a lock, a timeout, a git that would not run. Nothing was decided and
+  // nothing is wrong with the request, so the caller retries.
+  "git-unavailable": 503,
   "request-invalid": 400,
   "ambiguous-id": 400,
   "path-not-found": 400,

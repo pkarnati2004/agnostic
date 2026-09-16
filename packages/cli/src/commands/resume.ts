@@ -14,6 +14,9 @@ export function resumeCommand(ctx: CliContext): Command {
         writeJson(ctx.io, response);
         return;
       }
+      if (response.recreatedFrom !== null) {
+        ctx.io.err(`agn: recreated from ${response.recreatedFrom}`);
+      }
       if (response.via === "fresh") {
         // Said before the terminal is handed over, because tmux is about to own the screen.
         const harness = response.task.session?.harness ?? response.task.profileId;

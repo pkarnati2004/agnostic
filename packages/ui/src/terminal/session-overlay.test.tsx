@@ -38,6 +38,15 @@ describe("SessionOverlay", () => {
     unmount();
   });
 
+  it("says which branch a resume rebuilt the worktree from", () => {
+    const { container, unmount } = render(
+      <SessionOverlay phase="ended" notice="Recreated from agn/x-t3n9v2wxyz." onResume={never} />,
+    );
+    expect(container.textContent).toContain("Session ended.");
+    expect(container.textContent).toContain("Recreated from agn/x-t3n9v2wxyz.");
+    unmount();
+  });
+
   it("says when a session cannot be attached to at all", () => {
     const { container, unmount } = render(
       <SessionOverlay phase="unattachable" notice={null} onResume={never} />,
