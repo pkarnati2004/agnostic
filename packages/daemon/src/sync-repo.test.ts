@@ -4,6 +4,7 @@ import { type Repo, run, type Task, type TaskResponse, worktreePath } from "@agn
 import { GENERATED_HEADER } from "@agnostic/sync";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
+import { seedTranscript } from "./test-transcript.js";
 
 const PROFILE = "claude-code:default:native";
 const INSTRUCTIONS = "# app\n\nRun `pnpm test` before you finish.\n";
@@ -120,6 +121,8 @@ describe("a task's worktree is synced before the agent starts", () => {
     }
     // A recorded session id is what makes the resume "native" rather than a fresh relaunch.
     daemon.ledger.tasks.setSession(task.id, { ...session, sessionId: "sess-sync-42" });
+    // And the transcript that id names, which is what the daemon checks before it hands it back.
+    await seedTranscript(daemon, "sess-sync-42");
     await rm(join(cwd, "AGENTS.md"));
 
     expect((await daemon.request(`/tasks/${task.id}/stop`, { method: "POST" })).status).toBe(200);

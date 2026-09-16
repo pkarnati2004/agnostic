@@ -16,6 +16,7 @@ import type { DaemonContext } from "./app.js";
 import type { Detection } from "./detection-cache.js";
 import type { EventFeed } from "./event-feed.js";
 import type { Logger } from "./log.js";
+import { createNativeResumeWatch } from "./native-resume-watch.js";
 import type { TaskLifecycle } from "./task-lifecycle.js";
 import { fixtureCatalogStore } from "./test-detection.js";
 import { createWorkspace } from "./test-workspace.js";
@@ -73,6 +74,7 @@ export async function recommendContext(
       refresh: () => Promise.resolve(detection),
     },
     lifecycle: stubLifecycle(),
+    resumeWatch: createNativeResumeWatch({ ledger, log: stubLog() }),
     usage: { scan: () => Promise.resolve({ inserted: 0 }) },
     verdicts: { runOnce: () => Promise.resolve(), close: () => undefined },
     catalogChecker: {

@@ -40,6 +40,8 @@ export type TestDaemon = {
   app: Hono;
   ledger: Ledger;
   paths: AgnosticPaths;
+  /** The home the daemon reads harness auth files and transcripts under. */
+  home: string;
   logFile: string;
   /** Set only when the daemon was built with `tmux: true`. */
   launch: LaunchEnv | null;
@@ -245,6 +247,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     app,
     ledger,
     paths,
+    home: userHome,
     logFile,
     launch,
     verdicts,

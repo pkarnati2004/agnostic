@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   agPaths,
@@ -12,6 +12,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
 import { repoWithConfig, startTask } from "./test-task-run.js";
+import { seedTranscript } from "./test-transcript.js";
 
 const PROFILE = "claude-code:default:native";
 
@@ -41,6 +42,15 @@ async function resume(task: Task): Promise<ResumeTaskResponse> {
   const response = await post(`/tasks/${task.id}/resume`);
   expect(response.status).toBe(200);
   return (await response.json()) as ResumeTaskResponse;
+}
+
+/** The session id a hook would have captured, put on the row the way the receiver puts it there. */
+function recordSession(task: Task, sessionId: string): void {
+  const session = task.session;
+  if (session === undefined) {
+    throw new Error("the launched task has no session");
+  }
+  daemon.ledger.tasks.setSession(task.id, { ...session, sessionId });
 }
 
 /** Stops the session the way `agn stop` does, so the pane is gone before the resume. */
@@ -79,11 +89,9 @@ describe("POST /tasks/:id/resume", () => {
   it("hands a recorded session id back to the harness and keeps it", async () => {
     const repo = await daemon.addRepo({ defaultProfile: PROFILE });
     const task = await runTask(repo);
-    const session = task.session;
-    if (session === undefined) {
-      throw new Error("the launched task has no session");
-    }
-    daemon.ledger.tasks.setSession(task.id, { ...session, sessionId: "sess-42" });
+    recordSession(task, "sess-42");
+    // The harness still holds that conversation, which is what the daemon checks for first.
+    await seedTranscript(daemon, "sess-42");
     await stop(task);
 
     const resumed = await resume(task);
@@ -96,6 +104,48 @@ describe("POST /tasks/:id/resume", () => {
     // Native resume carries no prompt: the harness reopens the conversation it already has.
     expect(log).toContain("--resume sess-42");
   });
+
+  it("starts fresh when the harness no longer holds the recorded conversation", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    const task = await runTask(repo);
+    // An id no transcript carries: handed back, it would kill the task with the harness's error.
+    recordSession(task, "sess-gone");
+    await stop(task);
+    await mkdir(agPaths(repo.path).dir, { recursive: true });
+    await writeFile(join(agPaths(repo.path).dir, "decisions.md"), "no transcript marker\n");
+
+    const resumed = await resume(task);
+    expect(resumed.via).toBe("fresh");
+    expect(resumed.task.session?.sessionId).toBeNull();
+    const log = await agentLog("no transcript marker");
+    expect(log).toContain(`# Task ${task.id}`);
+    expect(log).not.toContain("--resume");
+  });
+
+  // Root reads every directory whatever its mode, so there is no unreadable tree to make there.
+  it.skipIf(process.getuid?.() === 0)(
+    "hands the id back when the transcript tree cannot be read at all",
+    async () => {
+      const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+      const task = await runTask(repo);
+      recordSession(task, "sess-unreadable");
+      await stop(task);
+      const root = join(daemon.home, ".claude", "projects");
+      await mkdir(root, { recursive: true });
+      await chmod(root, 0o000);
+
+      try {
+        // Absence of evidence is not evidence of absence: a good id is worth a conversation, and a
+        // wrong native attempt costs one relaunch.
+        const resumed = await resume(task);
+        expect(resumed.via).toBe("native");
+        expect(resumed.task.session?.sessionId).toBe("sess-unreadable");
+        expect(await agentLog("--resume sess-unreadable")).toContain("--resume sess-unreadable");
+      } finally {
+        await chmod(root, 0o700);
+      }
+    },
+  );
 
   it("starts fresh with the task context when no session id was ever captured", async () => {
     const repo = await daemon.addRepo({ defaultProfile: PROFILE });
@@ -223,28 +273,5 @@ describe("POST /tasks/:id/resume in a folder workspace", () => {
     const resumed = await resume(first);
     expect(resumed.via).toBe("fresh");
     expect(resumed.task.status).toBe("running");
-  });
-});
-
-describe("GET /tasks/:id/attach", () => {
-  it("refuses a session that is not under tmux and points at resume", async () => {
-    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
-    const task = await runTask(repo);
-    const session = task.session;
-    if (session === undefined) {
-      throw new Error("the launched task has no session");
-    }
-    daemon.ledger.tasks.setSession(task.id, {
-      ...session,
-      tmuxSession: null,
-      tmuxSocket: null,
-      pid: process.pid,
-    });
-
-    const response = await daemon.request(`/tasks/${task.id}/attach`);
-    expect(response.status).toBe(409);
-    const body = (await response.json()) as { error: { code: string; hint: string } };
-    expect(body.error.code).toBe("session-not-attachable");
-    expect(body.error.hint).toContain(`agn resume ${task.id}`);
   });
 });

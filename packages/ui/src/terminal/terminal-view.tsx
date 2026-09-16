@@ -16,8 +16,8 @@ type TerminalViewProps = {
   /** A hidden tab keeps its terminal, its buffer and its socket; only the element is hidden. */
   active: boolean;
   client: WorkspaceClient;
-  /** The branch a resume rebuilt this task's worktree from, null when it was still there. */
-  recreatedFrom: string | null;
+  /** What the last resume of this task said, null when it had nothing to say. */
+  resumeNotice: string | null;
   onResume: () => Promise<void>;
 };
 
@@ -77,9 +77,8 @@ export function TerminalView(props: TerminalViewProps) {
   }, [active, phase, target, measure, terminal]);
 
   const overlay = overlayPhase(target, phase);
-  // The recreate stands until the socket's next close has something of its own to say.
-  const notice =
-    closeNotice ?? (props.recreatedFrom === null ? null : `Recreated from ${props.recreatedFrom}.`);
+  // The resume's own line stands until the socket's next close has something of its own to say.
+  const notice = closeNotice ?? props.resumeNotice;
   return (
     <div ref={paneRef} hidden={!active} className="relative min-h-0 flex-1 overflow-hidden p-2">
       {overlay !== null && <SessionOverlay phase={overlay} notice={notice} onResume={onResume} />}

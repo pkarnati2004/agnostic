@@ -1,4 +1,5 @@
 import {
+  type LaunchCommand,
   type Profile,
   type Repo,
   type ResumeTaskResponse,
@@ -13,6 +14,7 @@ import { freshLaunchCommand, resumeLaunchCommand } from "./launch-command.js";
 import { resolveRepoId } from "./resolve-id.js";
 import { resolveProfile } from "./resolve-profile.js";
 import { assertDirectory, ensureWorktree } from "./resume-worktree.js";
+import { sessionEvidence } from "./session-evidence.js";
 import { ensureSynced } from "./sync-repo.js";
 import { launchedSession } from "./task-session.js";
 
@@ -53,10 +55,14 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
   // its hook config from this directory as it starts. A live session never gets here.
   await ensureSynced(ctx, cwd);
   await ensureHooks(ctx, profile.harness, cwd);
-  const native = resumeLaunchCommand(task, profile, ctx.env);
+  const native = await nativeResume(ctx, task, profile);
   const branch = prepared?.branch ?? task.branch;
   const command = native ?? (await freshLaunchCommand(ctx, repo, { ...task, branch }, profile));
   const handle = await ctx.executor.launch({ taskId: task.id, cwd, command });
+  if (native !== null && handle.launchId !== null) {
+    // The belt behind the check above: a harness that rejects the id exits without a hook.
+    ctx.resumeWatch.launched(task.id, handle.launchId);
+  }
   return {
     task: await relaunched(ctx, repo, task, profile, {
       handle,
@@ -68,6 +74,32 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
     attach: ctx.executor.attach(handle),
     recreatedFrom,
   };
+}
+
+/**
+ * ADR 008's native route, taken only where the harness still has the conversation. The file
+ * `--resume` reads is named for the session id, so an id no transcript carries would put the
+ * harness's own error in the pane and kill the task; that id starts fresh instead. A tree agn
+ * could not read is not evidence of absence, and still resumes natively.
+ */
+async function nativeResume(
+  ctx: DaemonContext,
+  task: Task,
+  profile: Profile,
+): Promise<LaunchCommand | null> {
+  const sessionId = task.session?.sessionId ?? null;
+  if (sessionId === null) {
+    return null;
+  }
+  const evidence = await sessionEvidence({ home: ctx.home, harness: profile.harness, sessionId });
+  if (evidence === "none") {
+    ctx.log.info("no transcript for the recorded session; resuming fresh", {
+      taskId: task.id,
+      harness: profile.harness,
+    });
+    return null;
+  }
+  return resumeLaunchCommand(task, profile, ctx.env);
 }
 
 /** A live session that the ledger had already written off; nothing about it is re-recorded. */

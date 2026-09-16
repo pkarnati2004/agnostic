@@ -136,6 +136,14 @@ describe("the harness table", () => {
     }
   });
 
+  it("gives every harness that can be resumed a transcript directory to check it against", () => {
+    // The daemon looks for the session file `--resume` reads before it hands an id back, so a
+    // harness that kept its sessions anywhere else would lose native resume without saying so.
+    for (const def of harnesses.filter((row) => row.resume !== null)) {
+      expect(def.transcriptsDir).not.toBeNull();
+    }
+  });
+
   it("always offers the native route first", () => {
     for (const def of harnesses) {
       expect(def.routes[0]).toBe("native");

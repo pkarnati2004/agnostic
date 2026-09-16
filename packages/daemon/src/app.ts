@@ -35,6 +35,7 @@ import type { Detection, DetectionCache } from "./detection-cache.js";
 import { errorBody, noRoute } from "./error.js";
 import type { EventFeed } from "./event-feed.js";
 import { type Logger, requestLog } from "./log.js";
+import type { NativeResumeWatch } from "./native-resume-watch.js";
 import { originCheck } from "./origin.js";
 import { adoptRoutes } from "./routes/adopt.js";
 import { catalogRoutes } from "./routes/catalog.js";
@@ -97,6 +98,8 @@ export type DaemonContext = DaemonDeps & {
   detection: DetectionCache;
   lifecycle: TaskLifecycle;
   usage: UsageScanner;
+  /** Watches a native resume until a hook proves the id it was launched with (ADR 008). */
+  resumeWatch: NativeResumeWatch;
   catalogChecker: CatalogChecker;
 };
 

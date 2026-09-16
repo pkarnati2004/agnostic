@@ -1,4 +1,10 @@
-import type { HandoffTaskRequest, Profile, RepoListRow, Task } from "@agnostic/core";
+import type {
+  HandoffTaskRequest,
+  Profile,
+  RepoListRow,
+  ResumeTaskResponse,
+  Task,
+} from "@agnostic/core";
 import { type ReactNode, useEffect, useMemo, useReducer, useState } from "react";
 import { createClient, type WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
@@ -17,7 +23,7 @@ import {
   tabsReducer,
   writeTabs,
 } from "./tabs/tabs-state";
-import { type Recreated, TaskTabs } from "./tabs/task-tabs";
+import { type ResumeNotice, TaskTabs } from "./tabs/task-tabs";
 import { NewTaskDialog } from "./task/new-task-dialog";
 import { TaskHeader } from "./task/task-header";
 import { TaskCost } from "./usage/task-cost";
@@ -63,12 +69,12 @@ function Workspace({ token }: { token: string }) {
   useTabsStorage(tabs, state.loaded, state.tasks, dispatchTabs);
 
   const { handoff, started } = useTaskActions(act, dispatchTabs);
-  const [recreated, setRecreated] = useState<Recreated | null>(null);
-  // The recreate is the response's, not the row's, so the tab hears it from the call that resumed.
+  const [resumed, setResumed] = useState<ResumeNotice | null>(null);
+  // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
   const resume = async (taskId: string): Promise<void> => {
     await act(async (api) => {
       const response = await api.resumeTask(taskId);
-      setRecreated({ taskId, branch: response.recreatedFrom });
+      setResumed({ taskId, notice: resumeNotice(response) });
       return response.task;
     });
   };
@@ -107,7 +113,7 @@ function Workspace({ token }: { token: string }) {
         cost={<TaskCost usage={taskUsage} />}
         error={error === dismissed ? null : error}
         onDismiss={() => setDismissed(error)}
-        recreated={recreated}
+        resumed={resumed}
         onResume={resume}
         onStop={(taskId) => act(async (api) => (await api.stopTask(taskId)).task)}
         onHandoff={handoff}
@@ -129,13 +135,29 @@ type CentreProps = {
   /** What the tab in front has spent; the page holds the hook that reads it. */
   cost: ReactNode;
   error: ApiError | null;
-  /** What the last resume rebuilt, for the tab it belongs to; the rest of the page ignores it. */
-  recreated: Recreated | null;
+  /** What the last resume had to say, for the tab it belongs to; the rest of the page ignores it. */
+  resumed: ResumeNotice | null;
   onDismiss: () => void;
   onResume: (taskId: string) => Promise<void>;
   onStop: (taskId: string) => Promise<unknown>;
   onHandoff: (task: Task, body: HandoffTaskRequest) => Promise<void>;
 };
+
+/**
+ * What the page says above the pane after a resume: the same two sentences the CLI prints, in the
+ * same order, and nothing at all when the resume took the conversation straight back.
+ */
+function resumeNotice(response: ResumeTaskResponse): string | null {
+  const said: string[] = [];
+  if (response.recreatedFrom !== null) {
+    said.push(`Recreated from ${response.recreatedFrom}.`);
+  }
+  if (response.via === "fresh") {
+    const harness = response.task.session?.harness ?? response.task.profileId;
+    said.push(`History was not recoverable; started ${harness} fresh with the task context.`);
+  }
+  return said.length === 0 ? null : said.join(" ");
+}
 
 /** The tab strip, the header for the tab in front, and every open terminal under them. */
 function Centre(props: CentreProps) {
@@ -174,7 +196,7 @@ function Centre(props: CentreProps) {
           tasks={open}
           token={token}
           client={client}
-          recreated={props.recreated}
+          resumed={props.resumed}
           onResume={props.onResume}
         />
       )}

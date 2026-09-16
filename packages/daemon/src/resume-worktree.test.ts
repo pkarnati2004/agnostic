@@ -5,6 +5,7 @@ import type { Event, Repo, ResumeTaskResponse, Task } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
 import { gitIn, startTask } from "./test-task-run.js";
+import { seedTranscript } from "./test-transcript.js";
 
 let daemon: TestDaemon;
 
@@ -118,6 +119,8 @@ describe("a resume whose worktree was cleaned", () => {
       throw new Error("the launched task has no session");
     }
     daemon.ledger.tasks.setSession(task.id, { ...session, sessionId: "sess-42" });
+    // The transcript the daemon checks for before it hands that id back; a clean leaves it alone.
+    await seedTranscript(daemon, "sess-42");
     expect((await post(`/tasks/${task.id}/stop`)).status).toBe(200);
     await waitFor(
       "the stopped task to have no live session",
