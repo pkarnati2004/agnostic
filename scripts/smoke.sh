@@ -324,6 +324,8 @@ PATH="$SMOKE_PATH" "$NODE" tests/fixtures/bin/terminal-roundtrip.mjs \
   "ws://127.0.0.1:$PORT/tasks/$TASK/terminal" "$TOKEN" "$WORK/agent.log"
 # agn's server took agn's config, not the broken one in the home the daemon was started with.
 HOME="$USAGE_HOME" PATH="$SMOKE_PATH" tmux -L agn show-options -g status | grep -q "^status off$"
+# The wheel scrolls a full-screen agent only when the server took `mouse on` from that config.
+PATH="$SMOKE_PATH" tmux -L agn show-options -g mouse | grep -q "^mouse on$"
 # The socket closing ends that tmux client and nothing else: the task is still running.
 test -z "$(PATH="$SMOKE_PATH" tmux -L agn list-clients -t "agn-$TASK")"
 agx status "$TASK" | grep -q "running"
