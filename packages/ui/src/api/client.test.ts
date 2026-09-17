@@ -42,7 +42,7 @@ describe("createClient", () => {
     await client.usage();
     await client.taskUsage("abc");
     expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
-      "GET /repos",
+      "GET /repos?all=1",
       "GET /tasks",
       "GET /tasks/t%201",
       "GET /profiles",
@@ -57,7 +57,7 @@ describe("createClient", () => {
 
   it("reads the snapshot cursor each list carries", async () => {
     const { client } = stubClient((call) =>
-      ok(call.url === "/repos" ? { repos: [], cursor: 7 } : { tasks: [], cursor: 9 }),
+      ok(call.url === "/repos?all=1" ? { repos: [], cursor: 7 } : { tasks: [], cursor: 9 }),
     );
     expect((await client.listRepos()).cursor).toBe(7);
     expect((await client.listTasks()).cursor).toBe(9);

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { newId, type TaskStatus } from "@agnostic/core";
+import { newId, type Repo, type RepoStatus, type TaskStatus } from "@agnostic/core";
 import type { Ledger, UsageInput } from "@agnostic/ledger";
 import { usageWindow } from "@agnostic/usage";
 import type { Detection } from "./detection-cache.js";
@@ -16,6 +16,9 @@ import { resolveUiDist } from "./ui-dist.js";
  * never the port or the tmux socket a real agn uses.
  */
 const REPOS = ["petal", "katha"];
+
+// A repo the user closed: it keeps its history and draws the sidebar's Closed section (ADR 032).
+const CLOSED_REPO = "aster";
 
 const CLAUDE = "claude-code:sonnet-4.5:native";
 const CODEX = "codex:gpt-5-codex:native";
@@ -97,15 +100,7 @@ function row(
 }
 
 function seedRepo(ledger: Ledger, name: string, path: string, index: number): string[] {
-  const addedAt = new Date(Date.UTC(2026, 8, 1 + index)).toISOString();
-  const repo = ledger.repos.insert({
-    id: newId(),
-    path,
-    kind: "git",
-    name,
-    addedAt,
-    status: "active",
-  });
+  const repo = insertRepo(ledger, name, path, index, "active");
   const ids: string[] = [];
   for (const [position, { status, title, profileId }] of TASKS.entries()) {
     const id = newId();
@@ -134,6 +129,23 @@ function seedRepo(ledger: Ledger, name: string, path: string, index: number): st
   return ids;
 }
 
+function insertRepo(
+  ledger: Ledger,
+  name: string,
+  path: string,
+  index: number,
+  status: RepoStatus,
+): Repo {
+  return ledger.repos.insert({
+    id: newId(),
+    path,
+    kind: "git",
+    name,
+    addedAt: new Date(Date.UTC(2026, 8, 1 + index)).toISOString(),
+    status,
+  });
+}
+
 /**
  * Every seeded task gets the worktree its row points at, except the done one in each repo: that is
  * the task a clean has been through, and it is what fills the sidebar's History section.
@@ -147,13 +159,13 @@ async function seedWorktrees(ledger: Ledger): Promise<void> {
   await Promise.all(paths.map((path) => mkdir(path, { recursive: true })));
 }
 
+async function previewRepo(name: string): Promise<{ name: string; path: string }> {
+  return { name, path: await mkdtemp(join(tmpdir(), `agn-preview-${name}-`)) };
+}
+
 async function main(): Promise<void> {
-  const repos = await Promise.all(
-    REPOS.map(async (name) => ({
-      name,
-      path: await mkdtemp(join(tmpdir(), `agn-preview-${name}-`)),
-    })),
-  );
+  const repos = await Promise.all(REPOS.map(previewRepo));
+  const closed = await previewRepo(CLOSED_REPO);
   // The build in this checkout, so the printed /ui address serves the same page the daemon does.
   const dist = resolveUiDist();
   const daemon = await createTestDaemon({
@@ -163,6 +175,7 @@ async function main(): Promise<void> {
     env: { PATH: "/usr/bin:/bin" },
     seed: (ledger) => {
       const ids = repos.map((repo, index) => seedRepo(ledger, repo.name, repo.path, index));
+      insertRepo(ledger, closed.name, closed.path, repos.length, "archived");
       seedUsage(ledger, ids[0] ?? []);
     },
   });
@@ -182,7 +195,8 @@ async function main(): Promise<void> {
   process.once("SIGINT", () => {
     void (async () => {
       await daemon.close();
-      await Promise.all(repos.map(({ path }) => rm(path, { recursive: true, force: true })));
+      const made = [...repos, closed];
+      await Promise.all(made.map(({ path }) => rm(path, { recursive: true, force: true })));
       process.exit(0);
     })();
   });

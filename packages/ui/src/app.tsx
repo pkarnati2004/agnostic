@@ -6,9 +6,12 @@ import { browserTokenSources, readToken } from "./auth/token";
 import { cn } from "./class-names";
 import { TooltipProvider } from "./components/tooltip";
 import { Notice } from "./notice";
+import { AddRepoDialog } from "./repo/add-repo-dialog";
+import { useRepoActions } from "./repo/use-repo-actions";
 import { activeRepos, groupTasks, inSidebarOrder } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
 import type { NoticeHost, TaskNotices } from "./store/task-notices";
+import { useProfiles } from "./store/use-profiles";
 import { useWorkspace, type Workspace as WorkspaceStore } from "./store/use-workspace";
 import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
 import { TabStrip } from "./tabs/tab-strip";
@@ -49,6 +52,8 @@ function Workspace({ token }: { token: string }) {
   const profiles = useProfiles(client);
   const [collapsed, setCollapsed] = useState(false);
   const [newTask, setNewTask] = useState(false);
+  const [addRepo, setAddRepo] = useState(false);
+  const repoActions = useRepoActions(client);
   const [dismissed, setDismissed] = useState<ApiError | null>(null);
   const [tabs, dispatchTabs] = useReducer(tabsReducer, undefined, () => readTabs(localStorage));
   const groups = useMemo(
@@ -81,11 +86,22 @@ function Workspace({ token }: { token: string }) {
     >
       <Sidebar
         groups={groups}
+        repos={state.repos}
         selectedId={tabs.active}
         collapsed={collapsed}
         onSelect={(taskId) => dispatchTabs({ type: "open", taskId })}
         onNewTask={() => setNewTask(true)}
+        onAddRepo={() => setAddRepo(true)}
+        onCloseRepo={repoActions.close}
+        onReopenRepo={repoActions.reopen}
+        repoNotices={repoActions.notices}
         onToggle={() => setCollapsed(!collapsed)}
+      />
+      <AddRepoDialog
+        open={addRepo}
+        onOpenChange={setAddRepo}
+        client={client}
+        onReopen={repoActions.reopen}
       />
       <NewTaskDialog
         open={newTask}
@@ -237,13 +253,18 @@ function useTaskActions(
   return { handoff, started };
 }
 
-/** A new task starts in the repo the user is looking at, else in the first one on the left. */
+/**
+ * A new task starts in the repo the user is looking at, else in the first one on the left. A tab
+ * can outlive its repo's closing, and the new-task dialog lists the open repos only.
+ */
 function defaultRepoId(
   state: { repos: RepoListRow[]; tasks: Record<string, Task> },
   activeId: string | null,
 ): string | null {
   const active = activeId === null ? undefined : state.tasks[activeId];
-  return active?.repoId ?? inSidebarOrder(state.repos)[0]?.id ?? null;
+  const open = inSidebarOrder(state.repos);
+  const inFront = open.find((repo) => repo.id === active?.repoId);
+  return inFront?.id ?? open[0]?.id ?? null;
 }
 
 /** With no tab open the centre says where the page got to; the notice above it says why. */
@@ -252,28 +273,6 @@ function emptyCentre(loaded: boolean, failed: boolean): string {
     return "Pick a task on the left to open it.";
   }
   return failed ? "The workspace did not load." : "Loading the workspace…";
-}
-
-/** The profile list changes only when the daemon re-detects, so the page reads it once. */
-function useProfiles(client: WorkspaceClient): Profile[] {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  useEffect(() => {
-    let live = true;
-    // A list the page could not read leaves the handoff dialog with nothing to pick, which it says.
-    const apply = (found: Profile[]) => {
-      if (live) {
-        setProfiles(found);
-      }
-    };
-    void client.profiles().then(
-      (response) => apply(response.profiles),
-      () => apply([]),
-    );
-    return () => {
-      live = false;
-    };
-  }, [client]);
-  return profiles;
 }
 
 function Centred({ children }: { children: string }) {

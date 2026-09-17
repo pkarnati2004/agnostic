@@ -32,6 +32,9 @@ export const PROFILE: Profile = {
 export function stubClient(overrides: Partial<WorkspaceClient> = {}): WorkspaceClient {
   return {
     listRepos: () => Promise.reject(new Error("unused")),
+    registerRepo: () => Promise.reject(new Error("unused")),
+    closeRepo: () => Promise.reject(new Error("unused")),
+    openRepo: () => Promise.reject(new Error("unused")),
     listTasks: () => Promise.reject(new Error("unused")),
     getTask: () => Promise.reject(new Error("unused")),
     profiles: () => Promise.reject(new Error("unused")),

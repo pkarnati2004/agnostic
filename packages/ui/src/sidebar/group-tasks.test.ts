@@ -1,6 +1,6 @@
 import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
-import { activeRepos, groupTasks, inHistory, inSidebarOrder } from "./group-tasks";
+import { activeRepos, closedRepos, groupTasks, inHistory, inSidebarOrder } from "./group-tasks";
 
 function repo(id: string, name: string): RepoListRow {
   return {
@@ -100,7 +100,21 @@ describe("groupTasks", () => {
 
 describe("a closed repo", () => {
   const CLOSED = { ...PETAL, status: "archived" } as const;
+  // The list the page loads with, closed repos and all, which is what `GET /repos?all=1` returns.
   const groups = groupTasks([CLOSED, KATHA], TASKS);
+
+  it("is listed for the Closed section, by name, and nowhere else", () => {
+    const closed = { ...KATHA, id: "r4", name: "Aster", status: "archived" } as const;
+    expect(closedRepos([CLOSED, KATHA, closed]).map((one) => one.name)).toEqual(["Aster", "Petal"]);
+    expect(closedRepos([KATHA])).toEqual([]);
+  });
+
+  it("keeps its waiting task off a reloaded page: the repo is in the list, so the task is not", () => {
+    // The bug this fixes: with a bare `GET /repos` the page never saw the closed row, so nothing
+    // told it which tasks to leave out and a waiting one sat under "Needs you" after every reload.
+    expect(groups.needsYou.map((one) => one.repoId)).not.toContain(CLOSED.id);
+    expect(groups.repos.map((group) => group.repo.id)).not.toContain(CLOSED.id);
+  });
 
   it("is in no group of its own", () => {
     expect(groups.repos.map((group) => group.repo.name)).toEqual(["katha"]);

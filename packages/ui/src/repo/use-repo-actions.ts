@@ -1,0 +1,44 @@
+import { useCallback } from "react";
+import type { WorkspaceClient } from "../api/client";
+import { asApiError } from "../api/error";
+import { useNotices } from "../store/notice-store";
+import type { RepoAction, RepoNotice, RepoNotices } from "./repo-notices";
+
+export type RepoActions = {
+  /** The latest failure per repo, drawn under the row it was asked from. */
+  notices: RepoNotices;
+  close(repoId: string): Promise<void>;
+  reopen(repoId: string): Promise<void>;
+};
+
+/**
+ * Close and reopen, with the answer kept per repo. Neither call writes to the store: the
+ * `repo.updated` it makes arrives through the feed, which is how the sidebar moves the row. Both
+ * reject after recording the failure, so a caller with somewhere better to show it still can.
+ */
+export function useRepoActions(client: WorkspaceClient): RepoActions {
+  const { notices, failed, cleared } = useNotices<Omit<RepoNotice, "at">>();
+  const act = useCallback(
+    async (repoId: string, action: RepoAction, run: () => Promise<unknown>) => {
+      try {
+        await run();
+        cleared(repoId);
+      } catch (cause) {
+        failed(repoId, { action, error: asApiError(cause) });
+        throw cause;
+      }
+    },
+    [cleared, failed],
+  );
+  return {
+    notices,
+    close: useCallback(
+      (repoId: string) => act(repoId, "close", () => client.closeRepo(repoId)),
+      [act, client],
+    ),
+    reopen: useCallback(
+      (repoId: string) => act(repoId, "reopen", () => client.openRepo(repoId)),
+      [act, client],
+    ),
+  };
+}

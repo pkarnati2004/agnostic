@@ -3,8 +3,8 @@ import { useCallback, useEffect, useReducer, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import type { ApiError } from "../api/error";
 import { asApiError } from "../api/error";
-import type { NoticeHost, TaskAction, TaskNotices } from "./task-notices";
-import { useTaskNotices } from "./use-task-notices";
+import { useNotices } from "./notice-store";
+import type { NoticeHost, TaskAction, TaskNotice, TaskNotices } from "./task-notices";
 import {
   EMPTY_WORKSPACE,
   REFETCH_KINDS,
@@ -35,7 +35,7 @@ export type Workspace = {
 export function useWorkspace(client: WorkspaceClient): Workspace {
   const [state, dispatch] = useReducer(workspaceReducer, EMPTY_WORKSPACE);
   const [error, setError] = useState<ApiError | null>(null);
-  const { notices, failed, cleared } = useTaskNotices();
+  const { notices, failed, cleared } = useNotices<Omit<TaskNotice, "at">>();
 
   useEffect(() => {
     const abort = new AbortController();

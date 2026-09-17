@@ -55,11 +55,18 @@ export function inSidebarOrder(repos: RepoListRow[]): RepoListRow[] {
 }
 
 /**
- * The repos the page shows. A closed one keeps its row in state, so a `repo.updated` reopening it
- * puts it back without a reload, and it appears nowhere until then.
+ * The repos the page shows in its repo sections. A closed one is still in state - the list asks for
+ * `?all=1` - so the Closed section can offer it back and a `repo.updated` moves it without a reload.
  */
 export function activeRepos(repos: RepoListRow[]): RepoListRow[] {
   return repos.filter((repo) => repo.status === "active");
+}
+
+/** What the Closed section lists, by name: the repos agn keeps the history of and shows nowhere else. */
+export function closedRepos(repos: RepoListRow[]): RepoListRow[] {
+  return repos
+    .filter((repo) => repo.status === "archived")
+    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 }
 
 /** Open tasks before closed ones, each newest first: what is happening now is at the top. */
