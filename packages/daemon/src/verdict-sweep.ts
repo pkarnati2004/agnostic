@@ -43,7 +43,9 @@ export async function refreshVerdict(deps: VerdictDeps, task: Task): Promise<Out
     return outcome;
   }
   const repo = deps.ledger.repos.get(task.repoId);
-  if (repo === null || !(await isDirectory(repo.path))) {
+  // A removed repo's worktrees were deleted on purpose, so re-reading its branches would turn
+  // every task that was not merged into a reverted one: the verdicts freeze where they were.
+  if (repo === null || repo.status === "removed" || !(await isDirectory(repo.path))) {
     deps.log.warn("verdict not checked: the repo is gone", { taskId: task.id });
     return outcome;
   }

@@ -198,16 +198,17 @@ describe("POST /tasks/:id/resume", () => {
     expect(resumed.task.worktreePath).toBe(task.worktreePath);
   });
 
-  it("says the path is gone when a folder task's own directory has vanished", async () => {
+  it("says the repo folder is gone when a folder task's own directory has vanished", async () => {
     const repo = await daemon.addRepo({ git: false, defaultProfile: PROFILE });
     const task = await runTask(repo);
     await stop(task);
     await rm(repo.path, { recursive: true, force: true });
 
     const response = await post(`/tasks/${task.id}/resume`);
-    expect(response.status).toBe(400);
-    const body = (await response.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("path-not-found");
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: { code: string; hint: string } };
+    expect(body.error.code).toBe("repo-missing");
+    expect(body.error.hint).toBe(`Mount or restore it, or run \`agn repo remove ${repo.id}\`.`);
   });
 
   it("waits for the close work of the stop before it starts the harness again", async () => {

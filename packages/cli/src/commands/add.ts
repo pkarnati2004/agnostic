@@ -24,6 +24,7 @@ export function addCommand(ctx: CliContext): Command {
       }
       const { repo, created } = response;
       const what = `${repo.name} (${repo.kind}) ${repo.id}`;
+      // A removed repo that comes back is created too, so this line says added for it (ADR 034).
       if (created) {
         ctx.io.out(`added ${what}`);
         return;

@@ -11,7 +11,7 @@ import type { DaemonContext } from "./app.js";
 import { assertFolderFree } from "./folder-guard.js";
 import { ensureHooks } from "./hooks-install.js";
 import { freshLaunchCommand, resumeLaunchCommand } from "./launch-command.js";
-import { assertRepoOpen } from "./repo-open-guard.js";
+import { assertRepoUsable } from "./repo-guard.js";
 import { resolveRepoId } from "./resolve-id.js";
 import { resolveProfile } from "./resolve-profile.js";
 import { assertDirectory, ensureWorktree } from "./resume-worktree.js";
@@ -42,7 +42,7 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
   // test command in this worktree (ADR 021); the harness must not be started back up under it.
   await ctx.lifecycle.settled(task.id);
   const repo = resolveRepoId(ctx.ledger, task.repoId);
-  assertRepoOpen(repo);
+  await assertRepoUsable(repo);
   if (repo.kind === "folder") {
     // Refused before an agent is started, and again with the row below: this one is the message
     // the user gets, that one is what makes two resumes at once safe.

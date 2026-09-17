@@ -110,6 +110,17 @@ describe("repos.update", () => {
     expect(events[0]).toMatchObject({ kind: "repo.updated", payload: { repo: closed } });
   });
 
+  it("lists a set of statuses at once, the way ?all=1 asks for active or archived", () => {
+    ledger.repos.insert(repo);
+    ledger.repos.insert(other);
+    const closed = ledger.repos.update(repo.id, { status: "archived" });
+    const removed = ledger.repos.update(other.id, { status: "removed" });
+    expect(ledger.repos.list({ status: ["active", "archived"] })).toEqual([closed]);
+    expect(ledger.repos.list({ status: ["active", "removed"] })).toEqual([removed]);
+    // The single-value form still works after the list form is cached under a different count.
+    expect(ledger.repos.list({ status: "removed" })).toEqual([removed]);
+  });
+
   it("opens a closed repo again and writes nothing on a second close", () => {
     ledger.repos.insert(repo);
     ledger.repos.update(repo.id, { status: "archived" });

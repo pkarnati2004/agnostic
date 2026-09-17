@@ -15,6 +15,7 @@ const REPO: RepoListRow = {
   addedAt: "2026-09-01T00:00:00.000Z",
   status: "active",
   testCommand: "pnpm test",
+  pathPresent: true,
 };
 
 const TASK: Task = {

@@ -1,4 +1,9 @@
-import { DaemonApiError, type Repo, type RepoResponse } from "@agnostic/core";
+import {
+  DaemonApiError,
+  type RemoveRepoResponse,
+  type Repo,
+  type RepoResponse,
+} from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { runMain } from "../program.js";
 import { createTestContext } from "../test-context.js";
@@ -27,7 +32,8 @@ function cli(fail?: DaemonApiError) {
     client: {
       closeRepo: (id) => answer("close", id),
       openRepo: (id) => answer("open", id),
-      listRepos: () => Promise.resolve({ repos: [{ ...REPO, testCommand: null }], cursor: 0 }),
+      listRepos: () =>
+        Promise.resolve({ repos: [{ ...REPO, testCommand: null, pathPresent: true }], cursor: 0 }),
     },
   });
   return { ...test, asked };
@@ -64,7 +70,12 @@ describe("agn repo", () => {
       client: {
         listRepos: (query) => {
           asked.push(`list ${query?.all === true ? "all" : "open"}`);
-          const closed = { ...REPO, status: "archived" as const, testCommand: null };
+          const closed = {
+            ...REPO,
+            status: "archived" as const,
+            testCommand: null,
+            pathPresent: true,
+          };
           return Promise.resolve({ repos: [closed], cursor: 0 });
         },
         openRepo: (id) => {
@@ -115,6 +126,70 @@ describe("agn repo", () => {
     expect(test.err).toEqual([
       "agn: no repo with id r1a2b3c4d5",
       "  hint: Run `agn repos` to see the repos agn knows about.",
+    ]);
+    expect(test.out).toEqual([]);
+  });
+});
+
+function cliRemove(worktreesRemoved: number, fail?: DaemonApiError) {
+  const asked: string[] = [];
+  const test = createTestContext({
+    cwd: "/work",
+    client: {
+      removeRepo: (id) => {
+        asked.push(`remove ${id}`);
+        const body: RemoveRepoResponse = { repo: { ...REPO, status: "removed" }, worktreesRemoved };
+        return fail === undefined ? Promise.resolve(body) : Promise.reject(fail);
+      },
+    },
+  });
+  return { ...test, asked };
+}
+
+describe("agn repo remove", () => {
+  it("hides the repo and reports how many task worktrees were deleted", async () => {
+    const test = cliRemove(2);
+    await run(test, ["remove", "r1a2b3c4d5"]);
+    expect(test.asked).toEqual(["remove r1a2b3c4d5"]);
+    expect(test.out).toEqual(["removed api r1a2b3c4d5, worktrees of 2 tasks deleted"]);
+  });
+
+  it("says one task, singular", async () => {
+    const test = cliRemove(1);
+    await run(test, ["remove", "r1a2b3c4d5"]);
+    expect(test.out).toEqual(["removed api r1a2b3c4d5, worktrees of 1 task deleted"]);
+  });
+
+  it("says there were no worktrees to delete", async () => {
+    const test = cliRemove(0);
+    await run(test, ["remove", "r1a2b3c4d5"]);
+    expect(test.out).toEqual(["removed api r1a2b3c4d5, no worktrees to delete"]);
+  });
+
+  it("prints the daemon's body with --json", async () => {
+    const test = cliRemove(2);
+    test.ctx.json = true;
+    await run(test, ["remove", "r1a2b3c4d5"]);
+    expect(JSON.parse(test.out.join("\n"))).toEqual({
+      repo: { ...REPO, status: "removed" },
+      worktreesRemoved: 2,
+    });
+  });
+
+  it("renders a busy refusal with its hint, and exits 1", async () => {
+    const test = cliRemove(
+      0,
+      new DaemonApiError("repo api has a task that is still running", {
+        code: "repo-busy",
+        status: 409,
+        hint: "Run `agn stop t3n9v2wxyz` first.",
+      }),
+    );
+    const code = await runMain(["node", "agn", "repo", "remove", "r1a2b3c4d5"], test.ctx);
+    expect(code).toBe(1);
+    expect(test.err).toEqual([
+      "agn: repo api has a task that is still running",
+      "  hint: Run `agn stop t3n9v2wxyz` first.",
     ]);
     expect(test.out).toEqual([]);
   });

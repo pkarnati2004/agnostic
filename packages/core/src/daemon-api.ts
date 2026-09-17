@@ -42,8 +42,10 @@ export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 /**
  * A registered repo plus the one `.ag/agnostic.yaml` field a client needs to say what a run will
  * do. Read per request rather than stored: the file is the user's, and only the daemon reads it.
+ * `pathPresent` says the repo's own directory is on disk now: one stat per row per list, never
+ * stored, so an unmounted volume reads present again as soon as it is back (ADR 034).
  */
-export type RepoListRow = Repo & { testCommand: string | null };
+export type RepoListRow = Repo & { testCommand: string | null; pathPresent: boolean };
 
 // `cursor` is the ledger's latest event id, read before the rows in the same read transaction, so
 // a page opening `/events` there misses nothing the snapshot lacks (ADR 030); the CLI ignores it.
@@ -58,6 +60,9 @@ export type RepoListQuery = z.output<typeof RepoListQuerySchema>;
 /** The answer to close and open: the row as it is now, 200 whether or not it changed. */
 export type RepoResponse = { repo: Repo };
 
+/** The answer to remove: the row as it is now, and how many task worktrees agn deleted. */
+export type RemoveRepoResponse = { repo: Repo; worktreesRemoved: number };
+
 export const RegisterRepoRequestSchema = z.strictObject({
   // Absolute, or relative to the client's cwd: the client resolves before sending.
   path: z.string().min(1),
@@ -66,7 +71,10 @@ export const RegisterRepoRequestSchema = z.strictObject({
 });
 export type RegisterRepoRequest = z.infer<typeof RegisterRepoRequestSchema>;
 
-/** 201 when the repo was inserted, 200 when it was already registered or had only moved. */
+/**
+ * 201 when the repo was inserted or a removed row was reactivated; 200 when it was already
+ * registered or had only moved.
+ */
 export type RegisterRepoResponse = { repo: Repo; created: boolean };
 
 // `?status=running,waiting`: one repeated key would be friendlier to write and worse to read.

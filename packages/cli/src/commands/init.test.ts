@@ -11,7 +11,15 @@ function cli(writes: InitWrite[]) {
     client: {
       listRepos: () =>
         Promise.resolve({
-          repos: [{ ...REPO, addedAt: "", status: "active" as const, testCommand: null }],
+          repos: [
+            {
+              ...REPO,
+              addedAt: "",
+              status: "active" as const,
+              testCommand: null,
+              pathPresent: true,
+            },
+          ],
           cursor: 0,
         }),
       initRepo: (repoId, body) => {

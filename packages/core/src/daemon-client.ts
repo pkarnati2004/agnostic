@@ -20,6 +20,7 @@ import {
   type RecommendResponse,
   type RegisterRepoRequest,
   type RegisterRepoResponse,
+  type RemoveRepoResponse,
   type RepoListResponse,
   type RepoResponse,
   type ResumeTaskResponse,
@@ -49,6 +50,8 @@ export type DaemonClient = {
   listRepos(query?: { all?: boolean }): Promise<RepoListResponse>;
   closeRepo(id: string): Promise<RepoResponse>;
   openRepo(id: string): Promise<RepoResponse>;
+  /** Hides the repo for good and deletes the worktrees agn made for its tasks (ADR 034). */
+  removeRepo(id: string): Promise<RemoveRepoResponse>;
   registerRepo(body: RegisterRepoRequest): Promise<RegisterRepoResponse>;
   listTasks(repoId: string, query?: TaskListQuery): Promise<TaskListResponse>;
   /** Every repo at once, newest first, for `agn status` and the workspace's task list. */
@@ -131,6 +134,7 @@ export function createDaemonClient(opts: {
       json<RepoListResponse>("GET", `/repos${query?.all === true ? "?all=1" : ""}`),
     closeRepo: (id) => json<RepoResponse>("POST", `/repos/${encodeURIComponent(id)}/close`),
     openRepo: (id) => json<RepoResponse>("POST", `/repos/${encodeURIComponent(id)}/open`),
+    removeRepo: (id) => json<RemoveRepoResponse>("DELETE", `/repos/${encodeURIComponent(id)}`),
     registerRepo: (body) => json<RegisterRepoResponse>("POST", "/repos", body),
     listTasks: (repoId, query) =>
       json<TaskListResponse>("GET", `/repos/${encodeURIComponent(repoId)}/tasks${search(query)}`),

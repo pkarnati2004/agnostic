@@ -64,6 +64,7 @@ describe("openLedger", () => {
       { version: 1, name: "initial" },
       { version: 2, name: "task-base-commit" },
       { version: 3, name: "repo-status" },
+      { version: 4, name: "repo-status-removed" },
     ]);
     db.close();
   });

@@ -24,6 +24,7 @@ function repo(id: string, path: string): RepoListRow {
     addedAt: "2026-09-11T10:00:00.000Z",
     status: "active",
     testCommand: null,
+    pathPresent: true,
   };
 }
 

@@ -16,6 +16,7 @@ const REPO: RepoListRow = {
   addedAt: "2026-09-14T10:00:00.000Z",
   status: "active",
   testCommand: null,
+  pathPresent: true,
 };
 
 export const PROFILE: Profile = {

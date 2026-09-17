@@ -115,6 +115,28 @@ agn repos --all | grep -q "archived"
 agn repo open "$GITREPO_ID" | grep -q "^opened gitrepo $GITREPO_ID"
 test "$(agn repos | wc -l)" -eq 3
 
+# A repo whose folder is gone is marked on the list and takes no new tasks; removing it deletes
+# the worktrees agn made for it, and adding the path again brings the same row back (ADR 034).
+PLAIN_ID="$("$NODE" -e "
+const { repos } = require('$WORK/repos.json');
+const repo = repos.find((row) => row.name === 'plain');
+if (!repo) { throw new Error('plain is not registered'); }
+process.stdout.write(repo.id);
+")"
+mv "$WORK/plain" "$WORK/plain-away"
+agn repos | grep -q "plain.*(missing)"
+! agn run "x" --repo "$PLAIN_ID" > "$WORK/run-missing.txt" 2>&1
+grep -q "agn repo remove" "$WORK/run-missing.txt"
+mkdir -p "$AGNOSTIC_HOME/worktrees/$PLAIN_ID/t1"
+agn repo remove "$PLAIN_ID" | grep -q "^removed plain $PLAIN_ID, worktrees of 1 task deleted"
+test ! -d "$AGNOSTIC_HOME/worktrees/$PLAIN_ID"
+test "$(agn repos --all | wc -l)" -eq 2
+agn repo remove "$PLAIN_ID" | grep -q "no worktrees to delete"
+mv "$WORK/plain-away" "$WORK/plain"
+agn add "$WORK/plain" | grep -q "^added plain (folder) $PLAIN_ID$"
+test "$(agn repos | wc -l)" -eq 3
+agn repos | grep -qv "(missing)"
+
 # The four tier-1 harnesses, none of them installed on this PATH, plus the gh row.
 test "$(agn doctor | grep -c "not installed")" -eq 5
 agn doctor | grep -q "^tools: gh"
@@ -285,9 +307,12 @@ agx run "smoke task" --profile claude-code --repo "$WORK/runrepo" > "$WORK/run.t
 grep -q "^started " "$WORK/run.txt"
 TASK="$(awk 'NR == 1 { print $2 }' "$WORK/run.txt")"
 agx status | grep -q "running"
-# A repo with a live task is not closable: the task would be hidden while it runs.
+# A repo with a live task is not closable: the task would be hidden while it runs. Removing it is
+# refused for the same reason, before anything is deleted.
 ! agx repo close "$RUNREPO_ID" > "$WORK/close-busy.txt" 2>&1
 grep -q "agn stop" "$WORK/close-busy.txt"
+! agx repo remove "$RUNREPO_ID" > "$WORK/remove-busy.txt" 2>&1
+grep -q "agn stop" "$WORK/remove-busy.txt"
 agx status "$TASK" | grep -q "^tmux: *agn-$TASK"
 
 echo "smoke: the terminal socket against the running pane"

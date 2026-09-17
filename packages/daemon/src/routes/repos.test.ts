@@ -116,6 +116,25 @@ describe("GET /repos", () => {
     const body = (await (await daemon.request("/repos")).json()) as RepoListResponse;
     expect(body.repos.map((repo) => repo.testCommand)).toEqual([null, null]);
   });
+
+  it("carries pathPresent true for a git repo and a folder repo that are both on disk", async () => {
+    await post({ path: await gitRepo("git-repo") });
+    const folder = join(workspace, "folder-repo");
+    await mkdir(folder, { recursive: true });
+    await post({ path: folder });
+
+    const body = (await (await daemon.request("/repos")).json()) as RepoListResponse;
+    expect(body.repos.every((repo) => repo.pathPresent)).toBe(true);
+  });
+
+  it("flips pathPresent false once a repo's own directory is gone", async () => {
+    const path = await gitRepo("alpha");
+    await post({ path });
+    await rm(path, { recursive: true, force: true });
+
+    const body = (await (await daemon.request("/repos")).json()) as RepoListResponse;
+    expect(body.repos[0]?.pathPresent).toBe(false);
+  });
 });
 
 describe("POST /repos", () => {

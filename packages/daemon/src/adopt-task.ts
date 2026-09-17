@@ -15,7 +15,7 @@ import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 import { ensureHooks } from "./hooks-install.js";
 import { initialTaskNote } from "./initial-task-note.js";
-import { assertRepoOpen } from "./repo-open-guard.js";
+import { assertRepoUsable } from "./repo-guard.js";
 
 const LIVE: Task["status"][] = ["running", "waiting"];
 
@@ -59,7 +59,7 @@ export async function listSessions(
  * explains it are written together (ADR 007).
  */
 export async function adoptTask(ctx: DaemonContext, repo: Repo, req: AdoptRequest): Promise<Task> {
-  assertRepoOpen(repo);
+  await assertRepoUsable(repo);
   const sessions = await listSessions(ctx, repo, req.path);
   const session = sessions.find((candidate) => candidate.pid === req.pid);
   if (session === undefined) {

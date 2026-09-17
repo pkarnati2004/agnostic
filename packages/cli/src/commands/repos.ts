@@ -1,17 +1,18 @@
-import type { Repo } from "@agnostic/core";
+import type { RepoListRow } from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
 import { type Column, renderTable } from "../table.js";
 
-const COLUMNS: Column<Repo>[] = [
+const COLUMNS: Column<RepoListRow>[] = [
   { header: "id", value: (repo) => repo.id },
   { header: "name", value: (repo) => repo.name },
   { header: "kind", value: (repo) => repo.kind },
-  { header: "path", value: (repo) => repo.path },
+  // The folder is not there now: the path is still what the user has to mount or restore.
+  { header: "path", value: (repo) => (repo.pathPresent ? repo.path : `${repo.path} (missing)`) },
 ];
 
 // Status only says something once closed repos are in the list, so it is the flag's column.
-const STATUS: Column<Repo> = { header: "status", value: (repo) => repo.status };
+const STATUS: Column<RepoListRow> = { header: "status", value: (repo) => repo.status };
 
 type ReposFlags = { all?: boolean };
 

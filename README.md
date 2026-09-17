@@ -41,8 +41,8 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 |---|---|
 | `agn daemon start\|stop\|status\|restart` | Run, inspect or replace the background daemon. `--port <n>` on `start` and `restart`, `--force` on `restart` |
 | `agn add <path>` | Register a repo. `--git-init` runs `git init` on a plain folder first; `--new-id` registers a second clone |
-| `agn repos` | List the registered repos. `--all` includes closed ones and names each one's status |
-| `agn repo close\|open <repo>` | Close a repo so it leaves the list and the workspace, keeping its history, or open it again. Refused while a task is running or waiting |
+| `agn repos` | List the registered repos and mark a repo whose folder is missing. `--all` includes closed ones and names each one's status |
+| `agn repo close\|open\|remove <repo>` | Close a repo so it leaves the list and the workspace, keeping its history, or open it again. `remove` hides a repo for good and deletes the worktrees agn made for its tasks, keeping its history; `agn add <path>` brings it back. Close and remove are refused while a task is running or waiting |
 | `agn doctor` | Detect installed agents, logins, provider keys, local model servers |
 | `agn profiles` | List the agent × model combinations you can run right now |
 | `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>`, `--intent <class>`, `--skip-tests` |

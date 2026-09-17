@@ -17,6 +17,7 @@ afterEach(() => rm(home, { recursive: true, force: true }));
 type Handler = (
   url: string,
   headers: Record<string, string | string[] | undefined>,
+  method?: string,
 ) => {
   status: number;
   body: unknown;
@@ -24,7 +25,7 @@ type Handler = (
 
 async function stubDaemon(handler: Handler): Promise<{ baseUrl: string; close(): Promise<void> }> {
   const server: Server = createServer((req, res) => {
-    const { status, body } = handler(req.url ?? "", req.headers);
+    const { status, body } = handler(req.url ?? "", req.headers, req.method);
     res.writeHead(status, { "content-type": "application/json" });
     res.end(JSON.stringify(body));
   });
@@ -136,6 +137,24 @@ describe("createDaemonClient", () => {
       "/repos/r7k2m4pqrs/close",
       "/repos/r7k2m4pqrs/open",
     ]);
+    await daemon.close();
+  });
+
+  it("sends removeRepo as a DELETE to the repo's own url", async () => {
+    let seenUrl = "";
+    let seenMethod = "";
+    const daemon = await stubDaemon((url, _headers, method) => {
+      seenUrl = url;
+      seenMethod = method ?? "";
+      return { status: 200, body: { repo: { id: "r7k2m4pqrs" }, worktreesRemoved: 2 } };
+    });
+    const client = createDaemonClient({ baseUrl: daemon.baseUrl, token: "sekrit" });
+    expect(await client.removeRepo("r7k2m4pqrs")).toEqual({
+      repo: { id: "r7k2m4pqrs" },
+      worktreesRemoved: 2,
+    });
+    expect(seenUrl).toBe("/repos/r7k2m4pqrs");
+    expect(seenMethod).toBe("DELETE");
     await daemon.close();
   });
 

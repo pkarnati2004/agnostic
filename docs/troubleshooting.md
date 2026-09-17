@@ -34,6 +34,8 @@
 
 **`agn run` says the repo is closed.** The repo was closed with `agn repo close`, and a closed repo takes no new tasks: `agn run`, `agn resume`, `agn handoff` and `agn adopt` all refuse. Run `agn repo open <id>` to open it again. `agn repos --all` lists the closed ones with their ids.
 
+**`agn run` says the repo's folder is not there.** The folder agn has registered for the repo is not on disk now: it was moved, deleted, or it is on a volume that is not mounted. `agn repos` marks the path `(missing)`, and `agn run`, `agn resume`, `agn handoff` and `agn adopt` refuse. Mount or restore the folder and the repo works again; nothing is written while it is away. If the folder is gone for good, `agn repo remove <id>` hides the repo and deletes the worktrees agn made for its tasks. Its usage and outcome history stays, and `agn add <path>` on the same path later registers the same repo again, with its history.
+
 **A second `agn run` in a folder says "folder workspaces run one task at a time".** A folder workspace has one working tree, so agn runs one task in it at a time. Stop the running task (`agn stop <task>`), or run `git init` in the folder: from the next `agn run` on, tasks get their own worktrees and branches and run in parallel.
 
 **`agn handoff` says the branch "no longer exists".** The task you are handing off was cleaned with `--delete-branch`, so there are no commits for the next agent to continue from. Start the work again with `agn run "<prompt>"`. A task whose worktree was cleaned but whose branch was kept hands off normally.
@@ -68,7 +70,7 @@ package next to it, and that package has no `dist` until it is built. From a che
 
 **A command fails with "the agn daemon could not be started".** Every command except `agn daemon status` and `agn daemon stop` starts the daemon itself, so this means the start failed rather than that you forgot one. Check `~/.agnostic/logs/agnd.log`, then `agn daemon start` to see the error directly.
 
-**You want to script agn.** `--json` prints the daemon's response body instead of a table, on `agn add`, `agn repos` (including `agn repos --all`), `agn repo close|open`, `agn doctor`, `agn profiles`, `agn run`, `agn status`, `agn stop`, `agn clean`, `agn handoff`, `agn adopt`, `agn hooks install`, `agn init` and `agn sync`; on `agn attach` and `agn resume` it prints the tmux command instead of running it, and on `agn open` the editor command instead of running it. Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
+**You want to script agn.** `--json` prints the daemon's response body instead of a table, on `agn add`, `agn repos` (including `agn repos --all`), `agn repo close|open`, `agn repo remove`, `agn doctor`, `agn profiles`, `agn run`, `agn status`, `agn stop`, `agn clean`, `agn handoff`, `agn adopt`, `agn hooks install`, `agn init` and `agn sync`; on `agn attach` and `agn resume` it prints the tmux command instead of running it, and on `agn open` the editor command instead of running it. Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
 
 **Where things live.** Task database `~/.agnostic/agnostic.db`; worktrees `~/.agnostic/worktrees/<repo>/<task>`; the daemon log `~/.agnostic/logs/agnd.log`; the tmux config agn's server runs on `~/.agnostic/tmux.conf`.
 

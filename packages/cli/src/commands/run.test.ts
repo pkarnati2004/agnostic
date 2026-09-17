@@ -12,6 +12,7 @@ const REPO = {
   addedAt: "2026-09-11T10:00:00.000Z",
   status: "active" as const,
   testCommand: null as string | null,
+  pathPresent: true,
 };
 
 function task(over: Partial<Task> = {}): Task {

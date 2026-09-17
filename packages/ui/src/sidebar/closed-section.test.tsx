@@ -14,6 +14,7 @@ const PETAL: RepoListRow = {
   addedAt: "2026-09-01T00:00:00.000Z",
   status: "archived",
   testCommand: null,
+  pathPresent: true,
 };
 
 const KATHA: RepoListRow = { ...PETAL, id: "r2", name: "katha", path: "/Users/dev/katha" };
