@@ -46,7 +46,7 @@ async function listTasks(ctx: CliContext): Promise<void> {
     ctx.io.out('no tasks yet; run agn run "<prompt>"');
     return;
   }
-  const { repos } = await client.listRepos();
+  const { repos } = await client.listRepos({ all: true });
   for (const line of renderTable(response.tasks, columns(repos))) {
     ctx.io.out(line);
   }

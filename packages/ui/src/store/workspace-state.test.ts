@@ -13,6 +13,7 @@ const REPO: RepoListRow = {
   kind: "git",
   name: "petal",
   addedAt: "2026-09-01T00:00:00.000Z",
+  status: "active",
   testCommand: "pnpm test",
 };
 
@@ -117,6 +118,7 @@ describe("workspaceReducer", () => {
       kind: "git",
       name: "katha",
       addedAt: "2026-09-02T00:00:00.000Z",
+      status: "active",
     };
     const renamed: Repo = { ...REPO, name: "petal-2" };
     const state = apply(
@@ -127,6 +129,19 @@ describe("workspaceReducer", () => {
     expect(state.repos.map((repo) => repo.name)).toEqual(["petal-2", "katha"]);
     expect(state.repos[0]?.testCommand).toBe("pnpm test");
     expect(state.repos[1]?.testCommand).toBeNull();
+  });
+
+  it("replaces the row when a repo is closed, and again when it is opened", () => {
+    const closed = apply(
+      loaded(),
+      event(19, "repo.updated", { repo: { ...REPO, status: "archived" } }),
+    );
+    expect(closed.repos).toEqual([{ ...REPO, status: "archived" }]);
+    const opened = apply(
+      closed,
+      event(20, "repo.updated", { repo: { ...REPO, status: "active" } }),
+    );
+    expect(opened.repos).toEqual([REPO]);
   });
 
   it("advances the cursor for a kind it draws nothing from", () => {

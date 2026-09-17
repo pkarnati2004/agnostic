@@ -21,6 +21,7 @@ function addRepo(id: string): Repo {
     kind: "git",
     name: id,
     addedAt: new Date().toISOString(),
+    status: "active",
   });
 }
 

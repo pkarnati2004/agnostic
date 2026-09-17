@@ -24,6 +24,7 @@ import { initialTaskNote } from "./initial-task-note.js";
 import { freshLaunchCommand } from "./launch-command.js";
 import { buildRecommendInput } from "./recommend-input.js";
 import { detectRepoKind } from "./repo-kind.js";
+import { assertRepoOpen } from "./repo-open-guard.js";
 import { resolveProfile } from "./resolve-profile.js";
 import { ensureSynced } from "./sync-repo.js";
 import { syncTaskNote } from "./task-note-sync.js";
@@ -43,6 +44,7 @@ export async function startTask(
   req: RunTaskRequest,
 ): Promise<Task> {
   const repo = await withCurrentKind(ctx, registered);
+  assertRepoOpen(repo);
   if (repo.kind === "folder") {
     // A task that died while nobody was watching must not hold the folder; the guard itself runs
     // with the insert, below.

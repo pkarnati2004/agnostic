@@ -8,6 +8,7 @@ const repo: Repo = {
   kind: "git",
   name: "agnostic",
   addedAt: "2026-09-10T11:00:00.000Z",
+  status: "active",
 };
 
 const task: Task = {

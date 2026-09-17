@@ -46,6 +46,7 @@ function repoRecord(path: string, kind: Repo["kind"]): Repo {
     kind,
     name: path.split("/").at(-1) ?? "fixture",
     addedAt: "2026-09-11T10:00:00.000Z",
+    status: "active",
   };
 }
 

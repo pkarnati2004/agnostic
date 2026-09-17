@@ -15,6 +15,7 @@ const REPO: RepoListRow = {
   kind: "git",
   name: "petal",
   addedAt: "2026-09-01T00:00:00.000Z",
+  status: "active",
   testCommand: null,
 };
 

@@ -1,6 +1,6 @@
 import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
-import { groupTasks, inHistory, inSidebarOrder } from "./group-tasks";
+import { activeRepos, groupTasks, inHistory, inSidebarOrder } from "./group-tasks";
 
 function repo(id: string, name: string): RepoListRow {
   return {
@@ -9,6 +9,7 @@ function repo(id: string, name: string): RepoListRow {
     path: `/tmp/${name}`,
     kind: "git",
     addedAt: "2026-09-01T00:00:00.000Z",
+    status: "active",
     testCommand: null,
   };
 }
@@ -93,6 +94,57 @@ describe("groupTasks", () => {
       "katha",
       "Petal",
       "zephyr",
+    ]);
+  });
+});
+
+describe("a closed repo", () => {
+  const CLOSED = { ...PETAL, status: "archived" } as const;
+  const groups = groupTasks([CLOSED, KATHA], TASKS);
+
+  it("is in no group of its own", () => {
+    expect(groups.repos.map((group) => group.repo.name)).toEqual(["katha"]);
+    expect(inSidebarOrder([CLOSED, KATHA]).map((one) => one.name)).toEqual(["katha"]);
+    expect(activeRepos([CLOSED, KATHA])).toEqual([KATHA]);
+  });
+
+  it("takes its waiting tasks out of Needs you", () => {
+    expect(groups.needsYou.map((one) => one.id)).toEqual(["waiting-new"]);
+  });
+
+  it("comes back whole when it is opened again", () => {
+    const reopened = groupTasks([{ ...CLOSED, status: "active" }, KATHA], TASKS);
+    expect(reopened.repos.map((group) => group.repo.name)).toEqual(["katha", "Petal"]);
+    expect(reopened.needsYou.map((one) => one.id)).toEqual(["waiting-old", "waiting-new"]);
+  });
+});
+
+// A reload lists repos with a bare GET /repos, which answers with the open ones, so a repo closed
+// before the reload is missing from the list rather than in it as archived.
+describe("a repo missing from the list", () => {
+  const groups = groupTasks([KATHA], TASKS);
+
+  it("keeps its waiting tasks out of Needs you", () => {
+    expect(groups.needsYou.map((one) => one.id)).toEqual(["waiting-new"]);
+  });
+
+  it("puts its tasks under no repo, having no repo to put them under", () => {
+    expect(groups.repos.map((group) => group.repo.id)).toEqual(["r1"]);
+    expect(groups.repos.flatMap((group) => group.tasks.map((one) => one.id))).toEqual([
+      "waiting-new",
+    ]);
+  });
+
+  it("leaves the tasks of a listed, open repo where they were", () => {
+    const listed = groupTasks([KATHA, PETAL], TASKS);
+    expect(listed.needsYou.map((one) => one.id)).toEqual(["waiting-old", "waiting-new"]);
+    expect(listed.repos[1]?.tasks.map((one) => one.id)).toEqual([
+      "running",
+      "waiting-old",
+      "queued",
+      "stopped",
+      "done",
+      "failed",
     ]);
   });
 });

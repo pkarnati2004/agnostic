@@ -20,6 +20,7 @@ const repoInput: EventInput<"repo.registered"> = {
       kind: "git",
       name: "agnostic",
       addedAt: "2026-09-10T11:00:00.000Z",
+      status: "active",
     },
   },
 };

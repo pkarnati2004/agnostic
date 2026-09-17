@@ -17,6 +17,7 @@ import { branchExists, fileChanges } from "./branch-changes.js";
 import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
 import { initialTaskNote } from "./initial-task-note.js";
+import { assertRepoOpen } from "./repo-open-guard.js";
 import { resolveRepoId } from "./resolve-id.js";
 import { resolveProfile } from "./resolve-profile.js";
 import { launchQueued } from "./start-task.js";
@@ -37,6 +38,7 @@ export async function handoffTask(
   // writes its outcome row; the changes this hands to the child are read after it (ADR 021).
   await ctx.lifecycle.settled(parent.id);
   const repo = resolveRepoId(ctx.ledger, parent.repoId);
+  assertRepoOpen(repo);
   const profile = await resolveProfile(ctx, repo, { profile: req.profile });
   const config = await readRepoConfig(repo.path);
   const base = await handoffBase(repo, parent);

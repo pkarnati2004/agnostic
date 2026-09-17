@@ -24,6 +24,16 @@ export function addCommand(ctx: CliContext): Command {
       }
       const { repo, created } = response;
       const what = `${repo.name} (${repo.kind}) ${repo.id}`;
-      ctx.io.out(created ? `added ${what}` : `already registered: ${what}`);
+      if (created) {
+        ctx.io.out(`added ${what}`);
+        return;
+      }
+      // Registering a closed repo does not open it, so the line says why it is not in the list.
+      if (repo.status === "archived") {
+        ctx.io.out(`already registered, closed: ${what}`);
+        ctx.io.err(`  hint: Run \`agn repo open ${repo.id}\` to show it in agn repos again.`);
+        return;
+      }
+      ctx.io.out(`already registered: ${what}`);
     });
 }

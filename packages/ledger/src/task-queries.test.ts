@@ -14,6 +14,7 @@ const repo: Repo = {
   kind: "git",
   name: "agnostic",
   addedAt: "2026-09-10T11:00:00.000Z",
+  status: "active",
 };
 
 const other: Repo = { ...repo, id: "q4m8n2vwxy", path: "/Users/dev/code/notes", name: "notes" };

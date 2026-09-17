@@ -46,6 +46,7 @@ export async function recommendContext(
     kind: "git",
     name: "petal",
     addedAt: new Date().toISOString(),
+    status: "active",
   };
   ledger.repos.insert(repo);
   const ctx: DaemonContext = {

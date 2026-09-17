@@ -23,6 +23,7 @@ beforeEach(async () => {
     kind: "git",
     name: "alpha",
     addedAt: new Date().toISOString(),
+    status: "active",
   });
 });
 
@@ -128,6 +129,7 @@ describe("the usage scanner", () => {
       kind: "git",
       name: "alpha",
       addedAt: new Date().toISOString(),
+      status: "active",
     });
     seedTask({});
     await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE }]);

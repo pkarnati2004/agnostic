@@ -17,7 +17,14 @@ beforeEach(() => {
   warnings = [];
   watch = createNativeResumeWatch({ ledger, log: stubLog() });
   const now = new Date().toISOString();
-  ledger.repos.insert({ id: REPO, path: "/tmp/petal", kind: "git", name: "petal", addedAt: now });
+  ledger.repos.insert({
+    id: REPO,
+    path: "/tmp/petal",
+    kind: "git",
+    name: "petal",
+    addedAt: now,
+    status: "active",
+  });
   ledger.tasks.insert({
     id: TASK,
     repoId: REPO,

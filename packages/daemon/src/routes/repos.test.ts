@@ -1,7 +1,12 @@
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RegisterRepoResponse, RepoListResponse } from "@agnostic/core";
+import type {
+  RegisterRepoResponse,
+  RepoListResponse,
+  RepoResponse,
+  TaskStatus,
+} from "@agnostic/core";
 import { defaultRepoConfig, newId, run, writeRepoConfig } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
@@ -25,6 +30,39 @@ function post(body: unknown): Promise<Response> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+async function register(name: string): Promise<string> {
+  return ((await (await post({ path: await gitRepo(name) })).json()) as RegisterRepoResponse).repo
+    .id;
+}
+
+function seedTask(repoId: string, status: TaskStatus): string {
+  const now = new Date().toISOString();
+  const id = newId();
+  daemon.ledger.tasks.insert({
+    id,
+    repoId,
+    title: "ship the thing",
+    prompt: "a prompt",
+    profileId: "claude-code:default:native",
+    worktreePath: null,
+    branch: null,
+    status,
+    origin: "agn",
+    baseCommit: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+function repos(query = ""): Promise<Response> {
+  return daemon.request(`/repos${query}`);
+}
+
+function close(id: string): Promise<Response> {
+  return daemon.request(`/repos/${id}/close`, { method: "POST" });
 }
 
 async function gitRepo(name: string): Promise<string> {
@@ -135,5 +173,70 @@ describe("POST /repos", () => {
     const response = await post({ path: inside });
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ error: { code: "path-inside-worktrees" } });
+  });
+});
+
+describe("POST /repos/:id/close", () => {
+  it("archives the repo and takes it out of the default list", async () => {
+    const id = await register("alpha");
+    await register("beta");
+    const response = await close(id);
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as RepoResponse).repo).toMatchObject({ status: "archived" });
+
+    const listed = (await (await repos()).json()) as RepoListResponse;
+    expect(listed.repos.map((repo) => repo.name)).toEqual(["beta"]);
+    expect(listed.cursor).toBe(daemon.ledger.events.latestId());
+
+    const all = (await (await repos("?all=1")).json()) as RepoListResponse;
+    expect(all.repos.map((repo) => repo.status)).toEqual(["archived", "active"]);
+  });
+
+  it("rejects a query value it does not know", async () => {
+    expect((await repos("?all=yes")).status).toBe(400);
+    expect((await repos("?archived=1")).status).toBe(400);
+  });
+
+  it("refuses while a task is running or waiting, and changes nothing", async () => {
+    const id = await register("alpha");
+    for (const status of ["running", "waiting"] as const) {
+      const taskId = seedTask(id, status);
+      const response = await close(id);
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({
+        error: { code: "repo-busy", hint: `Run \`agn stop ${taskId}\` first.` },
+      });
+      expect(daemon.ledger.repos.get(id)?.status).toBe("active");
+      daemon.ledger.tasks.setStatus(taskId, "done");
+    }
+  });
+
+  it("closes a repo whose only task is done, failed or stopped", async () => {
+    for (const status of ["done", "failed", "stopped"] as const) {
+      const id = await register(`alpha-${status}`);
+      seedTask(id, status);
+      expect((await close(id)).status).toBe(200);
+      expect(daemon.ledger.repos.get(id)?.status).toBe("archived");
+    }
+  });
+
+  it("is idempotent: the second close writes no event", async () => {
+    const id = await register("alpha");
+    await close(id);
+    const latest = daemon.ledger.events.latestId();
+    expect((await close(id)).status).toBe(200);
+    expect(daemon.ledger.events.latestId()).toBe(latest);
+  });
+
+  it("resolves a closed repo by id prefix, and opens it again", async () => {
+    const id = await register("alpha");
+    await close(id);
+    const response = await daemon.request(`/repos/${id.slice(0, 4)}/open`, { method: "POST" });
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as RepoResponse).repo.status).toBe("active");
+    expect(daemon.ledger.events.latest("repo.updated")?.payload).toMatchObject({
+      repo: { id, status: "active" },
+    });
+    expect(((await (await repos()).json()) as RepoListResponse).repos).toHaveLength(1);
   });
 });

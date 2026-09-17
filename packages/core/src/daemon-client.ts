@@ -21,6 +21,7 @@ import {
   type RegisterRepoRequest,
   type RegisterRepoResponse,
   type RepoListResponse,
+  type RepoResponse,
   type ResumeTaskResponse,
   type RunTaskRequest,
   type SessionsResponse,
@@ -44,7 +45,10 @@ const START_HINT = "Run `agn daemon start`.";
 
 export type DaemonClient = {
   health(): Promise<HealthResponse>;
-  listRepos(): Promise<RepoListResponse>;
+  /** Active repos only, unless `all`; a closed repo still resolves by id everywhere else. */
+  listRepos(query?: { all?: boolean }): Promise<RepoListResponse>;
+  closeRepo(id: string): Promise<RepoResponse>;
+  openRepo(id: string): Promise<RepoResponse>;
   registerRepo(body: RegisterRepoRequest): Promise<RegisterRepoResponse>;
   listTasks(repoId: string, query?: TaskListQuery): Promise<TaskListResponse>;
   /** Every repo at once, newest first, for `agn status` and the workspace's task list. */
@@ -123,7 +127,10 @@ export function createDaemonClient(opts: {
 
   return {
     health: () => json<HealthResponse>("GET", "/health"),
-    listRepos: () => json<RepoListResponse>("GET", "/repos"),
+    listRepos: (query) =>
+      json<RepoListResponse>("GET", `/repos${query?.all === true ? "?all=1" : ""}`),
+    closeRepo: (id) => json<RepoResponse>("POST", `/repos/${encodeURIComponent(id)}/close`),
+    openRepo: (id) => json<RepoResponse>("POST", `/repos/${encodeURIComponent(id)}/open`),
     registerRepo: (body) => json<RegisterRepoResponse>("POST", "/repos", body),
     listTasks: (repoId, query) =>
       json<TaskListResponse>("GET", `/repos/${encodeURIComponent(repoId)}/tasks${search(query)}`),

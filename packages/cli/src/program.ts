@@ -14,6 +14,7 @@ import { openCommand } from "./commands/open.js";
 import { outcomesCommand } from "./commands/outcomes.js";
 import { profilesCommand } from "./commands/profiles.js";
 import { recommendCommand } from "./commands/recommend.js";
+import { repoCommand } from "./commands/repo.js";
 import { reposCommand } from "./commands/repos.js";
 import { resumeCommand } from "./commands/resume.js";
 import { runCommand } from "./commands/run.js";
@@ -48,6 +49,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     daemonCommand(ctx),
     addCommand(ctx),
     reposCommand(ctx),
+    repoCommand(ctx),
     doctorCommand(ctx),
     profilesCommand(ctx),
     recommendCommand(ctx),

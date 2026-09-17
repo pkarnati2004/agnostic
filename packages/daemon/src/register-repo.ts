@@ -45,7 +45,14 @@ export async function registerRepo(
   const id = declared !== null && req.newId !== true ? declared : newId();
   const addedAt = new Date().toISOString();
   return {
-    repo: ledger.repos.insert({ id, path, kind, name: basename(path), addedAt }),
+    repo: ledger.repos.insert({
+      id,
+      path,
+      kind,
+      name: basename(path),
+      addedAt,
+      status: "active",
+    }),
     created: true,
   };
 }

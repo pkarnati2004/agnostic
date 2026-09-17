@@ -98,7 +98,14 @@ function row(
 
 function seedRepo(ledger: Ledger, name: string, path: string, index: number): string[] {
   const addedAt = new Date(Date.UTC(2026, 8, 1 + index)).toISOString();
-  const repo = ledger.repos.insert({ id: newId(), path, kind: "git", name, addedAt });
+  const repo = ledger.repos.insert({
+    id: newId(),
+    path,
+    kind: "git",
+    name,
+    addedAt,
+    status: "active",
+  });
   const ids: string[] = [];
   for (const [position, { status, title, profileId }] of TASKS.entries()) {
     const id = newId();

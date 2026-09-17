@@ -10,7 +10,10 @@ function cli(writes: InitWrite[]) {
   const test = createTestContext({
     client: {
       listRepos: () =>
-        Promise.resolve({ repos: [{ ...REPO, addedAt: "", testCommand: null }], cursor: 0 }),
+        Promise.resolve({
+          repos: [{ ...REPO, addedAt: "", status: "active" as const, testCommand: null }],
+          cursor: 0,
+        }),
       initRepo: (repoId, body) => {
         asked.push({ repoId, body });
         return Promise.resolve({ writes });

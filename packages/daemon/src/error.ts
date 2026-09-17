@@ -34,6 +34,10 @@ const statusByCode: Record<string, number> = {
   "repo-id-registered": 409,
   // A task or a workspace is busy: the request was right, the moment was not.
   "folder-busy": 409,
+  // A repo with a live task cannot be closed: the task would be hidden while it runs (ADR 032).
+  "repo-busy": 409,
+  // The mirror of that rule: nothing starts a task in a closed repo, because nothing would show it.
+  "repo-closed": 409,
   "task-active": 409,
   "session-not-running": 409,
   "session-not-attachable": 409,

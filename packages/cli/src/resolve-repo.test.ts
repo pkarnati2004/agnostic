@@ -22,16 +22,24 @@ function repo(id: string, path: string): RepoListRow {
     kind: "git",
     name: "fixture",
     addedAt: "2026-09-11T10:00:00.000Z",
+    status: "active",
     testCommand: null,
   };
 }
 
 function context(cwd: string, repos: RepoListRow[]) {
-  return createTestContext({
+  const queries: (boolean | undefined)[] = [];
+  const test = createTestContext({
     cwd,
     paths: agnosticPaths(join(root, "home")),
-    client: { listRepos: () => Promise.resolve({ repos, cursor: 0 }) },
+    client: {
+      listRepos: (query) => {
+        queries.push(query?.all);
+        return Promise.resolve({ repos, cursor: 0 });
+      },
+    },
   });
+  return { ...test, queries };
 }
 
 describe("resolveRepo", () => {
@@ -77,6 +85,22 @@ describe("resolveRepo", () => {
     await mkdir(other);
     const { ctx } = context(other, [repo("r1", registered)]);
     await expect(resolveRepo(ctx, undefined)).rejects.toBeInstanceOf(CliError);
+  });
+
+  it("resolves a closed repo by path, so the daemon is the one that refuses the run", async () => {
+    const path = join(root, "web");
+    await mkdir(path);
+    const { ctx, queries } = context(root, [{ ...repo("r1", path), status: "archived" }]);
+    expect(await resolveRepo(ctx, "./web")).toEqual({ repoId: "r1", taskId: null });
+    expect(queries).toEqual([true]);
+  });
+
+  it("resolves the current directory to a closed repo rather than calling it unregistered", async () => {
+    const path = join(root, "web");
+    await mkdir(path);
+    const { ctx, queries } = context(path, [{ ...repo("r1", path), status: "archived" }]);
+    expect((await resolveRepo(ctx, undefined)).repoId).toBe("r1");
+    expect(queries).toEqual([true]);
   });
 
   it("names `agn add .` when the directory belongs to no repo", async () => {

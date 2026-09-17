@@ -71,4 +71,15 @@ describe("GET /tasks/:id/outcome", () => {
     const response = await daemon.request("/tasks/zzzzzzzzzz/outcome");
     expect(response.status).toBe(404);
   });
+
+  it("still answers for a task whose repo is closed", async () => {
+    const repo = await repoWithConfig(daemon);
+    const { task } = await closedTask(daemon, repo, 5);
+    daemon.ledger.repos.update(repo.id, { status: "archived" });
+
+    const body = await outcomeOf(task.id);
+
+    expect(body.task.id).toBe(task.id);
+    expect(body.outcome?.accepted).toBe(false);
+  });
 });
