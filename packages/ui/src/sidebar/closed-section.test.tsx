@@ -2,6 +2,7 @@
 import type { RepoListRow } from "@agnostic/core";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/error";
+import { TooltipProvider } from "../components/tooltip";
 import type { RepoNotices } from "../repo/repo-notices";
 import { click, render } from "../test/render";
 import { ClosedSection } from "./closed-section";
@@ -21,17 +22,21 @@ const KATHA: RepoListRow = { ...PETAL, id: "r2", name: "katha", path: "/Users/de
 
 function section(props: { repos: RepoListRow[]; expanded: boolean; notices?: RepoNotices }) {
   const onReopen = vi.fn(() => Promise.resolve());
+  const onRemove = vi.fn();
   const onToggle = vi.fn();
   const page = render(
-    <ClosedSection
-      repos={props.repos}
-      expanded={props.expanded}
-      onToggle={onToggle}
-      onReopen={onReopen}
-      notices={props.notices ?? {}}
-    />,
+    <TooltipProvider>
+      <ClosedSection
+        repos={props.repos}
+        expanded={props.expanded}
+        onToggle={onToggle}
+        onReopen={onReopen}
+        onRemove={onRemove}
+        notices={props.notices ?? {}}
+      />
+    </TooltipProvider>,
   );
-  return { ...page, onReopen, onToggle };
+  return { ...page, onReopen, onRemove, onToggle };
 }
 
 function buttonSaying(container: HTMLElement, text: string): Element {
@@ -65,6 +70,23 @@ describe("ClosedSection", () => {
 
     click(buttonSaying(page.container, "Reopen"));
     expect(page.onReopen).toHaveBeenCalledWith("r1");
+    page.unmount();
+  });
+
+  it("offers Remove on every row, for the repo the click was on", () => {
+    const page = section({ repos: [PETAL, KATHA], expanded: true });
+    expect(page.container.querySelectorAll("button")).toHaveLength(5);
+    click(buttonSaying(page.container, "Remove"));
+    expect(page.onRemove).toHaveBeenCalledWith("r1");
+    expect(page.onReopen).not.toHaveBeenCalled();
+    page.unmount();
+  });
+
+  it("says when a closed repo's folder is not where agn left it", () => {
+    const page = section({ repos: [{ ...PETAL, pathPresent: false }, KATHA], expanded: true });
+    expect(page.container.textContent).toContain("/Users/dev/petal (not found)");
+    expect(page.container.textContent).toContain("/Users/dev/katha");
+    expect(page.container.textContent).not.toContain("/Users/dev/katha (not found)");
     page.unmount();
   });
 

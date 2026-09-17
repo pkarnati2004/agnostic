@@ -7,6 +7,7 @@ import { cn } from "./class-names";
 import { TooltipProvider } from "./components/tooltip";
 import { Notice } from "./notice";
 import { AddRepoDialog } from "./repo/add-repo-dialog";
+import { RemoveRepoDialog } from "./repo/remove-repo-dialog";
 import { useRepoActions } from "./repo/use-repo-actions";
 import { activeRepos, defaultRepoId, groupTasks } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
@@ -53,6 +54,8 @@ function Workspace({ token }: { token: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [newTask, setNewTask] = useState(false);
   const [addRepo, setAddRepo] = useState(false);
+  // The repo the Remove confirmation is about, or null while it is closed.
+  const [removing, setRemoving] = useState<RepoListRow | null>(null);
   const repoActions = useRepoActions(client);
   const [dismissed, setDismissed] = useState<ApiError | null>(null);
   const [tabs, dispatchTabs] = useReducer(tabsReducer, undefined, () => readTabs(localStorage));
@@ -94,6 +97,9 @@ function Workspace({ token }: { token: string }) {
         onAddRepo={() => setAddRepo(true)}
         onCloseRepo={repoActions.close}
         onReopenRepo={repoActions.reopen}
+        onRemoveRepo={(repoId) =>
+          setRemoving(state.repos.find((repo) => repo.id === repoId) ?? null)
+        }
         repoNotices={repoActions.notices}
         onToggle={() => setCollapsed(!collapsed)}
       />
@@ -102,6 +108,11 @@ function Workspace({ token }: { token: string }) {
         onOpenChange={setAddRepo}
         client={client}
         onReopen={repoActions.reopen}
+      />
+      <RemoveRepoDialog
+        repo={removing}
+        onOpenChange={(open) => setRemoving(open ? removing : null)}
+        onRemove={repoActions.remove}
       />
       <NewTaskDialog
         open={newTask}

@@ -9,14 +9,13 @@ const FINISHED: TaskStatus[] = ["done", "failed", "stopped"];
 /**
  * The sidebar in one pass: the tasks asking for an answer first, oldest question at the top, then
  * every repo with its own tasks. A waiting task is in both, so the repo list stays complete. A task
- * is shown only if the page was given its repo and that repo is open: a closed repo is in neither
- * group and neither are its tasks, and a task whose repo is missing from the list has no section it
- * could sit under, so it appears nowhere.
+ * is shown only if the page was given its repo and that repo is active: a closed or removed repo is
+ * in neither group and neither are its tasks, and a task whose repo is missing from the list has no
+ * section it could sit under, so it appears nowhere.
  */
 export function groupTasks(repos: RepoListRow[], tasks: TaskListRow[]): SidebarGroups {
-  const known = new Set(repos.map((repo) => repo.id));
-  const closed = new Set(repos.filter((repo) => repo.status === "archived").map((repo) => repo.id));
-  const shown = tasks.filter((task) => known.has(task.repoId) && !closed.has(task.repoId));
+  const open = new Set(activeRepos(repos).map((repo) => repo.id));
+  const shown = tasks.filter((task) => open.has(task.repoId));
   const byRepo = new Map<string, TaskListRow[]>();
   for (const task of shown) {
     byRepo.set(task.repoId, [...(byRepo.get(task.repoId) ?? []), task]);
@@ -57,6 +56,7 @@ export function inSidebarOrder(repos: RepoListRow[]): RepoListRow[] {
 /**
  * The repos the page shows in its repo sections. A closed one is still in state - the list asks for
  * `?all=1` - so the Closed section can offer it back and a `repo.updated` moves it without a reload.
+ * A removed one stays in state too, from the event that removed it, and is drawn nowhere.
  */
 export function activeRepos(repos: RepoListRow[]): RepoListRow[] {
   return repos.filter((repo) => repo.status === "active");

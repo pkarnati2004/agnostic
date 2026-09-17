@@ -53,7 +53,20 @@ same as `agn repo close`. Nothing is deleted: the repo keeps its rows, and `agn 
 waiting, and says which task to stop first.
 
 Closed repos sit under "Closed (n)" at the foot of the sidebar, collapsed when the page loads.
-Open it and each row has Reopen, which puts the repo and its tasks back where they were.
+Open it and each row has Reopen, which puts the repo and its tasks back where they were. A closed
+row whose folder is gone reads `<path> (not found)`.
+
+If a repo's folder is not where agn registered it, its heading reads `Not found: <path>`. The repo
+and its tasks stay in the list, and agn refuses to start, resume or hand off a task in it until the
+folder is back. Nothing is written, so mounting or restoring the folder clears the marker on the
+next load.
+
+A heading with that marker also has a Remove button, and so does every row under "Closed". Remove
+hides the repo for good and deletes the task worktrees agn made for it, with any uncommitted work
+in them; the folder you registered is not touched. The repo's usage and outcome history is kept,
+and `agn add <path>` registers the same row again with that history attached. agn asks you to
+confirm first, and refuses to remove a repo with a task still running or waiting. To remove a repo
+whose folder is still there, close it first and use Remove on its row under "Closed".
 
 ## Tabs
 

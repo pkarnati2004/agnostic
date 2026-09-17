@@ -1,11 +1,12 @@
 import type { RepoListRow } from "@agnostic/core";
-import { Archive } from "lucide-react";
+import { Archive, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { RepoNoticeLine } from "../repo/repo-notice-line";
 import type { RepoNotice } from "../repo/repo-notices";
 import type { RepoGroup } from "./group-tasks";
 import { HistorySection } from "./history-section";
 import { IconAction } from "./icon-action";
+import { removeTooltip } from "./remove-tooltip";
 import { Section } from "./section";
 import { TaskRow } from "./task-row";
 
@@ -18,19 +19,42 @@ type RepoSectionProps = {
   onToggle: (repoId: string) => void;
   onSelect: (id: string) => void;
   onClose: (repoId: string) => Promise<void>;
+  /** Opens the confirmation; nothing is removed until the dialog is answered. */
+  onRemove: (repoId: string) => void;
 };
 
 /** One repo: its live tasks, then whatever it has already finished and cleaned up after. */
 export function RepoSection({ group, selectedId, expanded, notice, ...on }: RepoSectionProps) {
+  const repo = group.repo;
   const empty = group.tasks.length === 0 && group.history.length === 0;
   // A section nobody opened still shows its rows while the task in front is one of them.
   const showing = expanded || group.history.some((task) => task.id === selectedId);
   return (
     <Section
-      title={group.repo.name}
-      action={<CloseButton repo={group.repo} onClose={on.onClose} />}
+      title={repo.name}
+      action={
+        <>
+          {/* Remove sits on the heading only while the folder is gone: there is nothing to close. */}
+          {!repo.pathPresent && (
+            <IconAction
+              label={`Remove ${repo.name}`}
+              tooltip={removeTooltip(repo.name)}
+              onClick={() => on.onRemove(repo.id)}
+              className="size-6"
+            >
+              <Trash2 />
+            </IconAction>
+          )}
+          <CloseButton repo={repo} onClose={on.onClose} />
+        </>
+      }
     >
-      {notice !== null && <RepoNoticeLine notice={notice} repo={group.repo} />}
+      {!repo.pathPresent && (
+        <p className="truncate px-2 text-muted-foreground text-xs" title={repo.path}>
+          Not found: {repo.path}
+        </p>
+      )}
+      {notice !== null && <RepoNoticeLine notice={notice} repo={repo} />}
       {empty && <p className="px-2 py-1.5 text-muted-foreground text-xs">No tasks yet.</p>}
       {group.tasks.map((task) => (
         <TaskRow
@@ -42,7 +66,7 @@ export function RepoSection({ group, selectedId, expanded, notice, ...on }: Repo
         />
       ))}
       <HistorySection
-        repoId={group.repo.id}
+        repoId={repo.id}
         tasks={group.history}
         selectedId={selectedId}
         expanded={showing}

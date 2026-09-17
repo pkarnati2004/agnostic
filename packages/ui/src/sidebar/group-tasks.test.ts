@@ -141,6 +141,35 @@ describe("a closed repo", () => {
   });
 });
 
+describe("a removed repo", () => {
+  const REMOVED = { ...PETAL, status: "removed" } as const;
+  const groups = groupTasks([REMOVED, KATHA], TASKS);
+
+  it("has no section, and its waiting task is out of Needs you", () => {
+    expect(groups.repos.map((group) => group.repo.name)).toEqual(["katha"]);
+    expect(groups.needsYou.map((one) => one.id)).toEqual(["waiting-new"]);
+  });
+
+  it("is in neither the sidebar's order nor the Closed section", () => {
+    expect(inSidebarOrder([REMOVED, KATHA]).map((one) => one.name)).toEqual(["katha"]);
+    expect(activeRepos([REMOVED, KATHA])).toEqual([KATHA]);
+    expect(closedRepos([REMOVED, KATHA])).toEqual([]);
+  });
+});
+
+describe("a repo whose folder is gone", () => {
+  // Missing is not closed: the repo is still active, so it keeps its section and its tasks, and
+  // the marker on the heading is all that says the folder is not there (ADR 034).
+  const MISSING = { ...PETAL, pathPresent: false };
+  const groups = groupTasks([MISSING, KATHA], TASKS);
+
+  it("keeps its section and its tasks", () => {
+    expect(groups.repos.map((group) => group.repo.name)).toEqual(["katha", "Petal"]);
+    expect(groups.repos[1]?.tasks.map((one) => one.id)).toContain("running");
+    expect(groups.needsYou.map((one) => one.id)).toEqual(["waiting-old", "waiting-new"]);
+  });
+});
+
 // The defensive case: a task whose repo the page was never given, for whatever reason. It is shown
 // nowhere - no group of its own, and out of Needs you - rather than under a repo it does not have.
 describe("a repo missing from the list", () => {

@@ -60,6 +60,7 @@ function sidebar(onSelect: (id: string) => void = vi.fn()) {
         onAddRepo={vi.fn()}
         onCloseRepo={() => Promise.resolve()}
         onReopenRepo={() => Promise.resolve()}
+        onRemoveRepo={vi.fn()}
         repoNotices={{}}
         onToggle={vi.fn()}
       />
@@ -142,6 +143,7 @@ describe("HistorySection", () => {
           onAddRepo={vi.fn()}
           onCloseRepo={() => Promise.resolve()}
           onReopenRepo={() => Promise.resolve()}
+          onRemoveRepo={vi.fn()}
           repoNotices={{}}
           selectedId={null}
           collapsed={false}
@@ -164,6 +166,7 @@ describe("HistorySection", () => {
           onAddRepo={vi.fn()}
           onCloseRepo={() => Promise.resolve()}
           onReopenRepo={() => Promise.resolve()}
+          onRemoveRepo={vi.fn()}
           repoNotices={{}}
           selectedId="old-two"
           collapsed={false}

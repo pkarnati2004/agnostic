@@ -22,6 +22,12 @@ describe("repoNoticeLine", () => {
     );
   });
 
+  it("says Remove the way the button does", () => {
+    expect(repoNoticeLine(notice({ action: "remove" }), { name: "petal" })).toBe(
+      "Remove failed for petal: repo petal has a task that is still running",
+    );
+  });
+
   it("says Reopen the way the button does", () => {
     expect(repoNoticeLine(notice({ action: "reopen" }), { name: "katha" })).toContain(
       "Reopen failed for katha",

@@ -1,4 +1,4 @@
-// The repo half of the client: registering one, and the close/open pair behind the sidebar.
+// The repo half of the client: registering one, the close/open pair behind the sidebar, and remove.
 import { describe, expect, it } from "vitest";
 import { createClient } from "./client";
 import type { ApiError } from "./error";
@@ -64,6 +64,31 @@ describe("the repo calls", () => {
       "POST /repos/r%201/close",
       "POST /repos/r1/open",
     ]);
+  });
+
+  it("removes a repo by id and reads back what the daemon deleted", async () => {
+    const removed = { repo: { ...REPO, status: "removed" }, worktreesRemoved: 2 };
+    const { client, calls } = stubClient(() => ok(removed));
+    expect(await client.removeRepo("r1")).toEqual(removed);
+    expect(calls[0]).toMatchObject({ method: "DELETE", url: "/repos/r1", token: "Bearer tok" });
+  });
+
+  it("passes on a refusal to remove a repo with a task still waiting", async () => {
+    const { client } = stubClient(() =>
+      Response.json(
+        {
+          error: {
+            code: "repo-busy",
+            message: "repo petal has a task that is still waiting",
+            hint: "Run `agn stop t1` first.",
+          },
+        },
+        { status: 409 },
+      ),
+    );
+    const failure = await client.removeRepo("r1").catch((cause: unknown) => cause);
+    expect(failure).toMatchObject({ code: "repo-busy", status: 409 });
+    expect((failure as ApiError).hint).toBe("Run `agn stop t1` first.");
   });
 
   it("passes on a refusal to close a repo with a task still running", async () => {
