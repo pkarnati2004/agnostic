@@ -17,7 +17,7 @@ If you pull a newer agn while a daemon from an older version is running, run `ag
 once. A daemon that started before this version answers `/ui` with an authentication error rather
 than the page.
 
-- **Left:** your repos and their tasks. Dot = status: running, waiting for you, queued, done. A repo you closed with `agn repo close` is not shown, nor are its tasks; `agn repo open` brings them back while the page is open.
+- **Left:** your repos and their tasks. Dot = status: running, waiting for you, queued, done. A closed repo and its tasks are not in the list; they are under "Closed" at the foot of the sidebar.
 - **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback.
 - **+ Task:** describe the work, see the recommendation, pick or accept, run.
 - **Bottom:** tokens and cost per plan, for today and for this week.
@@ -38,6 +38,22 @@ agn picked and what you chose. Intent is read from the prompt unless you set it 
 Enter writes a newline; Cmd+Enter (Ctrl+Enter) runs, as does the Run button. If the repo has a
 `test_command`, agn runs it before the agent starts and the dialog says so while it waits. The
 task opens in a tab as soon as it starts.
+
+## Repos
+
+The folder icon in the sidebar header adds a repo. Type the full path to a folder on this machine,
+starting with `/`: the browser cannot expand `~` or a path relative to a terminal, and it has no
+picker that yields a real path, so the field is plain text. A folder with no `.git` is registered
+as a folder repo and tasks run in it in place; tick "Run git init first" to make it a git repo
+before agn registers it. A path agn already has is named rather than added twice.
+
+Each repo heading has a Close button. Closing takes the repo and its tasks out of the list, the
+same as `agn repo close`. Nothing is deleted: the repo keeps its rows, and `agn usage` and
+`agn outcomes` keep counting its history. agn refuses to close a repo with a task still running or
+waiting, and says which task to stop first.
+
+Closed repos sit under "Closed (n)" at the foot of the sidebar, collapsed when the page loads.
+Open it and each row has Reopen, which puts the repo and its tasks back where they were.
 
 ## Tabs
 

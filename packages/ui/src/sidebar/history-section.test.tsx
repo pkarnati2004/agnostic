@@ -51,10 +51,15 @@ function sidebar(onSelect: (id: string) => void = vi.fn()) {
     <TooltipProvider>
       <Sidebar
         groups={GROUPS}
+        repos={[REPO]}
         selectedId={null}
         collapsed={false}
         onSelect={onSelect}
         onNewTask={vi.fn()}
+        onAddRepo={vi.fn()}
+        onCloseRepo={() => Promise.resolve()}
+        onReopenRepo={() => Promise.resolve()}
+        repoNotices={{}}
         onToggle={vi.fn()}
       />
     </TooltipProvider>,
@@ -132,6 +137,11 @@ describe("HistorySection", () => {
       <TooltipProvider>
         <Sidebar
           groups={{ ...GROUPS, repos: [...GROUPS.repos] }}
+          repos={[REPO]}
+          onAddRepo={vi.fn()}
+          onCloseRepo={() => Promise.resolve()}
+          onReopenRepo={() => Promise.resolve()}
+          repoNotices={{}}
           selectedId={null}
           collapsed={false}
           onSelect={vi.fn()}
@@ -149,6 +159,11 @@ describe("HistorySection", () => {
       <TooltipProvider>
         <Sidebar
           groups={GROUPS}
+          repos={[REPO]}
+          onAddRepo={vi.fn()}
+          onCloseRepo={() => Promise.resolve()}
+          onReopenRepo={() => Promise.resolve()}
+          repoNotices={{}}
           selectedId="old-two"
           collapsed={false}
           onSelect={vi.fn()}

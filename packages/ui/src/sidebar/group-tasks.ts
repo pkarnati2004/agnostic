@@ -1,4 +1,4 @@
-import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
+import type { RepoListRow, Task, TaskListRow, TaskStatus } from "@agnostic/core";
 
 export type RepoGroup = { repo: RepoListRow; tasks: TaskListRow[]; history: TaskListRow[] };
 export type SidebarGroups = { needsYou: TaskListRow[]; repos: RepoGroup[] };
@@ -55,11 +55,32 @@ export function inSidebarOrder(repos: RepoListRow[]): RepoListRow[] {
 }
 
 /**
- * The repos the page shows. A closed one keeps its row in state, so a `repo.updated` reopening it
- * puts it back without a reload, and it appears nowhere until then.
+ * The repos the page shows in its repo sections. A closed one is still in state - the list asks for
+ * `?all=1` - so the Closed section can offer it back and a `repo.updated` moves it without a reload.
  */
 export function activeRepos(repos: RepoListRow[]): RepoListRow[] {
   return repos.filter((repo) => repo.status === "active");
+}
+
+/**
+ * A new task starts in the repo the user is looking at, else in the first one on the left. A tab
+ * can outlive its repo's closing, and the new-task dialog lists the open repos only.
+ */
+export function defaultRepoId(
+  state: { repos: RepoListRow[]; tasks: Record<string, Task> },
+  activeId: string | null,
+): string | null {
+  const active = activeId === null ? undefined : state.tasks[activeId];
+  const open = inSidebarOrder(state.repos);
+  const inFront = open.find((repo) => repo.id === active?.repoId);
+  return inFront?.id ?? open[0]?.id ?? null;
+}
+
+/** What the Closed section lists, by name: the repos agn keeps the history of and shows nowhere else. */
+export function closedRepos(repos: RepoListRow[]): RepoListRow[] {
+  return repos
+    .filter((repo) => repo.status === "archived")
+    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 }
 
 /** Open tasks before closed ones, each newest first: what is happening now is at the top. */

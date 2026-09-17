@@ -5,7 +5,10 @@ import type {
   ProfilesResponse,
   RecommendRequest,
   RecommendResponse,
+  RegisterRepoRequest,
+  RegisterRepoResponse,
   RepoListResponse,
+  RepoResponse,
   ResumeTaskResponse,
   RunTaskRequest,
   SpecRequest,
@@ -20,7 +23,12 @@ import { streamEvents } from "./event-stream";
 
 /** The part of the daemon's API the shell uses. Chunks 05-08 add their own calls here. */
 export type WorkspaceClient = {
+  /** Closed repos included: the page draws them in its own section and hides their tasks. */
   listRepos(): Promise<RepoListResponse>;
+  /** 201 for a repo agn had never seen, 200 for one it already had (ADR 032). */
+  registerRepo(body: RegisterRepoRequest): Promise<RegisterRepoResponse>;
+  closeRepo(id: string): Promise<RepoResponse>;
+  openRepo(id: string): Promise<RepoResponse>;
   listTasks(): Promise<TaskListResponse>;
   getTask(id: string): Promise<TaskResponse>;
   profiles(): Promise<ProfilesResponse>;
@@ -84,7 +92,10 @@ export function createClient(opts: {
   ): Promise<T> => (await send(method, path, body, signal)).json() as Promise<T>;
 
   return {
-    listRepos: () => json<RepoListResponse>("GET", "/repos"),
+    listRepos: () => json<RepoListResponse>("GET", "/repos?all=1"),
+    registerRepo: (body) => json<RegisterRepoResponse>("POST", "/repos", body),
+    closeRepo: (id) => json<RepoResponse>("POST", `/repos/${encodeURIComponent(id)}/close`),
+    openRepo: (id) => json<RepoResponse>("POST", `/repos/${encodeURIComponent(id)}/open`),
     listTasks: () => json<TaskListResponse>("GET", "/tasks"),
     getTask: (id) => json<TaskResponse>("GET", `/tasks/${encodeURIComponent(id)}`),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),

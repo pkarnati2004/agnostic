@@ -105,3 +105,24 @@ describe("TaskHeader notice", () => {
     unmount();
   });
 });
+
+describe("TaskHeader and a closed repo", () => {
+  it("still names the repo of a tab left open after its repo closed", () => {
+    const closed: RepoListRow = { ...REPO, status: "archived" };
+    const active = task("task1", "Port the parser");
+    const { container, unmount } = render(
+      <TaskHeader
+        task={active}
+        repo={closed}
+        profiles={[PROFILE]}
+        cost={null}
+        notice={null}
+        onStop={() => Promise.resolve()}
+        onResume={() => Promise.resolve()}
+        onHandoff={() => Promise.resolve(true)}
+      />,
+    );
+    expect(container.textContent).toContain("petal");
+    unmount();
+  });
+});

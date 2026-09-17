@@ -1,146 +1,125 @@
-import { PanelLeft, Plus } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import type { RepoListRow, TaskListRow } from "@agnostic/core";
+import { FolderPlus, PanelLeft, Plus } from "lucide-react";
+import { useState } from "react";
 import { Button } from "../components/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
-import type { RepoGroup, SidebarGroups } from "./group-tasks";
-import { HistorySection } from "./history-section";
+import type { RepoNotices } from "../repo/repo-notices";
+import { ClosedSection } from "./closed-section";
+import { closedRepos, type SidebarGroups } from "./group-tasks";
+import { IconAction } from "./icon-action";
+import { RepoSection } from "./repo-section";
+import { Section } from "./section";
 import { TaskRow } from "./task-row";
 
 type SidebarProps = {
   groups: SidebarGroups;
+  /** Every repo the daemon knows, the closed ones included: only the Closed section draws those. */
+  repos: RepoListRow[];
   selectedId: string | null;
   collapsed: boolean;
   onSelect: (id: string) => void;
   onNewTask: () => void;
+  onAddRepo: () => void;
+  /** Rejects when the daemon refused; by then the failure is already in `repoNotices`. */
+  onCloseRepo: (repoId: string) => Promise<void>;
+  onReopenRepo: (repoId: string) => Promise<void>;
+  repoNotices: RepoNotices;
   onToggle: () => void;
 };
 
 /** Every repo and task the daemon knows, with the ones waiting for an answer at the top. */
-export function Sidebar({
-  groups,
-  selectedId,
-  collapsed,
-  onSelect,
-  onNewTask,
-  onToggle,
-}: SidebarProps) {
-  // Collapsed on every load: History is the part of a repo the page is not asking you to look at.
+export function Sidebar(props: SidebarProps) {
+  const { groups, selectedId, onSelect } = props;
+  // Collapsed on every load: History and Closed are the parts the page is not asking you to read.
   const [openHistory, setOpenHistory] = useState<ReadonlySet<string>>(new Set());
-  const toggleHistory = (repoId: string) =>
-    setOpenHistory((open) => {
-      const next = new Set(open);
-      if (!next.delete(repoId)) {
-        next.add(repoId);
-      }
-      return next;
-    });
-  if (collapsed) {
+  const [openClosed, setOpenClosed] = useState(false);
+  if (props.collapsed) {
     return (
       <aside className="flex flex-col items-center border-sidebar-border border-r bg-sidebar py-3">
-        <CollapseButton collapsed onToggle={onToggle} />
+        <CollapseButton collapsed onToggle={props.onToggle} />
       </aside>
     );
   }
-  const repoNames = new Map(groups.repos.map((group) => [group.repo.id, group.repo.name]));
   return (
     <aside className="flex min-h-0 flex-col border-sidebar-border border-r bg-sidebar">
       <header className="flex items-center gap-2 px-3 py-3">
         <span className="font-semibold text-sidebar-foreground text-sm">agn</span>
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="outline" size="sm" onClick={onNewTask}>
+          <Button variant="outline" size="sm" onClick={props.onNewTask}>
             <Plus />
             Task
           </Button>
-          <CollapseButton collapsed={false} onToggle={onToggle} />
+          <IconAction label="Add a repo" tooltip="Add a repo" onClick={props.onAddRepo}>
+            <FolderPlus />
+          </IconAction>
+          <CollapseButton collapsed={false} onToggle={props.onToggle} />
         </div>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-        {groups.needsYou.length > 0 && (
-          <Section title="Needs you">
-            {groups.needsYou.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                repoName={repoNames.get(task.repoId) ?? null}
-                selected={task.id === selectedId}
-                onSelect={onSelect}
-              />
-            ))}
-          </Section>
-        )}
+        <NeedsYou groups={groups} selectedId={selectedId} onSelect={onSelect} />
         {groups.repos.map((group) => (
           <RepoSection
             key={group.repo.id}
             group={group}
             selectedId={selectedId}
             expanded={openHistory.has(group.repo.id)}
-            onToggle={toggleHistory}
+            notice={props.repoNotices[group.repo.id] ?? null}
+            onToggle={(repoId) => setOpenHistory(toggled(openHistory, repoId))}
             onSelect={onSelect}
+            onClose={props.onCloseRepo}
           />
         ))}
+        <ClosedSection
+          repos={closedRepos(props.repos)}
+          expanded={openClosed}
+          onToggle={() => setOpenClosed(!openClosed)}
+          onReopen={props.onReopenRepo}
+          notices={props.repoNotices}
+        />
       </div>
     </aside>
   );
 }
 
-type RepoSectionProps = {
-  group: RepoGroup;
+type NeedsYouProps = {
+  groups: SidebarGroups;
   selectedId: string | null;
-  expanded: boolean;
-  onToggle: (repoId: string) => void;
   onSelect: (id: string) => void;
 };
 
-/** One repo: its live tasks, then whatever it has already finished and cleaned up after. */
-function RepoSection({ group, selectedId, expanded, onToggle, onSelect }: RepoSectionProps) {
-  const empty = group.tasks.length === 0 && group.history.length === 0;
-  // A section nobody opened still shows its rows while the task in front is one of them.
-  const showing = expanded || group.history.some((task) => task.id === selectedId);
+/** The tasks asking a question, oldest first, each one named by the repo it is in. */
+function NeedsYou({ groups, selectedId, onSelect }: NeedsYouProps) {
+  if (groups.needsYou.length === 0) {
+    return null;
+  }
+  const repoNames = new Map(groups.repos.map((group) => [group.repo.id, group.repo.name]));
   return (
-    <Section title={group.repo.name}>
-      {empty && <p className="px-2 py-1.5 text-muted-foreground text-xs">No tasks yet.</p>}
-      {group.tasks.map((task) => (
+    <Section title="Needs you">
+      {groups.needsYou.map((task: TaskListRow) => (
         <TaskRow
           key={task.id}
           task={task}
-          repoName={null}
+          repoName={repoNames.get(task.repoId) ?? null}
           selected={task.id === selectedId}
           onSelect={onSelect}
         />
       ))}
-      <HistorySection
-        repoId={group.repo.id}
-        tasks={group.history}
-        selectedId={selectedId}
-        expanded={showing}
-        onToggle={onToggle}
-        onSelect={onSelect}
-      />
     </Section>
-  );
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="px-2 pt-3">
-      <h2 className="px-2 pb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-        {title}
-      </h2>
-      <div className="flex flex-col gap-0.5">{children}</div>
-    </section>
   );
 }
 
 function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const label = collapsed ? "Show the sidebar" : "Hide the sidebar";
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" onClick={onToggle} aria-label={label}>
-          <PanelLeft />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
+    <IconAction label={label} tooltip={label} onClick={onToggle}>
+      <PanelLeft />
+    </IconAction>
   );
+}
+
+function toggled(open: ReadonlySet<string>, repoId: string): ReadonlySet<string> {
+  const next = new Set(open);
+  if (!next.delete(repoId)) {
+    next.add(repoId);
+  }
+  return next;
 }

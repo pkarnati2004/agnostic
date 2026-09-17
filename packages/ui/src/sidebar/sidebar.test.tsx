@@ -1,9 +1,12 @@
 // @vitest-environment happy-dom
 import type { Event, RepoListRow, TaskListRow } from "@agnostic/core";
+import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "../api/error";
 import { TooltipProvider } from "../components/tooltip";
+import type { RepoNotices } from "../repo/repo-notices";
 import { EMPTY_WORKSPACE, type WorkspaceState, workspaceReducer } from "../store/workspace-state";
-import { render } from "../test/render";
+import { click, find, render } from "../test/render";
 import { groupTasks } from "./group-tasks";
 import { Sidebar } from "./sidebar";
 
@@ -55,20 +58,46 @@ function statusEvent(id: number, status: "active" | "archived"): Event {
   } as Event;
 }
 
-function sidebar(state: WorkspaceState) {
+type Handlers = {
+  onAddRepo?: () => void;
+  onCloseRepo?: (repoId: string) => Promise<void>;
+  onReopenRepo?: (repoId: string) => Promise<void>;
+  repoNotices?: RepoNotices;
+};
+
+function sidebar(state: WorkspaceState, handlers: Handlers = {}) {
   const groups = groupTasks(state.repos, Object.values(state.tasks));
   return (
     <TooltipProvider>
       <Sidebar
         groups={groups}
+        repos={state.repos}
         selectedId={null}
         collapsed={false}
         onSelect={vi.fn()}
         onNewTask={vi.fn()}
+        onAddRepo={handlers.onAddRepo ?? vi.fn()}
+        onCloseRepo={handlers.onCloseRepo ?? (() => Promise.resolve())}
+        onReopenRepo={handlers.onReopenRepo ?? (() => Promise.resolve())}
+        repoNotices={handlers.repoNotices ?? {}}
         onToggle={vi.fn()}
       />
     </TooltipProvider>
   );
+}
+
+function labelled(container: HTMLElement, label: string): HTMLButtonElement {
+  return find<HTMLButtonElement>(container, `button[aria-label="${label}"]`);
+}
+
+function buttonSaying(container: HTMLElement, text: string): Element {
+  const found = Array.from(container.querySelectorAll("button")).find((button) =>
+    (button.textContent ?? "").startsWith(text),
+  );
+  if (found === undefined) {
+    throw new Error(`no button saying "${text}"`);
+  }
+  return found;
 }
 
 function headings(container: HTMLElement): string[] {
@@ -99,6 +128,93 @@ describe("the sidebar and a closed repo", () => {
     const page = render(sidebar(opened));
     expect(headings(page.container)).toEqual(["Needs you", "katha", "petal"]);
     expect(page.container.textContent).toContain("Fix the parser");
+    page.unmount();
+  });
+});
+
+describe("managing repos from the sidebar", () => {
+  it("offers Add a repo in the header and Close on every repo heading", () => {
+    const onAddRepo = vi.fn();
+    const page = render(sidebar(loaded(), { onAddRepo }));
+    click(labelled(page.container, "Add a repo"));
+    expect(onAddRepo).toHaveBeenCalledTimes(1);
+    expect(labelled(page.container, "Close petal")).toBeDefined();
+    expect(labelled(page.container, "Close katha")).toBeDefined();
+    page.unmount();
+  });
+
+  it("closes the repo the click was on and waits for the daemon with the button flat", async () => {
+    let settle: () => void = () => undefined;
+    const onCloseRepo = vi.fn(() => new Promise<void>((resolve) => (settle = resolve)));
+    const page = render(sidebar(loaded(), { onCloseRepo }));
+    click(labelled(page.container, "Close petal"));
+    expect(onCloseRepo).toHaveBeenCalledWith("r1");
+    expect(labelled(page.container, "Close petal").disabled).toBe(true);
+    await act(async () => settle());
+    expect(labelled(page.container, "Close petal").disabled).toBe(false);
+    page.unmount();
+  });
+
+  it("says under the heading what the daemon refused, message and hint", () => {
+    const repoNotices: RepoNotices = {
+      r1: {
+        action: "close",
+        at: 1000,
+        error: new ApiError("repo petal has a task that is still running", {
+          code: "repo-busy",
+          hint: "Run `agn stop task1` first.",
+          status: 409,
+        }),
+      },
+    };
+    const page = render(sidebar(loaded(), { repoNotices }));
+    expect(page.container.textContent).toContain(
+      "Close failed for petal: repo petal has a task that is still running",
+    );
+    expect(page.container.textContent).toContain("Run `agn stop task1` first.");
+    page.unmount();
+  });
+
+  it("draws a closed repo in the Closed section and nowhere else, reload or not", () => {
+    const closed = workspaceReducer(loaded(), {
+      type: "event",
+      event: statusEvent(13, "archived"),
+    });
+    const onReopenRepo = vi.fn(() => Promise.resolve());
+    const page = render(sidebar(closed, { onReopenRepo }));
+    expect(headings(page.container)).toEqual(["katha"]);
+    expect(page.container.textContent).toContain("Closed (1)");
+    expect(page.container.textContent).not.toContain("Fix the parser");
+
+    click(buttonSaying(page.container, "Closed (1)"));
+    expect(page.container.textContent).toContain("Its usage and outcome history is kept.");
+    click(buttonSaying(page.container, "Reopen"));
+    expect(onReopenRepo).toHaveBeenCalledWith("r1");
+    page.unmount();
+  });
+
+  it("carries a repo's notice with it when it reopens before the notice expires", () => {
+    const repoNotices: RepoNotices = {
+      r1: {
+        action: "reopen",
+        at: 1000,
+        error: new ApiError("no repo matches r1", { code: "not-found", status: 404 }),
+      },
+    };
+    const closed = workspaceReducer(loaded(), {
+      type: "event",
+      event: statusEvent(13, "archived"),
+    });
+    const page = render(sidebar(closed, { repoNotices }));
+    click(buttonSaying(page.container, "Closed (1)"));
+    expect(page.container.textContent).toContain("Reopen failed for petal: no repo matches r1");
+
+    // The notices map is keyed by repo id and outlives the repo's own status; a `repo.updated`
+    // moving it back to active must carry the same, still-unexpired notice with it.
+    const opened = workspaceReducer(closed, { type: "event", event: statusEvent(14, "active") });
+    page.update(sidebar(opened, { repoNotices }));
+    expect(headings(page.container)).toEqual(["Needs you", "katha", "petal"]);
+    expect(page.container.textContent).toContain("Reopen failed for petal: no repo matches r1");
     page.unmount();
   });
 });

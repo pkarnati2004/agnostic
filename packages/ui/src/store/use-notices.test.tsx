@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, asApiError } from "../api/error";
 import { SessionOverlay } from "../terminal/session-overlay";
 import { render } from "../test/render";
-import { useTaskNotices } from "./use-task-notices";
+import { useNotices } from "./notice-store";
+import type { TaskNotice } from "./task-notices";
 
 const TTL_MS = 5000;
 const TASK = { id: "task1", title: "Port the parser" };
@@ -17,7 +18,7 @@ const REFUSED = new ApiError("the worktree /tmp/petal-wt is gone", {
 
 /** One task's pane, wired the way the page wires it: the answer to Resume shows on the overlay. */
 function Pane({ resume }: { resume: () => Promise<void> }) {
-  const { notices, failed, cleared } = useTaskNotices(TTL_MS);
+  const { notices, failed, cleared } = useNotices<Omit<TaskNotice, "at">>(TTL_MS);
   const onResume = () =>
     resume().then(
       () => cleared(TASK.id),
@@ -42,7 +43,7 @@ async function clickResume(container: HTMLElement): Promise<void> {
   });
 }
 
-describe("useTaskNotices", () => {
+describe("useNotices", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
