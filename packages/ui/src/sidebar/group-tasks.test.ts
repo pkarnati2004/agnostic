@@ -119,6 +119,36 @@ describe("a closed repo", () => {
   });
 });
 
+// A reload lists repos with a bare GET /repos, which answers with the open ones, so a repo closed
+// before the reload is missing from the list rather than in it as archived.
+describe("a repo missing from the list", () => {
+  const groups = groupTasks([KATHA], TASKS);
+
+  it("keeps its waiting tasks out of Needs you", () => {
+    expect(groups.needsYou.map((one) => one.id)).toEqual(["waiting-new"]);
+  });
+
+  it("puts its tasks under no repo, having no repo to put them under", () => {
+    expect(groups.repos.map((group) => group.repo.id)).toEqual(["r1"]);
+    expect(groups.repos.flatMap((group) => group.tasks.map((one) => one.id))).toEqual([
+      "waiting-new",
+    ]);
+  });
+
+  it("leaves the tasks of a listed, open repo where they were", () => {
+    const listed = groupTasks([KATHA, PETAL], TASKS);
+    expect(listed.needsYou.map((one) => one.id)).toEqual(["waiting-old", "waiting-new"]);
+    expect(listed.repos[1]?.tasks.map((one) => one.id)).toEqual([
+      "running",
+      "waiting-old",
+      "queued",
+      "stopped",
+      "done",
+      "failed",
+    ]);
+  });
+});
+
 describe("History", () => {
   const cleaned = [
     goneTask("done-gone", "r2", "done", 45),

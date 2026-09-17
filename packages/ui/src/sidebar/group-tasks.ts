@@ -8,12 +8,15 @@ const FINISHED: TaskStatus[] = ["done", "failed", "stopped"];
 
 /**
  * The sidebar in one pass: the tasks asking for an answer first, oldest question at the top, then
- * every repo with its own tasks. A waiting task is in both, so the repo list stays complete. A
- * closed repo is in neither, and neither are its tasks.
+ * every repo with its own tasks. A waiting task is in both, so the repo list stays complete. A task
+ * is shown only if the page was given its repo and that repo is open: a closed repo is in neither
+ * group and neither are its tasks, and a task whose repo is missing from the list has no section it
+ * could sit under, so it appears nowhere.
  */
 export function groupTasks(repos: RepoListRow[], tasks: TaskListRow[]): SidebarGroups {
+  const known = new Set(repos.map((repo) => repo.id));
   const closed = new Set(repos.filter((repo) => repo.status === "archived").map((repo) => repo.id));
-  const shown = tasks.filter((task) => !closed.has(task.repoId));
+  const shown = tasks.filter((task) => known.has(task.repoId) && !closed.has(task.repoId));
   const byRepo = new Map<string, TaskListRow[]>();
   for (const task of shown) {
     byRepo.set(task.repoId, [...(byRepo.get(task.repoId) ?? []), task]);
