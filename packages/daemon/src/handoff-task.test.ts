@@ -12,6 +12,7 @@ import {
 } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
+import { shimGit } from "./test-git-shim.js";
 
 const PROFILE = "claude-code:default:native";
 const NOTE = "the parser is done, the printer is not";
@@ -222,6 +223,23 @@ describe("POST /tasks/:id/handoff", () => {
     expect((await failure(response)).error.code).toBe("branch-gone");
     expect(daemon.ledger.tasks.list({ repoId: repo.id })).toHaveLength(1);
     expect(await readFile(noteFile(repo, parent), "utf8")).toBe(before);
+  });
+
+  it("says git could not be asked rather than claiming the branch was deleted", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    const parent = await started(repo, { prompt: "write the parser" });
+    expect((await post(`/tasks/${parent.id}/stop`, {})).status).toBe(200);
+    const restore = await shimGit("fatal: Unable to create '.git/index.lock': File exists.");
+
+    try {
+      const response = await post(`/tasks/${parent.id}/handoff`, { profile: "codex" });
+      expect(response.status).toBe(503);
+      const { error } = await failure(response);
+      expect(error.code).toBe("git-unavailable");
+    } finally {
+      restore();
+    }
+    expect(daemon.ledger.tasks.list({ repoId: repo.id })).toHaveLength(1);
   });
 
   it("hands off from a cleaned task whose branch was kept", async () => {

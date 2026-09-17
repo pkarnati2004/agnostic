@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -168,6 +168,77 @@ describe("logFile", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("appends to a file that already has content, rather than truncating it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-process-preexisting-"));
+    const file = join(dir, "out.log");
+    await writeFile(file, "from a previous daemon run\n");
+    await run(process.execPath, ["-e", "console.log('from this run')"], { logFile: file });
+    const text = await readFile(file, "utf8");
+    expect(text).toContain("from a previous daemon run");
+    expect(text).toContain("from this run");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("keeps both children's output when two of them write the same log file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-process-concurrent-"));
+    const file = join(dir, "out.log");
+    const first = spawn(process.execPath, ["-e", "console.log('from the first child')"], {
+      logFile: file,
+    });
+    const second = spawn(process.execPath, ["-e", "console.log('from the second child')"], {
+      logFile: file,
+    });
+    await Promise.all([first, second]);
+    const text = await readFile(file, "utf8");
+    expect(text).toContain("from the first child");
+    expect(text).toContain("from the second child");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("keeps what a detached child writes after the process that launched it is gone", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-detached-log-"));
+    const file = join(dir, "out.log");
+    // A launcher that exits the moment it has spawned, as `agn daemon start` does. Whatever the
+    // child writes afterwards reaches the file only if the file is the child's own fd.
+    const launcher = `
+      const { spawn } = await import(${JSON.stringify(new URL("./process.ts", import.meta.url).href)});
+      const child = spawn(process.execPath, ["-e", "setTimeout(() => console.error('the daemon says so'), 200)"], {
+        detached: true,
+        logFile: ${JSON.stringify(file)},
+      });
+      child.unref();
+      process.exit(0);
+    `;
+    await run(process.execPath, ["--import", "tsx", "--input-type=module", "-e", launcher]);
+
+    await written(file, "the daemon says so");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("reports a log file it cannot open as a ProcessError, naming the path", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-process-unwritable-"));
+    // A file where the log's directory has to be: no mkdir can succeed underneath it.
+    const blocker = join(dir, "blocked");
+    await writeFile(blocker, "not a directory\n");
+    const file = join(blocker, "out.log");
+    const error = await run("echo", ["hi"], { logFile: file }).catch((thrown: unknown) => thrown);
+    expect(error).toBeInstanceOf(ProcessError);
+    expect((error as ProcessError).code).toBe("process-log-file");
+    expect((error as ProcessError).message).toContain(file);
+    expect((error as ProcessError).message).toContain("was not started");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("throws the same ProcessError out of spawn, before any child exists", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-spawn-unwritable-"));
+    const blocker = join(dir, "blocked");
+    await writeFile(blocker, "not a directory\n");
+    expect(() => spawn("echo", ["hi"], { logFile: join(blocker, "out.log") })).toThrow(
+      ProcessError,
+    );
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("lets a detached child outlive the parent's handle", async () => {
     const dir = await mkdtemp(join(tmpdir(), "agn-detached-"));
     const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 50)"], {
@@ -180,3 +251,16 @@ describe("logFile", () => {
     await rm(dir, { recursive: true, force: true });
   });
 });
+
+/** Polls rather than sleeps: the grandchild writes on its own clock, not on the test's. */
+async function written(file: string, text: string): Promise<void> {
+  const deadline = Date.now() + 3_000;
+  while (Date.now() < deadline) {
+    const found = await readFile(file, "utf8").catch(() => "");
+    if (found.includes(text)) {
+      return;
+    }
+    await new Promise((tick) => setTimeout(tick, 25));
+  }
+  throw new Error(`${file} never held "${text}"`);
+}

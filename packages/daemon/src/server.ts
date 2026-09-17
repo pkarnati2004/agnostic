@@ -24,6 +24,7 @@ import { readDaemonConfig } from "./daemon-config.js";
 import { DaemonError } from "./error.js";
 import { createEventFeed, type EventFeed } from "./event-feed.js";
 import { createLogger, type Logger } from "./log.js";
+import type { UpgradeHandler } from "./terminal-socket.js";
 import { resolveUiDist } from "./ui-dist.js";
 import { createVerdictSweep, type VerdictSweep } from "./verdict-sweep.js";
 
@@ -97,8 +98,7 @@ export async function runDaemon(
 
   let server: ServerType;
   try {
-    ({ server, port } = await listen(app, wanted));
-    server.on("upgrade", upgrade);
+    ({ server, port } = await listen(app, wanted, upgrade));
   } catch (cause) {
     await closeApp();
     feed.close();
@@ -128,12 +128,19 @@ export async function runDaemon(
   };
 }
 
-function listen(app: Hono, port: number): Promise<{ server: ServerType; port: number }> {
+function listen(
+  app: Hono,
+  port: number,
+  upgrade: UpgradeHandler,
+): Promise<{ server: ServerType; port: number }> {
   return new Promise((resolveListen, reject) => {
     // ADR 002: loopback only. There is no option to bind anywhere else.
     const server = serve({ fetch: app.fetch, hostname: "127.0.0.1", port }, (address) => {
       resolveListen({ server, port: address.port });
     });
+    // Attached before the first connection can be accepted: an upgrade that arrives before this
+    // would go to the router, which has no route for a socket and answers 404.
+    server.on("upgrade", upgrade);
     server.once("error", reject);
   });
 }

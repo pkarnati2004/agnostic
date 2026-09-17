@@ -1,6 +1,12 @@
-import { mkdirSync } from "node:fs";
+import { closeSync, mkdirSync, openSync } from "node:fs";
 import { dirname } from "node:path";
-import { ExecaError, execa, type Options, type ResultPromise } from "execa";
+import {
+  ExecaError,
+  execa,
+  type Options,
+  type ResultPromise,
+  type StdoutStderrOption,
+} from "execa";
 import { ProcessError } from "./error.js";
 
 export type ProcessOptions = {
@@ -80,33 +86,79 @@ export function scrubEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   return scrubbed;
 }
 
-function execaOptions(opts: ProcessOptions) {
+/** `execa` spawns before it returns, so by then the child holds the log's descriptor and we can't. */
+function start(command: string, args: string[], opts: ProcessOptions): ResultPromise {
+  let prepared: { options: Options; closeLog: () => void };
+  try {
+    prepared = execaOptions(opts);
+  } catch (cause) {
+    throw logFileError(command, args, opts.logFile ?? "", cause);
+  }
+  try {
+    return execa(command, args, prepared.options);
+  } finally {
+    prepared.closeLog();
+  }
+}
+
+/** Opening the log happens before the spawn, so its failure is still "the command did not start". */
+function logFileError(command: string, args: string[], file: string, cause: unknown): ProcessError {
+  return new ProcessError(
+    `${describe(command, args)} was not started: its log file ${file} could not be opened`,
+    {
+      code: "process-log-file",
+      hint: `Check that ${dirname(file)} is a directory you can write to.`,
+      command,
+      args,
+      exitCode: null,
+      stderr: "",
+      cause,
+    },
+  );
+}
+
+function execaOptions(opts: ProcessOptions): { options: Options; closeLog: () => void } {
   const inherited = scrubEnv(opts.inheritEnv === false ? {} : process.env);
-  const output = outputOptions(opts);
+  const { streams, closeLog } = outputOptions(opts);
   return {
-    cwd: opts.cwd,
-    env: { ...inherited, ...opts.env },
-    extendEnv: false,
-    timeout: opts.timeoutMs,
-    input: opts.input,
-    detached: opts.detached,
-    stripFinalNewline: true,
-    ...output,
-  } satisfies Options;
+    options: {
+      cwd: opts.cwd,
+      env: { ...inherited, ...opts.env },
+      extendEnv: false,
+      timeout: opts.timeoutMs,
+      input: opts.input,
+      detached: opts.detached,
+      stripFinalNewline: true,
+      ...streams,
+    },
+    closeLog,
+  };
 }
 
 /** A log file and an inherited terminal are two answers to the same question; the file wins. */
-function outputOptions(opts: ProcessOptions) {
+function outputOptions(opts: ProcessOptions): { streams: Options; closeLog: () => void } {
   if (opts.logFile !== undefined) {
     return redirect(opts.logFile);
   }
-  return opts.stdio === "inherit" ? ({ stdio: "inherit" } as const) : {};
+  const streams = opts.stdio === "inherit" ? ({ stdio: "inherit" } as const) : {};
+  return { streams, closeLog: () => undefined };
 }
 
-function redirect(file: string) {
+/**
+ * The file as the child's own fd 1 and 2. execa's `{file}` target is a stream in *this* process at
+ * the end of a pipe, so a detached child - agnd - loses everything it writes once the process that
+ * launched it exits: console lines, a stack trace, the reason it died. O_APPEND because the daemon
+ * keeps its own handle on the same file for the structured log.
+ */
+function redirect(file: string): { streams: Options; closeLog: () => void } {
   mkdirSync(dirname(file), { recursive: true });
-  const target = { file, append: true } as const;
-  return { stdin: "ignore", stdout: target, stderr: target } as const;
+  const fd = openSync(file, "a");
+  // execa's types name only fd 1 and 2, its own streams; node gives the child any open descriptor.
+  const target = fd as StdoutStderrOption;
+  return {
+    streams: { stdin: "ignore", stdout: target, stderr: target },
+    closeLog: () => closeSync(fd),
+  };
 }
 
 export async function run(
@@ -116,16 +168,17 @@ export async function run(
 ): Promise<RunResult> {
   const startedAt = Date.now();
   try {
-    const result = await execa(command, args, execaOptions(opts));
+    const result = await start(command, args, opts);
     report(command, args, opts, startedAt, result.exitCode ?? 0);
     return {
-      stdout: result.stdout,
-      stderr: result.stderr,
+      stdout: text(result.stdout),
+      stderr: text(result.stderr),
       exitCode: result.exitCode ?? 0,
       durationMs: Date.now() - startedAt,
     };
   } catch (cause) {
-    const error = toProcessError(command, args, cause);
+    // `start` already says what it means when the log file is the thing that failed.
+    const error = cause instanceof ProcessError ? cause : toProcessError(command, args, cause);
     report(command, args, opts, startedAt, error.exitCode);
     throw error;
   }
@@ -138,12 +191,17 @@ export function spawn(
   opts: ProcessOptions = {},
 ): ResultPromise {
   const startedAt = Date.now();
-  const subprocess = execa(command, args, execaOptions(opts));
+  const subprocess = start(command, args, opts);
   subprocess.then(
     (result) => report(command, args, opts, startedAt, result.exitCode ?? 0),
     (cause: unknown) => report(command, args, opts, startedAt, exitCodeOf(cause)),
   );
   return subprocess;
+}
+
+/** Nothing here asks execa for lines or buffers, so both streams come back as text or not at all. */
+function text(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
 
 function exitCodeOf(cause: unknown): number | null {
@@ -161,7 +219,7 @@ function toProcessError(command: string, args: string[], cause: unknown): Proces
       cause,
     });
   }
-  const stderr = tail(typeof cause.stderr === "string" ? cause.stderr : "");
+  const stderr = tail(text(cause.stderr));
   const exitCode = cause.exitCode ?? null;
   const { code, summary, hint } = classify(command, cause, exitCode);
   const detail = stderr ? `\n${stderr}` : "";
