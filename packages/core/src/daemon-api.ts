@@ -67,8 +67,14 @@ export const TaskListQuerySchema = z
   .pipe(z.strictObject({ status: z.array(TaskStatusSchema).min(1).optional() }));
 export type TaskListQuery = z.output<typeof TaskListQuerySchema>;
 
+/**
+ * A task row plus whether the worktree it ran in is on disk now, checked per request the way
+ * `RepoListRow.testCommand` is read per request. False for a task that never had a worktree.
+ */
+export type TaskListRow = Task & { worktreePresent: boolean };
+
 /** `cursor` is the same snapshot cursor as the repo list's. */
-export type TaskListResponse = { tasks: Task[]; cursor: number };
+export type TaskListResponse = { tasks: TaskListRow[]; cursor: number };
 export type TaskResponse = { task: Task };
 
 // The daemon resolves `profile`, so the CLI, the UI and any adapter get one set of rules: a whole

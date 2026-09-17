@@ -3,7 +3,9 @@ import { type ReactNode, useState } from "react";
 import { Badge } from "../components/badge";
 import { Button } from "../components/button";
 import { STATUS_DOT } from "../sidebar/status-dot";
+import type { TaskNotice } from "../store/task-notices";
 import { HandoffDialog } from "./handoff-dialog";
+import { TaskNoticeLine } from "./task-notice-line";
 
 type TaskHeaderProps = {
   task: Task;
@@ -11,17 +13,19 @@ type TaskHeaderProps = {
   profiles: Profile[];
   /** What this task has spent, filled by the page that knows how to read it. */
   cost: ReactNode;
-  /** None of these reject: a failure lands in the notice below this header. */
+  /** This task's latest failure, drawn here when that is where it was asked for. */
+  notice: TaskNotice | null;
+  /** None of these reject: a failure comes back as a notice instead. */
   onStop: () => Promise<void>;
   onResume: () => Promise<void>;
-  onHandoff: (body: HandoffTaskRequest) => Promise<void>;
+  onHandoff: (body: HandoffTaskRequest) => Promise<boolean>;
 };
 
 const STOPPABLE: TaskStatus[] = ["running", "waiting"];
 const RESUMABLE: TaskStatus[] = ["done", "failed", "stopped"];
 
 export function TaskHeader(props: TaskHeaderProps) {
-  const { task, repo, profiles, cost, onStop, onResume, onHandoff } = props;
+  const { task, repo, profiles, cost, notice, onStop, onResume, onHandoff } = props;
   const [busy, setBusy] = useState(false);
   const run = (action: () => Promise<void>) => {
     setBusy(true);
@@ -47,6 +51,11 @@ export function TaskHeader(props: TaskHeaderProps) {
           <Badge variant="outline">{task.branch ?? "no branch"}</Badge>
           <Badge variant="outline">{task.profileId}</Badge>
         </div>
+        {notice !== null && notice.host === "header" && (
+          <div className="mt-2">
+            <TaskNoticeLine notice={notice} task={task} />
+          </div>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {cost}
@@ -66,7 +75,7 @@ export function TaskHeader(props: TaskHeaderProps) {
         >
           Resume
         </Button>
-        <HandoffDialog task={task} profiles={profiles} onSubmit={onHandoff} />
+        <HandoffDialog task={task} profiles={profiles} notice={notice} onSubmit={onHandoff} />
       </div>
     </header>
   );

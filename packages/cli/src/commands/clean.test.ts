@@ -1,4 +1,4 @@
-import type { CleanTaskRequest, Task, TaskStatus } from "@agnostic/core";
+import type { CleanTaskRequest, Task, TaskListRow, TaskStatus } from "@agnostic/core";
 import { DaemonApiError } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { createTestContext } from "../test-context.js";
@@ -37,7 +37,7 @@ function cli(tasks: Task[], refuse: string[] = []) {
   const asked: { id: string; body: CleanTaskRequest }[] = [];
   const test = createTestContext({
     client: {
-      listAllTasks: () => Promise.resolve({ tasks, cursor: 0 }),
+      listAllTasks: () => Promise.resolve({ tasks: tasks.map(listedRow), cursor: 0 }),
       cleanTask: (id, body) => {
         asked.push({ id, body });
         const found = tasks.find((row) => row.id === id) ?? task(id, "done", null);
@@ -123,3 +123,8 @@ describe("agn clean", () => {
     expect(printed[1]).toMatchObject({ task: { id: "q4m8n2vwxy" }, removed: false });
   });
 });
+
+/** The list route answers with rows, not bare tasks: the worktree of a seeded task is there. */
+function listedRow(task: Task): TaskListRow {
+  return { ...task, worktreePresent: task.worktreePath !== null };
+}

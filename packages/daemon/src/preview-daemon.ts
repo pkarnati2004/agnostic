@@ -127,6 +127,19 @@ function seedRepo(ledger: Ledger, name: string, path: string, index: number): st
   return ids;
 }
 
+/**
+ * Every seeded task gets the worktree its row points at, except the done one in each repo: that is
+ * the task a clean has been through, and it is what fills the sidebar's History section.
+ */
+async function seedWorktrees(ledger: Ledger): Promise<void> {
+  const paths = ledger.tasks
+    .list()
+    .filter((task) => task.status !== "done")
+    .map((task) => task.worktreePath)
+    .filter((path) => path !== null);
+  await Promise.all(paths.map((path) => mkdir(path, { recursive: true })));
+}
+
 async function main(): Promise<void> {
   const repos = await Promise.all(
     REPOS.map(async (name) => ({
@@ -146,6 +159,7 @@ async function main(): Promise<void> {
       seedUsage(ledger, ids[0] ?? []);
     },
   });
+  await seedWorktrees(daemon.ledger);
   // The ChatGPT plan nothing on this machine declares, so the codex cell is labelled like a real one.
   await mkdir(daemon.paths.home, { recursive: true });
   await writeFile(

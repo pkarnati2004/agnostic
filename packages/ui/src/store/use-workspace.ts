@@ -3,6 +3,8 @@ import { useCallback, useEffect, useReducer, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import type { ApiError } from "../api/error";
 import { asApiError } from "../api/error";
+import type { NoticeHost, TaskAction, TaskNotices } from "./task-notices";
+import { useTaskNotices } from "./use-task-notices";
 import {
   EMPTY_WORKSPACE,
   REFETCH_KINDS,
@@ -11,18 +13,29 @@ import {
   workspaceReducer,
 } from "./workspace-state";
 
+/** Which task the click was about, and where its answer belongs. */
+export type ActionScope = { taskId: string; action: TaskAction; host: NoticeHost };
+
 export type Workspace = {
   state: WorkspaceState;
-  /** The last call that failed, shown until the next one succeeds. */
+  /** Set by the bootstrap only: a page that never loaded has no task to say so on. */
   error: ApiError | null;
+  /** The latest failure per task, each one shown where it was asked for. */
+  notices: TaskNotices;
   /** Returns the task the call answered with, or undefined when it failed. */
-  act(run: (client: WorkspaceClient) => Promise<Task | undefined>): Promise<Task | undefined>;
+  act(
+    scope: ActionScope,
+    run: (client: WorkspaceClient) => Promise<Task | undefined>,
+  ): Promise<Task | undefined>;
+  /** A row that already arrived whole (the new-task dialog's answer); nothing here can fail. */
+  put(task: Task): void;
 };
 
 /** The page's one connection to the daemon: a snapshot, then the feed, for as long as it is open. */
 export function useWorkspace(client: WorkspaceClient): Workspace {
   const [state, dispatch] = useReducer(workspaceReducer, EMPTY_WORKSPACE);
   const [error, setError] = useState<ApiError | null>(null);
+  const { notices, failed, cleared } = useTaskNotices();
 
   useEffect(() => {
     const abort = new AbortController();
@@ -35,23 +48,25 @@ export function useWorkspace(client: WorkspaceClient): Workspace {
   }, [client]);
 
   const act = useCallback(
-    async (run: (client: WorkspaceClient) => Promise<Task | undefined>) => {
+    async (scope: ActionScope, run: (client: WorkspaceClient) => Promise<Task | undefined>) => {
       try {
         const task = await run(client);
         if (task !== undefined) {
           dispatch({ type: "task", task });
         }
-        setError(null);
+        cleared(scope.taskId);
         return task;
       } catch (cause) {
-        setError(asApiError(cause));
+        failed(scope.taskId, { action: scope.action, host: scope.host, error: asApiError(cause) });
         return undefined;
       }
     },
-    [client],
+    [client, cleared, failed],
   );
 
-  return { state, error, act };
+  const put = useCallback((task: Task) => dispatch({ type: "task", task }), []);
+
+  return { state, error, notices, act, put };
 }
 
 /** The bootstrap and the feed behind the hook: both snapshots, then every event after the cursor. */

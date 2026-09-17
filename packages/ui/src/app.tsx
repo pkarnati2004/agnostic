@@ -1,10 +1,4 @@
-import type {
-  HandoffTaskRequest,
-  Profile,
-  RepoListRow,
-  ResumeTaskResponse,
-  Task,
-} from "@agnostic/core";
+import type { HandoffTaskRequest, Profile, RepoListRow, Task } from "@agnostic/core";
 import { type ReactNode, useEffect, useMemo, useReducer, useState } from "react";
 import { createClient, type WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
@@ -14,7 +8,9 @@ import { TooltipProvider } from "./components/tooltip";
 import { Notice } from "./notice";
 import { groupTasks, inSidebarOrder } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
+import type { NoticeHost, TaskNotices } from "./store/task-notices";
 import { useWorkspace, type Workspace as WorkspaceStore } from "./store/use-workspace";
+import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
 import { TabStrip } from "./tabs/tab-strip";
 import {
   readTabs,
@@ -23,7 +19,7 @@ import {
   tabsReducer,
   writeTabs,
 } from "./tabs/tabs-state";
-import { type ResumeNotice, TaskTabs } from "./tabs/task-tabs";
+import { TaskTabs } from "./tabs/task-tabs";
 import { NewTaskDialog } from "./task/new-task-dialog";
 import { TaskHeader } from "./task/task-header";
 import { TaskCost } from "./usage/task-cost";
@@ -49,7 +45,7 @@ export function App() {
 
 function Workspace({ token }: { token: string }) {
   const client = useMemo(() => createClient({ token }), [token]);
-  const { state, error, act } = useWorkspace(client);
+  const { state, error, notices, act, put } = useWorkspace(client);
   const profiles = useProfiles(client);
   const [collapsed, setCollapsed] = useState(false);
   const [newTask, setNewTask] = useState(false);
@@ -68,11 +64,11 @@ function Workspace({ token }: { token: string }) {
   );
   useTabsStorage(tabs, state.loaded, state.tasks, dispatchTabs);
 
-  const { handoff, started } = useTaskActions(act, dispatchTabs);
+  const { handoff, started } = useTaskActions(act, put, dispatchTabs);
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
   // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
-  const resume = async (taskId: string): Promise<void> => {
-    await act(async (api) => {
+  const resume = async (taskId: string, host: NoticeHost): Promise<void> => {
+    await act({ taskId, action: "resume", host }, async (api) => {
       const response = await api.resumeTask(taskId);
       setResumed({ taskId, notice: resumeNotice(response) });
       return response.task;
@@ -112,10 +108,16 @@ function Workspace({ token }: { token: string }) {
         usage={usage}
         cost={<TaskCost usage={taskUsage} />}
         error={error === dismissed ? null : error}
+        notices={notices}
         onDismiss={() => setDismissed(error)}
         resumed={resumed}
         onResume={resume}
-        onStop={(taskId) => act(async (api) => (await api.stopTask(taskId)).task)}
+        onStop={(taskId) =>
+          act(
+            { taskId, action: "stop", host: "header" },
+            async (api) => (await api.stopTask(taskId)).task,
+          )
+        }
         onHandoff={handoff}
       />
     </div>
@@ -134,30 +136,17 @@ type CentreProps = {
   usage: UsageState;
   /** What the tab in front has spent; the page holds the hook that reads it. */
   cost: ReactNode;
+  /** The bootstrap failure, and only that: every other failure is in `notices`. */
   error: ApiError | null;
   /** What the last resume had to say, for the tab it belongs to; the rest of the page ignores it. */
   resumed: ResumeNotice | null;
+  /** Keyed by task: the latest failure per task, each drawn where its click was. */
+  notices: TaskNotices;
   onDismiss: () => void;
-  onResume: (taskId: string) => Promise<void>;
+  onResume: (taskId: string, host: NoticeHost) => Promise<void>;
   onStop: (taskId: string) => Promise<unknown>;
-  onHandoff: (task: Task, body: HandoffTaskRequest) => Promise<void>;
+  onHandoff: (task: Task, body: HandoffTaskRequest) => Promise<boolean>;
 };
-
-/**
- * What the page says above the pane after a resume: the same two sentences the CLI prints, in the
- * same order, and nothing at all when the resume took the conversation straight back.
- */
-function resumeNotice(response: ResumeTaskResponse): string | null {
-  const said: string[] = [];
-  if (response.recreatedFrom !== null) {
-    said.push(`Recreated from ${response.recreatedFrom}.`);
-  }
-  if (response.via === "fresh") {
-    const harness = response.task.session?.harness ?? response.task.profileId;
-    said.push(`History was not recoverable; started ${harness} fresh with the task context.`);
-  }
-  return said.length === 0 ? null : said.join(" ");
-}
 
 /** The tab strip, the header for the tab in front, and every open terminal under them. */
 function Centre(props: CentreProps) {
@@ -181,12 +170,13 @@ function Centre(props: CentreProps) {
           repo={props.repos.find((repo) => repo.id === active.repoId) ?? null}
           profiles={props.profiles}
           cost={props.cost}
+          notice={props.notices[active.id] ?? null}
           onStop={() => props.onStop(active.id).then(() => undefined)}
-          onResume={() => props.onResume(active.id)}
+          onResume={() => props.onResume(active.id, "header")}
           onHandoff={(body) => props.onHandoff(active, body)}
         />
       )}
-      {/* A failure before the first snapshot has no header to sit under, so the notice is outside it. */}
+      {/* The one failure with no task to sit on: the page never loaded. */}
       <Notice error={props.error} onDismiss={props.onDismiss} />
       {open.length === 0 ? (
         <Centred>{emptyCentre(loaded, props.error !== null)}</Centred>
@@ -197,7 +187,8 @@ function Centre(props: CentreProps) {
           token={token}
           client={client}
           resumed={props.resumed}
-          onResume={props.onResume}
+          notices={props.notices}
+          onResume={(taskId) => props.onResume(taskId, "overlay")}
         />
       )}
       <UsageBar state={props.usage} />
@@ -223,16 +214,24 @@ function useTabsStorage(
 }
 
 /** The two actions that open a tab: a handoff opens the child, a run opens what it started. */
-function useTaskActions(act: WorkspaceStore["act"], dispatchTabs: (action: TabsAction) => void) {
+function useTaskActions(
+  act: WorkspaceStore["act"],
+  put: WorkspaceStore["put"],
+  dispatchTabs: (action: TabsAction) => void,
+) {
+  // Answers the dialog: false leaves it open with the failure in it, where the profile can change.
   const handoff = async (task: Task, body: HandoffTaskRequest) => {
-    const child = await act(async (api) => (await api.handoffTask(task.id, body)).task);
-    if (child !== undefined) {
-      dispatchTabs({ type: "open", taskId: child.id });
+    const scope = { taskId: task.id, action: "handoff" as const, host: "dialog" as const };
+    const child = await act(scope, async (api) => (await api.handoffTask(task.id, body)).task);
+    if (child === undefined) {
+      return false;
     }
+    dispatchTabs({ type: "open", taskId: child.id });
+    return true;
   };
   // The run answered with the row, so the task is in the store before its event arrives.
   const started = (task: Task) => {
-    void act(() => Promise.resolve(task));
+    put(task);
     dispatchTabs({ type: "open", taskId: task.id });
   };
   return { handoff, started };

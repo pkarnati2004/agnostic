@@ -1,6 +1,7 @@
 import type { Task, TerminalSize } from "@agnostic/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
+import type { TaskNotice } from "../store/task-notices";
 import { type OverlayPhase, SessionOverlay } from "./session-overlay";
 import { type SessionTarget, sessionTarget } from "./terminal-phase";
 import { type SessionPhase, startSession, type TerminalSession } from "./terminal-session";
@@ -18,12 +19,14 @@ type TerminalViewProps = {
   client: WorkspaceClient;
   /** What the last resume of this task said, null when it had nothing to say. */
   resumeNotice: string | null;
+  /** This task's latest failure; named apart from the close notice the socket sets below. */
+  failure: TaskNotice | null;
   onResume: () => Promise<void>;
 };
 
 /** One tab's pane: the terminal, the socket behind it, and what to say when there is none. */
 export function TerminalView(props: TerminalViewProps) {
-  const { task, token, active, client, onResume } = props;
+  const { task, token, active, client } = props;
   const terminal = useTerminal(useMemo(pageTheme, []));
   const sizeRef = useRef<TerminalSize | null>(null);
   const sessionRef = useRef<TerminalSession | null>(null);
@@ -81,9 +84,15 @@ export function TerminalView(props: TerminalViewProps) {
   const notice = closeNotice ?? props.resumeNotice;
   return (
     <div ref={paneRef} hidden={!active} className="relative min-h-0 flex-1 overflow-hidden p-2">
-      {overlay !== null && <SessionOverlay phase={overlay} notice={notice} onResume={onResume} />}
+      {overlay !== null && <SessionOverlay {...overlayProps(props, overlay, notice)} />}
     </div>
   );
+}
+
+/** All the overlay needs but the two things only the pane knows: where the session got to. */
+function overlayProps(props: TerminalViewProps, phase: OverlayPhase, notice: string | null) {
+  const { task, failure, onResume } = props;
+  return { phase, task, notice, failure, onResume };
 }
 
 /** The element the terminal lives in, fitted on every layout change while the tab is mounted. */

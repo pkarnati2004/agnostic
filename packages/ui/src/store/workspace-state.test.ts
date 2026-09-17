@@ -1,4 +1,4 @@
-import type { Event, Repo, RepoListRow, Task, TaskSession } from "@agnostic/core";
+import type { Event, Repo, RepoListRow, Task, TaskListRow, TaskSession } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_WORKSPACE,
@@ -42,11 +42,14 @@ const SESSION: TaskSession = {
   lastSeenAt: "2026-09-14T09:05:00.000Z",
 };
 
+// The list route sends rows, not bare tasks: this one's worktree was on disk when it was read.
+const ROW: TaskListRow = { ...TASK, worktreePresent: true };
+
 function loaded(): WorkspaceState {
   return workspaceReducer(EMPTY_WORKSPACE, {
     type: "loaded",
     repos: [REPO],
-    tasks: [TASK],
+    tasks: [ROW],
     cursor: 12,
   });
 }
@@ -64,7 +67,7 @@ describe("workspaceReducer", () => {
     const state = loaded();
     expect(state.loaded).toBe(true);
     expect(state.repos).toEqual([REPO]);
-    expect(state.tasks).toEqual({ task1: TASK });
+    expect(state.tasks).toEqual({ task1: ROW });
     expect(state.cursor).toBe(12);
   });
 
@@ -92,14 +95,14 @@ describe("workspaceReducer", () => {
       taskId: "task9",
     };
     const state = apply(loaded(), stray);
-    expect(state.tasks).toEqual({ task1: TASK });
+    expect(state.tasks).toEqual({ task1: ROW });
     expect(state.cursor).toBe(14);
   });
 
   it("adds a created task", () => {
     const fresh: Task = { ...TASK, id: "task2", status: "queued" };
     const state = apply(loaded(), event(15, "task.created", { task: fresh }));
-    expect(state.tasks.task2).toEqual(fresh);
+    expect(state.tasks.task2).toEqual({ ...fresh, worktreePresent: true });
   });
 
   it("records a captured session", () => {
@@ -169,7 +172,7 @@ describe("workspaceReducer", () => {
     const state = workspaceReducer(apply(loaded(), recorded), {
       type: "loaded",
       repos: [REPO],
-      tasks: [TASK],
+      tasks: [ROW],
       cursor: 30,
     });
     expect(state.usageStamp).toEqual({ plans: 0, byTask: {} });
@@ -177,5 +180,49 @@ describe("workspaceReducer", () => {
 
   it("refetches the rows an event does not carry", () => {
     expect([...REFETCH_KINDS].sort()).toEqual(["task.adopted", "task.cleaned", "task.handoff"]);
+  });
+});
+
+describe("worktreePresent", () => {
+  const done = (state: WorkspaceState) =>
+    workspaceReducer(state, { type: "task", task: { ...TASK, status: "done" } });
+
+  it("keeps what it knows when a row arrives from a response", () => {
+    const cleaned = apply(loaded(), event(13, "task.cleaned", { deletedBranch: false }));
+    expect(cleaned.tasks.task1?.worktreePresent).toBe(false);
+    expect(done(cleaned).tasks.task1?.worktreePresent).toBe(false);
+  });
+
+  it("sets it from a row that arrives running, which is the resume answer", () => {
+    const cleaned = apply(loaded(), event(13, "task.cleaned", { deletedBranch: false }));
+    const resumed = workspaceReducer(cleaned, {
+      type: "task",
+      task: { ...TASK, status: "running" },
+    });
+    expect(resumed.tasks.task1?.worktreePresent).toBe(true);
+  });
+
+  it("follows the path for a task it has never seen", () => {
+    const folder: Task = { ...TASK, id: "task3", worktreePath: null, status: "done" };
+    const state = workspaceReducer(loaded(), { type: "task", task: folder });
+    expect(state.tasks.task3?.worktreePresent).toBe(false);
+  });
+
+  it("sets it again when the task goes back to running", () => {
+    const cleaned = apply(loaded(), event(13, "task.cleaned", { deletedBranch: false }));
+    const live = apply(cleaned, event(14, "task.status", { from: "done", to: "running" }));
+    expect(live.tasks.task1?.worktreePresent).toBe(true);
+  });
+
+  it("leaves a finished status alone", () => {
+    const cleaned = apply(loaded(), event(13, "task.cleaned", { deletedBranch: false }));
+    const stopped = apply(cleaned, event(14, "task.status", { from: "running", to: "stopped" }));
+    expect(stopped.tasks.task1?.worktreePresent).toBe(false);
+  });
+
+  it("follows the path of a created task", () => {
+    const folder: Task = { ...TASK, id: "task4", worktreePath: null, status: "queued" };
+    const state = apply(loaded(), event(15, "task.created", { task: folder }));
+    expect(state.tasks.task4?.worktreePresent).toBe(false);
   });
 });

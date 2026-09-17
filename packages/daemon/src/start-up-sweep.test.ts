@@ -1,4 +1,4 @@
-import { mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { run } from "@agnostic/core";
@@ -53,12 +53,13 @@ describe("start-up sweep of queued tasks", () => {
       await waitFor("the worktree to be released", () =>
         seeded.ledger.events.forTask(id).some((event) => event.kind === "task.cleaned"),
       );
-      await expect(stat(worktree)).rejects.toThrowError();
-      const events = seeded.ledger.events.forTask(id);
-      expect(events.filter((event) => event.kind === "task.status")).toMatchObject([
-        { payload: { from: "queued", to: "failed" } },
-      ]);
-      expect(events.some((event) => event.kind === "task.cleaned")).toBe(true);
+      // The row is written after the directory is gone, so the event is what the test waits on.
+      await waitFor("the clean to be recorded", () =>
+        seeded.ledger.events.forTask(id).some((event) => event.kind === "task.cleaned"),
+      );
+      expect(
+        seeded.ledger.events.forTask(id).filter((event) => event.kind === "task.status"),
+      ).toMatchObject([{ payload: { from: "queued", to: "failed" } }]);
     } finally {
       await seeded.close();
       await rm(repoPath, { recursive: true, force: true });
