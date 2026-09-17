@@ -62,11 +62,12 @@ folder is back. Nothing is written, so mounting or restoring the folder clears t
 next load.
 
 A heading with that marker also has a Remove button, and so does every row under "Closed". Remove
-hides the repo for good and deletes the task worktrees agn made for it, with any uncommitted work
-in them; the folder you registered is not touched. The repo's usage and outcome history is kept,
-and `agn add <path>` registers the same row again with that history attached. agn asks you to
-confirm first, and refuses to remove a repo with a task still running or waiting. To remove a repo
-whose folder is still there, close it first and use Remove on its row under "Closed".
+hides the repo for good, closes any open tabs for its tasks, and deletes the task worktrees agn
+made for it, with any uncommitted work in them; the folder you registered is not touched. The
+repo's usage and outcome history is kept, and `agn add <path>` registers the same row again with
+that history attached. agn asks you to confirm first, and refuses to remove a repo with a task
+still running or waiting. To remove a repo whose folder is still there, close it first and use
+Remove on its row under "Closed".
 
 ## Tabs
 

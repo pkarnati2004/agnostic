@@ -1,5 +1,6 @@
+import type { RepoListRow, RepoStatus } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
-import { NO_TABS, readTabs, TABS_KEY, tabsReducer, writeTabs } from "./tabs-state";
+import { NO_TABS, readTabs, TABS_KEY, tabbableTasks, tabsReducer, writeTabs } from "./tabs-state";
 
 const three = { open: ["a", "b", "c"], active: "b" };
 
@@ -43,11 +44,39 @@ describe("tabsReducer", () => {
   });
 
   it("drops tabs for tasks the daemon no longer has", () => {
-    expect(tabsReducer(three, { type: "prune", existing: new Set(["a", "c"]) })).toEqual({
+    expect(tabsReducer(three, { type: "prune", keep: new Set(["a", "c"]) })).toEqual({
       open: ["a", "c"],
       active: "c",
     });
-    expect(tabsReducer(three, { type: "prune", existing: new Set(["a", "b", "c"]) })).toBe(three);
+    expect(tabsReducer(three, { type: "prune", keep: new Set(["a", "b", "c"]) })).toBe(three);
+  });
+});
+
+describe("tabbableTasks", () => {
+  const repo = (id: string, status: RepoStatus): RepoListRow => ({
+    id,
+    name: id,
+    path: `/tmp/${id}`,
+    kind: "git",
+    addedAt: "2026-09-01T00:00:00.000Z",
+    status,
+    testCommand: null,
+    pathPresent: true,
+  });
+  const tasks = { a: { repoId: "one" }, b: { repoId: "one" }, c: { repoId: "two" } };
+
+  it("closes the tabs of a removed repo and hands the active one to its neighbour", () => {
+    const keep = tabbableTasks([repo("one", "removed"), repo("two", "active")], tasks);
+    expect(tabsReducer(three, { type: "prune", keep })).toEqual({ open: ["c"], active: "c" });
+  });
+
+  it("leaves the tabs of a closed repo open", () => {
+    const keep = tabbableTasks([repo("one", "archived"), repo("two", "active")], tasks);
+    expect(tabsReducer(three, { type: "prune", keep })).toBe(three);
+  });
+
+  it("closes the tabs of a repo removed before the page loaded, which no list names", () => {
+    expect(tabbableTasks([repo("two", "active")], tasks)).toEqual(new Set(["c"]));
   });
 });
 

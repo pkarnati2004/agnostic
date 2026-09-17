@@ -1,3 +1,5 @@
+import type { RepoListRow, Task } from "@agnostic/core";
+
 /** The open tabs and the active one, kept per origin so dev and the daemon do not share a list. */
 export type TabsState = { open: string[]; active: string | null };
 
@@ -5,8 +7,8 @@ export type TabsAction =
   | { type: "open"; taskId: string }
   | { type: "close"; taskId: string }
   | { type: "activate"; taskId: string }
-  /** Tasks the daemon still has; a cleaned one closes its tab by itself. */
-  | { type: "prune"; existing: ReadonlySet<string> };
+  /** The tasks still worth a tab; every other open tab closes as an ordinary close would. */
+  | { type: "prune"; keep: ReadonlySet<string> };
 
 export const TABS_KEY = "agn.tabs";
 
@@ -23,8 +25,25 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
     case "close":
       return without(state, (id) => id !== action.taskId);
     case "prune":
-      return without(state, (id) => action.existing.has(id));
+      return without(state, (id) => action.keep.has(id));
   }
+}
+
+/**
+ * The tasks a tab may stay open for: one the daemon still has, under a repo the page draws. Removing
+ * a repo deletes its tasks' worktrees (ADR 034), so their tabs have nothing left to show; closing a
+ * repo deletes nothing, so its tabs stay. A repo the page was never given was removed before it
+ * loaded, since `GET /repos?all=1` lists the closed ones.
+ */
+export function tabbableTasks(
+  repos: RepoListRow[],
+  tasks: Record<string, Pick<Task, "repoId">>,
+): ReadonlySet<string> {
+  const drawn = new Set(repos.filter((repo) => repo.status !== "removed").map((repo) => repo.id));
+  const ids = Object.entries(tasks)
+    .filter(([, task]) => drawn.has(task.repoId))
+    .map(([id]) => id);
+  return new Set(ids);
 }
 
 /** Whatever goes, the tab to its right takes over, then the one to its left, then nothing. */

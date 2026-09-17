@@ -14,12 +14,14 @@ import { Sidebar } from "./sidebar/sidebar";
 import type { NoticeHost, TaskNotices } from "./store/task-notices";
 import { useProfiles } from "./store/use-profiles";
 import { useWorkspace, type Workspace as WorkspaceStore } from "./store/use-workspace";
+import type { WorkspaceState } from "./store/workspace-state";
 import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
 import { TabStrip } from "./tabs/tab-strip";
 import {
   readTabs,
   type TabsAction,
   type TabsState,
+  tabbableTasks,
   tabsReducer,
   writeTabs,
 } from "./tabs/tabs-state";
@@ -70,7 +72,7 @@ function Workspace({ token }: { token: string }) {
     activeId,
     activeId === null ? 0 : (state.usageStamp.byTask[activeId] ?? 0),
   );
-  useTabsStorage(tabs, state.loaded, state.tasks, dispatchTabs);
+  useTabsStorage(tabs, state, dispatchTabs);
 
   const { handoff, started } = useTaskActions(act, put, dispatchTabs);
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
@@ -223,21 +225,25 @@ function Centre(props: CentreProps) {
   );
 }
 
-/** The tab list outlives the page; a task that has been cleaned takes its tab with it. */
+/**
+ * The tab list outlives the page; a task that has been cleaned takes its tab with it, and so does a
+ * repo that has been removed. The repo comes from state, not from the click, so `agn repo remove`
+ * run elsewhere closes the tabs on its `repo.updated` event too.
+ */
 function useTabsStorage(
   tabs: TabsState,
-  loaded: boolean,
-  tasks: Record<string, Task>,
+  state: Pick<WorkspaceState, "loaded" | "repos" | "tasks">,
   dispatchTabs: (action: TabsAction) => void,
 ): void {
+  const { loaded, repos, tasks } = state;
   useEffect(() => {
     writeTabs(localStorage, tabs);
   }, [tabs]);
   useEffect(() => {
     if (loaded) {
-      dispatchTabs({ type: "prune", existing: new Set(Object.keys(tasks)) });
+      dispatchTabs({ type: "prune", keep: tabbableTasks(repos, tasks) });
     }
-  }, [loaded, tasks, dispatchTabs]);
+  }, [loaded, repos, tasks, dispatchTabs]);
 }
 
 /** The two actions that open a tab: a handoff opens the child, a run opens what it started. */
