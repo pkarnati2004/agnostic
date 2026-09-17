@@ -22,6 +22,13 @@ describe("pathProblem", () => {
     expect(pathProblem("   ")).toBeNull();
   });
 
+  it("passes the root path and a path with a trailing slash or inner whitespace", () => {
+    // The one rule pathProblem checks is a leading slash; anything else is the daemon's to judge.
+    expect(pathProblem("/")).toBeNull();
+    expect(pathProblem("/Users/dev/petal/")).toBeNull();
+    expect(pathProblem("/Users/dev/my petal")).toBeNull();
+  });
+
   it("asks for the full path, since the browser can expand neither ~ nor a relative path", () => {
     const problem = pathProblem("code/petal");
     expect(problem?.message).toBe("Type the full path to the folder, starting with /.");
@@ -39,6 +46,14 @@ describe("registerRequest", () => {
 
   it("is null while there is nothing to send", () => {
     expect(registerRequest({ path: "   ", gitInit: false })).toBeNull();
+  });
+
+  it("trims only the outer whitespace, leaving a trailing slash or an inner space for the daemon", () => {
+    expect(registerRequest({ path: " /Users/dev/petal/ ", gitInit: false })).toEqual({
+      path: "/Users/dev/petal/",
+      gitInit: false,
+    });
+    expect(registerRequest({ path: "/", gitInit: false })).toEqual({ path: "/", gitInit: false });
   });
 });
 

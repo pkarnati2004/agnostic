@@ -192,4 +192,29 @@ describe("managing repos from the sidebar", () => {
     expect(onReopenRepo).toHaveBeenCalledWith("r1");
     page.unmount();
   });
+
+  it("carries a repo's notice with it when it reopens before the notice expires", () => {
+    const repoNotices: RepoNotices = {
+      r1: {
+        action: "reopen",
+        at: 1000,
+        error: new ApiError("no repo matches r1", { code: "not-found", status: 404 }),
+      },
+    };
+    const closed = workspaceReducer(loaded(), {
+      type: "event",
+      event: statusEvent(13, "archived"),
+    });
+    const page = render(sidebar(closed, { repoNotices }));
+    click(buttonSaying(page.container, "Closed (1)"));
+    expect(page.container.textContent).toContain("Reopen failed for petal: no repo matches r1");
+
+    // The notices map is keyed by repo id and outlives the repo's own status; a `repo.updated`
+    // moving it back to active must carry the same, still-unexpired notice with it.
+    const opened = workspaceReducer(closed, { type: "event", event: statusEvent(14, "active") });
+    page.update(sidebar(opened, { repoNotices }));
+    expect(headings(page.container)).toEqual(["Needs you", "katha", "petal"]);
+    expect(page.container.textContent).toContain("Reopen failed for petal: no repo matches r1");
+    page.unmount();
+  });
 });

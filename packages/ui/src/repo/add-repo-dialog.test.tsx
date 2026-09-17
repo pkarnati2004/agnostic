@@ -123,6 +123,31 @@ describe("AddRepoDialog", () => {
     unmount();
   });
 
+  it("shows the daemon's words when Reopen is refused, and stays open with Add ready again", async () => {
+    const refusal = new ApiError("repo petal has a task that is still running", {
+      code: "repo-busy",
+      hint: "Run `agn stop task1` first.",
+      status: 409,
+    });
+    const client = stubClient({
+      registerRepo: () => Promise.resolve({ repo: CLOSED, created: false }),
+    });
+    const onReopen = vi.fn(() => Promise.reject(refusal));
+    const { onOpenChange, unmount } = dialog(client, onReopen);
+    type("/Users/dev/petal");
+    await clickAdd();
+
+    await act(async () => {
+      button("Reopen").click();
+    });
+    expect(onReopen).toHaveBeenCalledWith("r1");
+    expect(document.body.textContent).toContain("repo petal has a task that is still running");
+    expect(document.body.textContent).toContain("Run `agn stop task1` first.");
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(button("Add").disabled).toBe(false);
+    unmount();
+  });
+
   it("shows the daemon's own words when the path is not there, with Add ready to try again", async () => {
     const registerRepo = () =>
       Promise.reject(

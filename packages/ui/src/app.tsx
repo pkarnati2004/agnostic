@@ -8,7 +8,7 @@ import { TooltipProvider } from "./components/tooltip";
 import { Notice } from "./notice";
 import { AddRepoDialog } from "./repo/add-repo-dialog";
 import { useRepoActions } from "./repo/use-repo-actions";
-import { activeRepos, groupTasks, inSidebarOrder } from "./sidebar/group-tasks";
+import { activeRepos, defaultRepoId, groupTasks } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
 import type { NoticeHost, TaskNotices } from "./store/task-notices";
 import { useProfiles } from "./store/use-profiles";
@@ -251,20 +251,6 @@ function useTaskActions(
     dispatchTabs({ type: "open", taskId: task.id });
   };
   return { handoff, started };
-}
-
-/**
- * A new task starts in the repo the user is looking at, else in the first one on the left. A tab
- * can outlive its repo's closing, and the new-task dialog lists the open repos only.
- */
-function defaultRepoId(
-  state: { repos: RepoListRow[]; tasks: Record<string, Task> },
-  activeId: string | null,
-): string | null {
-  const active = activeId === null ? undefined : state.tasks[activeId];
-  const open = inSidebarOrder(state.repos);
-  const inFront = open.find((repo) => repo.id === active?.repoId);
-  return inFront?.id ?? open[0]?.id ?? null;
 }
 
 /** With no tab open the centre says where the page got to; the notice above it says why. */

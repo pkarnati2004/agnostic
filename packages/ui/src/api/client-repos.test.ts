@@ -38,12 +38,11 @@ const REPO = {
 
 describe("the repo calls", () => {
   it("registers a repo and reads both answers the daemon gives", async () => {
-    const { client, calls } = stubClient((call) =>
-      Response.json(
-        { repo: REPO, created: call.body?.includes("petal") === true },
-        { status: 201 },
-      ),
-    );
+    // 201 for a repo the daemon inserted, 200 for one it already had or only moved (ADR 032).
+    const { client, calls } = stubClient((call) => {
+      const created = call.body?.includes("petal") === true;
+      return Response.json({ repo: REPO, created }, { status: created ? 201 : 200 });
+    });
     const created = await client.registerRepo({ path: "/Users/dev/petal", gitInit: false });
     expect(created).toEqual({ repo: REPO, created: true });
     expect(calls[0]).toMatchObject({

@@ -1,4 +1,4 @@
-import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
+import type { RepoListRow, Task, TaskListRow, TaskStatus } from "@agnostic/core";
 
 export type RepoGroup = { repo: RepoListRow; tasks: TaskListRow[]; history: TaskListRow[] };
 export type SidebarGroups = { needsYou: TaskListRow[]; repos: RepoGroup[] };
@@ -60,6 +60,20 @@ export function inSidebarOrder(repos: RepoListRow[]): RepoListRow[] {
  */
 export function activeRepos(repos: RepoListRow[]): RepoListRow[] {
   return repos.filter((repo) => repo.status === "active");
+}
+
+/**
+ * A new task starts in the repo the user is looking at, else in the first one on the left. A tab
+ * can outlive its repo's closing, and the new-task dialog lists the open repos only.
+ */
+export function defaultRepoId(
+  state: { repos: RepoListRow[]; tasks: Record<string, Task> },
+  activeId: string | null,
+): string | null {
+  const active = activeId === null ? undefined : state.tasks[activeId];
+  const open = inSidebarOrder(state.repos);
+  const inFront = open.find((repo) => repo.id === active?.repoId);
+  return inFront?.id ?? open[0]?.id ?? null;
 }
 
 /** What the Closed section lists, by name: the repos agn keeps the history of and shows nowhere else. */

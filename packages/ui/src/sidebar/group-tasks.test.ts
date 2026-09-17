@@ -1,6 +1,13 @@
 import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
-import { activeRepos, closedRepos, groupTasks, inHistory, inSidebarOrder } from "./group-tasks";
+import {
+  activeRepos,
+  closedRepos,
+  defaultRepoId,
+  groupTasks,
+  inHistory,
+  inSidebarOrder,
+} from "./group-tasks";
 
 function repo(id: string, name: string): RepoListRow {
   return {
@@ -133,8 +140,8 @@ describe("a closed repo", () => {
   });
 });
 
-// A reload lists repos with a bare GET /repos, which answers with the open ones, so a repo closed
-// before the reload is missing from the list rather than in it as archived.
+// The defensive case: a task whose repo the page was never given, for whatever reason. It is shown
+// nowhere - no group of its own, and out of Needs you - rather than under a repo it does not have.
 describe("a repo missing from the list", () => {
   const groups = groupTasks([KATHA], TASKS);
 
@@ -205,5 +212,34 @@ describe("History", () => {
     // page sets the flag from that status; a running task is never a History row either way.
     const resumed = { ...cleaned[0], status: "running" } as TaskListRow;
     expect(inHistory(resumed)).toBe(false);
+  });
+});
+
+describe("the repo a new task starts in", () => {
+  const tasks = Object.fromEntries(TASKS.map((one) => [one.id, one]));
+  const CLOSED = { ...PETAL, status: "archived" } as const;
+
+  it("is none when the page has no repos", () => {
+    expect(defaultRepoId({ repos: [], tasks: {} }, null)).toBeNull();
+    expect(defaultRepoId({ repos: [], tasks }, "running")).toBeNull();
+  });
+
+  it("is the first repo on the left when no tab is open", () => {
+    expect(defaultRepoId({ repos: [PETAL, KATHA, EMPTY], tasks }, null)).toBe(KATHA.id);
+  });
+
+  it("is the repo of the tab in front", () => {
+    expect(defaultRepoId({ repos: [PETAL, KATHA, EMPTY], tasks }, "running")).toBe(PETAL.id);
+  });
+
+  // A tab outlives its repo's closing, and the new-task dialog lists the open repos only.
+  it("falls past the tab in front to the first open repo when that repo is closed", () => {
+    expect(defaultRepoId({ repos: [CLOSED, KATHA, EMPTY], tasks }, "running")).toBe(KATHA.id);
+  });
+
+  it("is none when every repo is closed", () => {
+    const shut = [CLOSED, { ...KATHA, status: "archived" } as const];
+    expect(defaultRepoId({ repos: shut, tasks }, "running")).toBeNull();
+    expect(defaultRepoId({ repos: shut, tasks }, null)).toBeNull();
   });
 });
