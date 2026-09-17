@@ -13,7 +13,8 @@ import {
   writeTaskNote,
 } from "@agnostic/core";
 import type { DaemonContext } from "./app.js";
-import { branchExists, fileChanges } from "./branch-changes.js";
+import { fileChanges } from "./branch-changes.js";
+import { branchExists } from "./branch-verdict.js";
 import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
 import { initialTaskNote } from "./initial-task-note.js";

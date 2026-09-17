@@ -1,9 +1,9 @@
-import { chmod, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { Event, Repo, ResumeTaskResponse, Task } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
+import { shimGit } from "./test-git-shim.js";
 import { gitIn, startTask } from "./test-task-run.js";
 import { seedTranscript } from "./test-transcript.js";
 
@@ -56,19 +56,6 @@ async function refusal(task: Task): Promise<{ code: string; message: string; hin
   expect(response.status).toBe(409);
   return ((await response.json()) as { error: { code: string; message: string; hint: string } })
     .error;
-}
-
-/** A `git` that fails the way a lock or a broken install does, ahead of the real one on PATH. */
-async function shimGit(stderr: string): Promise<() => void> {
-  const dir = await mkdtemp(join(tmpdir(), "agn-git-shim-"));
-  const shim = join(dir, "git");
-  await writeFile(shim, `#!/bin/sh\necho "${stderr}" >&2\nexit 128\n`, "utf8");
-  await chmod(shim, 0o755);
-  const original = process.env.PATH ?? "";
-  process.env.PATH = `${dir}:${original}`;
-  return () => {
-    process.env.PATH = original;
-  };
 }
 
 function eventsSince(taskId: string, from: number): Event[] {

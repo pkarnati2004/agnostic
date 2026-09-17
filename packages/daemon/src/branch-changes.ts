@@ -10,12 +10,6 @@ import {
 
 const GIT_TIMEOUT_MS = 30_000;
 
-/** Whether the parent's branch is still there; a handoff from a deleted branch has no base. */
-export async function branchExists(repoPath: string, branch: string): Promise<boolean> {
-  const result = await git(repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]);
-  return result !== null && result.trim() !== "";
-}
-
 /**
  * What the outgoing agent touched, for the handoff note: commits on its branch against the base
  * the repo starts tasks from, plus whatever it left uncommitted. Read-only, and a git command

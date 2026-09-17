@@ -18,7 +18,9 @@ beforeEach(async () => {
     opened.push(size);
     return Promise.resolve(stream);
   };
-  server = new WebSocketServer({ port: 0 });
+  // Bound to the address the client dials: a server on the wildcard address shares its port
+  // number with anything else on 127.0.0.1, and then another suite's daemon answers this client.
+  server = new WebSocketServer({ host: "127.0.0.1", port: 0 });
   await new Promise((ready) => server.once("listening", ready));
   server.on("connection", (ws) => {
     bridgeTerminal({ ws, taskId: "bridgeabcd", log: silentLog, open: (size) => open(size) });
@@ -52,8 +54,15 @@ function frames(ws: WebSocket): { text: string[]; binary: Buffer[] } {
   return { text, binary };
 }
 
+/** Open, or the reason there will never be an open: a refused handshake must not read as a hang. */
 function opens(ws: WebSocket): Promise<void> {
-  return new Promise((ready) => ws.once("open", ready));
+  return new Promise((ready, fail) => {
+    ws.once("open", () => ready());
+    ws.once("unexpected-response", (_request, response) => {
+      fail(new Error(`the upgrade was answered with HTTP ${response.statusCode ?? 0}`));
+    });
+    ws.once("error", fail);
+  });
 }
 
 function closes(ws: WebSocket): Promise<{ code: number; reason: string }> {
