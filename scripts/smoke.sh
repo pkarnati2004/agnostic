@@ -317,8 +317,17 @@ agx open "$TASK" --json | grep -q '"argv"'
 
 agx stop "$TASK" | grep -q "^stopped $TASK"
 agx status | grep -q "stopped"
-# The SessionStart hook above captured the harness's own session id, so resume hands it back
-# instead of re-prompting. --json keeps the terminal: without it, agn hands this shell to tmux.
+# The SessionStart hook above captured the harness's own session id, and the daemon hands it back
+# only when the transcript named after it is there, so the fake harness's is written by hand.
+SESSION="$(agx status "$TASK" --json | "$NODE" -e "
+const { task } = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+if (!task.session || !task.session.sessionId) { throw new Error('no session id was captured'); }
+process.stdout.write(task.session.sessionId);
+")"
+TRANSCRIPTS="$USAGE_HOME/.claude/projects/-work-resume"
+mkdir -p "$TRANSCRIPTS"
+touch "$TRANSCRIPTS/$SESSION.jsonl"
+# --json keeps the terminal: without it, agn hands this shell to tmux.
 agx resume "$TASK" --json > "$WORK/resume.json"
 grep -q '"via": "native"' "$WORK/resume.json"
 agx status "$TASK" | grep -q "running"
@@ -366,6 +375,20 @@ agx clean "$TASK" --force | grep -q "^cleaned $TASK"
 agx resume "$TASK" --json > "$WORK/resume-recreated.json"
 grep -q '"recreatedFrom": "agn/' "$WORK/resume-recreated.json"
 test -d "$WORKTREE"
+agx status "$TASK" | grep -q "running"
+agx stop "$TASK" | grep -q "^stopped $TASK"
+
+# With the transcript gone the agent no longer has that conversation, so the resume starts fresh
+# with the task context instead of launching the agent into its own error.
+rm -rf "$TRANSCRIPTS"
+agx resume "$TASK" --json > "$WORK/resume-fresh.json"
+grep -q '"via": "fresh"' "$WORK/resume-fresh.json"
+agx status "$TASK" | grep -q "running"
+agx stop "$TASK" | grep -q "^stopped $TASK"
+# And the line the user reads, which --json replaces with the body: without a terminal to hand
+# over, tmux refuses and what agn said before it is all that is left.
+agx resume "$TASK" < /dev/null > /dev/null 2> "$WORK/resume-fresh-err.txt" || true
+grep -q "history was not recoverable" "$WORK/resume-fresh-err.txt"
 agx status "$TASK" | grep -q "running"
 agx stop "$TASK" | grep -q "^stopped $TASK"
 agx clean "$TASK" --force | grep -q "^cleaned $TASK"

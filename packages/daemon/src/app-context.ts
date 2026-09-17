@@ -3,6 +3,7 @@ import { authFilesStamp } from "./auth-files.js";
 import { createCatalogChecker } from "./catalog-check.js";
 import { closeOutcome } from "./close-outcome.js";
 import { createDetectionCache } from "./detection-cache.js";
+import { createNativeResumeWatch } from "./native-resume-watch.js";
 import { createTaskLifecycle } from "./task-lifecycle.js";
 import { createUsageScanner } from "./usage-scan.js";
 
@@ -14,11 +15,23 @@ import { createUsageScanner } from "./usage-scan.js";
 export function createContext(deps: DaemonDeps): DaemonContext {
   const detection = createDetectionCache(deps.detect, deps.ledger, () => authFilesStamp(deps.home));
   const usage = createUsageScanner({ ...deps, detection });
+  const resumeWatch = createNativeResumeWatch({ ledger: deps.ledger, log: deps.log });
   // A task that has just closed has written its last turn, and its worktree is nobody else's:
   // the usage rows are read first, then the outcome row is priced from them.
   const lifecycle = createTaskLifecycle({
     ...deps,
     afterClose: async (task) => {
+      // First, and synchronous: a session id that killed this launch must be gone from the row
+      // before anything a user can click reads it again. Isolated, because a close still owes its
+      // usage rows and its outcome even when the ledger write behind this one fails.
+      try {
+        resumeWatch.closed(task);
+      } catch (cause: unknown) {
+        deps.log.error("resumed session id not cleared", {
+          taskId: task.id,
+          message: reason(cause),
+        });
+      }
       await usage.scan({ taskId: task.id });
       await closeOutcome(ctx, task);
     },
@@ -28,6 +41,7 @@ export function createContext(deps: DaemonDeps): DaemonContext {
     detection,
     lifecycle,
     usage,
+    resumeWatch,
     // Its timers are unref'd, so nothing waits on a check that is still in flight at shutdown.
     catalogChecker: createCatalogChecker({
       store: deps.catalog,

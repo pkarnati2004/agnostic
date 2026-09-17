@@ -36,6 +36,8 @@ export async function receiveHook(
   }
   const parsed = parser.parse(payload);
   const task = await resolveTask(ctx, id.data, taskHeader, parsed);
+  // Any hook at all proves the harness came up, whatever the event is and whoever sends it first.
+  ctx.resumeWatch.hookSeen(task.id);
   const withSession = captureSession(ctx, task, parsed);
   return applyStatus(ctx, withSession, parsed, harness);
 }

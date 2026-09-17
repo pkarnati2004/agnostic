@@ -102,6 +102,20 @@ export async function createLaunchEnv(home: string): Promise<LaunchEnv> {
   };
 }
 
+/**
+ * Replaces a fake harness with one that comes up, sends no hook and exits non-zero: what a real
+ * harness does when `--resume` is handed a session id it no longer holds. The sleep is there so
+ * the launch that started it has written its row before the pane dies.
+ */
+export async function rejectingHarness(env: LaunchEnv | null, binary: string): Promise<void> {
+  if (env === null) {
+    throw new Error("a rejecting harness needs a daemon built with `tmux: true`");
+  }
+  const file = join(env.binDir, binary);
+  await writeFile(file, "#!/bin/sh\nprintf 'No conversation found\\n'\nsleep 2\nexit 1\n", "utf8");
+  await chmod(file, 0o755);
+}
+
 /** The wrapper a harness's binary name resolves to: the fake agent, with the hook it was given. */
 function wrapper(flags: string, reader: string, hooksFile: string | undefined): string {
   if (hooksFile === undefined) {
