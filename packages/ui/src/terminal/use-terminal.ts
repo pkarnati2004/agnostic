@@ -47,6 +47,9 @@ function createTerminalHandle(theme: ITheme): TerminalHandle {
       fontFamily: FONT_FAMILY,
       theme,
       allowProposedApi: false,
+      // tmux runs with `mouse on` and takes every drag, so Option+drag is what is left for
+      // selecting text. xterm.js ignores that modifier on macOS unless this option is set.
+      macOptionClickForcesSelection: true,
     });
     const addon = new FitAddon();
     term.loadAddon(addon);

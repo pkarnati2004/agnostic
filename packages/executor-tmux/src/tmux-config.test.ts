@@ -37,12 +37,13 @@ async function writtenConfig(): Promise<string> {
 }
 
 describe("ensureTmuxConfig", () => {
-  it("writes the three settings under the state directory and returns that path", async () => {
+  it("writes the four settings under the state directory and returns that path", async () => {
     await shimInfocmp(0);
     const text = await writtenConfig();
     expect(text).toContain('set -g default-terminal "tmux-256color"');
     expect(text).toContain("set -s escape-time 0");
     expect(text).toContain("set -g status off");
+    expect(text).toContain("set -g mouse on");
     expect(agnosticPaths(home).tmuxConf).toBe(join(home, "tmux.conf"));
   });
 

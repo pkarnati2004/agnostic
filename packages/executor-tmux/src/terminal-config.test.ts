@@ -65,6 +65,7 @@ describe("a broken ~/.tmux.conf in the user's home", () => {
 
       expect(await option(["show-options", "-g", "status"])).toBe("status off");
       expect(await option(["show-options", "-s", "escape-time"])).toBe("escape-time 0");
+      expect(await option(["show-options", "-g", "mouse"])).toBe("mouse on");
 
       stream.write(Buffer.from("hello\r", "utf8"));
       await waitFor("the typed line reached the agent", async () =>

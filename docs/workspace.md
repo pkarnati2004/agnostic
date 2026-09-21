@@ -79,6 +79,13 @@ A tab keeps 5000 lines of scrollback while it is hidden, and tmux keeps the sess
 history behind that. Open the same task in two tabs and both resize the one pane, so the output
 wraps to the narrower of them; open a task once.
 
+Scroll the wheel in the pane to read back through the output. Most agents draw a full-screen
+interface, whose history belongs to tmux, so the wheel puts the pane into tmux's copy-mode; `q`
+leaves it. tmux takes the plain click-drag as well: hold Option (macOS) or Shift (elsewhere) while you drag to select text in
+the browser instead, and in `agn attach` hold the modifier your terminal uses to bypass mouse
+reporting (Option in iTerm2, Shift in most Linux terminals). If the wheel does nothing, agn's
+tmux server predates this setting; troubleshooting says how to restart it.
+
 The open tabs and the one in front are remembered per daemon address, so a reload comes back to
 the same tabs. A task you clean loses its tab.
 

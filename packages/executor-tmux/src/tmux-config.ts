@@ -6,15 +6,19 @@ const INFOCMP_TIMEOUT_MS = 5_000;
 
 /**
  * tmux reads a config only when its server starts, and agn's server is started by the executor,
- * so these three settings are what every agn pane runs with. The defaults left out matter: the
+ * so these four settings are what every agn pane runs with. The defaults left out matter: the
  * 500 ms `escape-time` makes Esc lag in every TUI harness, and the status bar costs a row of the
- * browser pane and of `agn attach`.
+ * browser pane and of `agn attach`. `mouse on` is what gives the pane scrollback: a harness TUI
+ * runs in the alternate screen, where the history is tmux copy-mode and only a wheel event enters
+ * it. It costs the plain click-drag selection, which tmux now takes for its own; selecting text
+ * in the pane needs the modifier that bypasses mouse reporting (Option in the browser terminal).
  */
 export function tmuxConfig(terminal: string): string {
   return `# Written by agn at every daemon start; edits do not survive. agn's tmux server never reads ~/.tmux.conf.
 set -g default-terminal "${terminal}"
 set -s escape-time 0
 set -g status off
+set -g mouse on
 `;
 }
 
