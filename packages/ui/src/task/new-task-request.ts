@@ -19,7 +19,11 @@ export type NewTaskForm = {
   acceptance: string;
 };
 
-/** Null while there is nothing to ask about; the daemon rejects an empty prompt anyway. */
+/**
+ * Null while there is nothing to ask about; the daemon rejects an empty prompt anyway. The card
+ * asks again on every pause in the typing, so the call is a dry run: the run itself records the
+ * recommendation it started on, and that is the one row the task should have.
+ */
 export function recommendRequest(form: NewTaskForm): RecommendRequest | null {
   const prompt = form.prompt.trim();
   if (prompt === "" || form.repoId === "") {
@@ -28,6 +32,7 @@ export function recommendRequest(form: NewTaskForm): RecommendRequest | null {
   return {
     repoId: form.repoId,
     prompt,
+    dryRun: true,
     ...(form.intent === "automatic" ? {} : { intent: form.intent }),
   };
 }

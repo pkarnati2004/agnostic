@@ -59,6 +59,23 @@ describe("POST /recommend", () => {
     expect(made[0]?.payload).toMatchObject({ chosenProfileId: byKey.id });
   });
 
+  it("records nothing for a dry run, which is what the workspace asks on every pause", async () => {
+    daemon = await createTestDaemon({ detect: () => Promise.resolve(detection()) });
+    const repo = await daemon.addRepo();
+    const response = await ask({
+      repoId: repo.id,
+      prompt: "fix the flaky auth test",
+      dryRun: true,
+    });
+
+    expect(response.status).toBe(200);
+    const { recommendation } = (await response.json()) as RecommendResponse;
+    expect(recommendation.recommended.profileId).toBe(byKey.id);
+    expect(daemon.ledger.events.after(0).filter((e) => e.kind === "recommendation.made")).toEqual(
+      [],
+    );
+  });
+
   it("never names a metered profile when the caller asks for subscriptions only", async () => {
     daemon = await createTestDaemon({ detect: () => Promise.resolve(detection()) });
     const repo = await daemon.addRepo();

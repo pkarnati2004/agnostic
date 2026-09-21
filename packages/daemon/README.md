@@ -9,6 +9,8 @@ the ledger, and the detection it caches for the life of the process.
   nowhere else. Every request body and query is parsed with a core schema at its route.
 - `GET /events` is the SSE feed over the ledger's event table; `Last-Event-ID` resumes it.
 - Detection runs at start and on `POST /doctor`; `GET /profiles` answers from that cache.
+- `POST /recommend` answers with the pick for a prompt and records a `recommendation.made` event.
+  `dryRun: true` answers without recording one, for a caller that asks again as the user types.
 - Tasks: `POST /repos/:id/tasks` resolves the profile, writes the queued row and its note, prepares
   the worktree and launches the harness through the executor. Statuses follow the session's exit,
   and liveness is reconciled at start and before every task read, never on a timer.

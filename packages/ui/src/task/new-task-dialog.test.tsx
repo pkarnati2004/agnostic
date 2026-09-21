@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 // The Write spec story lives in new-task-dialog-spec.test.tsx, split out to stay under the line cap.
+import type { RecommendRequest } from "@agnostic/core";
 import { act } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   dialog,
   PROFILE,
@@ -23,6 +24,27 @@ describe("NewTaskDialog", () => {
     pickProfile();
     expect(runButton().disabled).toBe(false);
     unmount();
+  });
+
+  it("asks for the pick as a dry run, so a pause in the typing records no recommendation", () => {
+    vi.useFakeTimers();
+    const asked: RecommendRequest[] = [];
+    const { unmount } = dialog(
+      stubClient({
+        recommend: (body) => {
+          asked.push(body);
+          return new Promise(() => undefined);
+        },
+      }),
+    );
+    const textarea = document.getElementById("new-task-prompt") as HTMLTextAreaElement;
+    act(() => setValue(textarea, "add a retry budget"));
+    // The card asks once the typing stops; the debounce is what "stopped" means.
+    act(() => void vi.advanceTimersByTime(500));
+
+    expect(asked).toEqual([{ repoId: "r1", prompt: "add a retry budget", dryRun: true }]);
+    unmount();
+    vi.useRealTimers();
   });
 
   it("runs on Cmd/Ctrl+Enter and leaves a plain Enter alone", () => {
