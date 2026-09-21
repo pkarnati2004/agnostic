@@ -15,7 +15,7 @@ const local = testProfile({
 describe("eligibleProfiles", () => {
   it("drops what agn cannot run and what it only launches", () => {
     const unavailable = testProfile({ model: "sonnet-4.5", available: false });
-    const tierTwo = testProfile({ harness: "other:aider", model: null, tier: 2 });
+    const tierTwo = testProfile({ harness: "aider", model: null, tier: 2 });
     expect(
       eligibleProfiles([unavailable, tierTwo, subscription], testPreferences()).map((p) => p.id),
     ).toEqual([subscription.id]);

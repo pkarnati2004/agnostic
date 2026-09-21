@@ -1,9 +1,16 @@
 import { createInterface } from "node:readline/promises";
-import type { DoctorResponse, HarnessReport, PlanOption, Plans, PlanVendor } from "@agnostic/core";
+import {
+  type DoctorResponse,
+  type HarnessReport,
+  type PlanOption,
+  type Plans,
+  type PlanVendor,
+  PlanVendorSchema,
+} from "@agnostic/core";
 import type { Command } from "commander";
 import type { CliContext } from "../context.js";
 
-const VENDORS: PlanVendor[] = ["claude", "chatgpt"];
+const VENDORS: readonly PlanVendor[] = PlanVendorSchema.options;
 
 /** `--plan claude=max20`, repeatable. The plan itself is not checked here: the catalog knows. */
 export function parsePlanFlags(command: Command, flags: string[]): Plans {
@@ -23,7 +30,7 @@ export function parsePlanFlags(command: Command, flags: string[]): Plans {
 }
 
 function isVendor(value: string): value is PlanVendor {
-  return (VENDORS as string[]).includes(value);
+  return (VENDORS as readonly string[]).includes(value);
 }
 
 /** The cell in doctor's plan column: what agn knows, and how sure it is of it. */

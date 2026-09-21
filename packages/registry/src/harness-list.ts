@@ -2,6 +2,8 @@ import type { HarnessId } from "@agnostic/core";
 import { parseClaudePlan, parseCodexPlan } from "./detect-plan.js";
 import { RegistryError } from "./error.js";
 import type { HarnessDefinition, PromptDelivery } from "./harness-definition.js";
+import { familyDefinition, familySources } from "./harness-list-families.js";
+import { tier2Definition, tier2Sources } from "./harness-list-tier2.js";
 import {
   claudeModelListRequest,
   parseClaudeModelList,
@@ -20,10 +22,9 @@ import {
  */
 
 const argv: PromptDelivery = { kind: "argv" };
-const argvAfterSeparator: PromptDelivery = { kind: "argv", separator: "--" };
-const typeAfterStart: PromptDelivery = { kind: "type-after-start" };
 
-const tier1: HarnessDefinition[] = [
+/** The harnesses agn both hooks and reads transcripts for; the other tier-1 rows are the families. */
+const full: HarnessDefinition[] = [
   {
     id: "claude-code",
     name: "Claude Code",
@@ -41,9 +42,9 @@ const tier1: HarnessDefinition[] = [
       parse: parseClaudeModelList,
     },
     routes: ["native", "anthropic-gateway"],
-    resume: (sessionId) => ["--resume", sessionId],
-    sessionCapture: { source: "hook", key: "session_id" },
-    hooks: "claude-settings",
+    resume: { args: (id) => ["--resume", id], evidence: "transcript-name" },
+    sessionCapture: { source: "hook", key: "session_id", form: "id" },
+    hooks: { container: "settings-json", file: ".claude/settings.local.json", scope: "repo" },
     authFile: ".claude.json",
     planSource: { file: ".claude.json", parse: parseClaudePlan },
     transcriptsDir: ".claude/projects",
@@ -63,9 +64,9 @@ const tier1: HarnessDefinition[] = [
     modelFlag: "-m",
     modelSource: { args: ["debug", "models"], stdin: null, parse: parseCodexModelList },
     routes: ["native", "local"],
-    resume: (sessionId) => ["resume", sessionId],
-    sessionCapture: { source: "hook", key: "session_id" },
-    hooks: "codex-hooks",
+    resume: { args: (id) => ["resume", id], evidence: "transcript-name" },
+    sessionCapture: { source: "hook", key: "session_id", form: "id" },
+    hooks: { container: "codex-hooks", file: ".codex/hooks.json" },
     authFile: ".codex/auth.json",
     planSource: { file: ".codex/auth.json", parse: parseCodexPlan },
     transcriptsDir: ".codex/sessions",
@@ -84,14 +85,14 @@ const tier1: HarnessDefinition[] = [
     modelFlag: "--model",
     modelSource: { args: ["--list-models"], stdin: null, parse: parsePiModelList },
     routes: ["native", "openrouter"],
-    // Pi resumes by session file, which only a hook reports; chunk 9 does not install one yet.
-    resume: null,
-    sessionCapture: { source: "hook", key: "session_id" },
-    hooks: "pi-extension",
+    // Pi resumes by the transcript file its extension reports, not by the id in the same payload.
+    resume: { args: (file) => ["--session", file], evidence: "transcript-path" },
+    sessionCapture: { source: "hook", key: "session_file", form: "file" },
+    hooks: { container: "pi-extension", dir: ".pi/agent/extensions" },
     authFile: ".pi/agent/auth.json",
     // Pi and OpenCode are billed per provider key, so there is no plan to read.
     planSource: null,
-    transcriptsDir: null,
+    transcriptsDir: ".pi/agent/sessions",
     tier: 1,
   },
   {
@@ -107,101 +108,19 @@ const tier1: HarnessDefinition[] = [
     modelFlag: "--model",
     modelSource: { args: ["models"], stdin: null, parse: parseOpenCodeModelList },
     routes: ["native", "openrouter"],
-    resume: null,
-    sessionCapture: { source: "hook", key: "sessionID" },
-    hooks: "opencode-plugin",
+    resume: { args: (id) => ["--session", id], evidence: "unchecked" },
+    sessionCapture: { source: "hook", key: "sessionID", form: "id" },
+    hooks: { container: "opencode-plugin", dir: ".config/opencode/plugins" },
     authFile: ".local/share/opencode/auth.json",
     planSource: null,
-    transcriptsDir: null,
+    transcriptsDir: ".local/share/opencode",
     tier: 1,
   },
 ];
 
-/** Tier 2 is launch and attach only: no model flag, no probe, no hooks, no resume. */
-type Tier2Source = {
-  id: string;
-  name: string;
-  binary?: string;
-  aliases?: string[];
-  launch?: string[];
-  prompt?: PromptDelivery;
-  processNames?: string[];
-};
-
-const tier2Sources: Tier2Source[] = [
-  { id: "openclaude", name: "OpenClaude", prompt: argv },
-  { id: "autohand", name: "Autohand" },
-  {
-    id: "mimo-code",
-    name: "Mimo Code",
-    binary: "mimo",
-    prompt: { kind: "flag", flag: "--prompt" },
-  },
-  { id: "omp", name: "OMP", prompt: argv },
-  { id: "gemini", name: "Gemini CLI", prompt: { kind: "flag", flag: "-i" } },
-  { id: "antigravity", name: "Antigravity", binary: "agy", prompt: { kind: "flag", flag: "-i" } },
-  { id: "aider", name: "Aider" },
-  { id: "goose", name: "Goose" },
-  { id: "amp", name: "Amp" },
-  { id: "kilo", name: "Kilocode" },
-  // The Kiro installer ships `kiro-cli`, and its trust flags hang off the `chat` subcommand.
-  { id: "kiro", name: "Kiro", binary: "kiro-cli", launch: ["chat", "--tui"] },
-  { id: "crush", name: "Crush" },
-  { id: "aug", name: "Auggie", binary: "auggie" },
-  { id: "cline", name: "Cline" },
-  { id: "codebuff", name: "Codebuff" },
-  // `--trust` skips the first-run prompt that would otherwise swallow the task text.
-  { id: "command-code", name: "Command Code", launch: ["--trust"], prompt: argv },
-  // Continue's binary is `cn`; `continue` is a shell keyword.
-  { id: "continue", name: "Continue", binary: "cn" },
-  { id: "cursor", name: "Cursor Agent", binary: "cursor-agent", prompt: argv },
-  { id: "droid", name: "Factory Droid", prompt: argv },
-  { id: "kimi", name: "Kimi CLI", aliases: ["kimi-code"] },
-  { id: "mistral-vibe", name: "Mistral Vibe", binary: "vibe", aliases: ["mistral-vibe"] },
-  { id: "qwen-code", name: "Qwen Code", binary: "qwen" },
-  { id: "rovo", name: "Rovo Dev" },
-  // Bare `hermes` opens the old REPL; `--tui` starts the full-screen agent.
-  { id: "hermes", name: "Hermes", launch: ["--tui"] },
-  { id: "openclaw", name: "OpenClaw" },
-  { id: "copilot", name: "GitHub Copilot CLI", prompt: { kind: "flag", flag: "-i" } },
-  { id: "grok", name: "Grok CLI", prompt: argvAfterSeparator, processNames: ["grok", "grok-"] },
-  // `devin -- <prompt>` submits immediately, so the prompt is typed into the REPL instead.
-  { id: "devin", name: "Devin CLI" },
-  // `ante --prompt` is headless.
-  { id: "ante", name: "Ante" },
-  // TRAE CN's CLI is `traecli`; the unrelated trae-agent installs `trae-cli`.
-  { id: "trae", name: "Trae CLI", binary: "traecli", prompt: argvAfterSeparator },
-  { id: "prime-agent", name: "Prime Agent", prompt: argvAfterSeparator },
-];
-
-function tier2Definition(source: Tier2Source): HarnessDefinition {
-  const binary = source.binary ?? source.id;
-  const aliases = source.aliases ?? [];
-  return {
-    id: `other:${source.id}`,
-    name: source.name,
-    binary,
-    aliases,
-    processNames: source.processNames ?? [binary, ...aliases],
-    launch: source.launch ?? [],
-    // Tier 2 is launch and attach only: agn knows no read-only form to ask one for a spec.
-    headless: null,
-    prompt: source.prompt ?? typeAfterStart,
-    modelFlag: null,
-    modelSource: null,
-    routes: ["native"],
-    resume: null,
-    sessionCapture: null,
-    hooks: null,
-    authFile: null,
-    planSource: null,
-    transcriptsDir: null,
-    tier: 2,
-  };
-}
-
 export const harnesses: readonly HarnessDefinition[] = [
-  ...tier1,
+  ...full,
+  ...familySources.map(familyDefinition),
   ...tier2Sources.map(tier2Definition),
 ];
 
@@ -212,12 +131,22 @@ const OTHER_PREFIX = "other:";
 /** A binary name, not a path and not something the shell would split. */
 const BINARY_NAME = /^[^\s/\\]+$/;
 
+/** The one id that changed spelling when its harness was promoted out from under `other:`. */
+const RENAMED: Record<string, string> = { cursor: "cursor-agent" };
+
 export function harnessDefinition(id: HarnessId): HarnessDefinition {
   const definition = byId.get(id);
   if (definition) {
     return definition;
   }
   const binary = id.startsWith(OTHER_PREFIX) ? id.slice(OTHER_PREFIX.length) : "";
+  const promoted = RENAMED[binary] ?? (byId.has(binary) ? binary : null);
+  if (promoted !== null) {
+    throw new RegistryError(`agn knows that harness as ${promoted}, not "${id}"`, {
+      code: "harness-unknown",
+      hint: `Name it ${promoted}: every harness agn has a row for has a plain id, and other: is only for an executable agn knows nothing about.`,
+    });
+  }
   if (!BINARY_NAME.test(binary)) {
     throw new RegistryError(`no harness named "${id}"`, {
       code: "harness-unknown",
@@ -240,7 +169,7 @@ function openHarness(binary: string): HarnessDefinition {
     processNames: [binary],
     launch: [],
     headless: null,
-    prompt: typeAfterStart,
+    prompt: { kind: "type-after-start" },
     modelFlag: null,
     modelSource: null,
     routes: ["native"],

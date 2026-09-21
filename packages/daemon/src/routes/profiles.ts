@@ -1,4 +1,10 @@
-import { DoctorRequestSchema, type DoctorResponse, type ProfilesResponse } from "@agnostic/core";
+import {
+  DoctorRequestSchema,
+  type DoctorResponse,
+  type HarnessId,
+  type ProfilesResponse,
+  parseProfileId,
+} from "@agnostic/core";
 import { Hono } from "hono";
 import { type DaemonContext, planOptions } from "../app.js";
 import { readDaemonConfig, writeDaemonConfigPlans } from "../daemon-config.js";
@@ -26,10 +32,11 @@ export function profileRoutes(ctx: DaemonContext): Hono {
       if (!parsed.success) {
         throw requestInvalid(parsed.error);
       }
+      const config = await readDaemonConfig(ctx.paths);
       // Written before detection runs, so the answer already reflects what the user just said.
       const plans = parsed.data.plans
         ? await writeDaemonConfigPlans(ctx.paths, parsed.data.plans)
-        : (await readDaemonConfig(ctx.paths)).plans;
+        : config.plans;
       // The detection also carries the local servers, which are the daemon's business and not
       // part of the doctor response; the plans are the daemon's own state, not detection's.
       const { servers: _servers, ...detection } = await ctx.detection.refresh();
@@ -37,10 +44,29 @@ export function profileRoutes(ctx: DaemonContext): Hono {
         ...detection,
         plans,
         planOptions: planOptions(ctx.catalog.current().catalog.plans),
+        named: namedHarnesses(ctx, config.specWriter),
         tmuxConfigStale: await ctx.tmuxConfigStale(),
       };
       return c.json(body);
     });
+}
+
+/**
+ * The harnesses the user has named for themselves: the spec writer in config.yaml, and the
+ * profile of every task. Doctor keeps a row for each of them even when the binary is missing,
+ * because a harness the user works with is not one to hide behind a count.
+ */
+function namedHarnesses(ctx: DaemonContext, specWriter: string | null): HarnessId[] {
+  const profileIds = ctx.ledger.tasks.list().map((task) => task.profileId);
+  const named = new Set<HarnessId>();
+  for (const profileId of specWriter === null ? profileIds : [specWriter, ...profileIds]) {
+    try {
+      named.add(parseProfileId(profileId).harness);
+    } catch {
+      // An id agn cannot parse names no harness; the row it would have kept is not there anyway.
+    }
+  }
+  return [...named];
 }
 
 function json(text: string): unknown {

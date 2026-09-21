@@ -62,11 +62,11 @@ describe("resumeLaunchCommand", () => {
   });
 
   it("falls back to fresh when the harness has no resume route at all", () => {
-    // Pi's registry entry carries `resume: null` (ADR 008): no hooks capture its session file yet.
-    const pi = { ...task, session: { ...task.session, harness: "pi" as const } } as Task;
-    expect(resumeLaunchCommand(pi, profile({ id: "pi:default:native", harness: "pi" }), ENV)).toBe(
-      null,
-    );
+    // Cursor's hooks report no resumable id, so its registry row carries `resume: null`.
+    const session = { ...task.session, harness: "cursor-agent" as const };
+    const cursor = { ...task, session } as Task;
+    const cursorProfile = profile({ id: "cursor-agent:default:native", harness: "cursor-agent" });
+    expect(resumeLaunchCommand(cursor, cursorProfile, ENV)).toBe(null);
   });
 
   it("falls back to fresh when the recorded route cannot resume by id (Codex on local)", () => {

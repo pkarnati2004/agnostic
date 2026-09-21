@@ -61,10 +61,11 @@ describe("detectHarnesses", () => {
 
   it("leaves tier 2 at presence only", async () => {
     const statuses = await detect("alias-only", "empty");
-    expect(status(statuses, "other:kimi").path).toContain("kimi-code");
-    expect(status(statuses, "other:kimi").version).toBeNull();
-    expect(status(statuses, "other:kimi").models).toBeNull();
-    expect(status(statuses, "other:kimi").login).toBe("unknown");
+    // Mistral Vibe's binary is `vibe`; the installer that ships `mistral-vibe` is the alias row.
+    expect(status(statuses, "mistral-vibe").path).toContain("mistral-vibe");
+    expect(status(statuses, "mistral-vibe").version).toBeNull();
+    expect(status(statuses, "mistral-vibe").models).toBeNull();
+    expect(status(statuses, "mistral-vibe").login).toBe("unknown");
   });
 
   it("falls back to the catalog's rows when the harness has no list command to answer with", async () => {

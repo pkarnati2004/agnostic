@@ -75,30 +75,33 @@ describe("launchSpec on the native route", () => {
     expect(launchSpec(profile("opencode", null, "native"), { prompt: "go", env: {} }).args).toEqual(
       ["--prompt", "go"],
     );
-    expect(
-      launchSpec(profile("other:gemini", null, "native"), { prompt: "go", env: {} }).args,
-    ).toEqual(["-i", "go"]);
-    expect(
-      launchSpec(profile("other:copilot", null, "native"), { prompt: "go", env: {} }).args,
-    ).toEqual(["-i", "go"]);
+    expect(launchSpec(profile("gemini", null, "native"), { prompt: "go", env: {} }).args).toEqual([
+      "-i",
+      "go",
+    ]);
+    expect(launchSpec(profile("copilot", null, "native"), { prompt: "go", env: {} }).args).toEqual([
+      "-i",
+      "go",
+    ]);
   });
 
   it("ends the args with the separator before a prompt that could read as a flag", () => {
     expect(
-      launchSpec(profile("other:grok", null, "native"), { prompt: "--help me", env: {} }).args,
+      launchSpec(profile("grok", null, "native"), { prompt: "--help me", env: {} }).args,
     ).toEqual(["--", "--help me"]);
   });
 
   it("hands back the prompt to type for a harness with no prompt argument", () => {
-    const spec = launchSpec(profile("other:aider", null, "native"), { prompt: "go", env: {} });
+    const spec = launchSpec(profile("aider", null, "native"), { prompt: "go", env: {} });
     expect(spec.args).toEqual([]);
     expect(spec.promptAfterStart).toBe("go");
   });
 
   it("keeps the launch tokens a harness needs before anything else", () => {
-    expect(
-      launchSpec(profile("other:kiro", null, "native"), { prompt: "go", env: {} }).args,
-    ).toEqual(["chat", "--tui"]);
+    expect(launchSpec(profile("kiro", null, "native"), { prompt: "go", env: {} }).args).toEqual([
+      "chat",
+      "--tui",
+    ]);
   });
 
   it("runs an executable the table has never heard of", () => {
@@ -208,19 +211,28 @@ describe("resumeSpec", () => {
     );
   });
 
-  it("says so when a harness cannot resume by id", () => {
-    expect(codeOf(() => resumeSpec(profile("pi", null, "native"), "abc", {}))).toBe(
-      "resume-unsupported",
-    );
-    expect(codeOf(() => resumeSpec(profile("other:aider", null, "native"), "abc", {}))).toBe(
-      "resume-unsupported",
-    );
-    expect(codeOf(() => resumeSpec(profile("opencode", null, "native"), "abc", {}))).toBe(
-      "resume-unsupported",
-    );
-    expect(codeOf(() => resumeSpec(profile("other:mytool", null, "native"), "abc", {}))).toBe(
-      "resume-unsupported",
-    );
+  it("says so when a harness cannot resume at all", () => {
+    for (const harness of ["cursor-agent", "command-code", "aider", "other:mytool"]) {
+      expect(codeOf(() => resumeSpec(profile(harness, null, "native"), "abc", {}))).toBe(
+        "resume-unsupported",
+      );
+    }
+  });
+
+  it("builds the resume argv each harness documents", () => {
+    const args = (harness: HarnessId, session: string) =>
+      resumeSpec(profile(harness, null, "native"), session, {}).args;
+    expect(args("claude-code", "abc")).toEqual(["--resume", "abc"]);
+    expect(args("codex", "abc")).toEqual(["resume", "abc"]);
+    expect(args("kimi", "abc")).toEqual(["--session", "abc"]);
+    expect(args("opencode", "abc")).toEqual(["--session", "abc"]);
+    // Copilot documents the joined form alone.
+    expect(args("copilot", "abc")).toEqual(["--resume=abc"]);
+    // Pi resumes by the transcript path its extension reported, which takes the same checks.
+    expect(args("pi", "/home/u/.pi/agent/sessions/x/2026_a.jsonl")).toEqual([
+      "--session",
+      "/home/u/.pi/agent/sessions/x/2026_a.jsonl",
+    ]);
   });
 
   it("refuses a session id a harness would misread", () => {

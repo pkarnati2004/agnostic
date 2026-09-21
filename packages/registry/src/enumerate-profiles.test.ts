@@ -229,9 +229,7 @@ describe("enumerateProfiles", () => {
   });
 
   it("gives a tier-2 harness its one profile and nothing else", () => {
-    const profiles = enumerate([installed("other:aider")], { OPENROUTER_API_KEY: "or" }, [server]);
-    expect(profiles).toEqual([
-      expect.objectContaining({ id: "other:aider:default:native", tier: 2 }),
-    ]);
+    const profiles = enumerate([installed("aider")], { OPENROUTER_API_KEY: "or" }, [server]);
+    expect(profiles).toEqual([expect.objectContaining({ id: "aider:default:native", tier: 2 })]);
   });
 });

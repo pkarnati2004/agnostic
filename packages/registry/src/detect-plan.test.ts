@@ -14,7 +14,7 @@ describe("planVendor", () => {
     expect(planVendor("codex")).toBe("chatgpt");
     expect(planVendor("pi")).toBeNull();
     expect(planVendor("opencode")).toBeNull();
-    expect(planVendor("other:aider")).toBeNull();
+    expect(planVendor("aider")).toBeNull();
   });
 });
 

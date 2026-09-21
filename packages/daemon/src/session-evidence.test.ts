@@ -81,8 +81,10 @@ describe("sessionEvidence", () => {
     },
   );
 
-  it("reads a harness with no transcript directory as none", async () => {
-    expect(await evidence("pi")).toBe("none");
+  it("reads a harness agn cannot check as unreadable, so the resume is still tried", async () => {
+    // Gemini resumes by an id no tree agn can read names, which is not evidence the id is stale.
+    expect(await evidence("gemini")).toBe("unreadable");
+    expect(await evidence("cursor-agent")).toBe("unreadable");
   });
 
   it("never looks outside the tree for an id that is a path", async () => {
@@ -158,5 +160,36 @@ describe("sessionEvidence", () => {
     );
     await seed(".claude", "projects", "elsewhere", `${ID}.jsonl`);
     expect(await evidence("claude-code")).toBe("unreadable");
+  });
+});
+
+describe("sessionEvidence for a session that is a transcript path", () => {
+  const transcript = (...parts: string[]) => join(home, ".pi", "agent", "sessions", ...parts);
+
+  it("finds the file Pi's own extension reported", async () => {
+    await seed(".pi", "agent", "sessions", "x", "2026_a.jsonl");
+    expect(await evidence("pi", transcript("x", "2026_a.jsonl"))).toBe("found");
+  });
+
+  it("reads a path the harness no longer holds as none", async () => {
+    await seed(".pi", "agent", "sessions", "x", "2026_a.jsonl");
+    expect(await evidence("pi", transcript("x", "gone.jsonl"))).toBe("none");
+  });
+
+  it("refuses a path outside the harness's own tree", async () => {
+    await seed(".pi", "agent", "sessions", "x", "2026_a.jsonl");
+    await seed("elsewhere", "2026_a.jsonl");
+    expect(await evidence("pi", "/etc/passwd")).toBe("none");
+    expect(await evidence("pi", transcript("..", "..", "..", "elsewhere", "2026_a.jsonl"))).toBe(
+      "none",
+    );
+    expect(await evidence("pi", "2026_a.jsonl")).toBe("none");
+  });
+
+  it("refuses a symlink inside the tree that points out of it", async () => {
+    await seed("elsewhere", "2026_a.jsonl");
+    await mkdir(transcript("x"), { recursive: true });
+    await symlink(join(home, "elsewhere", "2026_a.jsonl"), transcript("x", "linked.jsonl"));
+    expect(await evidence("pi", transcript("x", "linked.jsonl"))).toBe("none");
   });
 });

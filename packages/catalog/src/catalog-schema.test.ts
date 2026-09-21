@@ -80,6 +80,62 @@ describe("parseCatalog", () => {
     expect(failure(noPlan).message).toContain("entitlements[0].vendor");
   });
 
+  it("takes an entitlement for any vendor that bills a CLI by plan", async () => {
+    const catalog = parseCatalog(await fixture("complete"));
+    const google = {
+      ...catalog,
+      plans: [
+        ...catalog.plans,
+        { vendor: "google", id: "ai-pro", displayName: "AI Pro", confirmedAt: "2026-09-21" },
+      ],
+      entitlements: [
+        {
+          harness: "gemini",
+          model: "gemini-3-pro",
+          vendor: "google",
+          plan: "ai-pro",
+          access: "included",
+        },
+      ],
+    };
+    expect(parseCatalog(google).entitlements[0]?.vendor).toBe("google");
+    // Gemini bills on Google's plans; a Claude plan on the same row is a mistake in the data.
+    const wrongVendor = {
+      ...google,
+      entitlements: [{ ...google.entitlements[0], vendor: "claude", plan: "max20" }],
+    };
+    expect(failure(wrongVendor).message).toContain("entitlements[0].vendor");
+  });
+
+  it("takes an entitlement for grok, kimi and cursor-agent on their own vendors, and rejects a swap", async () => {
+    const catalog = parseCatalog(await fixture("complete"));
+    const rows: [string, string][] = [
+      ["grok", "xai"],
+      ["kimi", "moonshot"],
+      ["cursor-agent", "cursor"],
+    ];
+    for (const [harness, vendor] of rows) {
+      const withPlan = {
+        ...catalog,
+        plans: [
+          ...catalog.plans,
+          { vendor, id: "pro", displayName: "Pro", confirmedAt: "2026-09-21" },
+        ],
+        entitlements: [
+          { harness, model: `${harness}-flagship`, vendor, plan: "pro", access: "included" },
+        ],
+      };
+      expect(parseCatalog(withPlan).entitlements[0]).toMatchObject({ harness, vendor });
+      // Claude's own plan exists in the fixture, so this is a vendor mismatch, not a dangling one.
+      const wrongVendor = {
+        ...withPlan,
+        entitlements: [{ ...withPlan.entitlements[0], vendor: "claude", plan: "max20" }],
+      };
+      const error = failure(wrongVendor);
+      expect(error.message).toContain("entitlements[0].vendor");
+    }
+  });
+
   it("refuses a row that points at a plan or a source no table has", async () => {
     const catalog = parseCatalog(await fixture("complete"));
     const orphan = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DoctorRequestSchema } from "./doctor-api.js";
-import { PlansSchema, PlanVendorSchema } from "./plans.js";
+import { type Plans, PlansSchema, PlanVendorSchema } from "./plans.js";
 
 describe("PlansSchema", () => {
   it("takes a plan name per vendor, whatever the name is", () => {
@@ -13,8 +13,22 @@ describe("PlansSchema", () => {
     expect(PlansSchema.parse({})).toEqual({});
   });
 
+  it("takes one key per vendor that bills a CLI by plan", () => {
+    const every: Plans = {
+      claude: "max20",
+      chatgpt: "plus",
+      google: "ai-pro",
+      xai: "supergrok",
+      moonshot: "pro",
+      cursor: "pro",
+    };
+    expect(PlansSchema.parse(every)).toEqual(every);
+    expect(PlanVendorSchema.options).toHaveLength(6);
+  });
+
   it("refuses a vendor that does not bill by plan, and an empty name", () => {
     expect(PlansSchema.safeParse({ codex: "plus" }).success).toBe(false);
+    expect(PlansSchema.safeParse({ claude: "pro", mistral: "pro" }).success).toBe(false);
     expect(PlansSchema.safeParse({ claude: "" }).success).toBe(false);
     expect(PlanVendorSchema.safeParse("openai").success).toBe(false);
   });

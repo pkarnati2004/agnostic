@@ -188,7 +188,7 @@ describe("POST /hooks/:harness", () => {
 
   it("refuses a harness with no parser, a payload that is not JSON, and a payload too large", async () => {
     seed();
-    expect((await post({ hook_event_name: "Stop" }, { harness: "other:aider" })).status).toBe(404);
+    expect((await post({ hook_event_name: "Stop" }, { harness: "other:mytool" })).status).toBe(404);
     expect((await post("not json", { taskId: "x" })).status).toBe(400);
     const large = await post(`{"hook_event_name":"Stop","pad":"${"x".repeat(1024 * 1024)}"}`);
     expect(large.status).toBe(413);

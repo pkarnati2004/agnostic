@@ -60,7 +60,7 @@ describe("POST /repos/:id/hooks", () => {
   });
 
   it("refuses a harness that has no installer", async () => {
-    const response = await install({ harness: "other:aider" });
+    const response = await install({ harness: "other:mytool" });
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({ error: { code: "hook-unsupported" } });
   });

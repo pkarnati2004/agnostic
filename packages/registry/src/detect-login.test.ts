@@ -64,6 +64,20 @@ describe("detectLogin", () => {
   });
 
   it("says unknown for a harness with no auth file to read", async () => {
-    expect(await login("other:aider", "empty")).toEqual({ state: "unknown", billing: "unknown" });
+    expect(await login("aider", "empty")).toEqual({ state: "unknown", billing: "unknown" });
+  });
+
+  it("reads the four promoted rows' own auth file the same generic way Pi and OpenCode use", async () => {
+    for (const harness of ["gemini", "grok", "kimi", "cursor-agent"] as HarnessId[]) {
+      expect(await login(harness, "family-auth")).toEqual({
+        state: "logged-in",
+        billing: "unknown",
+      });
+      expect(await login(harness, "empty")).toEqual({ state: "logged-out", billing: "unknown" });
+      expect(await login(harness, "family-malformed")).toEqual({
+        state: "unknown",
+        billing: "unknown",
+      });
+    }
   });
 });

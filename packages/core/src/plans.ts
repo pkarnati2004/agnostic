@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-export const PlanVendorSchema = z.enum(["claude", "chatgpt"]);
+export const PlanVendorSchema = z.enum([
+  "claude",
+  "chatgpt",
+  "google",
+  "xai",
+  "moonshot",
+  "cursor",
+]);
 export type PlanVendor = z.infer<typeof PlanVendorSchema>;
 
 /**
@@ -12,9 +19,14 @@ export type Plan = string;
 
 export const PlanSchema = z.string().min(1);
 
-// Strict: a third vendor key is a mistake, because only these two bill by plan.
+// Strict: a key outside this set is a mistake, because no other vendor bills a CLI by plan
+// (ADR 016, amended 2026-09-21).
 export const PlansSchema = z.strictObject({
   claude: PlanSchema.optional(),
   chatgpt: PlanSchema.optional(),
+  google: PlanSchema.optional(),
+  xai: PlanSchema.optional(),
+  moonshot: PlanSchema.optional(),
+  cursor: PlanSchema.optional(),
 });
 export type Plans = z.infer<typeof PlansSchema>;

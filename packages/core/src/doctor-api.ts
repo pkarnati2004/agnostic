@@ -5,6 +5,12 @@ import type { Billing, HarnessId, Profile } from "./profile.js";
 export type ModelSource = "probe" | "seed" | "none";
 
 /**
+ * What agn can do with a harness. `full` is hooks and a usage parser; `status` is hooks alone, so
+ * the task's status is live but its tokens are not counted; `basic` is launch and attach.
+ */
+export type Support = "full" | "status" | "basic";
+
+/**
  * What agn knows about a harness's plan. `known` is false for a plan the catalog has no row for,
  * which agn shows as it was read rather than guessing what it includes. `confirmed` is false when
  * nothing but `config.yaml` says so and the models the harness lists belong to another plan.
@@ -29,6 +35,8 @@ export type HarnessReport = {
   login: "logged-in" | "logged-out" | "unknown";
   billing: Billing;
   tier: 1 | 2;
+  /** What doctor prints. Tier says how much detection does; support says what the user gets. */
+  support: Support;
   models: string[];
   modelSource: ModelSource;
   /** null for a harness billed per provider key, which has no plan to be on. */
@@ -58,6 +66,11 @@ export type DoctorResponse = {
   pathVar: string;
   /** config.yaml's plans after this call, so a client can show what it just wrote. */
   plans: Plans;
+  /**
+   * The harnesses the user has named: config.yaml's spec writer and every task's profile. Doctor
+   * keeps their row even when the binary is missing, and lists the rest on one line instead.
+   */
+  named: HarnessId[];
   /** Every plan the catalog knows, for the prompt and the picker; agn offers nothing else. */
   planOptions: PlanOption[];
   /**

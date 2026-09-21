@@ -92,7 +92,7 @@ export function resumeSpec(
   }
   return {
     command: def.binary,
-    args: def.resume(sessionIdOrThrow(sessionId)),
+    args: def.resume.args(sessionIdOrThrow(sessionId)),
     env: routeEnv(def, profile, env),
   };
 }

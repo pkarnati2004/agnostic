@@ -41,7 +41,7 @@ export async function resolveProfile(
   return profile;
 }
 
-/** `claude-code` and `other:aider` mean that harness on its own default model and native route. */
+/** `claude-code` and `other:mytool` mean that harness on its own default model and native route. */
 function expand(asked: string): string {
   try {
     parseProfileId(asked);

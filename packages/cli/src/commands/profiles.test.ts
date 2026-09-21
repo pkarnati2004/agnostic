@@ -22,8 +22,8 @@ describe("agn profiles", () => {
     const profiles = [
       profile({}),
       profile({
-        id: "other:aider:default:native",
-        harness: "other:aider",
+        id: "other:mytool:default:native",
+        harness: "other:mytool",
         tier: 2,
         billing: "api-key",
         evidence: "env",
@@ -36,9 +36,9 @@ describe("agn profiles", () => {
     });
     await profilesCommand(cli.ctx).parseAsync([], { from: "user" });
     expect(cli.out).toEqual([
-      "id                          billing       support  evidence",
-      "claude-code:default:native  subscription  full     binary",
-      "other:aider:default:native  api-key       basic    env",
+      "id                           billing       support  evidence",
+      "claude-code:default:native   subscription  full     binary",
+      "other:mytool:default:native  api-key       basic    env",
       "detected 2026-09-11T10:00:00.000Z",
     ]);
   });

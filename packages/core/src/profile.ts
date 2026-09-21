@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { CoreError } from "./error.js";
 
+// Every harness agn has a registry row for has a bare id, whatever its tier (ADR 035); `other:`
+// means only "an executable agn knows nothing else about", which is why it is the one two-segment
+// harness a profile id can carry.
 export const HarnessIdSchema = z.union([
-  z.enum(["claude-code", "codex", "pi", "opencode"]),
+  z.string().regex(/^[a-z][a-z0-9-]*$/),
   z.templateLiteral(["other:", z.string().min(1)]),
 ]);
 export type HarnessId = z.infer<typeof HarnessIdSchema>;

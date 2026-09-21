@@ -13,6 +13,7 @@ function report(over: Partial<HarnessReport>): HarnessReport {
     login: "logged-in",
     billing: "subscription",
     tier: 1,
+    support: "full",
     models: ["sonnet-4.5"],
     modelSource: "probe",
     planVendor: "claude",
@@ -37,12 +38,14 @@ function run(
   profiles: Profile[] = [PROFILE],
   tools: ToolReport[] = [],
   tmuxConfigStale = false,
+  named: HarnessReport["harness"][] = [],
 ) {
   const response: DoctorResponse = {
     tmuxConfigStale,
     harnesses,
     profiles,
     tools,
+    named,
     detectedAt: "2026-09-11T10:00:00.000Z",
     pathVar: "/opt/bin",
     plans: {},
@@ -56,35 +59,62 @@ function run(
 }
 
 describe("agn doctor", () => {
-  it("shows a missing tier-1 harness and hides a missing tier-2 one", async () => {
+  it("leaves the harnesses nobody installed out of the table, on one line under it", async () => {
     const { cli, done } = run([
+      report({}),
       report({
         harness: "codex",
         path: null,
         version: null,
         login: "unknown",
-        models: [],
         modelSource: "none",
       }),
       report({
-        harness: "other:aider",
-        tier: 2,
+        harness: "gemini",
+        support: "status",
         path: null,
         version: null,
-        models: [],
+        login: "unknown",
         modelSource: "none",
       }),
+      report({ harness: "aider", tier: 2, support: "basic", path: null, version: null }),
     ]);
     await done();
     expect(cli.out).toEqual([
-      "harness  version  login  support  models  plan  path",
-      "codex    -        -      full     none    -     not installed",
+      "harness      version  login      support  models      plan   path",
+      "claude-code  2.0.1    logged-in  full     1 (probed)  max20  /opt/bin/claude",
+      "not installed: codex, gemini (2)",
       "profiles: 1 available (agn profiles)",
       "PATH: /opt/bin",
     ]);
   });
 
-  it("labels tier 2 basic and tier 1 full, and names where the models came from", async () => {
+  it("keeps a row for a harness the user named, installed or not", async () => {
+    const { cli, done } = run(
+      [
+        report({ harness: "codex", path: null, version: null, login: "unknown" }),
+        report({ harness: "gemini", support: "status", path: null, version: null }),
+      ],
+      undefined,
+      undefined,
+      false,
+      ["gemini"],
+    );
+    await done();
+    expect(cli.out.slice(0, 3)).toEqual([
+      "harness  version  login  support  models      plan  path",
+      "gemini   -        -      status   1 (probed)  -     not installed",
+      "not installed: codex (1)",
+    ]);
+  });
+
+  it("says nothing about what is missing when everything is installed", async () => {
+    const { cli, done } = run([report({})]);
+    await done();
+    expect(cli.out.some((line) => line.startsWith("not installed:"))).toBe(false);
+  });
+
+  it("prints the support each harness has, and names where the models came from", async () => {
     const { cli, done } = run([
       report({}),
       report({
@@ -98,8 +128,21 @@ describe("agn doctor", () => {
         plan: null,
       }),
       report({
-        harness: "other:aider",
+        harness: "gemini",
+        support: "status",
+        binary: "gemini",
+        path: "/opt/bin/gemini",
+        version: "0.4",
+        login: "logged-in",
+        models: [],
+        modelSource: "none",
+        planVendor: null,
+        plan: null,
+      }),
+      report({
+        harness: "aider",
         tier: 2,
+        support: "basic",
         binary: "aider",
         path: "/opt/bin/aider",
         version: "0.1",
@@ -111,10 +154,11 @@ describe("agn doctor", () => {
       }),
     ]);
     await done();
-    expect(cli.out.slice(1, 4)).toEqual([
+    expect(cli.out.slice(1, 5)).toEqual([
       "claude-code  2.0.1    logged-in  full     1 (probed)     max20  /opt/bin/claude",
       "pi           0.9      logged-in  full     2 (seed list)  -      /opt/bin/pi",
-      "other:aider  0.1      unknown    basic    none           -      /opt/bin/aider",
+      "gemini       0.4      logged-in  status   none           -      /opt/bin/gemini",
+      "aider        0.1      unknown    basic    none           -      /opt/bin/aider",
     ]);
   });
 

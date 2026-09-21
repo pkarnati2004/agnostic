@@ -9,7 +9,7 @@ import {
   type HarnessReport,
   type Profile,
 } from "@agnostic/core";
-import { harnessDefinition, type LocalServer } from "@agnostic/registry";
+import { harnessDefinition, harnessSupport, type LocalServer } from "@agnostic/registry";
 import type { CatalogStore } from "./catalog-store.js";
 import type { Detection } from "./detection-cache.js";
 
@@ -42,6 +42,7 @@ function fixtureReport(models: string[], harness: HarnessId): HarnessReport {
     login: "logged-in",
     billing: "subscription",
     tier: 1,
+    support: harnessSupport(definition),
     models,
     modelSource: "probe",
     planVendor: harness === "claude-code" ? "claude" : null,
@@ -103,6 +104,7 @@ export function launchDetection(binDir: string, servers: LocalServer[]): Detecti
     login: "logged-in",
     billing: "subscription",
     tier: 1,
+    support: harnessSupport(harnessDefinition(harness)),
     models: [],
     modelSource: "none",
     planVendor: null,

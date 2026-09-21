@@ -3,6 +3,7 @@ import { CoreError } from "./error.js";
 import {
   formatProfileId,
   type HarnessId,
+  HarnessIdSchema,
   type Profile,
   ProfileSchema,
   parseProfileId,
@@ -23,10 +24,26 @@ const profile: Profile = {
 const roundTrips: Array<[HarnessId, string | null, Route]> = [
   ["claude-code", "sonnet-4.5", "native"],
   ["codex", "gpt-5", "native"],
-  ["other:aider", "deepseek-v3", "openai-compatible"],
+  ["other:mytool", "deepseek-v3", "openai-compatible"],
+  ["gemini", null, "native"],
+  ["cursor-agent", null, "native"],
   ["opencode", null, "local"],
   ["codex", "qwen3:8b", "local"],
 ];
+
+describe("HarnessIdSchema", () => {
+  it("takes a plain id for a harness agn has a row for, and other: for anything else", () => {
+    for (const id of ["gemini", "cursor-agent", "claude-code", "other:mytool", "other:my-tool"]) {
+      expect(HarnessIdSchema.safeParse(id).success).toBe(true);
+    }
+  });
+
+  it("refuses an id no harness could have", () => {
+    for (const id of ["Gemini", "other:", "", "-gemini", "gemini cli", "2fast"]) {
+      expect(HarnessIdSchema.safeParse(id).success).toBe(false);
+    }
+  });
+});
 
 describe("formatProfileId and parseProfileId", () => {
   it("round-trips every harness shape, including a null model", () => {
@@ -60,8 +77,8 @@ describe("formatProfileId and parseProfileId", () => {
       model: "qwen3:8b",
       route: "local",
     });
-    expect(parseProfileId("other:aider:qwen3:8b:local")).toEqual({
-      harness: "other:aider",
+    expect(parseProfileId("other:mytool:qwen3:8b:local")).toEqual({
+      harness: "other:mytool",
       model: "qwen3:8b",
       route: "local",
     });
@@ -77,7 +94,7 @@ describe("formatProfileId and parseProfileId", () => {
       "nope",
       "claude-code",
       "claude-code:sonnet-4.5",
-      "nope:sonnet-4.5:native",
+      "Nope:sonnet-4.5:native",
       "other:default:native",
       "claude-code::native",
     ];

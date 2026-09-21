@@ -71,14 +71,22 @@ export const EntitlementAccessSchema = z.enum(["included", "credits", "unavailab
 export type EntitlementAccess = z.infer<typeof EntitlementAccessSchema>;
 
 /**
- * Which vendor's plans each harness is billed on. The registry has the same two rows for its own
- * use; they are repeated here because the catalog cannot import the registry, and because a row
- * that pairs Codex with a Claude plan is a mistake in the data, not in the code that reads it.
+ * Which vendor's plans each harness is billed on. The registry has the same rows for its own use;
+ * they are repeated here because the catalog cannot import the registry, and because a row that
+ * pairs Codex with a Claude plan is a mistake in the data, not in the code that reads it.
  */
 const ENTITLEMENT_VENDORS: Partial<Record<HarnessId, PlanVendor>> = {
   "claude-code": "claude",
   codex: "chatgpt",
+  gemini: "google",
+  grok: "xai",
+  kimi: "moonshot",
+  "cursor-agent": "cursor",
 };
+
+const VENDOR_PAIRS = Object.entries(ENTITLEMENT_VENDORS)
+  .map(([harness, vendor]) => `${harness} rows carry ${vendor} plans`)
+  .join(", ");
 
 /** Listed is not included (ADR 016): a plan may list a model and still meter it as credits. */
 export const EntitlementRowSchema = z
@@ -90,8 +98,7 @@ export const EntitlementRowSchema = z
     access: EntitlementAccessSchema,
   })
   .refine((row) => ENTITLEMENT_VENDORS[row.harness] === row.vendor, {
-    error:
-      "claude-code rows carry claude plans and codex rows chatgpt plans; no other harness has one",
+    error: `${VENDOR_PAIRS}; no other harness has a plan`,
     path: ["vendor"],
   });
 export type EntitlementRow = z.infer<typeof EntitlementRowSchema>;
