@@ -49,7 +49,7 @@ export async function scanTranscripts(opts: {
       if (!parser.isTranscript(path)) {
         continue;
       }
-      const info = await stat(path).catch(() => null);
+      const info = await fileState(path);
       if (info === null || !changed(opts, path, info.size, info.mtimeMs)) {
         continue;
       }
@@ -58,7 +58,7 @@ export async function scanTranscripts(opts: {
         turns.push(...parsed.turns);
         skipped += parsed.skipped;
         parsedFiles += 1;
-        opts.memo.set(path, { size: info.size, mtimeMs: info.mtimeMs });
+        opts.memo.set(path, info);
       } catch (cause) {
         // One unreadable transcript is not a reason to report no usage at all.
         problems.push(unreadable(path, cause));
@@ -72,6 +72,22 @@ export async function scanTranscripts(opts: {
     }
   }
   return { turns, parsedFiles, skipped, problems };
+}
+
+/**
+ * The size and time a rescan compares. A SQLite database is written to its write-ahead log first,
+ * so the database file can be untouched while what it holds is not; the log counts as part of it.
+ */
+async function fileState(path: string): Promise<{ size: number; mtimeMs: number } | null> {
+  const info = await stat(path).catch(() => null);
+  if (info === null) {
+    return null;
+  }
+  const log = await stat(`${path}-wal`).catch(() => null);
+  return {
+    size: Math.max(info.size, log?.size ?? 0),
+    mtimeMs: Math.max(info.mtimeMs, log?.mtimeMs ?? 0),
+  };
 }
 
 function changed(

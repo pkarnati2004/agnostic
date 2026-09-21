@@ -2,9 +2,10 @@
 
 What a coding agent spent, read from the transcript files it writes on this machine.
 
-- One parser per harness (`claude-code`, `codex`), each turning a `.jsonl` transcript into
-  `TranscriptTurn`s with the four token buckets and a stable `ref`. The ref is what makes a rescan
-  and a forked or resumed session insert each turn exactly once.
+- One parser per harness (`claude-code`, `codex`, `pi`, `omp`, `opencode`), each turning one
+  transcript into `TranscriptTurn`s with the four token buckets and a stable `ref`. The ref is what
+  makes a rescan and a forked or resumed session insert each turn exactly once. OpenCode's store is
+  SQLite rather than `.jsonl`, and is read read-only.
 - `scanTranscripts` walks the transcript roots it is given, skips files whose size and mtime have
   not changed since the last scan, and reports an unreadable file as a problem rather than failing
   the scan.

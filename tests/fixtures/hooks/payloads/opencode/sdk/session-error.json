@@ -1,0 +1,6 @@
+{
+  "type": "session.error",
+  "properties": {
+    "sessionID": "ses_root"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "hook_event_name": "tool_approval_resolved",
+  "tool_name": "bash",
+  "approved": true,
+  "session_id": "omp-session",
+  "session_file": "/home/u/.omp/agent/sessions/omp-session.jsonl",
+  "cwd": "/work/repo"
+}

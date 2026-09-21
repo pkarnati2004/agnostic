@@ -365,6 +365,16 @@ agx hooks install --repo "$WORK/runrepo" --harness copilot 2>/dev/null > "$WORK/
 grep -q "^installed copilot hooks: $COPILOT_HOOKS$" "$WORK/copilot-hooks.txt"
 grep -q "^  verify: if Copilot ignores the hook" "$WORK/copilot-hooks.txt"
 grep -q '"version": 1' "$COPILOT_HOOKS"
+# Pi and OpenCode read no hook config: agn writes one whole file each of them loads at start, and
+# it carries agn's marker on line 1 so a file of that name the user wrote is never replaced.
+PI_EXTENSION="$USAGE_HOME/.pi/agent/extensions/agn-status.ts"
+OPENCODE_PLUGIN="$USAGE_HOME/.config/opencode/plugins/agn-status.js"
+agx hooks install --repo "$WORK/runrepo" --harness pi 2>/dev/null \
+  | grep -q "^installed pi hooks: $PI_EXTENSION$"
+head -n 1 "$PI_EXTENSION" | grep -q "^// agn-managed:"
+agx hooks install --repo "$WORK/runrepo" --harness opencode 2>/dev/null \
+  | grep -q "^installed opencode hooks: $OPENCODE_PLUGIN$"
+head -n 1 "$OPENCODE_PLUGIN" | grep -q "^// agn-managed:"
 # No config agn wrote under the user's home carries the token: the script reads it at run time.
 if grep -rqF "$(cat "$AGNOSTIC_HOME/auth-token")" "$USAGE_HOME"; then echo "smoke: token written under HOME" >&2; exit 1; fi
 # `ask` is the fake agent's "my turn is over": it fires a Stop hook through the installed command.
@@ -515,6 +525,14 @@ grep -q "^unknown plan  claude-code " "$WORK/usage.txt"
 grep -q "1,700" "$WORK/usage.txt"
 agx usage --json > "$WORK/usage.json"
 grep -q '"unattributedTokens": 1700' "$WORK/usage.json"
+
+# Pi writes a message-graph transcript of its own, under its own home directory.
+mkdir -p "$USAGE_HOME/.pi/agent/sessions"
+printf '{"type":"session","id":"s-pi-smoke","timestamp":"%s","cwd":"%s"}\n{"type":"model_change","modelId":"claude-fable-5-1","timestamp":"%s"}\n{"type":"message","id":"m-pi-smoke","timestamp":"%s","message":{"role":"assistant","usage":{"input":300,"output":100}}}\n' \
+  "$NOW" "$WORK/runrepo" "$NOW" "$NOW" > "$USAGE_HOME/.pi/agent/sessions/s-pi-smoke.jsonl"
+agx usage > "$WORK/usage-pi.txt"
+grep -q "^unknown plan  pi " "$WORK/usage-pi.txt"
+grep -q "400" "$WORK/usage-pi.txt"
 agx daemon stop | grep -q "^agnd stopped"
 echo "smoke: agn catalog update against a loopback catalog server"
 # The published catalog agn would fetch, served from this machine: the smoke never leaves it.
@@ -587,10 +605,12 @@ grep -q "http GET /ui" "$AGNOSTIC_HOME/logs/agnd.log"
 agx daemon stop > /dev/null
 
 echo "smoke: nothing in agn calls out except the catalog check"
-# This grep catches a new naked fetch call: the two files it finds both talk to loopback (ADR 002).
-# The catalog's own call is made through an injected fetch, so the host grep below is what covers
-# it - one file names a host that is not this machine, and that file is the catalog's source list.
+# This grep catches a new naked fetch call: the three files it finds all talk to loopback (ADR 002).
+# The third is the text of the Pi extension and the OpenCode plugin, which post to the daemon's own
+# port from inside the harness. The catalog's own call is made through an injected fetch, so the
+# host grep below is what covers it - one file names a host that is not this machine, and that file
+# is the catalog's source list.
 FETCHERS="$(grep -rlE "(^|[^A-Za-z.])fetch\(" packages/*/src --include='*.ts' | grep -v '\.test\.ts$' | sort | tr '\n' ' ')"
-test "$FETCHERS" = "packages/core/src/daemon-probe.ts packages/registry/src/detect-local-servers.ts "
+test "$FETCHERS" = "packages/core/src/daemon-probe.ts packages/hooks/src/hook-post-source.ts packages/registry/src/detect-local-servers.ts "
 test "$(grep -rl "raw.githubusercontent.com" packages/*/src --include='*.ts' | wc -l | tr -d ' ')" -eq 1
 grep -q "raw.githubusercontent.com" packages/catalog/src/catalog-source.ts

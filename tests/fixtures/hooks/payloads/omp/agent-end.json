@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "agent_end",
+  "session_id": "omp-session",
+  "session_file": "/home/u/.omp/agent/sessions/omp-session.jsonl",
+  "cwd": "/work/repo"
+}

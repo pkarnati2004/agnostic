@@ -16,6 +16,11 @@ no other file in the directory sets `disableAllHooks: true`, which turns off Cop
 writes each file whole, so a hand edit is replaced on the next `agn hooks install`; delete the file
 to remove the hook. Neither agent is read for tokens, so `agn doctor` labels both `status`.
 
+**Pi, OMP, OpenCode or Mimo Code stays "running".** These four have no hook config file: agn
+writes an extension or a plugin the agent loads when it starts, so a session that was already open
+when you installed reports nothing. Restart the agent. If `agn hooks install` said the file is not
+agn's, a file of that name is yours - move it aside and install again.
+
 **Codex says the agn hook is untrusted.** Codex runs a hook only when `~/.codex/config.toml` holds the hash of that exact hook. Run `/hooks` in Codex and approve it, or run `agn hooks install --repo <path>` again to rewrite the entry. If agn refuses to edit the file, the block it manages has been split or one of its entries exists outside it: remove the `[hooks.state."…post.sh…"]` tables and the `# >>> agn hooks` markers, then install again.
 
 **`agn catalog update` says it could not fetch.** The check could not reach the published catalog: no network, a proxy in the way, or the host is down. Nothing changed - the catalog already on disk stays in use, and the version it names is in the message. Try again later, or point `AGNOSTIC_CATALOG_URL` at a mirror or a local copy of the two files. If you would rather agn never reached out on its own, put `catalog_check: false` in `~/.agnostic/config.yaml`; `agn catalog update` still works when you run it.

@@ -1,0 +1,9 @@
+{
+  "type": "session.created",
+  "properties": {
+    "info": {
+      "id": "ses_child",
+      "parentID": "ses_root"
+    }
+  }
+}
