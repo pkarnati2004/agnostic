@@ -143,8 +143,8 @@ agn add "$WORK/plain" | grep -q "^added plain (folder) $PLAIN_ID$"
 test "$(agn repos | wc -l)" -eq 3
 agn repos | grep -qv "(missing)"
 
-# Nothing is installed on this PATH, so the table is its header alone, the harnesses agn supports
-# are named on one line under it, and gh is the only other row.
+# Nothing is installed on this PATH, so the table has no rows, the harnesses agn supports are
+# named on one not-installed line, and gh is the only other row.
 test "$(agn doctor | grep -c "not installed")" -eq 2
 agn doctor | grep -q "^not installed: claude-code, codex, .*(15)$"
 agn doctor | grep -q "^tools: gh"
