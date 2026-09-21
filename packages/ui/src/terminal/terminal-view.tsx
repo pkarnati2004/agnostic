@@ -83,7 +83,11 @@ export function TerminalView(props: TerminalViewProps) {
   // The resume's own line stands until the socket's next close has something of its own to say.
   const notice = closeNotice ?? props.resumeNotice;
   return (
-    <div ref={paneRef} hidden={!active} className="relative min-h-0 flex-1 overflow-hidden p-2">
+    <div
+      ref={paneRef}
+      hidden={!active}
+      className="relative min-h-0 flex-1 overflow-hidden p-2 pb-4"
+    >
       {overlay !== null && <SessionOverlay {...overlayProps(props, overlay, notice)} />}
     </div>
   );
