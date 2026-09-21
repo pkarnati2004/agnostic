@@ -52,7 +52,7 @@ describe("RemoveRepoDialog", () => {
     expect(text).toContain("agn deletes the task worktrees it made for this repo");
     expect(text).toContain("The folder at /Users/dev/petal is not touched.");
     expect(text).toContain("Its usage and outcome history is kept");
-    expect(text).toContain("`agn add /Users/dev/petal` brings it back.");
+    expect(text).toContain("agn add /Users/dev/petal brings it back.");
     unmount();
   });
 
@@ -87,7 +87,7 @@ describe("RemoveRepoDialog", () => {
     await clickRemove();
     const text = document.body.textContent ?? "";
     expect(text).toContain("repo petal has a task that is still running");
-    expect(text).toContain("Run `agn stop task1` first.");
+    expect(text).toContain("Run agn stop task1 first.");
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(button("Remove").disabled).toBe(false);
     unmount();

@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/dialog";
+import { HintText } from "../hint-text";
 
 type RemoveRepoDialogProps = {
   /** The repo the user asked to remove, or null when nothing is being removed. */
@@ -57,13 +58,17 @@ function Confirm({ repo, onOpenChange, onRemove }: ConfirmProps) {
           </DialogDescription>
         </DialogHeader>
         <p className="text-muted-foreground text-sm">
-          Its usage and outcome history is kept, and `agn add {repo.path}` brings it back.
+          <HintText
+            hint={`Its usage and outcome history is kept, and \`agn add ${repo.path}\` brings it back.`}
+          />
         </p>
         {failure !== null && (
           <div role="alert" className="min-w-0">
             <p className="text-destructive text-sm">{failure.message}</p>
             {failure.hint !== null && (
-              <p className="mt-1 text-muted-foreground text-xs">{failure.hint}</p>
+              <p className="mt-1 text-muted-foreground text-xs">
+                <HintText hint={failure.hint} />
+              </p>
             )}
           </div>
         )}

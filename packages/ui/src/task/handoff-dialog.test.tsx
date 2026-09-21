@@ -67,7 +67,7 @@ describe("HandoffDialog", () => {
     expect(document.body.textContent).toContain(
       "Hand off failed for Port the parser: codex is not installed",
     );
-    expect(document.body.textContent).toContain("Run `agn doctor`.");
+    expect(document.body.textContent).toContain("Run agn doctor.");
     expect(button("Run").disabled).toBe(false);
     unmount();
   });
