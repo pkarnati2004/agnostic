@@ -13,6 +13,8 @@ which turns one hook payload into `running`, `waiting`, or nothing at all.
   (`.claude/settings.local.json` plus a `.git/info/exclude` entry); every other member installs per
   user. Kimi keeps its hooks in a marked block in `config.toml`; Codex adds a marked trust block in
   its `config.toml` beside `hooks.json`.
+- `hooks-dir/` is the family that merges every file in one directory: Grok and Copilot each read
+  `agn.json` there, which agn owns and writes whole.
 - `harness-hooks.ts` is the table: a new harness is one member file and two rows.
 
 It is not: HTTP, the ledger, or status policy beyond the two statuses a hook can mean. Deciding

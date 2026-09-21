@@ -207,7 +207,7 @@ describe("the harness table", () => {
     expect(harnessDefinition("cursor-agent").sessionCapture).toBeNull();
   });
 
-  it("gives the four full harnesses a probe and nobody else one", () => {
+  it("gives the four full harnesses and Grok a probe, and nobody else one", () => {
     expect(harnessDefinition("claude-code").modelSource?.args).toEqual([
       "-p",
       "--input-format",
@@ -220,10 +220,11 @@ describe("the harness table", () => {
     expect(harnessDefinition("pi").modelSource?.args).toEqual(["--list-models"]);
     expect(harnessDefinition("opencode").modelSource?.args).toEqual(["models"]);
     expect(harnessDefinition("claude-code").modelSource?.stdin).toContain("list_models");
-    for (const id of ["codex", "pi", "opencode"] as HarnessId[]) {
+    for (const id of ["codex", "pi", "opencode", "grok"] as HarnessId[]) {
       expect(harnessDefinition(id).modelSource?.stdin).toBeNull();
     }
-    expect(harnesses.filter((def) => def.modelSource !== null).map((def) => def.id)).toEqual(FULL);
+    const probed = harnesses.filter((def) => def.modelSource !== null);
+    expect(probed.map((def) => def.id)).toEqual([...FULL, "grok"]);
   });
 
   it("leaves tier 2 with launch and attach only", () => {

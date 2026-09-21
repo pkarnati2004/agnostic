@@ -1,0 +1,6 @@
+{
+  "session_id": "01996f2c-6a4b-7b31-9f2e-2c1a7d4e88aa",
+  "cwd": "/tmp/workspace",
+  "tool_name": "shell",
+  "tool_input": { "command": "rm -rf build" }
+}
