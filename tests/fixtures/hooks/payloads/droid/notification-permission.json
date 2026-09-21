@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "Notification",
+  "session_id": "droid-session-1",
+  "cwd": "/repo",
+  "message": "Droid needs your permission to use Execute"
+}

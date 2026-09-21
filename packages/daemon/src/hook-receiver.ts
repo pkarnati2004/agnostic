@@ -25,6 +25,8 @@ export async function receiveHook(
   harness: string,
   taskHeader: string,
   payload: unknown,
+  /** The event name for a harness that names its hooks in the config and not in the payload. */
+  eventHint?: string,
 ): Promise<HookResponse> {
   const id = HarnessIdSchema.safeParse(harness);
   const parser = id.success ? hookParser(id.data) : null;
@@ -34,7 +36,7 @@ export async function receiveHook(
       hint: "Run `agn doctor` to see which harnesses report status.",
     });
   }
-  const parsed = parser.parse(payload);
+  const parsed = parser.parse(payload, eventHint);
   const task = await resolveTask(ctx, id.data, taskHeader, parsed);
   // Any hook at all proves the harness came up, whatever the event is and whoever sends it first.
   ctx.resumeWatch.hookSeen(task.id);

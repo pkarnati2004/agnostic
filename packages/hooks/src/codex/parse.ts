@@ -13,7 +13,7 @@ const QUESTION_TOOL = "request_user_input";
 
 export const codexParser: HookEventParser = {
   harness: "codex",
-  parse: (payload) => parseHookEvent(payload, statusOf),
+  parse: (payload, eventHint) => parseHookEvent(payload, statusOf, { eventHint }),
 };
 
 function statusOf(event: HookPayload): HookStatus | null {

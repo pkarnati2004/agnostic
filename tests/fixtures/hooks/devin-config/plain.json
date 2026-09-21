@@ -1,0 +1,4 @@
+{
+  "model": "devin-1",
+  "read_config_from": { "claude": true }
+}

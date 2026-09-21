@@ -1,0 +1,9 @@
+{
+  "hook_event_name": "PreToolUse",
+  "session_id": "devin-session-1",
+  "cwd": "/repo",
+  "tool_name": "Shell",
+  "tool_input": {
+    "command": "pnpm test"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "PostCompaction",
+  "session_id": "devin-session-1",
+  "cwd": "/repo",
+  "summary": "trimmed"
+}

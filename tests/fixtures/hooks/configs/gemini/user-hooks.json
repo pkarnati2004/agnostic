@@ -1,0 +1,10 @@
+{
+  "theme": "GitHub",
+  "hooks": {
+    "AfterAgent": [
+      {
+        "hooks": [{ "type": "command", "command": "echo user-after-agent", "timeout": 5000 }]
+      }
+    ]
+  }
+}

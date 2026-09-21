@@ -4,19 +4,21 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { agnosticPaths, run } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { hookCommand } from "../hook-script.js";
 import { claudeCodeInstaller } from "./install.js";
 
 const FIXTURES = fileURLToPath(new URL("../../../../tests/fixtures/hooks/", import.meta.url));
-const COMMAND = "sh '/home/u/.agnostic/hooks/post.sh' claude-code";
 
 let repoPath = "";
 let home = "";
 
+const paths = () => agnosticPaths(join(home, ".agnostic"));
+const command = () => hookCommand(paths(), "claude-code");
 const input = () => ({
   repoPath,
   home,
-  command: COMMAND,
-  paths: agnosticPaths(join(home, ".agnostic")),
+  command: command(),
+  paths: paths(),
   env: {},
 });
 const settings = () => join(repoPath, ".claude", "settings.local.json");
@@ -78,7 +80,7 @@ describe("the Claude Code hook installer", () => {
     expect(config.permissions).toEqual({ allow: ["Bash(git status:*)"] });
     expect(config.hooks?.Stop?.map((group) => group.hooks[0]?.command)).toEqual([
       "say done",
-      COMMAND,
+      command(),
     ]);
   });
 

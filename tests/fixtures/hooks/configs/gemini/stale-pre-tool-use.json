@@ -1,0 +1,8 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      { "hooks": [{ "type": "command", "command": "echo user-authored" }] },
+      { "hooks": [{ "type": "command", "command": "<agn-hook-command>", "timeout": 5000 }] }
+    ]
+  }
+}

@@ -83,6 +83,14 @@ export function parseOpenCodeModelList(output: string): string[] {
   );
 }
 
+/**
+ * Cursor prints `<id> - <label>` per line, and marks the model in use with a trailing `(default)`
+ * or `(current)` on the label. A line without the separator is a heading or a note, not a model.
+ */
+export function parseCursorModelList(output: string): string[] {
+  return unique(lines(output).map((line) => /^(\S+)\s+-\s+\S/.exec(line.trim())?.[1] ?? null));
+}
+
 /** Pi prints a table whose first two columns are the provider and the model of `provider/model`. */
 export function parsePiModelList(output: string): string[] {
   return unique(

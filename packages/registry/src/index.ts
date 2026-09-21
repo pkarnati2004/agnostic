@@ -34,6 +34,7 @@ export {
 export {
   parseClaudeModelList,
   parseCodexModelList,
+  parseCursorModelList,
   parseOpenCodeModelList,
   parsePiModelList,
 } from "./model-list-parsers.js";

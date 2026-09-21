@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [{ "command": "<agn-hook-command>; printf '%s\\n' '{\"continue\":true}'" }],
+    "stop": [{ "command": "<agn-hook-command>; printf '%s\\n' '{}'" }],
+    "postToolUse": [{ "command": "<agn-hook-command>; printf '%s\\n' '{}'" }],
+    "afterAgentResponse": [{ "command": "<agn-hook-command>; printf '%s\\n' '{}'" }]
+  }
+}

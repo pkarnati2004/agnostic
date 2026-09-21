@@ -1,0 +1,9 @@
+{
+  "hook_event_name": "stop",
+  "conversation_id": "cursor-conversation-1",
+  "workspace_roots": [
+    "/repo",
+    "/repo/packages/ui"
+  ],
+  "status": "completed"
+}

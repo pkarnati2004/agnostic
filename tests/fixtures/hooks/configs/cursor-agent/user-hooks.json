@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "hooks": {
+    "preToolUse": [{ "command": "./scripts/audit.sh" }]
+  }
+}

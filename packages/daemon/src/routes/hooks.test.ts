@@ -59,6 +59,18 @@ describe("POST /repos/:id/hooks", () => {
     expect(installs.map((result) => result.harness).sort()).toEqual(["claude-code", "codex"]);
   });
 
+  it("writes Kimi's hooks into the config under the home the daemon was given", async () => {
+    const { installs } = (await (
+      await install({ harness: "kimi" })
+    ).json()) as HooksInstallResponse;
+    expect(installs).toHaveLength(1);
+    expect(installs[0]?.file).toBe(join(daemon.home, ".kimi-code", "config.toml"));
+    const config = await readFile(installs[0]?.file ?? "", "utf8");
+    expect(config).toContain("[[hooks]]");
+    expect(config).toContain(join(daemon.paths.hooks, "post.sh"));
+    expect(config).not.toContain("Bearer");
+  });
+
   it("refuses a harness that has no installer", async () => {
     const response = await install({ harness: "other:mytool" });
     expect(response.status).toBe(404);

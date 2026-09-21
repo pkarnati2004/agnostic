@@ -27,6 +27,8 @@ const EVENTS: ManagedEvent[] = [
 
 const DEFAULT_TIMEOUT_SECONDS = 600;
 
+const TIMEOUT_SECONDS = 5;
+
 const VERIFY = "if Codex reports the agn hook as untrusted, run /hooks in Codex and approve it";
 
 export const codexInstaller: HookInstaller = {
@@ -35,7 +37,11 @@ export const codexInstaller: HookInstaller = {
   async install(input: HookInstallInput): Promise<HookInstallResult> {
     const file = hooksFile(input.home);
     const hooksChanged = await updateHooksJson(file, (config) =>
-      withManagedHooks(config, EVENTS, input.command),
+      withManagedHooks(config, EVENTS, () => input.command, {
+        layout: "claude",
+        timeout: TIMEOUT_SECONDS,
+        marker: scriptMarker(input.command),
+      }),
     );
     const tables = trustTables(await readHooksJson(file), await realpath(file), input.command);
     const trustChanged = await updateTrust(input.home, tables);
@@ -52,12 +58,21 @@ export const codexInstaller: HookInstaller = {
   async uninstall(input: HookInstallInput): Promise<HookInstallResult> {
     const file = hooksFile(input.home);
     const removed = await updateHooksJson(file, (config) =>
-      withoutManagedHooks(config, input.command),
+      withoutManagedHooks(config, scriptMarker(input.command)),
     );
     const trustChanged = await updateTrust(input.home, []);
     return { harness: "codex", file, changed: removed || trustChanged, verify: null };
   },
 };
+
+/**
+ * Codex hashes the exact command it is asked to trust, so the command agn was handed is the one it
+ * writes, hashes and sweeps - not one rebuilt from paths, as the settings-json family does.
+ */
+function scriptMarker(command: string): string {
+  const end = command.lastIndexOf("'");
+  return end === -1 ? command : command.slice(0, end + 1);
+}
 
 function hooksFile(home: string): string {
   return join(home, ".codex", "hooks.json");
@@ -75,7 +90,7 @@ function trustTables(config: HooksJson, file: string, command: string): TrustTab
   const tables: TrustTable[] = [];
   for (const [event, groups] of Object.entries(config.hooks ?? {})) {
     groups.forEach((group, groupIndex) => {
-      group.hooks.forEach((entry, handlerIndex) => {
+      (group.hooks ?? []).forEach((entry, handlerIndex) => {
         if (entry.command !== command) {
           return;
         }

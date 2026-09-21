@@ -1,0 +1,5 @@
+{
+  "hook_event_name": "PostToolUse",
+  "cwd": "/repo",
+  "tool_name": "shell_command"
+}

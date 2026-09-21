@@ -1,0 +1,8 @@
+{
+  "hook_event_name": "PreToolUse",
+  "cwd": "/repo",
+  "tool_name": "shell_command",
+  "tool_input": {
+    "command": "pwd"
+  }
+}

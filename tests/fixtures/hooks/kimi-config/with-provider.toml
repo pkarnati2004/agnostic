@@ -1,0 +1,6 @@
+[provider]
+name = "moonshot"
+base_url = "https://api.moonshot.ai/v1"
+
+[ui]
+theme = "dark"

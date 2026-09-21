@@ -351,6 +351,13 @@ agx doctor | grep -q "^tools: gh"
 agx hooks install --repo "$WORK/runrepo" | grep -q "^installed claude-code hooks"
 test -f "$WORK/runrepo/.claude/settings.local.json"
 ! grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$WORK/runrepo/.claude/settings.local.json"
+# Every harness but Claude Code keeps its hooks per user: one file under HOME, never in the repo.
+agx hooks install --repo "$WORK/runrepo" --harness gemini > "$WORK/gemini-hooks.txt" 2>&1
+grep -q "^installed gemini hooks: $USAGE_HOME/.gemini/settings.json" "$WORK/gemini-hooks.txt"
+grep -q "verify: Gemini has no permission hook" "$WORK/gemini-hooks.txt"
+test -f "$USAGE_HOME/.gemini/settings.json"
+# No config agn wrote under the user's home carries the token: the script reads it at run time.
+! grep -rqF "$(cat "$AGNOSTIC_HOME/auth-token")" "$USAGE_HOME"
 # `ask` is the fake agent's "my turn is over": it fires a Stop hook through the installed command.
 PATH="$SMOKE_PATH" tmux -L agn send-keys -t "agn-$TASK" ask Enter
 WAITED=0

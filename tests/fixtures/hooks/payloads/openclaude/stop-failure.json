@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "StopFailure",
+  "session_id": "openclaude-session-1",
+  "cwd": "/repo",
+  "error": "model overloaded"
+}

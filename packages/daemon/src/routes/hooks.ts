@@ -32,6 +32,7 @@ export function hookRoutes(ctx: DaemonContext): Hono {
         c.req.param("harness"),
         c.req.header("x-agn-task-id") ?? "",
         hookPayload(text),
+        c.req.header("x-agn-hook-event"),
       );
       return c.json(body);
     })
