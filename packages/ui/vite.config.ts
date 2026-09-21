@@ -30,11 +30,21 @@ export default defineConfig(() => {
   return {
     base: "/ui/",
     plugins: [react(), tailwindcss()],
+    // The terminal emulator is a third of the bundle and nothing but a task tab draws with it,
+    // so it is a file of its own: the rest of the page no longer waits on it, and a release that
+    // leaves xterm alone leaves its chunk cached.
+    build: { rollupOptions: { output: { manualChunks: xtermChunk } } },
     // 127.0.0.1 rather than Vite's default localhost, which binds ::1 only: the URL agn
     // prints and the origin the daemon accepts are both written with the IPv4 address.
     server: { host: "127.0.0.1", port: DEV_PORT, strictPort: true, proxy: daemonProxy(target) },
   };
 });
+
+/** Undefined leaves the module where the bundler would have put it; only xterm is moved.
+ * Exported for vite.config.test.ts. */
+export function xtermChunk(id: string): string | undefined {
+  return id.includes("@xterm/") ? "xterm" : undefined;
+}
 
 /** `DAEMON_PORT` first, then the running daemon's own file, then the port agn binds by default. */
 function daemonPort(): number {

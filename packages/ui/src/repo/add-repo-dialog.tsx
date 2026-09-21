@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/dialog";
+import { HintText } from "../hint-text";
 import {
   type AddRepoForm,
   type AddResult,
@@ -81,7 +82,9 @@ export function AddRepoDialog(props: AddRepoDialogProps) {
           <div role="alert" className="min-w-0">
             <p className="text-destructive text-sm">{add.failure.message}</p>
             {add.failure.hint !== null && (
-              <p className="mt-1 text-muted-foreground text-xs">{add.failure.hint}</p>
+              <p className="mt-1 text-muted-foreground text-xs">
+                <HintText hint={add.failure.hint} />
+              </p>
             )}
           </div>
         )}

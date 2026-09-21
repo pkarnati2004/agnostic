@@ -122,6 +122,11 @@ export const RecommendRequestSchema = z.strictObject({
   intent: TaskIntentSchema.optional(),
   /** Overrides `subscriptions_only` in preferences.yaml for this call only. */
   subscriptionsOnly: z.boolean().optional(),
+  /**
+   * Answers without recording a `recommendation.made` event. The workspace asks again on every
+   * pause in the typing, and those repeats are not decisions anyone made.
+   */
+  dryRun: z.boolean().optional(),
 });
 export type RecommendRequest = z.infer<typeof RecommendRequestSchema>;
 

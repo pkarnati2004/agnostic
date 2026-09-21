@@ -1,6 +1,5 @@
-import type { Repo } from "@agnostic/core";
+import { isDirectory, type Repo } from "@agnostic/core";
 import { DaemonError } from "./error.js";
-import { isDirectory } from "./is-directory.js";
 
 /**
  * ADR 032: a close is refused while a task is live, so nothing may start a new session in a closed

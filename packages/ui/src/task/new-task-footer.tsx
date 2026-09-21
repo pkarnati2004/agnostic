@@ -1,6 +1,7 @@
 import type { ApiError } from "../api/error";
 import { Button } from "../components/button";
 import { DialogClose, DialogFooter } from "../components/dialog";
+import { HintText } from "../hint-text";
 import type { SpecWriter } from "./use-spec-writer";
 
 type NewTaskFooterProps = {
@@ -59,7 +60,11 @@ function Failure({ error }: { error: ApiError | null }) {
   return (
     <div>
       <p className="text-destructive text-sm">{error.message}</p>
-      {error.hint !== null && <p className="mt-1 text-muted-foreground text-xs">{error.hint}</p>}
+      {error.hint !== null && (
+        <p className="mt-1 text-muted-foreground text-xs">
+          <HintText hint={error.hint} />
+        </p>
+      )}
     </div>
   );
 }

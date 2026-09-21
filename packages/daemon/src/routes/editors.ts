@@ -1,8 +1,8 @@
-import { stat } from "node:fs/promises";
 import {
   type Editor,
   type EditorId,
   type EditorsResponse,
+  isDirectory,
   OpenTaskQuerySchema,
   type OpenTaskResponse,
   type Task,
@@ -93,12 +93,5 @@ async function openDir(ctx: DaemonContext, task: Task): Promise<string> {
           ? "The directory this task ran in is gone; start a new task in the repo."
           : `Run \`agn run "<prompt>" --base ${task.id}\` to continue from its branch.`,
     },
-  );
-}
-
-async function isDirectory(path: string): Promise<boolean> {
-  return stat(path).then(
-    (stats) => stats.isDirectory(),
-    () => false,
   );
 }

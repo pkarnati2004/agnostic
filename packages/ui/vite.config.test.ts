@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daemonProxy } from "./vite.config.js";
+import { daemonProxy, xtermChunk } from "./vite.config.js";
 
 describe("daemonProxy", () => {
   const target = "http://127.0.0.1:53199";
@@ -33,5 +33,17 @@ describe("daemonProxy", () => {
       "/doctor",
     ]);
     expect(entries["/ui"]).toBeUndefined();
+  });
+});
+
+describe("xtermChunk", () => {
+  it("puts the terminal emulator and its addon in one chunk of their own", () => {
+    expect(xtermChunk("/repo/node_modules/@xterm/xterm/lib/xterm.mjs")).toBe("xterm");
+    expect(xtermChunk("/repo/node_modules/@xterm/addon-fit/lib/addon-fit.mjs")).toBe("xterm");
+  });
+
+  it("leaves every other module where the bundler put it", () => {
+    expect(xtermChunk("/repo/packages/ui/src/app.tsx")).toBeUndefined();
+    expect(xtermChunk("/repo/node_modules/react-dom/client.js")).toBeUndefined();
   });
 });

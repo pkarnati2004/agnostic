@@ -1,3 +1,4 @@
+import { HintText } from "../hint-text";
 import { recommendationLines } from "./recommendation-lines";
 import type { RecommendationState } from "./use-recommendation";
 
@@ -16,7 +17,9 @@ function Body({ state }: { state: RecommendationState }) {
       <div>
         <p className="text-destructive">{state.error.message}</p>
         {state.error.hint !== null && (
-          <p className="mt-1 text-muted-foreground text-xs">{state.error.hint}</p>
+          <p className="mt-1 text-muted-foreground text-xs">
+            <HintText hint={state.error.hint} />
+          </p>
         )}
       </div>
     );

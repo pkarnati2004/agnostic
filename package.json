@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -b && pnpm --filter @agnostic/ui build",
+    "build": "tsc -b && chmod +x packages/cli/dist/main.js && pnpm --filter @agnostic/ui build",
     "test": "vitest run",
     "lint": "biome check . && tsc -b && pnpm --filter @agnostic/ui typecheck && knip && tsx scripts/check-file-size.ts",
     "smoke": "bash scripts/smoke.sh",

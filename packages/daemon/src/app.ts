@@ -78,6 +78,8 @@ export type DaemonDeps = {
   catalogCheck: boolean;
   /** Owned by the caller: its exit watcher and its tmux clients outlive any one request. */
   executor: ExecutorProvider;
+  /** Asked by `agn doctor`: whether the running tmux server predates the settings agn writes now. */
+  tmuxConfigStale: () => Promise<boolean>;
   /** The base environment every harness is launched with: the daemon's own, scrubbed. */
   env: Record<string, string>;
   /** The user's home, where the harnesses keep their auth files. */

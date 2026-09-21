@@ -34,6 +34,12 @@ pnpm vitest run --project sync
 echo "smoke: cli unit tests"
 pnpm vitest run --project cli
 
+echo "smoke: the built CLI entry is executable"
+# `npm link` runs packages/cli/dist/main.js itself, and tsc writes it without the bit, so the
+# build sets it: without this `agn` is "permission denied" for anyone who installs the package.
+pnpm build > /dev/null
+test -x packages/cli/dist/main.js
+
 echo "smoke: workspace page unit tests"
 pnpm vitest run --project ui
 

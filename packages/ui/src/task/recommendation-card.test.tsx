@@ -64,7 +64,7 @@ describe("RecommendationCard", () => {
     });
     const { container, unmount } = card({ status: "error", recommendation: null, error });
     expect(container.textContent).toContain("no profile is eligible");
-    expect(container.textContent).toContain("Run `agn doctor`.");
+    expect(container.textContent).toContain("Run agn doctor.");
     unmount();
   });
 

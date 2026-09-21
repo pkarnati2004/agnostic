@@ -53,6 +53,11 @@ function report(ctx: CliContext, response: DoctorResponse): void {
   }
   ctx.io.out(`profiles: ${response.profiles.length} available (agn profiles)`);
   ctx.io.out(`PATH: ${response.pathVar}`);
+  if (response.tmuxConfigStale) {
+    ctx.io.out(
+      "tmux server predates the current config; stop every task or run tmux -L agn kill-server",
+    );
+  }
 }
 
 /** agn never guesses a plan: on a terminal it asks, and in a pipe it says how to tell it. */

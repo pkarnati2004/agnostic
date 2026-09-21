@@ -1,14 +1,13 @@
 import { mkdirSync } from "node:fs";
 import { readdir } from "node:fs/promises";
-import {
-  type AgnosticPaths,
-  type AttachInfo,
-  type ExecutorProvider,
-  type SessionHandle,
-  type SessionState,
-  scrubEnv,
-  type TerminalSize,
-  type TerminalStream,
+import type {
+  AgnosticPaths,
+  AttachInfo,
+  ExecutorProvider,
+  SessionHandle,
+  SessionState,
+  TerminalSize,
+  TerminalStream,
 } from "@agnostic/core";
 import { detectHarnesses } from "./detect.js";
 import { ExecutorError } from "./error.js";
@@ -19,7 +18,14 @@ import { processProbe, readProcessTable } from "./process-table.js";
 import { createEventFanout } from "./session-events.js";
 import { stopSession } from "./stop.js";
 import { openTerminal } from "./terminal.js";
-import { createTmuxClient, hasSession, paneDead, type TmuxClient } from "./tmux-client.js";
+import {
+  AGN_SOCKET,
+  createTmuxClient,
+  hasSession,
+  paneDead,
+  type TmuxClient,
+  tmuxClientEnv,
+} from "./tmux-client.js";
 import { ensureTmuxConfig } from "./tmux-config.js";
 import { cleanWorktree, prepareWorktree } from "./worktree.js";
 
@@ -32,10 +38,10 @@ export type TmuxExecutorOptions = {
 };
 
 export async function createTmuxExecutor(opts: TmuxExecutorOptions): Promise<ExecutorProvider> {
-  const env = opts.env ?? clientEnv();
+  const env = opts.env ?? tmuxClientEnv();
   // The config names a terminal the machine's terminfo has to know, so writing it asks first.
   const configFile = await ensureTmuxConfig(opts.paths);
-  const client = createTmuxClient({ socketName: opts.socketName ?? "agn", env, configFile });
+  const client = createTmuxClient({ socketName: opts.socketName ?? AGN_SOCKET, env, configFile });
   const defaultServer = createTmuxClient({ socketName: null, env, configFile: null });
   mkdirSync(opts.paths.sessions, { recursive: true });
 
@@ -122,10 +128,4 @@ function exitOnItsWay(handle: SessionHandle): SessionState {
 async function hasExitFile(sessionsDir: string, session: string): Promise<boolean> {
   const entries = await readdir(sessionsDir).catch(() => [] as string[]);
   return entries.some((entry) => isExitFileFor(entry, session));
-}
-
-/** TMUX and TMUX_PANE would point a client at the server agn itself was started from. */
-function clientEnv(): Record<string, string> {
-  const { TMUX: _tmux, TMUX_PANE: _pane, ...rest } = scrubEnv(process.env);
-  return rest;
 }

@@ -1,5 +1,4 @@
-import { stat } from "node:fs/promises";
-import { ProcessError, run, type Task } from "@agnostic/core";
+import { isDirectory, ProcessError, run, type Task } from "@agnostic/core";
 import { DaemonError } from "./error.js";
 
 const GIT_TIMEOUT_MS = 30_000;
@@ -180,11 +179,4 @@ function lines(stdout: string | null): string[] {
 
 function first(stdout: string | null): string | null {
   return lines(stdout)[0] ?? null;
-}
-
-async function isDirectory(path: string): Promise<boolean> {
-  return stat(path).then(
-    (stats) => stats.isDirectory(),
-    () => false,
-  );
 }

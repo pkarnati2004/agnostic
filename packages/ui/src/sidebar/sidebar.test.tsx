@@ -174,7 +174,7 @@ describe("managing repos from the sidebar", () => {
     expect(page.container.textContent).toContain(
       "Close failed for petal: repo petal has a task that is still running",
     );
-    expect(page.container.textContent).toContain("Run `agn stop task1` first.");
+    expect(page.container.textContent).toContain("Run agn stop task1 first.");
     page.unmount();
   });
 

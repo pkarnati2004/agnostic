@@ -43,8 +43,12 @@ describe("recommendRequest", () => {
 
   it("sends the trimmed prompt and no intent when the rules decide", () => {
     const request = recommendRequest(FORM);
-    expect(request).toEqual({ repoId: "r1", prompt: "add a retry budget" });
+    expect(request).toEqual({ repoId: "r1", prompt: "add a retry budget", dryRun: true });
     expect(RecommendRequestSchema.safeParse(request).success).toBe(true);
+  });
+
+  it("asks as a dry run, so a pause in the typing records nothing", () => {
+    expect(recommendRequest(FORM)?.dryRun).toBe(true);
   });
 
   it("sends the intent the user chose", () => {

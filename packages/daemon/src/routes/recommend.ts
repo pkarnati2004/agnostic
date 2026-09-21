@@ -8,7 +8,8 @@ import { resolveRepoId } from "../resolve-id.js";
 
 /**
  * The pick for a prompt, with nothing started. The event is recorded here too, so that a user who
- * asks and then changes their mind leaves the same trail as one who runs straight away.
+ * asks and then changes their mind leaves the same trail as one who runs straight away. `dryRun`
+ * is for a caller that asks as the user types: it answers without leaving that trail.
  */
 export function recommendRoutes(ctx: DaemonContext): Hono {
   return new Hono().post("/recommend", async (c) => {
@@ -16,19 +17,21 @@ export function recommendRoutes(ctx: DaemonContext): Hono {
     if (!parsed.success) {
       throw requestInvalid(parsed.error);
     }
-    const { repoId, prompt, intent, subscriptionsOnly } = parsed.data;
+    const { repoId, prompt, intent, subscriptionsOnly, dryRun } = parsed.data;
     const repo = resolveRepoId(ctx.ledger, repoId);
     const input = await buildRecommendInput(ctx, repo, prompt, {
       ...(intent === undefined ? {} : { intent }),
       ...(subscriptionsOnly === undefined ? {} : { subscriptionsOnly }),
     });
     const recommendation = recommend(input);
-    ctx.ledger.events.append({
-      ts: new Date().toISOString(),
-      repoId: repo.id,
-      kind: "recommendation.made",
-      payload: { recommendation, chosenProfileId: recommendation.recommended.profileId },
-    });
+    if (dryRun !== true) {
+      ctx.ledger.events.append({
+        ts: new Date().toISOString(),
+        repoId: repo.id,
+        kind: "recommendation.made",
+        payload: { recommendation, chosenProfileId: recommendation.recommended.profileId },
+      });
+    }
     const body: RecommendResponse = { recommendation };
     return c.json(body);
   });

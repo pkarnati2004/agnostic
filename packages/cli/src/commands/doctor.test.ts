@@ -36,8 +36,10 @@ function run(
   harnesses: HarnessReport[],
   profiles: Profile[] = [PROFILE],
   tools: ToolReport[] = [],
+  tmuxConfigStale = false,
 ) {
   const response: DoctorResponse = {
+    tmuxConfigStale,
     harnesses,
     profiles,
     tools,
@@ -130,6 +132,20 @@ describe("agn doctor", () => {
     ]);
     await done();
     expect(cli.out).toContain("tools: gh not installed");
+  });
+
+  it("warns when agn's tmux server started before the settings agn writes now", async () => {
+    const { cli, done } = run([report({})], undefined, [], true);
+    await done();
+    expect(cli.out).toContain(
+      "tmux server predates the current config; stop every task or run tmux -L agn kill-server",
+    );
+  });
+
+  it("says nothing about tmux when the running server is on the current settings", async () => {
+    const { cli, done } = run([report({})]);
+    await done();
+    expect(cli.out.some((line) => line.includes("tmux"))).toBe(false);
   });
 
   it("prints the response verbatim with --json", async () => {

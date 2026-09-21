@@ -1,4 +1,5 @@
 import {
+  isDirectory,
   RunTaskRequestSchema,
   type Task,
   TaskListQuerySchema,
@@ -9,7 +10,6 @@ import {
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { requestInvalid } from "../error.js";
-import { isDirectory } from "../is-directory.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
 import { startTask } from "../start-task.js";
 import { taskActionRoutes } from "./task-actions.js";

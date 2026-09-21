@@ -1,5 +1,6 @@
 import type { ApiError } from "./api/error";
 import { Button } from "./components/button";
+import { HintText } from "./hint-text";
 
 /** One line under the task header, in the daemon's own words: what failed, then what to do. */
 export function Notice({ error, onDismiss }: { error: ApiError | null; onDismiss: () => void }) {
@@ -13,7 +14,11 @@ export function Notice({ error, onDismiss }: { error: ApiError | null; onDismiss
     >
       <div className="min-w-0">
         <p className="text-destructive text-sm">{error.message}</p>
-        {error.hint !== null && <p className="mt-1 text-muted-foreground text-xs">{error.hint}</p>}
+        {error.hint !== null && (
+          <p className="mt-1 text-muted-foreground text-xs">
+            <HintText hint={error.hint} />
+          </p>
+        )}
       </div>
       <Button variant="ghost" size="sm" onClick={onDismiss}>
         Dismiss

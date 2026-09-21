@@ -18,6 +18,7 @@ async function fixtureDist(): Promise<string> {
   await mkdir(join(dir, "assets"), { recursive: true });
   await writeFile(join(dir, "index.html"), PAGE, "utf8");
   await writeFile(join(dir, "assets", "app-abc123.js"), ASSET, "utf8");
+  await writeFile(join(dir, "assets", "xterm-def456.js"), ASSET, "utf8");
   return dir;
 }
 
@@ -63,6 +64,12 @@ describe("GET /ui", () => {
     expect(response.headers.get("content-type")).toBe("text/javascript; charset=utf-8");
     expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
     expect(await response.text()).toBe(ASSET);
+  });
+
+  it("serves every hashed chunk the build split out the same way", async () => {
+    const response = await daemon.app.request("/ui/assets/xterm-def456.js");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
   });
 
   it("answers HEAD with the headers and no body", async () => {

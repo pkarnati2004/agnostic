@@ -47,6 +47,13 @@ describe("ensureTmuxConfig", () => {
     expect(agnosticPaths(home).tmuxConf).toBe(join(home, "tmux.conf"));
   });
 
+  it("records a marker for the settings, so doctor can spot a server that predates them", async () => {
+    await shimInfocmp(0);
+    const marker = /^set -g @agn-config (\S+)$/m.exec(await writtenConfig())?.[1];
+    expect(marker).toMatch(/^[0-9a-f]{12}$/);
+    expect(tmuxConfig("screen-256color")).not.toContain(marker);
+  });
+
   it("falls back to screen-256color when terminfo has no tmux-256color entry", async () => {
     await shimInfocmp(1);
     expect(await writtenConfig()).toBe(tmuxConfig("screen-256color"));
