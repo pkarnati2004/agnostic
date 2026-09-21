@@ -1,7 +1,10 @@
 // Ported from agent-deck's internal/tmux package (MIT © Ashesh Goplani): the single-argv-factory
 // rule, `-u` on every client, `|`-joined format fields, the version floor and the paste transport.
-import { ProcessError, type RunResult, run } from "@agnostic/core";
+import { ProcessError, type RunResult, run, scrubEnv } from "@agnostic/core";
 import { ExecutorError } from "./error.js";
+
+/** agn's own socket, so `tmux kill-server` on the user's default server never ends a task. */
+export const AGN_SOCKET = "agn";
 
 const READ_TIMEOUT_MS = 3_000;
 const MUTATION_TIMEOUT_MS = 5_000;
@@ -22,6 +25,12 @@ export type TmuxClient = {
   socket: string | null;
   run(args: string[], opts?: TmuxRunOptions): Promise<RunResult>;
 };
+
+/** TMUX and TMUX_PANE would point a client at the server agn itself was started from. */
+export function tmuxClientEnv(): Record<string, string> {
+  const { TMUX: _tmux, TMUX_PANE: _pane, ...rest } = scrubEnv(process.env);
+  return rest;
+}
 
 export function createTmuxClient(opts: {
   socketName: string | null;

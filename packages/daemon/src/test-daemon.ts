@@ -11,7 +11,7 @@ import {
   type RegisterRepoResponse,
   type Repo,
 } from "@agnostic/core";
-import { createTmuxExecutor } from "@agnostic/executor-tmux";
+import { createTmuxExecutor, tmuxConfigStale } from "@agnostic/executor-tmux";
 import { type Ledger, openLedger } from "@agnostic/ledger";
 import type { LocalServer } from "@agnostic/registry";
 import { type ServerType, serve } from "@hono/node-server";
@@ -199,6 +199,11 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     paths,
     feed,
     executor,
+    // Never the default socket: a test that has no tmux of its own has no server to report on.
+    tmuxConfigStale: () =>
+      launch === null
+        ? Promise.resolve(false)
+        : tmuxConfigStale({ paths, socketName: launch.socketName, env: launch.env }),
     verdicts,
     home: userHome,
     catalog: createCatalogStore({

@@ -29,6 +29,7 @@ function response(harnesses: HarnessReport[], plans: DoctorResponse["plans"] = {
     detectedAt: "2026-09-12T10:00:00.000Z",
     pathVar: "/opt/bin",
     plans,
+    tmuxConfigStale: false,
     planOptions: [
       { vendor: "claude", id: "pro", displayName: "Pro" },
       { vendor: "claude", id: "max20", displayName: "Max 20x" },

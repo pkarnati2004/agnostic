@@ -8,7 +8,7 @@ import type { LocalServer } from "@agnostic/registry";
  * to build the harness's provider overrides, and detecting them again per run would be a second
  * round of loopback calls for an answer that is already here.
  */
-export type Detection = Omit<DoctorResponse, "plans" | "planOptions"> & {
+export type Detection = Omit<DoctorResponse, "plans" | "planOptions" | "tmuxConfigStale"> & {
   servers: LocalServer[];
 };
 

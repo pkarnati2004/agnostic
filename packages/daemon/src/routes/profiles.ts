@@ -37,6 +37,7 @@ export function profileRoutes(ctx: DaemonContext): Hono {
         ...detection,
         plans,
         planOptions: planOptions(ctx.catalog.current().catalog.plans),
+        tmuxConfigStale: await ctx.tmuxConfigStale(),
       };
       return c.json(body);
     });

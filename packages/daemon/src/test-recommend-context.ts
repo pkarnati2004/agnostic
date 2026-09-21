@@ -58,6 +58,7 @@ export async function recommendContext(
     startedAt: new Date().toISOString(),
     port: () => 0,
     detect: () => Promise.resolve(detection),
+    tmuxConfigStale: () => Promise.resolve(false),
     detectEditors: () => Promise.resolve([]),
     catalog: fixtureCatalogStore(catalog),
     catalogSource: {

@@ -60,4 +60,9 @@ export type DoctorResponse = {
   plans: Plans;
   /** Every plan the catalog knows, for the prompt and the picker; agn offers nothing else. */
   planOptions: PlanOption[];
+  /**
+   * True when a tmux server of agn's has been running since before the current settings were
+   * written, so its panes still run on the old ones. False when no server is running.
+   */
+  tmuxConfigStale: boolean;
 };

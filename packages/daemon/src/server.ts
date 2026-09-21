@@ -12,7 +12,7 @@ import {
   type ExecutorProvider,
   scrubEnv,
 } from "@agnostic/core";
-import { createTmuxExecutor } from "@agnostic/executor-tmux";
+import { createTmuxExecutor, tmuxConfigStale } from "@agnostic/executor-tmux";
 import { writeHookScript } from "@agnostic/hooks";
 import { type Ledger, openLedger } from "@agnostic/ledger";
 import { type ServerType, serve } from "@hono/node-server";
@@ -84,6 +84,7 @@ export async function runDaemon(
     version,
     startedAt,
     executor,
+    tmuxConfigStale: () => tmuxConfigStale({ paths }),
     env,
     home,
     catalog,
