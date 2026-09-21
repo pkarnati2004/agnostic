@@ -3,6 +3,7 @@ import type { RepoListRow, Task } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../api/error";
 import type { TaskNotice } from "../store/task-notices";
+import { selectModifier } from "../terminal/select-modifier";
 import { render } from "../test/render";
 import { PROFILE } from "./new-task-dialog-fixture";
 import { TaskHeader } from "./task-header";
@@ -124,6 +125,22 @@ describe("TaskHeader and a closed repo", () => {
       />,
     );
     expect(container.textContent).toContain("petal");
+    unmount();
+  });
+});
+
+describe("TaskHeader terminal hint", () => {
+  it("says how to scroll and select while the task has a terminal to attach to", () => {
+    const { container, unmount } = header(task("task1", "Port the parser"), null);
+    expect(container.textContent).toContain("Wheel scrolls");
+    expect(container.textContent).toContain(`${selectModifier()}+drag selects`);
+    unmount();
+  });
+
+  it("says nothing for a queued task, which has no terminal yet", () => {
+    const queued: Task = { ...task("task1", "Port the parser"), status: "queued" };
+    const { container, unmount } = header(queued, null);
+    expect(container.textContent).not.toContain("Wheel scrolls");
     unmount();
   });
 });
