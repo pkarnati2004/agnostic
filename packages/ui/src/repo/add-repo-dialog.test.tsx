@@ -142,7 +142,7 @@ describe("AddRepoDialog", () => {
     });
     expect(onReopen).toHaveBeenCalledWith("r1");
     expect(document.body.textContent).toContain("repo petal has a task that is still running");
-    expect(document.body.textContent).toContain("Run `agn stop task1` first.");
+    expect(document.body.textContent).toContain("Run agn stop task1 first.");
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(button("Add").disabled).toBe(false);
     unmount();

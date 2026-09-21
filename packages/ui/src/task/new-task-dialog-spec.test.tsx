@@ -110,7 +110,7 @@ describe("NewTaskDialog Write spec", () => {
     await writeSpec();
 
     expect(document.body.textContent).toContain("claude-code exited with code 3");
-    expect(document.body.textContent).toContain("Write the spec yourself, or run `claude -p`");
+    expect(document.body.textContent).toContain("Write the spec yourself, or run claude -p");
     const spec = document.getElementById("new-task-spec") as HTMLTextAreaElement;
     expect(spec.value).toBe("");
     expect(runButton().disabled).toBe(false);

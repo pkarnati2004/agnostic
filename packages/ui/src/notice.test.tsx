@@ -15,7 +15,7 @@ describe("Notice", () => {
     const { container, unmount } = render(<Notice error={BOOTSTRAP} onDismiss={vi.fn()} />);
     expect(container.querySelector('[role="alert"]')).not.toBeNull();
     expect(container.textContent).toContain("the agn daemon is not answering on this page");
-    expect(container.textContent).toContain("Run `agn daemon start`.");
+    expect(container.textContent).toContain("Run agn daemon start.");
     unmount();
   });
 
