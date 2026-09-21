@@ -15,6 +15,7 @@ const REPO: RepoListRow = {
   addedAt: "2026-09-01T00:00:00.000Z",
   status: "active",
   testCommand: "pnpm test",
+  pathPresent: true,
 };
 
 const TASK: Task = {
@@ -142,6 +143,33 @@ describe("workspaceReducer", () => {
       event(20, "repo.updated", { repo: { ...REPO, status: "active" } }),
     );
     expect(opened.repos).toEqual([REPO]);
+  });
+
+  it("keeps a removed repo in state, with the status the event carried", () => {
+    // The row stays so a tab on its task can still name it; nothing in the sidebar draws it.
+    const state = apply(
+      loaded(),
+      event(19, "repo.updated", { repo: { ...REPO, status: "removed" } }),
+    );
+    expect(state.repos).toEqual([{ ...REPO, status: "removed" }]);
+  });
+
+  it("keeps what the list knew about the folder, and assumes a new repo's folder is there", () => {
+    const gone = workspaceReducer(EMPTY_WORKSPACE, {
+      type: "loaded",
+      repos: [{ ...REPO, pathPresent: false }],
+      tasks: [],
+      cursor: 12,
+    });
+    const closed = apply(
+      gone,
+      event(19, "repo.updated", { repo: { ...REPO, status: "archived" } }),
+    );
+    expect(closed.repos[0]).toMatchObject({ status: "archived", pathPresent: false });
+
+    const added: Repo = { ...REPO, id: "repo2", path: "/tmp/katha", name: "katha" };
+    const both = apply(closed, event(20, "repo.registered", { repo: added }));
+    expect(both.repos[1]).toMatchObject({ id: "repo2", pathPresent: true });
   });
 
   it("advances the cursor for a kind it draws nothing from", () => {

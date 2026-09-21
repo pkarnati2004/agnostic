@@ -20,6 +20,9 @@ const REPOS = ["petal", "katha"];
 // A repo the user closed: it keeps its history and draws the sidebar's Closed section (ADR 032).
 const CLOSED_REPO = "aster";
 
+// A repo whose folder is not on this machine: it draws the "Not found" marker and Remove (ADR 034).
+const MISSING_REPO = { name: "quill", path: join(tmpdir(), "agn-preview-quill-not-there") };
+
 const CLAUDE = "claude-code:sonnet-4.5:native";
 const CODEX = "codex:gpt-5-codex:native";
 
@@ -148,12 +151,13 @@ function insertRepo(
 
 /**
  * Every seeded task gets the worktree its row points at, except the done one in each repo: that is
- * the task a clean has been through, and it is what fills the sidebar's History section.
+ * the task a clean has been through, and it is what fills the sidebar's History section. The tasks
+ * of the missing repo get nothing, or making their worktrees would make its folder too.
  */
-async function seedWorktrees(ledger: Ledger): Promise<void> {
+async function seedWorktrees(ledger: Ledger, skip: ReadonlySet<string>): Promise<void> {
   const paths = ledger.tasks
     .list()
-    .filter((task) => task.status !== "done")
+    .filter((task) => task.status !== "done" && !skip.has(task.id))
     .map((task) => task.worktreePath)
     .filter((path) => path !== null);
   await Promise.all(paths.map((path) => mkdir(path, { recursive: true })));
@@ -166,6 +170,8 @@ async function previewRepo(name: string): Promise<{ name: string; path: string }
 async function main(): Promise<void> {
   const repos = await Promise.all(REPOS.map(previewRepo));
   const closed = await previewRepo(CLOSED_REPO);
+  // The missing repo's own tasks, so nothing below creates a worktree inside a folder that is gone.
+  let gone: string[] = [];
   // The build in this checkout, so the printed /ui address serves the same page the daemon does.
   const dist = resolveUiDist();
   const daemon = await createTestDaemon({
@@ -176,10 +182,11 @@ async function main(): Promise<void> {
     seed: (ledger) => {
       const ids = repos.map((repo, index) => seedRepo(ledger, repo.name, repo.path, index));
       insertRepo(ledger, closed.name, closed.path, repos.length, "archived");
+      gone = seedRepo(ledger, MISSING_REPO.name, MISSING_REPO.path, repos.length + 1);
       seedUsage(ledger, ids[0] ?? []);
     },
   });
-  await seedWorktrees(daemon.ledger);
+  await seedWorktrees(daemon.ledger, new Set(gone));
   // The ChatGPT plan nothing on this machine declares, so the codex cell is labelled like a real one.
   await mkdir(daemon.paths.home, { recursive: true });
   await writeFile(

@@ -20,6 +20,7 @@ const repos: RepoListRow[] = [
     addedAt: "2026-09-11T10:00:00.000Z",
     status: "active",
     testCommand: null,
+    pathPresent: true,
   },
   {
     id: "r9x4t8bcde",
@@ -29,6 +30,7 @@ const repos: RepoListRow[] = [
     addedAt: "2026-09-11T10:00:00.000Z",
     status: "archived",
     testCommand: null,
+    pathPresent: true,
   },
 ];
 

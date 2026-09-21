@@ -18,6 +18,7 @@ const PETAL: RepoListRow = {
   addedAt: "2026-09-01T00:00:00.000Z",
   status: "active",
   testCommand: null,
+  pathPresent: true,
 };
 
 const KATHA: RepoListRow = { ...PETAL, id: "r2", name: "katha", path: "/tmp/katha" };
@@ -62,6 +63,7 @@ type Handlers = {
   onAddRepo?: () => void;
   onCloseRepo?: (repoId: string) => Promise<void>;
   onReopenRepo?: (repoId: string) => Promise<void>;
+  onRemoveRepo?: (repoId: string) => void;
   repoNotices?: RepoNotices;
 };
 
@@ -79,6 +81,7 @@ function sidebar(state: WorkspaceState, handlers: Handlers = {}) {
         onAddRepo={handlers.onAddRepo ?? vi.fn()}
         onCloseRepo={handlers.onCloseRepo ?? (() => Promise.resolve())}
         onReopenRepo={handlers.onReopenRepo ?? (() => Promise.resolve())}
+        onRemoveRepo={handlers.onRemoveRepo ?? vi.fn()}
         repoNotices={handlers.repoNotices ?? {}}
         onToggle={vi.fn()}
       />
@@ -190,6 +193,32 @@ describe("managing repos from the sidebar", () => {
     expect(page.container.textContent).toContain("Its usage and outcome history is kept.");
     click(buttonSaying(page.container, "Reopen"));
     expect(onReopenRepo).toHaveBeenCalledWith("r1");
+    page.unmount();
+  });
+
+  it("marks a repo whose folder is gone and offers Remove on its heading only", () => {
+    const onRemoveRepo = vi.fn();
+    const state = loaded();
+    const missing = {
+      ...state,
+      repos: state.repos.map((repo) => (repo.id === "r1" ? { ...repo, pathPresent: false } : repo)),
+    };
+    const page = render(sidebar(missing, { onRemoveRepo }));
+    expect(page.container.textContent).toContain("Not found: /tmp/petal");
+    expect(labelled(page.container, "Close petal")).toBeDefined();
+    expect(labelled(page.container, "Close katha")).toBeDefined();
+    // katha's folder is there, so its heading keeps the one action it had.
+    expect(page.container.querySelector('button[aria-label="Remove katha"]')).toBeNull();
+
+    click(labelled(page.container, "Remove petal"));
+    expect(onRemoveRepo).toHaveBeenCalledWith("r1");
+    page.unmount();
+  });
+
+  it("says nothing about a folder that is where agn left it", () => {
+    const page = render(sidebar(loaded()));
+    expect(page.container.textContent).not.toContain("Not found:");
+    expect(page.container.querySelector('button[aria-label="Remove petal"]')).toBeNull();
     page.unmount();
   });
 

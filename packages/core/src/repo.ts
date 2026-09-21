@@ -4,8 +4,11 @@ import { IdSchema } from "./id.js";
 export const RepoKindSchema = z.enum(["git", "folder"]);
 export type RepoKind = z.infer<typeof RepoKindSchema>;
 
-/** Archived means closed: the repo keeps its history and leaves the default listings (ADR 032). */
-export const RepoStatusSchema = z.enum(["active", "archived"]);
+/**
+ * Archived means closed: the repo keeps its history and leaves the default listings (ADR 032).
+ * Removed means hidden for good, with every row kept, until `agn add` of its path (ADR 034).
+ */
+export const RepoStatusSchema = z.enum(["active", "archived", "removed"]);
 export type RepoStatus = z.infer<typeof RepoStatusSchema>;
 
 // testCommand, lintCommand and defaultProfileId live in .ag/agnostic.yaml, never in the ledger.

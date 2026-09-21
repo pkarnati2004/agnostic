@@ -137,10 +137,16 @@ function patchTask(
   return { ...state, tasks: { ...state.tasks, [id]: patch(task) } };
 }
 
-/** The event carries the repo row, not the `.ag/agnostic.yaml` field that travels with it. */
+/** The event carries the repo row, not the fields the list derives: those come from the list. */
 function upsertRepo(repos: RepoListRow[], repo: Repo): RepoListRow[] {
   const known = repos.find((row) => row.id === repo.id);
-  const updated: RepoListRow = { ...repo, testCommand: known?.testCommand ?? null };
+  // A row that arrives by event was just registered, reactivated or changed status, and `agn add`
+  // stat'd its path, so an unknown row's directory is there.
+  const updated: RepoListRow = {
+    ...repo,
+    testCommand: known?.testCommand ?? null,
+    pathPresent: known?.pathPresent ?? true,
+  };
   return known === undefined
     ? [...repos, updated]
     : repos.map((row) => (row.id === repo.id ? updated : row));

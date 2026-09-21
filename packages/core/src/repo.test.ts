@@ -41,4 +41,9 @@ describe("RepoSchema", () => {
   it("parses an archived repo", () => {
     expect(RepoSchema.parse({ ...repo, status: "archived" }).status).toBe("archived");
   });
+
+  it("parses a removed repo, and rejects a status the schema does not name", () => {
+    expect(RepoSchema.parse({ ...repo, status: "removed" }).status).toBe("removed");
+    expect(RepoSchema.safeParse({ ...repo, status: "gone" }).success).toBe(false);
+  });
 });

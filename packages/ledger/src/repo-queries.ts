@@ -1,5 +1,5 @@
 import { type Repo, type RepoKind, RepoSchema, type RepoStatus } from "@agnostic/core";
-import type { Database } from "better-sqlite3";
+import type { Database, Statement } from "better-sqlite3";
 import { LedgerError, rowInvalid, writeFailure } from "./error.js";
 import type { EventQueries } from "./event-queries.js";
 
@@ -14,7 +14,8 @@ type RepoRow = {
 
 export type RepoPatch = { path?: string; kind?: RepoKind; name?: string; status?: RepoStatus };
 
-export type RepoFilter = { status?: RepoStatus };
+/** One status or several: `agn repos --all` asks for active and archived in the same query. */
+export type RepoFilter = { status?: RepoStatus | readonly RepoStatus[] };
 
 export type RepoQueries = {
   insert(repo: Repo): Repo;
@@ -30,7 +31,20 @@ export function createRepoQueries(db: Database, events: EventQueries): RepoQueri
   const selectById = db.prepare("SELECT * FROM repos WHERE id = ?");
   const selectByPath = db.prepare("SELECT * FROM repos WHERE path = ?");
   const selectAll = db.prepare("SELECT * FROM repos ORDER BY added_at, id");
-  const selectByStatus = db.prepare("SELECT * FROM repos WHERE status = ? ORDER BY added_at, id");
+  // One statement per number of statuses asked for: the length shapes the SQL, the values never do.
+  const byStatusCount = new Map<number, Statement>();
+  const selectByStatus = (count: number): Statement => {
+    const cached = byStatusCount.get(count);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const placeholders = Array.from({ length: count }, () => "?").join(", ");
+    const statement = db.prepare(
+      `SELECT * FROM repos WHERE status IN (${placeholders}) ORDER BY added_at, id`,
+    );
+    byStatusCount.set(count, statement);
+    return statement;
+  };
 
   const get = (id: string): Repo | null => {
     const row = selectById.get(id) as RepoRow | undefined;
@@ -46,11 +60,16 @@ export function createRepoQueries(db: Database, events: EventQueries): RepoQueri
       return row === undefined ? null : toRepo(row);
     },
     list(filter: RepoFilter = {}): Repo[] {
+      const statuses = filter.status === undefined ? null : asList(filter.status);
       const rows =
-        filter.status === undefined ? selectAll.all() : selectByStatus.all(filter.status);
+        statuses === null ? selectAll.all() : selectByStatus(statuses.length).all(...statuses);
       return (rows as RepoRow[]).map(toRepo);
     },
   };
+}
+
+function asList(status: RepoStatus | readonly RepoStatus[]): RepoStatus[] {
+  return typeof status === "string" ? [status] : [...status];
 }
 
 function insertRepo(db: Database, events: EventQueries): RepoQueries["insert"] {

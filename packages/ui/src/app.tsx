@@ -7,18 +7,21 @@ import { cn } from "./class-names";
 import { TooltipProvider } from "./components/tooltip";
 import { Notice } from "./notice";
 import { AddRepoDialog } from "./repo/add-repo-dialog";
+import { RemoveRepoDialog } from "./repo/remove-repo-dialog";
 import { useRepoActions } from "./repo/use-repo-actions";
 import { activeRepos, defaultRepoId, groupTasks } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
 import type { NoticeHost, TaskNotices } from "./store/task-notices";
 import { useProfiles } from "./store/use-profiles";
 import { useWorkspace, type Workspace as WorkspaceStore } from "./store/use-workspace";
+import type { WorkspaceState } from "./store/workspace-state";
 import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
 import { TabStrip } from "./tabs/tab-strip";
 import {
   readTabs,
   type TabsAction,
   type TabsState,
+  tabbableTasks,
   tabsReducer,
   writeTabs,
 } from "./tabs/tabs-state";
@@ -53,6 +56,8 @@ function Workspace({ token }: { token: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [newTask, setNewTask] = useState(false);
   const [addRepo, setAddRepo] = useState(false);
+  // The repo the Remove confirmation is about, or null while it is closed.
+  const [removing, setRemoving] = useState<RepoListRow | null>(null);
   const repoActions = useRepoActions(client);
   const [dismissed, setDismissed] = useState<ApiError | null>(null);
   const [tabs, dispatchTabs] = useReducer(tabsReducer, undefined, () => readTabs(localStorage));
@@ -67,7 +72,7 @@ function Workspace({ token }: { token: string }) {
     activeId,
     activeId === null ? 0 : (state.usageStamp.byTask[activeId] ?? 0),
   );
-  useTabsStorage(tabs, state.loaded, state.tasks, dispatchTabs);
+  useTabsStorage(tabs, state, dispatchTabs);
 
   const { handoff, started } = useTaskActions(act, put, dispatchTabs);
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
@@ -94,6 +99,9 @@ function Workspace({ token }: { token: string }) {
         onAddRepo={() => setAddRepo(true)}
         onCloseRepo={repoActions.close}
         onReopenRepo={repoActions.reopen}
+        onRemoveRepo={(repoId) =>
+          setRemoving(state.repos.find((repo) => repo.id === repoId) ?? null)
+        }
         repoNotices={repoActions.notices}
         onToggle={() => setCollapsed(!collapsed)}
       />
@@ -102,6 +110,11 @@ function Workspace({ token }: { token: string }) {
         onOpenChange={setAddRepo}
         client={client}
         onReopen={repoActions.reopen}
+      />
+      <RemoveRepoDialog
+        repo={removing}
+        onOpenChange={(open) => setRemoving(open ? removing : null)}
+        onRemove={repoActions.remove}
       />
       <NewTaskDialog
         open={newTask}
@@ -212,21 +225,25 @@ function Centre(props: CentreProps) {
   );
 }
 
-/** The tab list outlives the page; a task that has been cleaned takes its tab with it. */
+/**
+ * The tab list outlives the page; a task that has been cleaned takes its tab with it, and so does a
+ * repo that has been removed. The repo comes from state, not from the click, so `agn repo remove`
+ * run elsewhere closes the tabs on its `repo.updated` event too.
+ */
 function useTabsStorage(
   tabs: TabsState,
-  loaded: boolean,
-  tasks: Record<string, Task>,
+  state: Pick<WorkspaceState, "loaded" | "repos" | "tasks">,
   dispatchTabs: (action: TabsAction) => void,
 ): void {
+  const { loaded, repos, tasks } = state;
   useEffect(() => {
     writeTabs(localStorage, tabs);
   }, [tabs]);
   useEffect(() => {
     if (loaded) {
-      dispatchTabs({ type: "prune", existing: new Set(Object.keys(tasks)) });
+      dispatchTabs({ type: "prune", keep: tabbableTasks(repos, tasks) });
     }
-  }, [loaded, tasks, dispatchTabs]);
+  }, [loaded, repos, tasks, dispatchTabs]);
 }
 
 /** The two actions that open a tab: a handoff opens the child, a run opens what it started. */

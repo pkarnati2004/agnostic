@@ -208,6 +208,18 @@ describe("the verdict of a closed task", () => {
     expect(await daemon.readLog()).toContain("verdict not checked");
   });
 
+  it("freezes a not-merged task's verdict once its repo is removed", async () => {
+    const repo = await repoWithConfig(daemon);
+    const { task, outcome } = await closedTask(daemon, repo, 10);
+    expect(outcome.reverted).toBe(false);
+    daemon.ledger.repos.update(repo.id, { status: "removed" });
+
+    await daemon.verdicts.runOnce();
+
+    expect(daemon.ledger.outcomes.get(task.id)).toEqual(outcome);
+    expect(await daemon.readLog()).toContain("verdict not checked");
+  });
+
   it("says nothing about a folder task, which has no branch to judge", async () => {
     const repo: Repo = await repoWithConfig(daemon, { git: false });
     const { task, outcome } = await closedTask(daemon, repo, 0);

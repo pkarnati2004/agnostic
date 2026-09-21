@@ -9,12 +9,14 @@ export type RepoActions = {
   notices: RepoNotices;
   close(repoId: string): Promise<void>;
   reopen(repoId: string): Promise<void>;
+  /** The repo leaves every list for good; its rows, and so its history, stay (ADR 034). */
+  remove(repoId: string): Promise<void>;
 };
 
 /**
- * Close and reopen, with the answer kept per repo. Neither call writes to the store: the
- * `repo.updated` it makes arrives through the feed, which is how the sidebar moves the row. Both
- * reject after recording the failure, so a caller with somewhere better to show it still can.
+ * Close, reopen and remove, with the answer kept per repo. No call writes to the store: the
+ * `repo.updated` it makes arrives through the feed, which is how the sidebar moves the row. Each
+ * rejects after recording the failure, so a caller with somewhere better to show it still can.
  */
 export function useRepoActions(client: WorkspaceClient): RepoActions {
   const { notices, failed, cleared } = useNotices<Omit<RepoNotice, "at">>();
@@ -38,6 +40,10 @@ export function useRepoActions(client: WorkspaceClient): RepoActions {
     ),
     reopen: useCallback(
       (repoId: string) => act(repoId, "reopen", () => client.openRepo(repoId)),
+      [act, client],
+    ),
+    remove: useCallback(
+      (repoId: string) => act(repoId, "remove", () => client.removeRepo(repoId)),
       [act, client],
     ),
   };

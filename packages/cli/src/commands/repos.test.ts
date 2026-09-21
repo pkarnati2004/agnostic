@@ -12,6 +12,7 @@ function repo(id: string, name: string, kind: Repo["kind"]): RepoListRow {
     addedAt: "2026-09-11T10:00:00.000Z",
     status: "active",
     testCommand: null,
+    pathPresent: true,
   };
 }
 
@@ -62,6 +63,25 @@ describe("agn repos", () => {
     const { cli, done } = run([]);
     await done();
     expect(cli.out).toEqual(["no repos yet; run agn add <path>"]);
+  });
+
+  it("marks a repo whose folder is gone, without touching a present one's path", async () => {
+    const missing: RepoListRow = { ...repo("r1", "api", "git"), pathPresent: false };
+    const { cli, done } = run([missing, repo("r2", "web", "git")]);
+    await done();
+    expect(cli.out).toEqual([
+      "id  name  kind  path",
+      "r1  api   git   /work/api (missing)",
+      "r2  web   git   /work/web",
+    ]);
+  });
+
+  it("carries pathPresent through --json untouched", async () => {
+    const missing: RepoListRow = { ...repo("r1", "api", "git"), pathPresent: false };
+    const { cli, done } = run([missing]);
+    cli.ctx.json = true;
+    await done();
+    expect(JSON.parse(cli.out.join("\n"))).toEqual({ repos: [missing], cursor: 0 });
   });
 
   it("prints the response verbatim with --json, snapshot cursor and all", async () => {

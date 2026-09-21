@@ -57,4 +57,19 @@ describe("migrate", () => {
     );
     expect(appliedVersions(db)).toEqual([1]);
   });
+
+  it("turns foreign keys back on for the connection that ran a clean migration", () => {
+    const db = new Database(":memory:");
+    migrate(db, [first, second]);
+    expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
+  });
+
+  it("turns foreign keys back on even when a migration throws", () => {
+    const db = new Database(":memory:");
+    const bad: Migration = { version: 1, name: "bad", sql: "CREATE TABLE (" };
+    expect(() => migrate(db, [bad])).toThrowError(
+      expect.objectContaining({ code: "ledger-migration-failed" }),
+    );
+    expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
+  });
 });

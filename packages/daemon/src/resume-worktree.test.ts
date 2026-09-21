@@ -213,7 +213,7 @@ describe("a resume whose worktree was cleaned", () => {
     expect(body.error.code).toBe("worktree-occupied");
   });
 
-  it("says the path is gone for a folder task, which has no worktree to rebuild", async () => {
+  it("says the repo folder is gone for a folder task, which has no worktree to rebuild", async () => {
     const folder = await daemon.addRepo({
       git: false,
       defaultProfile: "claude-code:default:native",
@@ -227,9 +227,9 @@ describe("a resume whose worktree was cleaned", () => {
     await rm(folder.path, { recursive: true, force: true });
 
     const response = await post(`/tasks/${task.id}/resume`);
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
     expect(((await response.json()) as { error: { code: string } }).error.code).toBe(
-      "path-not-found",
+      "repo-missing",
     );
   });
 });

@@ -3,10 +3,11 @@ import { LedgerError } from "./error.js";
 import { initial } from "./migrations/001-initial.js";
 import { taskBaseCommit } from "./migrations/002-task-base-commit.js";
 import { repoStatus } from "./migrations/003-repo-status.js";
+import { repoStatusRemoved } from "./migrations/004-repo-status-removed.js";
 
 export type Migration = { version: number; name: string; sql: string };
 
-const migrations: readonly Migration[] = [initial, taskBaseCommit, repoStatus];
+const migrations: readonly Migration[] = [initial, taskBaseCommit, repoStatus, repoStatusRemoved];
 
 // migrate owns this table: it has to read the applied versions before any migration can run.
 const SCHEMA_VERSION = `CREATE TABLE IF NOT EXISTS schema_version (
@@ -27,12 +28,19 @@ export function migrate(db: Database, list: readonly Migration[] = migrations): 
   checkNotAhead(recorded, list);
 
   const applied: number[] = [];
-  for (const migration of list) {
-    if (recorded.has(migration.version)) {
-      continue;
+  // A migration that rebuilds a table drops it while another table still points at it, and
+  // `PRAGMA foreign_keys` is a no-op inside a transaction, so the switch sits around the run.
+  db.pragma("foreign_keys = OFF");
+  try {
+    for (const migration of list) {
+      if (recorded.has(migration.version)) {
+        continue;
+      }
+      apply(db, migration);
+      applied.push(migration.version);
     }
-    apply(db, migration);
-    applied.push(migration.version);
+  } finally {
+    db.pragma("foreign_keys = ON");
   }
   return applied;
 }
@@ -44,6 +52,7 @@ function apply(db: Database, migration: Migration): void {
   try {
     db.transaction(() => {
       db.exec(migration.sql);
+      checkForeignKeys(db);
       record.run(migration.version, migration.name, new Date().toISOString());
     })();
   } catch (cause) {
@@ -52,6 +61,14 @@ function apply(db: Database, migration: Migration): void {
       hint: "The database is unchanged. Report this with the error below.",
       cause,
     });
+  }
+}
+
+// Foreign keys are off while a migration runs, so the rows are checked before the commit instead.
+function checkForeignKeys(db: Database): void {
+  const broken = db.pragma("foreign_key_check") as { table?: string }[];
+  if (broken.length > 0) {
+    throw new Error(`${broken.length} row(s) in ${broken[0]?.table} point at a row that is gone`);
   }
 }
 

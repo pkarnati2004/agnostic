@@ -34,13 +34,20 @@ export async function registerRepo(
   }
   const existing = ledger.repos.getByPath(path);
   if (existing !== null) {
-    // Only the kind can have changed under a path we already know; the id and name stay.
-    return { repo: ledger.repos.update(existing.id, { kind }), created: false };
+    // Only the kind can have changed under a path we already know; the id and name stay. Adding a
+    // removed repo's path is how it comes back, with its tasks and its history (ADR 034); an
+    // archived one stays closed, because `agn repo open` is what shows it again (ADR 032).
+    const back = existing.status === "removed";
+    const patch = back ? { kind, status: "active" as const } : { kind };
+    return { repo: ledger.repos.update(existing.id, patch), created: back };
   }
   const declared = (await readRepoConfig(path))?.id ?? null;
   const claimed = declared === null ? null : ledger.repos.get(declared);
   if (claimed !== null && req.newId !== true) {
-    return { repo: await adoptOrRefuse(ledger, claimed, path, kind), created: false };
+    return {
+      repo: await adoptOrRefuse(ledger, claimed, path, kind),
+      created: claimed.status === "removed",
+    };
   }
   const id = declared !== null && req.newId !== true ? declared : newId();
   const addedAt = new Date().toISOString();
@@ -70,7 +77,8 @@ async function adoptOrRefuse(
       hint: "Use `agn add --new-id` to register a second clone.",
     });
   }
-  return ledger.repos.update(claimed.id, { path, kind, name: basename(path) });
+  const status = claimed.status === "removed" ? { status: "active" as const } : {};
+  return ledger.repos.update(claimed.id, { path, kind, name: basename(path), ...status });
 }
 
 /** realpath so a symlinked clone and its target are one row, not two. */

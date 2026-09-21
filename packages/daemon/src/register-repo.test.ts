@@ -144,6 +144,49 @@ describe("registerRepo", () => {
     expect(ledger.repos.list()).toHaveLength(1);
   });
 
+  it("reactivates a removed repo, created true, same id, back to active", async () => {
+    const path = await gitRepo("alpha");
+    const first = await registerRepo(ledger, paths, { path });
+    ledger.repos.update(first.repo.id, { status: "removed" });
+
+    const { repo, created } = await registerRepo(ledger, paths, { path });
+    expect(created).toBe(true);
+    expect(repo.id).toBe(first.repo.id);
+    expect(repo.status).toBe("active");
+    expect(ledger.events.after(0).map((event) => event.kind)).toEqual([
+      "repo.registered",
+      "repo.updated",
+      "repo.updated",
+    ]);
+  });
+
+  it("keeps an archived repo closed and created false, unlike a removed one", async () => {
+    const path = await gitRepo("alpha");
+    const first = await registerRepo(ledger, paths, { path });
+    ledger.repos.update(first.repo.id, { status: "archived" });
+
+    const { repo, created } = await registerRepo(ledger, paths, { path });
+    expect(created).toBe(false);
+    expect(repo.status).toBe("archived");
+  });
+
+  it("reactivates a removed repo whose clone moved to a new path", async () => {
+    const id = newId();
+    const first = await gitRepo("before-move");
+    await writeRepoConfig(first, defaultRepoConfig(id));
+    await registerRepo(ledger, paths, { path: first });
+    ledger.repos.update(id, { status: "removed" });
+    await rm(first, { recursive: true, force: true });
+
+    const moved = await gitRepo("after-move");
+    await writeRepoConfig(moved, defaultRepoConfig(id));
+    const { repo, created } = await registerRepo(ledger, paths, { path: moved });
+    expect(created).toBe(true);
+    expect(repo.id).toBe(id);
+    expect(repo.path).toBe(moved);
+    expect(repo.status).toBe("active");
+  });
+
   it("refuses a path inside agn's own worktrees", async () => {
     const inside = worktreePath(paths, newId(), newId());
     await mkdir(inside, { recursive: true });

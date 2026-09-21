@@ -14,7 +14,15 @@ function cli(response: { writes: SyncWrite[]; applied: boolean }, cwd = "/work/a
     client: {
       listRepos: () =>
         Promise.resolve({
-          repos: [{ ...REPO, addedAt: "", status: "active" as const, testCommand: null }],
+          repos: [
+            {
+              ...REPO,
+              addedAt: "",
+              status: "active" as const,
+              testCommand: null,
+              pathPresent: true,
+            },
+          ],
           cursor: 0,
         }),
       syncRepo: (repoId, body) => {

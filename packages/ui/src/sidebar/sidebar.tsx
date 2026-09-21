@@ -22,6 +22,8 @@ type SidebarProps = {
   /** Rejects when the daemon refused; by then the failure is already in `repoNotices`. */
   onCloseRepo: (repoId: string) => Promise<void>;
   onReopenRepo: (repoId: string) => Promise<void>;
+  /** Asks the page for the confirmation: the sidebar never removes a repo itself. */
+  onRemoveRepo: (repoId: string) => void;
   repoNotices: RepoNotices;
   onToggle: () => void;
 };
@@ -66,6 +68,7 @@ export function Sidebar(props: SidebarProps) {
             onToggle={(repoId) => setOpenHistory(toggled(openHistory, repoId))}
             onSelect={onSelect}
             onClose={props.onCloseRepo}
+            onRemove={props.onRemoveRepo}
           />
         ))}
         <ClosedSection
@@ -73,6 +76,7 @@ export function Sidebar(props: SidebarProps) {
           expanded={openClosed}
           onToggle={() => setOpenClosed(!openClosed)}
           onReopen={props.onReopenRepo}
+          onRemove={props.onRemoveRepo}
           notices={props.repoNotices}
         />
       </div>

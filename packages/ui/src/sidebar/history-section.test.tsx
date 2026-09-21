@@ -15,6 +15,7 @@ const REPO: RepoListRow = {
   addedAt: "2026-09-01T00:00:00.000Z",
   status: "active",
   testCommand: null,
+  pathPresent: true,
 };
 
 function task(id: string, status: TaskStatus): TaskListRow {
@@ -59,6 +60,7 @@ function sidebar(onSelect: (id: string) => void = vi.fn()) {
         onAddRepo={vi.fn()}
         onCloseRepo={() => Promise.resolve()}
         onReopenRepo={() => Promise.resolve()}
+        onRemoveRepo={vi.fn()}
         repoNotices={{}}
         onToggle={vi.fn()}
       />
@@ -141,6 +143,7 @@ describe("HistorySection", () => {
           onAddRepo={vi.fn()}
           onCloseRepo={() => Promise.resolve()}
           onReopenRepo={() => Promise.resolve()}
+          onRemoveRepo={vi.fn()}
           repoNotices={{}}
           selectedId={null}
           collapsed={false}
@@ -163,6 +166,7 @@ describe("HistorySection", () => {
           onAddRepo={vi.fn()}
           onCloseRepo={() => Promise.resolve()}
           onReopenRepo={() => Promise.resolve()}
+          onRemoveRepo={vi.fn()}
           repoNotices={{}}
           selectedId="old-two"
           collapsed={false}

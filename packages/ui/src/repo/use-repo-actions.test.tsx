@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import type { Repo } from "@agnostic/core";
 import { act } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceClient } from "../api/client";
 import { ApiError } from "../api/error";
 import { stubClient } from "../task/new-task-dialog-fixture";
@@ -81,6 +81,30 @@ describe("useRepoActions", () => {
         .catch(() => undefined);
     });
     expect(current().notices.r1).toMatchObject({ action: "reopen", error: NOT_FOUND });
+    unmount();
+  });
+
+  it("removes a repo with no notice recorded once the daemon agrees", async () => {
+    const removeRepo = vi.fn(() =>
+      Promise.resolve({ repo: { ...REPO, status: "removed" as const }, worktreesRemoved: 2 }),
+    );
+    const client = stubClient({ removeRepo });
+    const { current, unmount } = harness(client);
+    await act(async () => {
+      await current().remove("r1");
+    });
+    expect(removeRepo).toHaveBeenCalledWith("r1");
+    expect(current().notices).toEqual({});
+    unmount();
+  });
+
+  it("records a refused remove under the repo and rejects for the dialog to show", async () => {
+    const client = stubClient({ removeRepo: () => Promise.reject(BUSY) });
+    const { current, unmount } = harness(client);
+    await act(async () => {
+      await expect(current().remove("r1")).rejects.toBe(BUSY);
+    });
+    expect(current().notices.r1).toMatchObject({ action: "remove", error: BUSY });
     unmount();
   });
 

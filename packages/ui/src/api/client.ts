@@ -7,6 +7,7 @@ import type {
   RecommendResponse,
   RegisterRepoRequest,
   RegisterRepoResponse,
+  RemoveRepoResponse,
   RepoListResponse,
   RepoResponse,
   ResumeTaskResponse,
@@ -29,6 +30,8 @@ export type WorkspaceClient = {
   registerRepo(body: RegisterRepoRequest): Promise<RegisterRepoResponse>;
   closeRepo(id: string): Promise<RepoResponse>;
   openRepo(id: string): Promise<RepoResponse>;
+  /** Hides the repo for good and deletes the worktrees agn made for its tasks (ADR 034). */
+  removeRepo(id: string): Promise<RemoveRepoResponse>;
   listTasks(): Promise<TaskListResponse>;
   getTask(id: string): Promise<TaskResponse>;
   profiles(): Promise<ProfilesResponse>;
@@ -96,6 +99,7 @@ export function createClient(opts: {
     registerRepo: (body) => json<RegisterRepoResponse>("POST", "/repos", body),
     closeRepo: (id) => json<RepoResponse>("POST", `/repos/${encodeURIComponent(id)}/close`),
     openRepo: (id) => json<RepoResponse>("POST", `/repos/${encodeURIComponent(id)}/open`),
+    removeRepo: (id) => json<RemoveRepoResponse>("DELETE", `/repos/${encodeURIComponent(id)}`),
     listTasks: () => json<TaskListResponse>("GET", "/tasks"),
     getTask: (id) => json<TaskResponse>("GET", `/tasks/${encodeURIComponent(id)}`),
     profiles: () => json<ProfilesResponse>("GET", "/profiles"),

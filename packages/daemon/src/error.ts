@@ -38,6 +38,10 @@ const statusByCode: Record<string, number> = {
   "repo-busy": 409,
   // The mirror of that rule: nothing starts a task in a closed repo, because nothing would show it.
   "repo-closed": 409,
+  // The repo's own folder is not on disk, so there is nowhere to run (ADR 034).
+  "repo-missing": 409,
+  // The repo was removed: `agn add` of its path brings the row, and its history, back.
+  "repo-removed": 409,
   "task-active": 409,
   "session-not-running": 409,
   "session-not-attachable": 409,

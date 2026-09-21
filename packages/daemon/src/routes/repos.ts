@@ -1,6 +1,7 @@
 import {
   RegisterRepoRequestSchema,
   type RegisterRepoResponse,
+  type RemoveRepoResponse,
   type Repo,
   RepoListQuerySchema,
   type RepoListResponse,
@@ -10,8 +11,11 @@ import {
 } from "@agnostic/core";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
-import { DaemonError, requestInvalid } from "../error.js";
+import { requestInvalid } from "../error.js";
+import { isDirectory } from "../is-directory.js";
 import { registerRepo } from "../register-repo.js";
+import { removeRepo } from "../remove-repo.js";
+import { refuseWhileBusy } from "../repo-busy.js";
 import { resolveRepoId } from "../resolve-id.js";
 
 export function repoRoutes(ctx: DaemonContext): Hono {
@@ -21,7 +25,10 @@ export function repoRoutes(ctx: DaemonContext): Hono {
       if (!query.success) {
         throw requestInvalid(query.error);
       }
-      const filter = query.data.all ? {} : { status: "active" as const };
+      // A removed repo is in no list: `--all` means the closed ones too, not the hidden ones.
+      const filter = query.data.all
+        ? { status: ["active", "archived"] as const }
+        : { status: "active" as const };
       // One read transaction, cursor first (ADR 030); reading each repo's config is not part of it.
       const snapshot = ctx.ledger.transaction(() => {
         const cursor = ctx.ledger.events.latestId();
@@ -56,29 +63,23 @@ export function repoRoutes(ctx: DaemonContext): Hono {
       const repo = resolveRepoId(ctx.ledger, c.req.param("id"));
       const body: RepoResponse = { repo: ctx.ledger.repos.update(repo.id, { status: "active" }) };
       return c.json(body);
+    })
+    .delete("/repos/:id", async (c) => {
+      const repo = resolveRepoId(ctx.ledger, c.req.param("id"));
+      const body: RemoveRepoResponse = await removeRepo(ctx, repo);
+      return c.json(body);
     });
-}
-
-/** Closing hides a repo, so a live task in it would be hidden too: the user stops it first. */
-function refuseWhileBusy(ctx: DaemonContext, repo: Repo): void {
-  const busy = ctx.ledger.tasks.list({ repoId: repo.id, status: ["running", "waiting"] })[0];
-  if (busy === undefined) {
-    return;
-  }
-  throw new DaemonError(`repo ${repo.name} has a task that is still ${busy.status}`, {
-    code: "repo-busy",
-    hint: `Run \`agn stop ${busy.id}\` first.`,
-  });
 }
 
 /**
  * The CLI never opens a repo's files, so the test command travels with the repo it belongs to. A
- * repo whose config is missing, malformed or no longer on disk still lists, with no command.
+ * repo whose config is missing, malformed or no longer on disk still lists, with no command and
+ * with `pathPresent` false - one stat per row, outside the read transaction (ADR 034).
  */
 async function row(repo: Repo): Promise<RepoListRow> {
   const testCommand = await readRepoConfig(repo.path).then(
     (config) => config?.testCommand ?? null,
     () => null,
   );
-  return { ...repo, testCommand };
+  return { ...repo, testCommand, pathPresent: await isDirectory(repo.path) };
 }
