@@ -1,7 +1,7 @@
-import { realpath, stat } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import type { AgnosticPaths } from "@agnostic/core";
+import { type AgnosticPaths, isDirectory } from "@agnostic/core";
 import type { Command } from "commander";
 import type { CliContext } from "./context.js";
 import { CliError } from "./error.js";
@@ -108,13 +108,6 @@ function expand(cwd: string, flag: string): string {
   return flag.startsWith("~")
     ? resolve(homedir(), flag.slice(1).replace(/^\//, ""))
     : resolve(cwd, flag);
-}
-
-async function isDirectory(path: string): Promise<boolean> {
-  return stat(path).then(
-    (stats) => stats.isDirectory(),
-    () => false,
-  );
 }
 
 /** A path that does not exist yet is still worth comparing; it simply will not match a repo. */

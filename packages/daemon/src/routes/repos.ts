@@ -1,4 +1,5 @@
 import {
+  isDirectory,
   RegisterRepoRequestSchema,
   type RegisterRepoResponse,
   type RemoveRepoResponse,
@@ -12,7 +13,6 @@ import {
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { requestInvalid } from "../error.js";
-import { isDirectory } from "../is-directory.js";
 import { registerRepo } from "../register-repo.js";
 import { removeRepo } from "../remove-repo.js";
 import { refuseWhileBusy } from "../repo-busy.js";

@@ -12,6 +12,7 @@ export * from "./event.js";
 export * from "./executor.js";
 export * from "./handoff-note.js";
 export * from "./id.js";
+export { isDirectory } from "./is-directory.js";
 export * from "./launch-prompt.js";
 export * from "./outcome.js";
 export * from "./paths.js";

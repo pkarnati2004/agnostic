@@ -4,6 +4,7 @@ import {
   type CleanTaskResponse,
   HandoffTaskRequestSchema,
   type HandoffTaskResponse,
+  isDirectory,
   type Repo,
   type ResumeTaskResponse,
   type Task,
@@ -13,7 +14,6 @@ import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { DaemonError, requestInvalid } from "../error.js";
 import { handoffTask } from "../handoff-task.js";
-import { isDirectory } from "../is-directory.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
 import { resumeTask } from "../resume-task.js";
 import { attachableHandle } from "../task-session.js";

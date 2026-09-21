@@ -1,6 +1,5 @@
-import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { Editor } from "@agnostic/core";
+import { type Editor, isDirectory } from "@agnostic/core";
 import { findOnPath } from "./detect-binary.js";
 import { type EditorEntry, editorList } from "./editor-list.js";
 
@@ -67,12 +66,5 @@ function appDirsFor(opts: DetectEditorsOptions): string[] {
       // Where macOS keeps Terminal.app.
       "/System/Applications/Utilities",
     ]
-  );
-}
-
-async function isDirectory(path: string): Promise<boolean> {
-  return stat(path).then(
-    (stats) => stats.isDirectory(),
-    () => false,
   );
 }

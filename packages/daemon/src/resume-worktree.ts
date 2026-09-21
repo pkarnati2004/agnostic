@@ -1,5 +1,11 @@
-import { stat } from "node:fs/promises";
-import { type Prepared, type Repo, readRepoConfig, type Task, taskLogPath } from "@agnostic/core";
+import {
+  isDirectory,
+  type Prepared,
+  type Repo,
+  readRepoConfig,
+  type Task,
+  taskLogPath,
+} from "@agnostic/core";
 import type { DaemonContext } from "./app.js";
 import { branchExists } from "./branch-verdict.js";
 import { DaemonError } from "./error.js";
@@ -91,12 +97,5 @@ function branchGone(task: Task, branch: string): DaemonError {
       code: "worktree-cleaned",
       hint: 'Nothing is left to continue from; run `agn run "<prompt>"` to start over.',
     },
-  );
-}
-
-async function isDirectory(path: string): Promise<boolean> {
-  return stat(path).then(
-    (stats) => stats.isDirectory(),
-    () => false,
   );
 }

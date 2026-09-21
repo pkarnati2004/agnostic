@@ -1,6 +1,6 @@
-import { stat } from "node:fs/promises";
 import {
   type FileChanges,
+  isDirectory,
   ProcessError,
   type Repo,
   type RepoConfig,
@@ -63,11 +63,4 @@ async function git(cwd: string, args: string[]): Promise<string | null> {
     }
     throw cause;
   }
-}
-
-async function isDirectory(path: string): Promise<boolean> {
-  return stat(path).then(
-    (stats) => stats.isDirectory(),
-    () => false,
-  );
 }

@@ -1,6 +1,6 @@
-import { stat } from "node:fs/promises";
 import {
   type ExecutorProvider,
+  isDirectory,
   isProcessAlive,
   type Repo,
   type SessionEvent,
@@ -97,7 +97,7 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
     if (
       task.worktreePath === null ||
       repo.kind === "folder" ||
-      !(await isThere(task.worktreePath))
+      !(await isDirectory(task.worktreePath))
     ) {
       return;
     }
@@ -222,13 +222,6 @@ function statusFor(exitCode: number | null): TaskStatus {
     return "stopped";
   }
   return exitCode === 0 ? "done" : "failed";
-}
-
-function isThere(path: string): Promise<boolean> {
-  return stat(path).then(
-    (stats) => stats.isDirectory(),
-    () => false,
-  );
 }
 
 function reason(cause: unknown): string {

@@ -1,5 +1,5 @@
-import { stat } from "node:fs/promises";
 import {
+  isDirectory,
   type Outcome,
   type Repo,
   type RepoConfig,
@@ -151,13 +151,6 @@ function same(before: Outcome, after: Outcome): boolean {
     before.agentLines === after.agentLines &&
     before.humanChangedLines === after.humanChangedLines &&
     before.humanEditRatio === after.humanEditRatio
-  );
-}
-
-async function isDirectory(path: string): Promise<boolean> {
-  return stat(path).then(
-    (stats) => stats.isDirectory(),
-    () => false,
   );
 }
 
