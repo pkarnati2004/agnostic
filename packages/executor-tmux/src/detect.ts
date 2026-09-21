@@ -1,7 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { basename, sep } from "node:path";
 import type { DetectedHarness, ProcessMatcher } from "@agnostic/core";
-import { type ProcessRow, readCwds } from "./process-table.js";
+import { type ProcessRow, readCwds, readProcessArgs } from "./process-table.js";
 import type { TmuxClient } from "./tmux-client.js";
 
 /**
@@ -77,6 +77,16 @@ export function matchesName(name: string, processNames: string[]): boolean {
   return processNames.some((wanted) =>
     wanted.endsWith("-") ? name.startsWith(wanted) : name === wanted,
   );
+}
+
+/**
+ * Whether the pid is running one of the harness's programs now. The kernel recycles pids, so a
+ * pid agn recorded when it adopted a session can belong to somebody else's process later.
+ */
+export async function pidRunsHarness(pid: number, processNames: string[]): Promise<boolean> {
+  const args = await readProcessArgs(pid);
+  const name = args === null ? null : processName(args);
+  return name !== null && matchesName(name, processNames);
 }
 
 /** Every match is returned: the daemon asks the user which one to adopt. */

@@ -9,6 +9,7 @@ import {
   type TaskStatus,
 } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
+import { endProcess } from "./end-process.js";
 import type { Logger } from "./log.js";
 import { syncTaskNote } from "./task-note-sync.js";
 
@@ -138,8 +139,17 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
       // second transition is recorded.
       const stopped = await settle(task, "stopped", true);
       const handle = sessionHandle(task);
+      const session = task.session;
       if (handle !== null) {
         await executor.stop(handle);
+      } else if (session?.pid != null) {
+        // An adopted session has no pane of agn's to kill, so stop ends the recorded process.
+        const end = await endProcess(session.pid, session.harness);
+        if (end === "not-the-harness") {
+          log.warn("adopted process not signalled: its pid is running another program now", {
+            taskId: task.id,
+          });
+        }
       }
       close(stopped);
       return stopped;

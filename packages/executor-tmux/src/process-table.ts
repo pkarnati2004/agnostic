@@ -83,6 +83,15 @@ async function readProcCwds(pids: number[]): Promise<Map<number, string>> {
   return cwds;
 }
 
+/** One pid's command line, read the way `readProcessTable` reads every one of them. */
+export async function readProcessArgs(pid: number): Promise<string[] | null> {
+  const result = await run("ps", ["-p", String(pid), "-o", "args="], { timeoutMs: 5_000 }).catch(
+    () => null,
+  );
+  const line = result?.stdout.trim();
+  return line === undefined || line === "" ? null : line.split(/\s+/);
+}
+
 /** What `stop` needs to know about processes, so a test can hand it a table it controls. */
 export type ProcessProbe = {
   descendants(pid: number): Promise<number[]>;
