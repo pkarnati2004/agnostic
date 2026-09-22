@@ -42,7 +42,7 @@ export const opencodeParser: TranscriptParser = {
 async function parseOpenCodeDatabase(path: string): Promise<ParsedTranscript> {
   const db = new DatabaseConstructor(path, { readonly: true, fileMustExist: true });
   try {
-    // Belt and braces with `readonly`: this connection cannot write, not even a journal page.
+    // In addition to `readonly`: this connection cannot write, not even a journal page.
     db.pragma("query_only = ON");
     const rows = messageRows(db);
     if (rows.length === 0) {
