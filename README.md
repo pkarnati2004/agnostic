@@ -75,7 +75,8 @@ Any command starts the daemon if it is not already running, except `agn daemon s
 ## Supported agents
 
 Full support (status, usage, recommendations): **Claude Code, Codex, Pi, OpenCode.**
-Launch and attach: any CLI agent - Gemini CLI, Cursor Agent, Copilot CLI, Aider, Goose, Amp, Kimi CLI, Qwen Code, and more.
+Status hook, no token count: Gemini CLI, Cursor Agent, Kimi CLI, Factory Droid, Devin CLI, OpenClaude, Command Code (see [docs/setup.md](docs/setup.md)).
+Launch and attach: any other CLI agent - Copilot CLI, Aider, Goose, Amp, Qwen Code, and more.
 
 Model overrides (Kimi in Claude Code, a local model in Codex, anything via OpenRouter) go through each agent's own mechanism with your own keys. See [docs/models](docs/models.md).
 

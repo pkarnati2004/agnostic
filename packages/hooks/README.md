@@ -11,7 +11,8 @@ which turns one hook payload into `running`, `waiting`, or nothing at all.
 - `settings-json/` is the family that reads a Claude-shaped config: a member is one file holding
   its events, its layout and its status table. Claude Code installs per repo
   (`.claude/settings.local.json` plus a `.git/info/exclude` entry); every other member installs per
-  user. Codex and Kimi own a marked block in a TOML config instead of a JSON file.
+  user. Kimi keeps its hooks in a marked block in `config.toml`; Codex adds a marked trust block in
+  its `config.toml` beside `hooks.json`.
 - `harness-hooks.ts` is the table: a new harness is one member file and two rows.
 
 It is not: HTTP, the ledger, or status policy beyond the two statuses a hook can mean. Deciding
