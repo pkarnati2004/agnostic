@@ -15,6 +15,9 @@ which turns one hook payload into `running`, `waiting`, or nothing at all.
   its `config.toml` beside `hooks.json`.
 - `hooks-dir/` is the family that merges every file in one directory: Grok and Copilot each read
   `agn.json` there, which agn owns and writes whole.
+- Pi, OMP, OpenCode and Mimo Code read no hook config at all. For those, agn writes a whole file
+  the harness loads at start - an extension or a plugin - which posts to the daemon itself. Each
+  starts with agn's marker line, and a file of that name without it is the user's and is refused.
 - `harness-hooks.ts` is the table: a new harness is one member file and two rows.
 
 It is not: HTTP, the ledger, or status policy beyond the two statuses a hook can mean. Deciding

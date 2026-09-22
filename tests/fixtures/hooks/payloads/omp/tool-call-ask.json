@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "tool_call",
+  "tool_name": "ask",
+  "session_id": "omp-session",
+  "session_file": "/home/u/.omp/agent/sessions/omp-session.jsonl",
+  "cwd": "/work/repo"
+}

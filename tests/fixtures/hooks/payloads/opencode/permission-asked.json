@@ -1,0 +1,4 @@
+{
+  "hook_event_name": "PermissionRequest",
+  "sessionID": "ses_root"
+}

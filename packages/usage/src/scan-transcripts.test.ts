@@ -1,7 +1,18 @@
-import { chmod, cp, mkdir, mkdtemp, readdir, rm, utimes, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import DatabaseConstructor from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type ScanMemo, scanTranscripts, type TranscriptRoot } from "./scan-transcripts.js";
 
@@ -222,6 +233,34 @@ describe("scanTranscripts", () => {
 
       expect(again).toMatchObject({ parsedFiles: 0, turns: [] });
       expect(fresh.turns.map((turn) => turn.ref)).toEqual(expected);
+    });
+  });
+
+  describe("over a SQLite store", () => {
+    let dir = "";
+
+    beforeEach(async () => {
+      dir = join(home, "opencode");
+      await mkdir(dir, { recursive: true });
+      const db = new DatabaseConstructor(join(dir, "opencode.db"));
+      try {
+        db.exec(await readFile(join(FIXTURES, "opencode", "schema.sql"), "utf8"));
+        db.exec(await readFile(join(FIXTURES, "opencode", "rows.sql"), "utf8"));
+      } finally {
+        db.close();
+      }
+    });
+
+    it("rereads a database whose write-ahead log has moved on without it", async () => {
+      const roots: TranscriptRoot[] = [{ harness: "opencode", dir }];
+      const first = await scanTranscripts({ roots, memo, modifiedSince: null });
+      expect(first.parsedFiles).toBe(1);
+      expect((await scanTranscripts({ roots, memo, modifiedSince: null })).parsedFiles).toBe(0);
+
+      // The turns SQLite has not checkpointed yet live here, and the database file is untouched.
+      await writeFile(join(dir, "opencode.db-wal"), "not really a log", "utf8");
+
+      expect((await scanTranscripts({ roots, memo, modifiedSince: null })).parsedFiles).toBe(1);
     });
   });
 });

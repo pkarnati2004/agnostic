@@ -98,6 +98,21 @@ describe("attributeTurns", () => {
     expect(attributed.get(null)).toEqual([mine]);
   });
 
+  it("matches a Pi turn by the transcript path both the hook and the parser report", () => {
+    // Pi has no session id of its own: the file is the id, in the ledger and in the usage row.
+    const transcript = "/home/u/.pi/agent/sessions/2026-09-01T10-00-00_abc.jsonl";
+    const mine = turn({ harness: "pi", sessionId: transcript, cwd: "/work/worktree" });
+    const other = turn({ harness: "pi", sessionId: "/home/u/.pi/agent/sessions/other.jsonl" });
+
+    const attributed = attributeTurns(
+      [mine, other],
+      [owner({ harness: "pi", sessionId: transcript, cwd: "/somewhere/else" })],
+    );
+
+    expect(attributed.get("t3n9v2wxyz")).toEqual([mine]);
+    expect(attributed.get(null)).toEqual([other]);
+  });
+
   it("puts a turn that matches nothing under no task", () => {
     const mine = turn({ sessionId: "s-dddd", cwd: "/tmp/elsewhere" });
 

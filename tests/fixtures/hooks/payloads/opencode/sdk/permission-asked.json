@@ -1,0 +1,7 @@
+{
+  "type": "permission.asked",
+  "properties": {
+    "sessionID": "ses_root",
+    "id": "per_1"
+  }
+}

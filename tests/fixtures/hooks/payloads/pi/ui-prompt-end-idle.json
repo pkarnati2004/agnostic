@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "ui_prompt_end",
+  "is_idle": true,
+  "session_id": "pi-abc",
+  "session_file": "/home/u/.pi/agent/sessions/2026-09-01T10-00-00_abc.jsonl",
+  "cwd": "/work/repo"
+}

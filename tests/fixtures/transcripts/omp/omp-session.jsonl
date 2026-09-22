@@ -1,0 +1,4 @@
+{"type": "session", "version": 3, "id": "omp-session", "title": "OMP session title", "timestamp": "2026-05-01T10:08:30.000Z", "cwd": "/tmp/omp"}
+{"type": "model_change", "model": "gpt-5.4-mini", "timestamp": "2026-05-01T10:08:30.500Z"}
+{"type": "message", "timestamp": "2026-05-01T10:08:31.000Z", "message": {"role": "user", "content": [{"type": "text", "text": "OMP title"}]}}
+{"type": "message", "timestamp": "2026-05-01T10:08:32.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "OMP answer"}], "model": "gpt-5.4-mini", "usage": {"input": 10, "output": 5, "totalTokens": 160}}}

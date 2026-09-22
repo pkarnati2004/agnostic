@@ -7,6 +7,10 @@ import type { HookEventParser } from "./hook-event-parser.js";
 import type { HookInstaller } from "./hook-installer.js";
 import { copilotInstaller, copilotParser } from "./hooks-dir/copilot.js";
 import { grokInstaller, grokParser } from "./hooks-dir/grok.js";
+import { opencodeFamilyInstaller } from "./opencode/install.js";
+import { opencodeFamilyParser } from "./opencode/parse.js";
+import { piFamilyInstaller } from "./pi/install.js";
+import { piFamilyParser } from "./pi/parse.js";
 import { commandCodeInstaller, commandCodeParser } from "./settings-json/command-code.js";
 import { cursorAgentInstaller, cursorAgentParser } from "./settings-json/cursor-agent.js";
 import { devinInstaller, devinParser } from "./settings-json/devin.js";
@@ -31,6 +35,10 @@ const installers: Partial<Record<HarnessId, HookInstaller>> = {
   grok: grokInstaller,
   kimi: kimiInstaller,
   openclaude: openClaudeInstaller,
+  pi: piFamilyInstaller("pi"),
+  omp: piFamilyInstaller("omp"),
+  opencode: opencodeFamilyInstaller("opencode"),
+  "mimo-code": opencodeFamilyInstaller("mimo-code"),
 };
 
 const parsers: Partial<Record<HarnessId, HookEventParser>> = {
@@ -45,6 +53,10 @@ const parsers: Partial<Record<HarnessId, HookEventParser>> = {
   grok: grokParser,
   kimi: kimiParser,
   openclaude: openClaudeParser,
+  pi: piFamilyParser("pi"),
+  omp: piFamilyParser("omp"),
+  opencode: opencodeFamilyParser("opencode"),
+  "mimo-code": opencodeFamilyParser("mimo-code"),
 };
 
 export function hookInstaller(harness: HarnessId): HookInstaller | null {

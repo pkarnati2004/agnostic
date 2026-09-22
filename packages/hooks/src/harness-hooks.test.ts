@@ -13,13 +13,17 @@ describe("the harness hook table", () => {
     "gemini",
     "grok",
     "kimi",
+    "mimo-code",
+    "omp",
     "openclaude",
+    "opencode",
+    "pi",
   ] as const)("has an installer and a parser for %s", (harness) => {
     expect(hookInstaller(harness)?.harness).toBe(harness);
     expect(hookParser(harness)?.harness).toBe(harness);
   });
 
-  it.each(["opencode", "other:mytool"] as const)("has nothing for %s yet", (harness) => {
+  it.each(["other:mytool"] as const)("has nothing for %s yet", (harness) => {
     expect(hookInstaller(harness)).toBeNull();
     expect(hookParser(harness)).toBeNull();
   });

@@ -1,0 +1,8 @@
+{"type": "session", "version": 3, "id": "pi-abc", "title": "Pi session", "timestamp": "2026-09-01T10:00:00.000Z", "cwd": "/work/repo"}
+{"type": "model_change", "modelId": "anthropic/claude-fable-5-1", "timestamp": "2026-09-01T10:00:01.000Z"}
+{"type": "message", "timestamp": "2026-09-01T10:00:02.000Z", "message": {"role": "user", "content": [{"type": "text", "text": "do the thing"}]}}
+{"type": "message", "id": "msg_1", "timestamp": "2026-09-01T10:00:03.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}], "usage": {"input": 120, "output": 40, "cacheRead": 60, "cacheWrite": 10, "totalTokens": 230}}}
+{"type": "model_change", "modelId": "openai/gpt-5-4", "timestamp": "2026-09-01T10:00:04.000Z"}
+{"type": "message", "id": "msg_2", "timestamp": "2026-09-01T10:00:05.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "and again"}], "model": "anthropic/claude-fable-5-1", "usage": {"input": 10, "output": 5}}}
+{"type": "message", "id": "msg_3", "timestamp": "2026-09-01T10:00:06.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "no buckets"}], "usage": {"totalTokens": 99}}}
+{"type": "message", "id": "msg_4", "timestamp": "2026-09-01T10:00:07.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "after the switch"}], "usage": {"input": 30, "output": 12}}}

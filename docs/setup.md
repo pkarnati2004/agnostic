@@ -29,7 +29,8 @@ To put `agn` on your PATH instead, run `pnpm build`, then `npm link` inside `pac
 | **Codex CLI** | https://github.com/openai/codex - `npm i -g @openai/codex`, then `codex` and sign in with ChatGPT | Your ChatGPT plan |
 | **Pi** | https://pi.dev/docs/latest/quickstart - `npm i -g @earendil-works/pi-coding-agent`, then `/login` | API keys or subscription per Pi's docs |
 | **OpenCode** | https://opencode.ai/docs - `npm i -g opencode-ai`, then configure providers | API keys |
-| **Gemini CLI, Cursor Agent, Copilot CLI, Kimi CLI, Factory Droid, Devin CLI, Grok CLI, OMP, Mimo Code, OpenClaude, Command Code** | Each project's docs | Status only: agn installs a hook and shows the session, and counts no tokens |
+| **OMP** | The project's docs | API keys per OMP's docs; agn counts tokens from its session files |
+| **Gemini CLI, Cursor Agent, Copilot CLI, Kimi CLI, Factory Droid, Devin CLI, Grok CLI, Mimo Code, OpenClaude, Command Code** | Each project's docs | Status only: agn installs a hook and shows the session, and counts no tokens |
 | **Aider, Goose, Amp, Qwen Code, Kiro, Crush, …** | Each project's docs | Launch and attach only in agnostic |
 
 agn installs each agent's hook in the directory that agent reads by default, under your home.
@@ -60,6 +61,14 @@ Grok CLI and GitHub Copilot CLI each read every hook file in one directory, so a
 file of its own there: `~/.grok/hooks/agn.json` and `~/.copilot/hooks/agn.json`. Nothing else in
 those directories is read or changed. `agn hooks install` rewrites each file whole; delete the file
 to remove the hook.
+
+Pi, OMP, OpenCode and Mimo Code have no hook config file. Each loads code at start instead, so
+agn writes one file per agent: `~/.pi/agent/extensions/agn-status.ts`,
+`~/.omp/agent/extensions/agn-status.ts`, `~/.config/opencode/plugins/agn-status.js` and
+`~/.config/mimocode/plugins/agn-status.js`. Every one of them starts with the line
+`// agn-managed: rewritten by agn hooks install; edits here are replaced`: agn replaces a file
+only while that line is there, and refuses a file of the same name that you wrote. Delete the file
+to remove the hook, and restart the agent - extensions and plugins load when it starts.
 
 Codex gates hooks on a trust hash it keeps in `~/.codex/config.toml`. agn writes that hash itself, in a block marked with `# >>> agn hooks`, so status works from the first run; if Codex ever reports the hook as untrusted, run `/hooks` in Codex and approve it.
 
