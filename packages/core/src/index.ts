@@ -1,6 +1,7 @@
 export * from "./ag-layout.js";
 export * from "./ag-text.js";
 export * from "./catalog-api.js";
+export * from "./changes-api.js";
 export * from "./daemon-api.js";
 export * from "./daemon-client.js";
 export * from "./daemon-probe.js";
@@ -13,6 +14,7 @@ export * from "./executor.js";
 export * from "./handoff-note.js";
 export * from "./id.js";
 export { isDirectory } from "./is-directory.js";
+export * from "./launch-detached.js";
 export * from "./launch-prompt.js";
 export * from "./outcome.js";
 export * from "./paths.js";

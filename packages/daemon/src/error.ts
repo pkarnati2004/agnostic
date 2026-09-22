@@ -56,6 +56,12 @@ const statusByCode: Record<string, number> = {
   "init-source-generated": 409,
   // The parent's branch was deleted, so there is nothing for the next agent to continue from.
   "branch-gone": 409,
+  // The editor is installed and did not start: the machine's state now, not the request's fault.
+  "editor-failed": 409,
+  // A folder workspace has no git to read a diff from; `git init` is what changes that (ADR 001).
+  "repo-not-git": 409,
+  // No `base_branch`, no `origin/HEAD` and a detached checkout: agn will not guess what to diff.
+  "base-unresolved": 409,
   // The session found under the path is already a task: the request was right, it is just done.
   "adopt-already-adopted": 409,
   // Nothing on this machine may write a spec: the user writes it themselves, or names a profile.

@@ -431,6 +431,15 @@ BRANCH="$(agx status "$TASK" | awk '$1 == "branch:" { print $2 }')"
 printf 'one\ntwo\nthree\n' > "$WORKTREE/agent.txt"
 git -C "$WORKTREE" add agent.txt
 git -C "$WORKTREE" -c user.email=t@agn.test -c user.name=agn commit -q -m "the agent's work"
+
+# What the workspace's right panel reads, through the CLI and through the API.
+agx changes "$TASK" > "$WORK/changes.txt"
+grep -q "agent.txt  *A  *+3" "$WORK/changes.txt"
+agx changes "$TASK" --patch agent.txt | grep -q "^+three$"
+agx changes "$TASK" --json | grep -q '"ahead": 1'
+curl -fsS -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/tasks/$TASK/changes" |
+  grep -q '"pushed":false'
+
 agx stop "$TASK" | grep -q "^stopped $TASK"
 
 agx outcomes "$TASK" > "$WORK/outcomes.txt"
@@ -462,6 +471,10 @@ touch "$WORKTREE/scratch.txt"
 ! agx clean "$TASK" 2> "$WORK/clean-error.txt"
 grep -q "uncommitted" "$WORK/clean-error.txt"
 agx clean "$TASK" --force | grep -q "^cleaned $TASK"
+# With the worktree gone the changes are read from the main checkout. The branch was merged into
+# main further up, so the merge-base is the branch's own tip and the file list is empty by right;
+# what this checks is that the read still answers without a worktree.
+agx changes "$TASK" --json | grep -q '"uncommitted": 0'
 
 # A resume after a clean rebuilds the worktree at the same path from the branch the clean kept.
 agx resume "$TASK" --json > "$WORK/resume-recreated.json"

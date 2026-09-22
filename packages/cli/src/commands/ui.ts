@@ -1,9 +1,8 @@
 import { join } from "node:path";
-import { readAuthToken, readDaemonInfo } from "@agnostic/core";
+import { launchDetached, readAuthToken, readDaemonInfo } from "@agnostic/core";
 import { Command } from "commander";
 import type { CliContext } from "../context.js";
 import { CliError } from "../error.js";
-import { launchDetached } from "../launch-detached.js";
 
 type UiFlags = { open: boolean };
 
@@ -65,7 +64,10 @@ async function openBrowser(
 ): Promise<void> {
   const opener = platform === "darwin" ? "open" : "xdg-open";
   try {
-    await launchDetached(ctx, [opener, url], join(ctx.paths.logs, UI_LOG));
+    await launchDetached(ctx.spawn, [opener, url], {
+      env: ctx.env,
+      logFile: join(ctx.paths.logs, UI_LOG),
+    });
   } catch (cause) {
     throw new CliError(`could not open a browser: ${redact(cause, token)}`, {
       code: "browser-open-failed",

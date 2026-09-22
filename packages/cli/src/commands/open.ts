@@ -1,8 +1,13 @@
-import { type EditorId, EditorIdSchema, type OpenTaskResponse, taskLogPath } from "@agnostic/core";
+import {
+  type EditorId,
+  EditorIdSchema,
+  launchDetached,
+  type OpenTaskResponse,
+  taskLogPath,
+} from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
 import { CliError } from "../error.js";
-import { launchDetached } from "../launch-detached.js";
 import { requireTaskId } from "../resolve-repo.js";
 
 type OpenFlags = { editor?: string };
@@ -50,7 +55,7 @@ async function launch(ctx: CliContext, response: OpenTaskResponse): Promise<void
     throw failed(response, "the daemon named no command to run", log);
   }
   try {
-    await launchDetached(ctx, response.argv, log);
+    await launchDetached(ctx.spawn, response.argv, { env: ctx.env, logFile: log });
   } catch (cause) {
     throw failed(response, cause instanceof Error ? cause.message : String(cause), log);
   }

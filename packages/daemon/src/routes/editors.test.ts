@@ -1,10 +1,11 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   type Editor,
   type EditorsResponse,
   newId,
+  type OpenedTaskResponse,
   type OpenTaskResponse,
   type Repo,
   type Task,
@@ -199,5 +200,72 @@ describe("GET /tasks/:id/open", () => {
   it("refuses a task id that matches nothing", async () => {
     const response = await daemon.request("/tasks/zzzzzzzzzz/open");
     expect(response.status).toBe(404);
+  });
+});
+
+/** An editor agn can really start: a script that writes down what it was asked to open. */
+async function scriptEditor(id: "vscode" | "cursor", body: string): Promise<Editor> {
+  const path = join(dir, `${id}-editor.sh`);
+  await writeFile(path, `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+  return { id, name: id === "vscode" ? "Visual Studio Code" : "Cursor", via: "path", path };
+}
+
+function openPost(task: Task, body: Record<string, unknown> = {}): Promise<Response> {
+  return daemon.request(`/tasks/${task.id}/open`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("POST /tasks/:id/open", () => {
+  it("starts the editor itself and says what it opened", async () => {
+    const log = join(dir, "opened.txt");
+    const editor = await scriptEditor("vscode", `echo "$1" >> ${log}`);
+    await boot([editor]);
+    const task = seed({ worktreePath: dir });
+
+    const response = await openPost(task);
+    expect(response.status).toBe(200);
+    const opened = (await response.json()) as OpenedTaskResponse;
+    expect(opened).toEqual({ editor, dir });
+    expect(await readFile(log, "utf8")).toBe(`${dir}\n`);
+  });
+
+  it("takes the editor from the body", async () => {
+    const first = await scriptEditor("vscode", "exit 0");
+    const second = await scriptEditor("cursor", "exit 0");
+    await boot([first, second]);
+    const task = seed({ worktreePath: dir });
+    const response = await openPost(task, { editor: "cursor" });
+    expect(((await response.json()) as OpenedTaskResponse).editor.id).toBe("cursor");
+  });
+
+  it("says how to open it by hand when the editor will not start", async () => {
+    await boot([await scriptEditor("vscode", "echo no window server >&2; exit 2")]);
+    const task = seed({ worktreePath: dir });
+    const response = await openPost(task);
+    expect(response.status).toBe(409);
+    const error = await failure(response);
+    expect(error.code).toBe("editor-failed");
+    expect(error.hint).toContain(`agn open ${task.id}`);
+  });
+
+  it("refuses a worktree that has been cleaned, as the GET does", async () => {
+    await boot([await scriptEditor("vscode", "exit 0")]);
+    const task = seed({ worktreePath: join(dir, "gone") });
+    const response = await openPost(task);
+    expect(response.status).toBe(409);
+    expect((await failure(response)).code).toBe("worktree-cleaned");
+  });
+
+  it("rejects an editor that is not one this machine has", async () => {
+    await boot([await scriptEditor("vscode", "exit 0")]);
+    const task = seed({ worktreePath: dir });
+    const response = await openPost(task, { editor: "cursor" });
+    expect(response.status).toBe(400);
+    const error = await failure(response);
+    expect(error.code).toBe("editor-not-found");
+    expect(error.hint).toContain("--editor");
   });
 });
