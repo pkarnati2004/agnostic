@@ -56,7 +56,9 @@ async function report(
     lines.push(`pr: ${response.url}`);
   } else {
     lines.push(`compare: ${response.url}`);
-    lines.push("no gh on this machine: the PR is created on the page that opens");
+    lines.push(
+      "no usable gh (not installed or not logged in): the PR is created on the page that opens",
+    );
   }
   if (await copyToClipboard(ctx, response.body, platform)) {
     return [...lines, "body copied to the clipboard"];

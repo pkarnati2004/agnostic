@@ -92,7 +92,7 @@ describe("agn pr", () => {
     expect(test.out).toEqual([
       `${BRANCH} already on origin`,
       `compare: ${compare}`,
-      "no gh on this machine: the PR is created on the page that opens",
+      "no usable gh (not installed or not logged in): the PR is created on the page that opens",
       "body copied to the clipboard",
     ]);
   });
