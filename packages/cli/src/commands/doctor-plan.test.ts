@@ -2,6 +2,7 @@ import type { DoctorRequest, DoctorResponse, HarnessReport } from "@agnostic/cor
 import { describe, expect, it } from "vitest";
 import { runMain } from "../program.js";
 import { createTestContext } from "../test-context.js";
+import { unknownPlans } from "./doctor-plan.js";
 
 function report(over: Partial<HarnessReport>): HarnessReport {
   return {
@@ -183,6 +184,23 @@ describe("agn doctor --plan", () => {
       "which plan are you on for Claude Code? (config says pro, and its models say otherwise)",
     );
     expect(requests).toEqual([undefined, { plans: { claude: "max20" } }]);
+  });
+
+  it("names a vendor with no plan yet, and stops naming it once it has one", () => {
+    const gemini = report({
+      harness: "gemini",
+      name: "Gemini CLI",
+      binary: "gemini",
+      path: "/opt/bin/gemini",
+      support: "status",
+      planVendor: "google",
+    });
+    expect(unknownPlans(response([gemini])).map((row) => row.harness)).toEqual(["gemini"]);
+    const answered = report({
+      ...gemini,
+      plan: { value: "ai-pro", source: "config", known: true, confirmed: true },
+    });
+    expect(unknownPlans(response([answered]))).toEqual([]);
   });
 
   it("asks nothing when every plan is confirmed", async () => {

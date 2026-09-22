@@ -105,6 +105,12 @@ describe("parseCatalog", () => {
       entitlements: [{ ...google.entitlements[0], vendor: "claude", plan: "max20" }],
     };
     expect(failure(wrongVendor).message).toContain("entitlements[0].vendor");
+    // The vendor is right and the tier is not one Google sells, so the row points at nothing.
+    const noSuchPlan = {
+      ...google,
+      entitlements: [{ ...google.entitlements[0], plan: "nope" }],
+    };
+    expect(failure(noSuchPlan).message).toContain('no plan row "google/nope"');
   });
 
   it("takes an entitlement for grok, kimi and cursor-agent on their own vendors, and rejects a swap", async () => {

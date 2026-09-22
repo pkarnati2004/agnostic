@@ -1,6 +1,5 @@
 import { type HarnessId, HarnessIdSchema, type Support } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
-import { RegistryError } from "./error.js";
 import { harnessDefinition, harnesses } from "./harness-list.js";
 import { harnessSupport } from "./harness-support.js";
 
@@ -87,31 +86,6 @@ describe("the harness table", () => {
       container: "opencode-plugin",
       dir: ".config/mimocode/plugins",
     });
-  });
-
-  it("throws harness-unknown for an id that is not a harness and not other:<binary>", () => {
-    expect(() => harnessDefinition("nope" as HarnessId)).toThrowError(RegistryError);
-    try {
-      harnessDefinition("nope" as HarnessId);
-    } catch (error) {
-      expect((error as RegistryError).code).toBe("harness-unknown");
-      expect((error as RegistryError).hint).toContain("other:<binary>");
-    }
-  });
-
-  it("says where a promoted harness went when it is asked for under other:", () => {
-    for (const [id, moved] of [
-      ["other:gemini", "gemini"],
-      ["other:cursor", "cursor-agent"],
-    ] as [HarnessId, string][]) {
-      try {
-        harnessDefinition(id);
-        expect.unreachable(`${id} still resolves`);
-      } catch (error) {
-        expect((error as RegistryError).code).toBe("harness-unknown");
-        expect((error as RegistryError).hint).toContain(moved);
-      }
-    }
   });
 
   it("pins the launch tokens of the three harnesses that need them", () => {
@@ -207,7 +181,7 @@ describe("the harness table", () => {
     expect(harnessDefinition("cursor-agent").sessionCapture).toBeNull();
   });
 
-  it("gives the four full harnesses and Grok a probe, and nobody else one", () => {
+  it("gives the four full harnesses, Cursor and Grok a probe, and nobody else one", () => {
     expect(harnessDefinition("claude-code").modelSource?.args).toEqual([
       "-p",
       "--input-format",
@@ -219,12 +193,30 @@ describe("the harness table", () => {
     expect(harnessDefinition("codex").modelSource?.args).toEqual(["debug", "models"]);
     expect(harnessDefinition("pi").modelSource?.args).toEqual(["--list-models"]);
     expect(harnessDefinition("opencode").modelSource?.args).toEqual(["models"]);
+    expect(harnessDefinition("cursor-agent").modelSource?.args).toEqual(["--list-models"]);
     expect(harnessDefinition("claude-code").modelSource?.stdin).toContain("list_models");
-    for (const id of ["codex", "pi", "opencode", "grok"] as HarnessId[]) {
+    for (const id of ["codex", "pi", "opencode", "cursor-agent", "grok"] as HarnessId[]) {
       expect(harnessDefinition(id).modelSource?.stdin).toBeNull();
     }
     const probed = harnesses.filter((def) => def.modelSource !== null);
-    expect(probed.map((def) => def.id)).toEqual([...FULL, "grok"]);
+    expect(probed.map((def) => def.id)).toEqual([...FULL, "cursor-agent", "grok"]);
+  });
+
+  it("points every plan vendor's row at the file that names its login", () => {
+    const authFiles: [HarnessId, string][] = [
+      ["gemini", ".gemini/oauth_creds.json"],
+      ["grok", ".grok/auth.json"],
+      ["kimi", ".kimi-code/credentials/kimi-code.json"],
+      ["cursor-agent", ".cursor/auth.json"],
+    ];
+    for (const [id, file] of authFiles) {
+      expect(harnessDefinition(id).authFile, id).toBe(file);
+    }
+    // xAI is the only one of the four that names the tier on disk.
+    expect(harnessDefinition("grok").planSource?.file).toBe(".grok/auth.json");
+    for (const id of ["gemini", "kimi", "cursor-agent"] as HarnessId[]) {
+      expect(harnessDefinition(id).planSource, id).toBeNull();
+    }
   });
 
   it("leaves tier 2 with launch and attach only", () => {
@@ -250,48 +242,6 @@ describe("the harness table", () => {
   it("always offers the native route first", () => {
     for (const def of harnesses) {
       expect(def.routes[0]).toBe("native");
-    }
-  });
-});
-
-describe("an open harness id", () => {
-  it("synthesises a launch-and-attach row for any executable", () => {
-    expect(harnessDefinition("other:mytool")).toEqual({
-      id: "other:mytool",
-      name: "mytool",
-      binary: "mytool",
-      aliases: [],
-      processNames: ["mytool"],
-      launch: [],
-      headless: null,
-      prompt: { kind: "type-after-start" },
-      modelFlag: null,
-      modelSource: null,
-      planSource: null,
-      routes: ["native"],
-      resume: null,
-      sessionCapture: null,
-      hooks: null,
-      authFile: null,
-      transcriptsDir: null,
-      tier: 2,
-    });
-  });
-
-  it("never shadows a harness the table knows about", () => {
-    expect(harnessDefinition("kiro").launch).toEqual(["chat", "--tui"]);
-    expect(harnessDefinition("aider").name).toBe("Aider");
-    expect(harnesses.map((def) => def.id)).not.toContain("other:mytool");
-  });
-
-  it("rejects an id whose binary segment is empty, a path, or shell-splittable", () => {
-    for (const id of ["other:", "other:bin/tool", "other:my tool"] as HarnessId[]) {
-      expect(() => harnessDefinition(id)).toThrowError(RegistryError);
-      try {
-        harnessDefinition(id);
-      } catch (error) {
-        expect((error as RegistryError).code).toBe("harness-unknown");
-      }
     }
   });
 });

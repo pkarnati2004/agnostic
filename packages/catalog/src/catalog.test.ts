@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { PlanVendorSchema } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { type Catalog, parseCatalog } from "./catalog-schema.js";
 import { bundledCatalogPath } from "./load-catalog.js";
@@ -59,6 +60,21 @@ describe("the catalog agn ships", () => {
     const harnesses = new Set(catalog.benchmarks.map((row) => row.harness));
     for (const harness of ["claude-code", "codex", "opencode", "pi"]) {
       expect(harnesses, harness).toContain(harness);
+    }
+  });
+
+  it("offers at least one plan per vendor agn bills by plan, named once", () => {
+    for (const vendor of PlanVendorSchema.options) {
+      expect(catalog.plans.filter((row) => row.vendor === vendor).length, vendor).toBeGreaterThan(
+        0,
+      );
+    }
+    expect(duplicates(catalog.plans.map((row) => `${row.vendor}/${row.id}`))).toEqual([]);
+  });
+
+  it("names every plan id in kebab-case, the way config.yaml and the profile ids write it", () => {
+    for (const row of catalog.plans) {
+      expect(row.id, `${row.vendor}/${row.id}`).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
     }
   });
 

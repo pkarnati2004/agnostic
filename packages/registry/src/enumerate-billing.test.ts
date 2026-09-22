@@ -7,6 +7,7 @@ import { enumerateProfiles } from "./enumerate-profiles.js";
 const PLANS: PlanRow[] = [
   { vendor: "claude", id: "pro", displayName: "Pro", confirmedAt: "2026-09-01" },
   { vendor: "claude", id: "max20", displayName: "Max 20x", confirmedAt: "2026-09-01" },
+  { vendor: "google", id: "ai-pro", displayName: "Google AI Pro", confirmedAt: "2026-09-21" },
 ];
 
 const entitled = (
@@ -116,6 +117,55 @@ describe("enumerateProfiles billing", () => {
     expect(billing(pi)).toEqual([
       [null, "subscription", "binary"],
       ["a", "subscription", "binary"],
+    ]);
+  });
+});
+
+/** Google names no tier on disk, so the plan comes from config.yaml or doctor asks for it. */
+function gemini(overrides: Partial<HarnessStatus> = {}): HarnessStatus {
+  return {
+    harness: "gemini",
+    name: "Gemini CLI",
+    binary: "gemini",
+    path: "/fixture/bin/gemini",
+    version: "0.9.0",
+    login: "logged-in",
+    billing: "subscription",
+    models: { models: ["gemini-3-pro"], origin: "probe", error: null },
+    plan: null,
+    tier: 1,
+    ...overrides,
+  };
+}
+
+describe("enumerateProfiles for a vendor whose files name no tier", () => {
+  it("bills a config plan the catalog knows as the subscription it is", () => {
+    expect(billing(gemini(), { google: "ai-pro" })).toEqual([
+      [null, "subscription", "binary"],
+      ["gemini-3-pro", "subscription", "binary"],
+    ]);
+  });
+
+  it("says the plan is unknown when neither the file nor config.yaml names one", () => {
+    expect(billing(gemini())).toEqual([
+      [null, "subscription", "unknown-plan"],
+      ["gemini-3-pro", "subscription", "unknown-plan"],
+    ]);
+  });
+
+  it("bills by API key when the login says nothing and GEMINI_API_KEY is set", () => {
+    const profiles = enumerateProfiles({
+      statuses: [gemini({ login: "unknown", billing: "unknown" })],
+      env: { GEMINI_API_KEY: "key" },
+      servers: [],
+      models: [],
+      entitlements: ENTITLEMENTS,
+      catalogPlans: PLANS,
+      configPlans: {},
+    });
+    expect(profiles.map((profile) => [profile.billing, profile.evidence])).toEqual([
+      ["api-key", "binary"],
+      ["api-key", "binary"],
     ]);
   });
 });

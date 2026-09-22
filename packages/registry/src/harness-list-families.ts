@@ -1,12 +1,14 @@
+import { parseGrokPlan } from "./detect-plan.js";
 import type {
   HarnessDefinition,
   HookMechanism,
   ModelProbe,
+  PlanSource,
   PromptDelivery,
   ResumeSpec,
   SessionCapture,
 } from "./harness-definition.js";
-import { parseGrokModelList } from "./model-list-parsers.js";
+import { parseCursorModelList, parseGrokModelList } from "./model-list-parsers.js";
 
 const argv: PromptDelivery = { kind: "argv" };
 const argvAfterSeparator: PromptDelivery = { kind: "argv", separator: "--" };
@@ -32,6 +34,7 @@ type FamilySource = {
   resume: ResumeSpec | null;
   sessionCapture: SessionCapture | null;
   authFile?: string;
+  planSource?: PlanSource;
   transcriptsDir?: string;
 };
 
@@ -71,6 +74,9 @@ export const familySources: FamilySource[] = [
     name: "Cursor Agent",
     binary: "cursor-agent",
     prompt: argv,
+    // `--model` is the flag Cursor documents; no cursor-agent was installed here to check it.
+    modelFlag: "--model",
+    modelSource: { args: ["--list-models"], stdin: null, parse: parseCursorModelList },
     // Cursor replays Claude's settings through its own file, and its hooks report no resumable id.
     // What its payload calls the conversation and the workspace roots is inferred, not observed.
     hooks: userSettings(".cursor/hooks.json"),
@@ -142,6 +148,7 @@ export const familySources: FamilySource[] = [
     resume: resumesById("--resume"),
     sessionCapture: capturesId("sessionId"),
     authFile: ".grok/auth.json",
+    planSource: { file: ".grok/auth.json", parse: parseGrokPlan },
   },
   {
     id: "copilot",
@@ -168,15 +175,14 @@ export function familyDefinition(source: FamilySource): HarnessDefinition {
     headless: null,
     prompt: source.prompt ?? typeAfterStart,
     modelFlag: source.modelFlag ?? null,
-    // Cursor lists its own models; that probe lands with its family's chunk.
     modelSource: source.modelSource ?? null,
     routes: ["native"],
     resume: source.resume,
     sessionCapture: source.sessionCapture,
     hooks: source.hooks,
     authFile: source.authFile ?? null,
-    // The plan readers for Google, xAI, Moonshot and Cursor land with the plan chunk.
-    planSource: null,
+    // Only xAI names the tier on disk; Google, Moonshot and Cursor leave doctor to ask.
+    planSource: source.planSource ?? null,
     transcriptsDir: source.transcriptsDir ?? null,
     tier: 1,
   };
