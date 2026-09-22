@@ -21,8 +21,10 @@ import { billingForProfile } from "../usage-scan.js";
 export function usageRoutes(ctx: DaemonContext): Hono {
   return new Hono()
     .get("/usage", async (c) => {
-      const scannedAt = new Date();
       await ctx.usage.scan();
+      // After the scan, not before: a turn the harness writes while the scan runs must be inside
+      // the window the answer reports, and the window is half-open on `until`.
+      const scannedAt = new Date();
       const plans = await plansInUse(ctx);
       const window = (kind: "day" | "week") => {
         const bounds: UsageWindow = usageWindow(kind, scannedAt);
