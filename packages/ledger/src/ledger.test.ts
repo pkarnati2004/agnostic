@@ -65,6 +65,7 @@ describe("openLedger", () => {
       { version: 2, name: "task-base-commit" },
       { version: 3, name: "repo-status" },
       { version: 4, name: "repo-status-removed" },
+      { version: 5, name: "harness-ids" },
     ]);
     db.close();
   });

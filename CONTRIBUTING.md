@@ -18,6 +18,6 @@ Thanks for looking. agnostic is MIT-licensed and small on purpose.
 
 **Workflow.** Branch per change, conventional commits, `pnpm lint && pnpm test` green. PR description: what, why, how tested.
 
-**Adding a harness.** Add a `HarnessDefinition` in `packages/registry` (binary, detection, launch args, model override method) and, for full support, an `install.ts` and a `parse.ts` under `packages/hooks/src/<harness>/` with a row each in `harness-hooks.ts`, plus a transcript parser in `packages/usage`. Nothing else names a harness: the daemon asks the table.
+**Adding a harness.** Add a `HarnessDefinition` in `packages/registry` (binary, detection, launch args, model override method) with a plain id: `other:` is only for an executable agn has no row for. A harness with a hook names the family and file it reads in `hooks`, and the installer for that family lives once under `packages/hooks/src/<family>/`, with a row per member in `harness-hooks.ts`; for full support add a transcript parser in `packages/usage`. Nothing else names a harness: the daemon asks the table. Renaming an id that a released agn has stored - a promotion out of `other:` is one - needs a ledger migration that rewrites the stored ids, with the list frozen in the migration file.
 
 **Adding catalog data.** Rows need a source URL, date, model version, harness, task class, metric, and score. See `docs/recommendations.md`.

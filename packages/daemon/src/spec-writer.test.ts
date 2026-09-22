@@ -94,7 +94,7 @@ describe("chooseSpecWriter", () => {
 
   it("refuses a named profile on a harness with no headless form", () => {
     const aider: Profile = {
-      ...fixtureProfile(null, { harness: "other:aider" }),
+      ...fixtureProfile(null, { harness: "aider" }),
       tier: 2,
     };
     expect(codeOf(() => choose([aider], aider.id)).code).toBe("spec-writer-unavailable");

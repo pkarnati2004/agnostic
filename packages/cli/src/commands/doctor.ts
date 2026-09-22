@@ -10,8 +10,8 @@ const COLUMNS: Column<HarnessReport>[] = [
   { header: "harness", value: (row) => row.harness },
   { header: "version", value: (row) => row.version ?? "-" },
   { header: "login", value: (row) => (row.path === null ? "-" : row.login) },
-  // Tier 1 means status, usage and recommendations; tier 2 means agn can launch it and little else.
-  { header: "support", value: (row) => (row.tier === 1 ? "full" : "basic") },
+  // full is status and usage, status is a live status with no token count, basic is launch only.
+  { header: "support", value: (row) => row.support },
   { header: "models", value: models },
   { header: "plan", value: planCell },
   { header: "path", value: (row) => row.path ?? NOT_INSTALLED },
@@ -48,6 +48,10 @@ function report(ctx: CliContext, response: DoctorResponse): void {
   for (const line of renderTable(reported(response), COLUMNS)) {
     ctx.io.out(line);
   }
+  const missing = notInstalled(response);
+  if (missing !== null) {
+    ctx.io.out(missing);
+  }
   for (const tool of response.tools) {
     ctx.io.out(toolLine(tool));
   }
@@ -80,10 +84,20 @@ function collect(value: string, previous: string[]): string[] {
   return [...previous, value];
 }
 
-/** Every tier-1 harness is listed whether or not it is there; a tier-2 row only earns its line
- * once the binary exists, because the tier-2 list is long and mostly hypothetical. */
+/** The table is what the user has: every harness that is installed, whatever its tier, and any
+ * harness they named in config.yaml or a task even though its binary is missing. */
 function reported(response: DoctorResponse): HarnessReport[] {
-  return response.harnesses.filter((row) => row.tier === 1 || row.path !== null);
+  return response.harnesses.filter(
+    (row) => row.path !== null || response.named.includes(row.harness),
+  );
+}
+
+/** One line for the rest of the harnesses agn supports, so the table stays as short as the machine. */
+function notInstalled(response: DoctorResponse): string | null {
+  const missing = response.harnesses
+    .filter((row) => row.tier === 1 && row.path === null && !response.named.includes(row.harness))
+    .map((row) => row.harness);
+  return missing.length === 0 ? null : `not installed: ${missing.join(", ")} (${missing.length})`;
 }
 
 /** Not a harness and not in the table: `gh` is what `agn handoff` opens a pull request with. */

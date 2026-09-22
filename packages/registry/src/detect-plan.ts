@@ -4,10 +4,14 @@ import type { HarnessId, Plan, PlanVendor } from "@agnostic/core";
 import { z } from "zod";
 import type { HarnessDefinition } from "./harness-definition.js";
 
-/** Only two vendors bill by plan; everything else is billed per provider key (ADR 016). */
+/** The vendors that bill a CLI by plan; everything else is billed per provider key (ADR 016). */
 const PLAN_VENDORS: Partial<Record<HarnessId, PlanVendor>> = {
   "claude-code": "claude",
   codex: "chatgpt",
+  gemini: "google",
+  grok: "xai",
+  kimi: "moonshot",
+  "cursor-agent": "cursor",
 };
 
 export function planVendor(harness: HarnessId): PlanVendor | null {

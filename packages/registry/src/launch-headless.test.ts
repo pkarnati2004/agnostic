@@ -74,7 +74,7 @@ describe("headlessSpec", () => {
       codeOf(() => headlessSpec(profile("codex", "qwen3:8b", "local"), { prompt: "go", env: {} })),
     ).toBe("headless-unsupported");
     expect(
-      codeOf(() => headlessSpec(profile("other:aider", null, "native"), { prompt: "go", env: {} })),
+      codeOf(() => headlessSpec(profile("aider", null, "native"), { prompt: "go", env: {} })),
     ).toBe("headless-unsupported");
   });
 

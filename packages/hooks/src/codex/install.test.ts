@@ -2,6 +2,7 @@ import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { agnosticPaths } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { codexInstaller } from "./install.js";
 
@@ -11,7 +12,13 @@ const COMMAND = "sh '/home/u/.agnostic/hooks/post.sh' codex";
 let home = "";
 let repoPath = "";
 
-const input = () => ({ repoPath, home, command: COMMAND });
+const input = () => ({
+  repoPath,
+  home,
+  command: COMMAND,
+  paths: agnosticPaths(join(home, ".agnostic")),
+  env: {},
+});
 const hooksFile = () => join(home, ".codex", "hooks.json");
 const configFile = () => join(home, ".codex", "config.toml");
 const config = () => readFile(configFile(), "utf8");

@@ -102,7 +102,7 @@ describe("agn run", () => {
     await parse(runCommand(test.ctx), [
       "ship it",
       "--harness",
-      "other:aider",
+      "other:mytool",
       "--model",
       "haiku",
       "--title",
@@ -117,7 +117,7 @@ describe("agn run", () => {
       body: {
         prompt: "ship it",
         title: "ship it",
-        profile: "other:aider",
+        profile: "other:mytool",
         model: "haiku",
         base: "main",
       },
@@ -139,7 +139,7 @@ describe("agn run", () => {
   it("refuses --profile and --harness together", async () => {
     const test = cli();
     const code = await runMain(
-      ["node", "agn", "run", "x", "--profile", "codex", "--harness", "other:aider"],
+      ["node", "agn", "run", "x", "--profile", "codex", "--harness", "other:mytool"],
       test.ctx,
     );
     expect(code).toBe(2);

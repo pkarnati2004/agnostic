@@ -10,15 +10,17 @@ export { RegistryError } from "./error.js";
 export { type Gateway, gateways } from "./gateways.js";
 export type {
   HarnessDefinition,
-  HookMethod,
+  HookMechanism,
   LoginState,
   ModelProbe,
   PlanSource,
   PromptDelivery,
+  ResumeSpec,
   SessionCapture,
   Tier,
 } from "./harness-definition.js";
 export { harnessDefinition, harnesses } from "./harness-list.js";
+export { harnessSupport } from "./harness-support.js";
 export { isHeadlessInvocation } from "./headless.js";
 export { installCommand } from "./install-commands.js";
 export {

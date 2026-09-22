@@ -74,7 +74,7 @@ describe("probeModels", () => {
   });
 
   it("does not spawn anything for a harness with no list command", async () => {
-    const def = harnessDefinition("other:aider");
+    const def = harnessDefinition("aider");
     const result = await probeModels(def, { path: "/definitely/not/here/aider", seeds: [] });
     expect(result).toEqual({ models: [], origin: "none", error: expect.stringContaining("Aider") });
   });

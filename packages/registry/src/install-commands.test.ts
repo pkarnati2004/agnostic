@@ -10,6 +10,6 @@ describe("installCommand", () => {
   });
 
   it("has nothing to say about a harness agn only launches", () => {
-    expect(installCommand("other:aider")).toBeNull();
+    expect(installCommand("aider")).toBeNull();
   });
 });

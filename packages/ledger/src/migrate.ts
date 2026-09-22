@@ -4,10 +4,17 @@ import { initial } from "./migrations/001-initial.js";
 import { taskBaseCommit } from "./migrations/002-task-base-commit.js";
 import { repoStatus } from "./migrations/003-repo-status.js";
 import { repoStatusRemoved } from "./migrations/004-repo-status-removed.js";
+import { harnessIds } from "./migrations/005-harness-ids.js";
 
 export type Migration = { version: number; name: string; sql: string };
 
-const migrations: readonly Migration[] = [initial, taskBaseCommit, repoStatus, repoStatusRemoved];
+const migrations: readonly Migration[] = [
+  initial,
+  taskBaseCommit,
+  repoStatus,
+  repoStatusRemoved,
+  harnessIds,
+];
 
 // migrate owns this table: it has to read the applied versions before any migration can run.
 const SCHEMA_VERSION = `CREATE TABLE IF NOT EXISTS schema_version (

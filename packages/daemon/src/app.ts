@@ -22,6 +22,8 @@ import {
   detectTools,
   enumerateProfiles,
   type HarnessStatus,
+  harnessDefinition,
+  harnessSupport,
   planVendor,
 } from "@agnostic/registry";
 import { Hono } from "hono";
@@ -223,6 +225,7 @@ function toReport(status: HarnessStatus, plans: Plans, catalog: Catalog): Harnes
     login: status.login,
     billing: status.billing,
     tier: status.tier,
+    support: harnessSupport(harnessDefinition(status.harness)),
     models: status.models?.models ?? [],
     modelSource: status.models?.origin ?? "none",
     planVendor: planVendor(status.harness),

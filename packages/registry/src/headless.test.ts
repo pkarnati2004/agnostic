@@ -43,6 +43,6 @@ describe("isHeadlessInvocation", () => {
   });
 
   it("knows no headless form for a tier-2 harness", () => {
-    expect(isHeadlessInvocation("other:aider", ["aider", "--message", "x"])).toBe(false);
+    expect(isHeadlessInvocation("aider", ["aider", "--message", "x"])).toBe(false);
   });
 });

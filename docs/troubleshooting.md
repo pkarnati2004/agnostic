@@ -2,7 +2,7 @@
 
 **`agn doctor` says an agent is "not logged in" but it is.** Start the agent once by hand in a terminal, complete any first-run prompt, then re-run `agn doctor`.
 
-**Status stays "running" and never shows "waiting".** The agent's hook isn't installed or can't reach the daemon. Run `agn hooks install --repo <path>` and check that `agnd` is running (`agn daemon status`). Agents with basic support in `agn doctor` have no hook at all: they are running until they exit.
+**Status stays "running" and never shows "waiting".** The agent's hook isn't installed or can't reach the daemon. Run `agn hooks install --repo <path>` and check that `agnd` is running (`agn daemon status`). Agents labelled `basic` in `agn doctor` have no hook at all: they are running until they exit. An agent labelled `status` has a hook and a live status, but no token count.
 
 **Where the hooks live.** One script, `~/.agnostic/hooks/post.sh`, is the hook command for every agent; it reads the daemon's port and token when it runs, so a restarted daemon needs no reinstall and no config file holds a token. Claude Code's hook goes in `<repo>/.claude/settings.local.json` (and in the task's worktree), with the path added to `.git/info/exclude` unless git already ignores it. Codex has no per-repo hook file, so its hook goes in `~/.codex/hooks.json` with a marked block of trust entries in `~/.codex/config.toml`; agn prints one line to stderr when it writes either of those.
 

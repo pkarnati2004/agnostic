@@ -2,7 +2,7 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { run } from "@agnostic/core";
+import { agnosticPaths, run } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { claudeCodeInstaller } from "./install.js";
 
@@ -12,7 +12,13 @@ const COMMAND = "sh '/home/u/.agnostic/hooks/post.sh' claude-code";
 let repoPath = "";
 let home = "";
 
-const input = () => ({ repoPath, home, command: COMMAND });
+const input = () => ({
+  repoPath,
+  home,
+  command: COMMAND,
+  paths: agnosticPaths(join(home, ".agnostic")),
+  env: {},
+});
 const settings = () => join(repoPath, ".claude", "settings.local.json");
 const exclude = () => join(repoPath, ".git", "info", "exclude");
 

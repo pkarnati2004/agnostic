@@ -45,6 +45,61 @@ describe("POST /doctor", () => {
       modelSource: "probe",
     });
     expect(doctor.pathVar).toBe("/opt/bin");
+    // Doctor prints support, not tier: hooks and a transcript reader are what the user gets.
+    expect(doctor.harnesses[0]?.support).toBe("full");
+    expect(doctor.named).toEqual([]);
+  });
+
+  it("names the harnesses config.yaml and the tasks ask for, so doctor keeps their rows", async () => {
+    daemon = await createTestDaemon();
+    await writeFile(daemon.paths.config, "spec_writer: gemini:default:native\n");
+    const doctor = await body<DoctorResponse>(await daemon.request("/doctor", { method: "POST" }));
+    expect(doctor.named).toEqual(["gemini"]);
+  });
+
+  it("names the harness a task's own profile points at, with no spec_writer set", async () => {
+    daemon = await createTestDaemon();
+    const repo = await daemon.addRepo();
+    const now = new Date().toISOString();
+    daemon.ledger.tasks.insert({
+      id: "a2b3c4d5e6",
+      repoId: repo.id,
+      title: "try cursor",
+      prompt: "p",
+      profileId: "cursor-agent:default:native",
+      worktreePath: null,
+      branch: null,
+      status: "queued",
+      origin: "agn",
+      baseCommit: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const doctor = await body<DoctorResponse>(await daemon.request("/doctor", { method: "POST" }));
+    expect(doctor.named).toEqual(["cursor-agent"]);
+  });
+
+  it("keeps one row for a harness the spec writer and a task both name", async () => {
+    daemon = await createTestDaemon();
+    await writeFile(daemon.paths.config, "spec_writer: gemini:default:native\n");
+    const repo = await daemon.addRepo();
+    const now = new Date().toISOString();
+    daemon.ledger.tasks.insert({
+      id: "f2g3h4j5k6",
+      repoId: repo.id,
+      title: "also gemini",
+      prompt: "p",
+      profileId: "gemini:default:native",
+      worktreePath: null,
+      branch: null,
+      status: "queued",
+      origin: "agn",
+      baseCommit: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const doctor = await body<DoctorResponse>(await daemon.request("/doctor", { method: "POST" }));
+    expect(doctor.named).toEqual(["gemini"]);
   });
 
   it("says nothing new when the second run finds the same profiles", async () => {

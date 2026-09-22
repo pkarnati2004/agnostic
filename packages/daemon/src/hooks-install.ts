@@ -60,6 +60,8 @@ async function install(
     repoPath,
     home: ctx.env.HOME ?? homedir(),
     command: hookCommand(ctx.paths, harness),
+    paths: ctx.paths,
+    env: ctx.env,
   });
 }
 

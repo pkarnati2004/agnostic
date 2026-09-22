@@ -143,13 +143,15 @@ agn add "$WORK/plain" | grep -q "^added plain (folder) $PLAIN_ID$"
 test "$(agn repos | wc -l)" -eq 3
 agn repos | grep -qv "(missing)"
 
-# The four tier-1 harnesses, none of them installed on this PATH, plus the gh row.
-test "$(agn doctor | grep -c "not installed")" -eq 5
+# Nothing is installed on this PATH, so the table has no rows, the harnesses agn supports are
+# named on one not-installed line, and gh is the only other row.
+test "$(agn doctor | grep -c "not installed")" -eq 2
+agn doctor | grep -q "^not installed: claude-code, codex, .*(15)$"
 agn doctor | grep -q "^tools: gh"
 test "$(agn profiles | wc -l)" -eq 2
 
-# No harness is installed here, so there is no plan to know and nothing to ask about.
-agn doctor | head -1 | grep -q "plan"
+# No harness is installed here, so the table has no rows, and there is no plan to ask about.
+agn doctor | head -1 | grep -q "^not installed:"
 ! agn doctor | grep -q "plan unknown for"
 # The plan the user names is written to config.yaml, which keeps the port line it already had.
 echo "port: 7439" > "$AGNOSTIC_HOME/config.yaml"
@@ -166,7 +168,7 @@ if (!planOptions.some((option) => option.vendor === 'claude')) {
 "
 # A plan agn does not bill for is a usage error; a plan the catalog does not know is recorded.
 ! agn doctor --plan nope=pro 2> "$WORK/plan-error.txt"
-grep -q "claude, chatgpt" "$WORK/plan-error.txt"
+grep -q "claude, chatgpt, google, xai, moonshot, cursor" "$WORK/plan-error.txt"
 agn doctor --plan chatgpt=go > /dev/null
 grep -q "chatgpt: go" "$AGNOSTIC_HOME/config.yaml"
 # The port line goes back: every daemon the rest of the smoke starts must stay off the real 7431,

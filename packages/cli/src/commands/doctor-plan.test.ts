@@ -13,6 +13,7 @@ function report(over: Partial<HarnessReport>): HarnessReport {
     login: "logged-in",
     billing: "subscription",
     tier: 1,
+    support: "full",
     models: [],
     modelSource: "none",
     planVendor: "claude",
@@ -26,6 +27,7 @@ function response(harnesses: HarnessReport[], plans: DoctorResponse["plans"] = {
     harnesses,
     profiles: [],
     tools: [],
+    named: [],
     detectedAt: "2026-09-12T10:00:00.000Z",
     pathVar: "/opt/bin",
     plans,
@@ -75,11 +77,23 @@ describe("agn doctor --plan", () => {
     expect(requests).toEqual([{ plans: { claude: "max20", chatgpt: "plus" } }]);
   });
 
+  it("takes every vendor that bills a CLI by plan", async () => {
+    const { requests, client } = daemon(unknown);
+    const cli = createTestContext({ client });
+    expect(
+      await runMain(
+        argv("--plan", "google=ai-pro", "--plan", "xai=supergrok", "--plan", "cursor=pro"),
+        cli.ctx,
+      ),
+    ).toBe(0);
+    expect(requests).toEqual([{ plans: { google: "ai-pro", xai: "supergrok", cursor: "pro" } }]);
+  });
+
   it("refuses a vendor it does not bill for, and says which it does", async () => {
     for (const flag of ["nope=pro", "claude", "claude="]) {
       const cli = createTestContext({ client: daemon(unknown).client });
       expect(await runMain(argv("--plan", flag), cli.ctx)).toBe(2);
-      expect(cli.err.join("\n")).toContain("claude, chatgpt");
+      expect(cli.err.join("\n")).toContain("claude, chatgpt, google, xai, moonshot, cursor");
     }
   });
 

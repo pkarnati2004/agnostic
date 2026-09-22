@@ -29,7 +29,12 @@ To put `agn` on your PATH instead, run `pnpm build`, then `npm link` inside `pac
 | **Codex CLI** | https://github.com/openai/codex - `npm i -g @openai/codex`, then `codex` and sign in with ChatGPT | Your ChatGPT plan |
 | **Pi** | https://pi.dev/docs/latest/quickstart - `npm i -g @earendil-works/pi-coding-agent`, then `/login` | API keys or subscription per Pi's docs |
 | **OpenCode** | https://opencode.ai/docs - `npm i -g opencode-ai`, then configure providers | API keys |
-| **Gemini CLI, Cursor Agent, Copilot CLI, Aider, Goose, Amp, Kimi CLI, Qwen Code, …** | Each project's docs | Launch/attach only in agnostic |
+| **Gemini CLI, Cursor Agent, Copilot CLI, Kimi CLI, Factory Droid, Devin CLI, Grok CLI, OMP, Mimo Code, OpenClaude, Command Code** | Each project's docs | Status only: agn installs a hook and shows the session, and counts no tokens |
+| **Aider, Goose, Amp, Qwen Code, Kiro, Crush, …** | Each project's docs | Launch and attach only in agnostic |
+
+agn installs each agent's hook in the directory that agent reads by default, under your home.
+Moving an agent's config with `GROK_HOME`, `COPILOT_HOME`, `KIMI_CODE_HOME`, `XDG_CONFIG_HOME` or
+`OPENCODE_CONFIG_DIR` is not supported.
 
 Codex gates hooks on a trust hash it keeps in `~/.codex/config.toml`. agn writes that hash itself, in a block marked with `# >>> agn hooks`, so status works from the first run; if Codex ever reports the hook as untrusted, run `/hooks` in Codex and approve it.
 
@@ -39,7 +44,16 @@ After installing, run:
 agn doctor
 ```
 
-You should see each agent with its version, login state, and tier. "Unknown" means agnostic couldn't verify login - start the agent once by hand and re-run.
+You should see each agent you have installed, with its version, login state and support:
+
+| Support | What agnostic does |
+|---|---|
+| `full` | Installs a hook, shows the live status, and counts tokens and cost from the agent's transcripts |
+| `status` | Installs a hook and shows the live status; no token count |
+| `basic` | Starts the agent and attaches to it; the task is running until the agent exits |
+
+Agents that are not installed are named on one `not installed:` line under the table. "Unknown"
+means agnostic couldn't verify login - start the agent once by hand and re-run.
 
 ## The daemon
 
