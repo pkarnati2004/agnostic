@@ -1,0 +1,6 @@
+{
+  "read_config_from": { "claude": true },
+  "hooks": {
+    "Stop": [{ "hooks": [{ "type": "command", "command": "say devin done" }] }]
+  }
+}

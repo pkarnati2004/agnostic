@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "PreToolUse",
+  "session_id": "openclaude-session-1",
+  "cwd": "/repo",
+  "tool_name": "AskUserQuestion"
+}

@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "Stop",
+  "session_id": "session_abc",
+  "cwd": "/repo",
+  "is_interrupt": true
+}

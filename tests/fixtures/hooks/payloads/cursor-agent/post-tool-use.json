@@ -1,0 +1,12 @@
+{
+  "hook_event_name": "postToolUse",
+  "conversation_id": "cursor-conversation-1",
+  "workspace_roots": [
+    "/repo",
+    "/repo/packages/ui"
+  ],
+  "tool_name": "Shell",
+  "tool_input": {
+    "command": "ls"
+  }
+}

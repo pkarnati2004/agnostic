@@ -1,0 +1,5 @@
+{
+  // Devin documents config.json as JSONC, and this comment is the user's.
+  "model": "devin-1",
+  "read_config_from": { "claude": true }
+}

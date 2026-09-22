@@ -36,6 +36,26 @@ agn installs each agent's hook in the directory that agent reads by default, und
 Moving an agent's config with `GROK_HOME`, `COPILOT_HOME`, `KIMI_CODE_HOME`, `XDG_CONFIG_HOME` or
 `OPENCODE_CONFIG_DIR` is not supported.
 
+Claude Code's hook is the one agn installs per repo. Every other agent keeps its hooks in one file
+per user, and agn prints one line to stderr naming the file it wrote:
+
+| Agent | File |
+|---|---|
+| Gemini CLI | `~/.gemini/settings.json` |
+| Factory Droid | `~/.factory/settings.json` |
+| Cursor Agent | `~/.cursor/hooks.json` |
+| Kimi CLI | `~/.kimi-code/config.toml` |
+| Devin CLI | `~/.config/devin/config.json` |
+| OpenClaude | `~/.openclaude/settings.json` |
+| Command Code | `~/.commandcode/settings.json` |
+
+Gemini and Cursor have no permission hook agn can read without answering the question for you, so a
+permission prompt in either shows as running until you answer it. Devin imports `~/.claude` hooks
+unless its `read_config_from` says otherwise, so a repo that also has agn's Claude Code hook reports
+each Devin turn twice; agn acts on the first report and ignores the second. agn writes JSON, so a
+Devin `config.json` with comments in it is refused with the entries to paste in by hand rather than
+rewritten without them.
+
 Codex gates hooks on a trust hash it keeps in `~/.codex/config.toml`. agn writes that hash itself, in a block marked with `# >>> agn hooks`, so status works from the first run; if Codex ever reports the hook as untrusted, run `/hooks` in Codex and approve it.
 
 After installing, run:

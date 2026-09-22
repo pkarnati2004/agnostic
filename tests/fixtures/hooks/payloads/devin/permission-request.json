@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "PermissionRequest",
+  "session_id": "devin-session-1",
+  "cwd": "/repo",
+  "tool_name": "Shell"
+}

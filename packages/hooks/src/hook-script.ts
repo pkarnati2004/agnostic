@@ -11,9 +11,19 @@ export function hookScriptPath(paths: AgnosticPaths): string {
   return join(paths.hooks, "post.sh");
 }
 
-/** What goes in a harness's hook config: one script, one argument, and nothing else. */
-export function hookCommand(paths: AgnosticPaths, harness: HarnessId): string {
-  return `sh ${quoted(hookScriptPath(paths))} ${harness}`;
+/**
+ * What goes in a harness's hook config: one script and the harness it reports for. A harness whose
+ * payload does not name its own event is installed with the event as a third argument instead.
+ */
+export function hookCommand(paths: AgnosticPaths, harness: HarnessId, event?: string): string {
+  const command = `sh ${quoted(hookScriptPath(paths))} ${harness}`;
+  // The event name is the harness's own string, so it is quoted like every other argument here.
+  return event === undefined ? command : `${command} ${quoted(event)}`;
+}
+
+/** How an installer recognises its own entries in a config: the script path as the command spells it. */
+export function hookScriptMarker(paths: AgnosticPaths): string {
+  return quoted(hookScriptPath(paths));
 }
 
 /** Rewritten only when the text differs, so an unchanged install does not touch the file's mtime. */
@@ -36,12 +46,14 @@ export async function writeHookScript(paths: AgnosticPaths): Promise<void> {
 function scriptText(paths: AgnosticPaths): string {
   return `#!/bin/sh
 # Written by agn. Every edit here is replaced the next time agn installs hooks.
-# Usage: post.sh <harness>, with the harness's hook payload on stdin.
+# Usage: post.sh <harness> [event], with the harness's hook payload on stdin.
 set -u
 
 # stdin is read first and always: a hook that exits without reading gives the harness EPIPE.
 payload=$(cat)
 harness="\${1:-}"
+# Only the harnesses whose payload does not name its own event are installed with this argument.
+event="\${2:-}"
 [ -n "$payload" ] || exit 0
 [ -n "$harness" ] || exit 0
 
@@ -62,6 +74,7 @@ printf '%s' "$payload" | "$curl" -s -o /dev/null --noproxy 127.0.0.1 \\
   -H "Authorization: Bearer $token" \\
   -H "Content-Type: application/json" \\
   -H "X-Agn-Task-Id: \${${AGN_TASK_ID}:-}" \\
+  -H "X-Agn-Hook-Event: $event" \\
   --data-binary @- 2> /dev/null
 exit 0
 `;

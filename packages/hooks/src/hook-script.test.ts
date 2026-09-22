@@ -6,7 +6,13 @@ import { agnosticPaths, run } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AGN_TASK_ID, hookCommand, hookScriptPath, writeHookScript } from "./hook-script.js";
 
-type Received = { url: string; authorization: string; taskId: string; body: string };
+type Received = {
+  url: string;
+  authorization: string;
+  taskId: string;
+  event: string;
+  body: string;
+};
 
 let home = "";
 
@@ -19,7 +25,7 @@ afterEach(async () => {
 });
 
 /** One request, then nothing: the script is the only client this server ever has. */
-function listen(received: Received[]): Promise<{ server: Server; port: number }> {
+function listen(received: Received[], status = 200): Promise<{ server: Server; port: number }> {
   const server = createServer((req: IncomingMessage, res) => {
     let body = "";
     req.on("data", (chunk: Buffer) => {
@@ -30,10 +36,11 @@ function listen(received: Received[]): Promise<{ server: Server; port: number }>
         url: req.url ?? "",
         authorization: req.headers.authorization ?? "",
         taskId: String(req.headers["x-agn-task-id"] ?? ""),
+        event: String(req.headers["x-agn-hook-event"] ?? ""),
         body,
       });
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end("{}");
+      res.writeHead(status, { "content-type": "application/json" });
+      res.end(status === 200 ? "{}" : JSON.stringify({ error: { code: "hook-task-unknown" } }));
     });
   });
   return new Promise((ready) => {
@@ -44,9 +51,10 @@ function listen(received: Received[]): Promise<{ server: Server; port: number }>
   });
 }
 
-async function fire(payload: string, taskId: string): Promise<number> {
+async function fire(payload: string, taskId: string, event?: string): Promise<number> {
   const paths = agnosticPaths(home);
-  const result = await run("sh", [hookScriptPath(paths), "claude-code"], {
+  const args = [hookScriptPath(paths), "claude-code", ...(event === undefined ? [] : [event])];
+  const result = await run("sh", args, {
     input: payload,
     env: { [AGN_TASK_ID]: taskId, PATH: "/usr/bin:/bin" },
     inheritEnv: false,
@@ -70,6 +78,9 @@ describe("the hook script", () => {
     const paths = agnosticPaths(home);
     const command = hookCommand(paths, "claude-code");
     expect(command).toBe(`sh '${hookScriptPath(paths)}' claude-code`);
+    expect(hookCommand(paths, "copilot", "preToolUse")).toBe(
+      `sh '${hookScriptPath(paths)}' copilot 'preToolUse'`,
+    );
   });
 
   it("posts the payload verbatim with the bearer token and the task id", async () => {
@@ -87,8 +98,25 @@ describe("the hook script", () => {
         url: "/hooks/claude-code",
         authorization: "Bearer s3cret",
         taskId: "task-1",
+        // The harnesses that name their own event in the payload are installed without this one.
+        event: "",
         body: payload,
       });
+    } finally {
+      server.close();
+    }
+  });
+
+  it("names the event it was installed under, when it was given one", async () => {
+    const paths = agnosticPaths(home);
+    const received: Received[] = [];
+    const { server, port } = await listen(received);
+    try {
+      await writeHookScript(paths);
+      await writeFile(paths.daemon, JSON.stringify({ pid: 1, port }), "utf8");
+      await writeFile(paths.authToken, "s3cret\n", "utf8");
+      expect(await fire('{"tool":"bash"}', "task-1", "preToolUse")).toBe(0);
+      expect(received[0]?.event).toBe("preToolUse");
     } finally {
       server.close();
     }
@@ -118,5 +146,30 @@ describe("the hook script", () => {
   it("exits 0 on an empty payload", async () => {
     await writeHookScript(agnosticPaths(home));
     expect(await fire("", "")).toBe(0);
+  });
+
+  it("exits 0 whatever status the daemon answers with, such as the 404 for a task on another harness", async () => {
+    const paths = agnosticPaths(home);
+    const received: Received[] = [];
+    const { server, port } = await listen(received, 404);
+    try {
+      await writeHookScript(paths);
+      await writeFile(paths.daemon, JSON.stringify({ pid: 1, port }), "utf8");
+      await writeFile(paths.authToken, "s3cret\n", "utf8");
+      expect(await fire('{"hook_event_name":"Stop"}', "task-1")).toBe(0);
+      expect(received).toHaveLength(1);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("quotes a third argument that holds a space or a quote", () => {
+    const paths = agnosticPaths(home);
+    expect(hookCommand(paths, "cursor-agent", "before submit")).toBe(
+      `sh '${hookScriptPath(paths)}' cursor-agent 'before submit'`,
+    );
+    expect(hookCommand(paths, "cursor-agent", "it's here")).toBe(
+      `sh '${hookScriptPath(paths)}' cursor-agent 'it'\\''s here'`,
+    );
   });
 });

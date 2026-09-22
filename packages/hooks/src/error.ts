@@ -15,6 +15,14 @@ export function configUnreadable(file: string, cause: unknown): HooksError {
   });
 }
 
+/** A config in a dialect agn does not write - Devin's JSONC - so the user pastes the entries in. */
+export function configUnsupported(file: string, entries: string): HooksError {
+  return new HooksError(`${file} is not JSON agn can edit`, {
+    code: "hook-config-unsupported",
+    hint: `agn writes JSON and will not drop the comments in ${file}. Add these hooks by hand:\n${entries}`,
+  });
+}
+
 export function configUnwritable(file: string, cause: unknown): HooksError {
   return new HooksError(`agn could not write ${file}`, {
     code: "hook-config-unwritable",

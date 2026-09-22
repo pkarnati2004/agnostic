@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "PermissionRequest",
+  "session_id": "droid-session-1",
+  "cwd": "/repo",
+  "tool_name": "Edit"
+}

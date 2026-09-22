@@ -68,6 +68,7 @@ export const familySources: FamilySource[] = [
     binary: "cursor-agent",
     prompt: argv,
     // Cursor replays Claude's settings through its own file, and its hooks report no resumable id.
+    // What its payload calls the conversation and the workspace roots is inferred, not observed.
     hooks: userSettings(".cursor/hooks.json"),
     resume: null,
     sessionCapture: null,

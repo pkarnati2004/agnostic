@@ -1,0 +1,11 @@
+{
+  "hook_event_name": "UserPromptSubmit",
+  "session_id": "session_abc",
+  "cwd": "/repo",
+  "prompt": [
+    {
+      "type": "text",
+      "text": "list the files here"
+    }
+  ]
+}

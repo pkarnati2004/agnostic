@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "SessionEnd",
+  "session_id": "devin-session-1",
+  "cwd": "/repo",
+  "reason": "complete"
+}

@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "SessionStart",
+  "session_id": "droid-session-1",
+  "cwd": "/repo",
+  "source": "resume"
+}

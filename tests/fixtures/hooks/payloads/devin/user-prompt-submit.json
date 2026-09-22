@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "UserPromptSubmit",
+  "sessionId": "devin-session-1",
+  "cwd": "/repo",
+  "prompt": "add the migration"
+}

@@ -1,6 +1,7 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   type HarnessId,
   type HookResponse,
@@ -72,13 +73,14 @@ function seed(opts: SeedOptions = {}): Task {
 
 function post(
   payload: unknown,
-  init: { harness?: string; taskId?: string; token?: string } = {},
+  init: { harness?: string; taskId?: string; token?: string; event?: string } = {},
 ): Promise<Response> {
   return daemon.request(`/hooks/${init.harness ?? "claude-code"}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       ...(init.taskId === undefined ? {} : { "x-agn-task-id": init.taskId }),
+      ...(init.event === undefined ? {} : { "x-agn-hook-event": init.event }),
       ...(init.token === undefined ? {} : { authorization: `Bearer ${init.token}` }),
     },
     body: typeof payload === "string" ? payload : JSON.stringify(payload),
@@ -197,5 +199,70 @@ describe("POST /hooks/:harness", () => {
   it("needs the daemon's token like every other route", async () => {
     const response = await post({ hook_event_name: "Stop" }, { token: `${TEST_TOKEN}-wrong` });
     expect(response.status).toBe(401);
+  });
+});
+
+describe("POST /hooks/:harness for the harnesses that read a Claude-shaped config", () => {
+  const PAYLOADS = fileURLToPath(
+    new URL("../../../tests/fixtures/hooks/payloads/", import.meta.url),
+  );
+  const payload = async (member: string, file: string): Promise<unknown> =>
+    JSON.parse(await readFile(join(PAYLOADS, member, file), "utf8"));
+
+  it("moves a Gemini task to waiting when the agent's turn ends", async () => {
+    const task = seed({ harness: "gemini" });
+    const answer = await body(
+      await post(await payload("gemini", "after-agent.json"), {
+        harness: "gemini",
+        taskId: task.id,
+      }),
+    );
+    expect(answer.applied).toBe("waiting");
+  });
+
+  it("finds an adopted Cursor session by the first of its workspace roots", async () => {
+    const task = seed({ harness: "cursor-agent" });
+    const stop = { hook_event_name: "stop", conversation_id: "cursor-1", workspace_roots: [cwd] };
+    const answer = await body(await post(stop, { harness: "cursor-agent" }));
+    expect(answer.task.id).toBe(task.id);
+    expect(answer.applied).toBe("waiting");
+  });
+
+  it("takes the event from the header when the payload carries no name", async () => {
+    const task = seed({ harness: "droid" });
+    const answer = await body(
+      await post({ cwd }, { harness: "droid", taskId: task.id, event: "Stop" }),
+    );
+    expect(answer.applied).toBe("waiting");
+  });
+
+  it("prefers the event the payload names over the X-Agn-Hook-Event header", async () => {
+    // The task starts waiting; UserPromptSubmit reads as running, the header hint of Stop as
+    // waiting - the payload's own name has to win for this task to move at all.
+    const task = seed({ harness: "droid", status: "waiting" });
+    const answer = await body(
+      await post(
+        { hook_event_name: "UserPromptSubmit" },
+        { harness: "droid", taskId: task.id, event: "Stop" },
+      ),
+    );
+    expect(answer.applied).toBe("running");
+    expect(answer.task.status).toBe("running");
+  });
+
+  it("ignores the second report of a Devin turn that Devin's imported Claude hook sends", async () => {
+    const task = seed({ harness: "devin" });
+    const first = await body(
+      await post(await payload("devin", "stop.json"), { harness: "devin", taskId: task.id }),
+    );
+    expect(first.applied).toBe("waiting");
+    // Devin imports ~/.claude hooks, so the same turn is reported again under the other id. The
+    // task belongs to Devin, so the report moves nothing and agn says so rather than guessing.
+    const second = await post({ hook_event_name: "Stop" }, { taskId: task.id });
+    expect(second.status).toBe(404);
+    expect(daemon.ledger.tasks.get(task.id)?.status).toBe("waiting");
+    expect(
+      daemon.ledger.events.forTask(task.id).filter((event) => event.kind === "task.status"),
+    ).toHaveLength(2);
   });
 });

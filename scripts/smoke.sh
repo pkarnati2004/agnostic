@@ -350,7 +350,14 @@ echo "smoke: the hook chain, from the installed config to a waiting task"
 agx doctor | grep -q "^tools: gh"
 agx hooks install --repo "$WORK/runrepo" | grep -q "^installed claude-code hooks"
 test -f "$WORK/runrepo/.claude/settings.local.json"
-! grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$WORK/runrepo/.claude/settings.local.json"
+if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$WORK/runrepo/.claude/settings.local.json"; then echo "smoke: token written into settings.local.json" >&2; exit 1; fi
+# Every harness but Claude Code keeps its hooks per user: one file under HOME, never in the repo.
+agx hooks install --repo "$WORK/runrepo" --harness gemini > "$WORK/gemini-hooks.txt" 2>&1
+grep -q "^installed gemini hooks: $USAGE_HOME/.gemini/settings.json" "$WORK/gemini-hooks.txt"
+grep -q "verify: Gemini has no permission hook" "$WORK/gemini-hooks.txt"
+test -f "$USAGE_HOME/.gemini/settings.json"
+# No config agn wrote under the user's home carries the token: the script reads it at run time.
+if grep -rqF "$(cat "$AGNOSTIC_HOME/auth-token")" "$USAGE_HOME"; then echo "smoke: token written under HOME" >&2; exit 1; fi
 # `ask` is the fake agent's "my turn is over": it fires a Stop hook through the installed command.
 PATH="$SMOKE_PATH" tmux -L agn send-keys -t "agn-$TASK" ask Enter
 WAITED=0
@@ -566,7 +573,7 @@ test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$UI_PORT/ui/nop
 test "$(curl -s -o /dev/null -w '%{http_code}' --path-as-is "http://127.0.0.1:$UI_PORT/ui/../")" = 401
 agx ui --no-open | grep -q "^http://127.0.0.1:$UI_PORT/ui#token=$(cat "$AGNOSTIC_HOME/auth-token")$"
 # The token reaches the browser through the fragment and nothing else: not a request line, not a log.
-! grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$AGNOSTIC_HOME/logs/agnd.log"
+if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$AGNOSTIC_HOME/logs/agnd.log"; then echo "smoke: token written to agnd.log" >&2; exit 1; fi
 grep -q "http GET /ui" "$AGNOSTIC_HOME/logs/agnd.log"
 agx daemon stop > /dev/null
 

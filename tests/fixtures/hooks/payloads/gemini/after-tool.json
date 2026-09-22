@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "AfterTool",
+  "session_id": "gemini-session-1",
+  "cwd": "/repo",
+  "tool_name": "run_shell_command"
+}

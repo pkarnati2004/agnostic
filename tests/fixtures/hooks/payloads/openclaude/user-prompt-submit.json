@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "UserPromptSubmit",
+  "session_id": "openclaude-session-1",
+  "cwd": "/repo",
+  "prompt": "rename the field"
+}

@@ -75,6 +75,24 @@ describe("agn hooks install", () => {
     ]);
   });
 
+  it("prints the one thing a Gemini install leaves to the user", async () => {
+    const test = cli([
+      result({
+        harness: "gemini",
+        file: "/home/u/.gemini/settings.json",
+        verify:
+          "Gemini has no permission hook: a permission prompt shows as running until you answer it",
+      }),
+    ]);
+    await hooksCommand(test.ctx).parseAsync(["install", "--repo", REPO.id, "--harness", "gemini"], {
+      from: "user",
+    });
+    expect(test.out).toEqual([
+      "installed gemini hooks: /home/u/.gemini/settings.json",
+      "  verify: Gemini has no permission hook: a permission prompt shows as running until you answer it",
+    ]);
+  });
+
   it("says so when no harness on this machine has a hook", async () => {
     const test = cli([]);
     await hooksCommand(test.ctx).parseAsync(["install", "--repo", REPO.id], { from: "user" });

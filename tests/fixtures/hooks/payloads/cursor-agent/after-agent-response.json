@@ -1,0 +1,8 @@
+{
+  "hook_event_name": "afterAgentResponse",
+  "conversation_id": "cursor-conversation-1",
+  "workspace_roots": [
+    "/repo",
+    "/repo/packages/ui"
+  ]
+}

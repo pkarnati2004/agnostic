@@ -1,0 +1,19 @@
+{
+  "hook_event_name": "PreToolUse",
+  "session_id": "session_abc",
+  "cwd": "/repo",
+  "tool_name": "AskUserQuestion",
+  "tool_input": {
+    "questions": [
+      {
+        "question": "Which region should I deploy to?",
+        "options": [
+          {
+            "label": "us-east",
+            "description": "US East"
+          }
+        ]
+      }
+    ]
+  }
+}

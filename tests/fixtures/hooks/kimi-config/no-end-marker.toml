@@ -1,0 +1,8 @@
+[provider]
+name = "moonshot"
+
+# >>> agn hooks: managed block, edits here are replaced >>>
+[[hooks]]
+event = "Stop"
+command = "sh /old/post.sh kimi"
+timeout = 5

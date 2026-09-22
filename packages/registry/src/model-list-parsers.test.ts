@@ -5,6 +5,7 @@ import {
   claudeModelListRequest,
   parseClaudeModelList,
   parseCodexModelList,
+  parseCursorModelList,
   parseOpenCodeModelList,
   parsePiModelList,
 } from "./model-list-parsers.js";
@@ -139,5 +140,23 @@ describe("parsePiModelList", () => {
   it("lists a provider and model pair once", () => {
     const row = "ollama qwen3:8b 32000 8000 no ready";
     expect(parsePiModelList([row, row].join("\n"))).toEqual(["ollama/qwen3:8b"]);
+  });
+});
+
+describe("parseCursorModelList", () => {
+  it("reads the id off each `<id> - <label>` line and skips the heading", () => {
+    expect(parseCursorModelList(fixture("cursor.txt"))).toEqual(["auto", "gpt-5.2", "sonnet-4.5"]);
+  });
+
+  it("lists an id once, whatever its label says", () => {
+    const rows = ["auto - Auto", "auto - Auto (current)"];
+    expect(parseCursorModelList(rows.join("\n"))).toEqual(["auto"]);
+  });
+
+  it.each([
+    ["", []],
+    ["nothing to list\n\n", []],
+  ])("reads %s as no models", (output, ids) => {
+    expect(parseCursorModelList(output)).toEqual(ids);
   });
 });

@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "AfterAgent",
+  "session_id": "gemini-session-1",
+  "cwd": "/repo",
+  "prompt": "what did you do",
+  "prompt_response": "I ran the tests and they passed."
+}

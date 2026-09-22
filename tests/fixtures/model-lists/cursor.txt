@@ -1,0 +1,4 @@
+Available models:
+auto - Auto
+gpt-5.2 - GPT-5.2 (default)
+sonnet-4.5 - Claude Sonnet 4.5

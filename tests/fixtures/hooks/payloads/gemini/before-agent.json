@@ -1,0 +1,5 @@
+{
+  "hook_event_name": "BeforeAgent",
+  "session_id": "gemini-session-1",
+  "cwd": "/repo"
+}
