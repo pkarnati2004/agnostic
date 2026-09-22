@@ -123,11 +123,9 @@ Some tasks have no file list to show:
 - A task agn adopted has no base commit of its own, so its header reads
   "adopted: changes against `main`".
 - A task whose worktree was cleaned reads "worktree cleaned; branch `<branch>` kept" and shows what
-  was committed. Open in editor waits until Resume rebuilds the worktree.
+  was committed. Open in editor and Bring up to date wait until Resume rebuilds the worktree.
 - A branch with nothing on it yet reads "No changes against `<base>` yet."
 - A binary file reads "binary file, no diff": git has no patch for it.
-
-**Bring up to date** is drawn beside Open in editor and does nothing yet; the next update wires it.
 
 ## Create PR
 
@@ -151,6 +149,31 @@ A task started with `agn run --base <task>` opens its pull request against that 
 the diff holds only its own work. GitHub retargets it at the base branch when the parent merges.
 
 `agn pr [<task>]` does the same from a terminal, with `--title <t>` and `--no-open`.
+
+## Bring up to date
+
+**Bring up to date** asks the agent to bring its branch level with the base it is read against.
+agn runs no git command for it: it sends the agent one message, and the agent fetches, rebases or
+merges, resolves the conflicts and runs the tests in its own session. The tooltip says what the
+message will ask for before you click.
+
+The message is one line: fetch the base, bring the branch up to date with it, resolve conflicts,
+run the repo's `test_command` and keep it green, and do not push. Which way depends on where the
+branch has been. A branch nobody has pushed is rebased onto the base. A branch that is on origin is
+merged into instead, because rewriting a published branch would break whoever has it.
+
+If the agent's session is still running, the message is typed into it, as if you had typed it in
+the terminal yourself. If the session has ended, agn resumes the task with the message as the
+first turn: the agent picks its conversation up where it can, and starts fresh with the task
+context and the message where it cannot. The panel says which happened.
+
+Two tasks cannot be asked this way. A task whose worktree was cleaned needs Resume first, which
+rebuilds the worktree. A session agn adopted that is not running under tmux has no pane agn can
+type into, so agn hands you the message to paste into that terminal yourself.
+
+`agn update [<task>]` does the same from a terminal. It prints where the message went, which mode
+the branch got and why, and the `agn attach` line for watching the work; it never takes the
+terminal over.
 
 ## History
 

@@ -5,6 +5,7 @@ import type {
   HandoffTaskRequest,
   RepoListRow,
   Task,
+  UpdateTaskResponse,
 } from "@agnostic/core";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { createClient } from "./api/client";
@@ -108,6 +109,16 @@ function Workspace({ token }: { token: string }) {
     return created;
   };
 
+  // The panel draws what the agent was asked to do, so the response comes back to it.
+  const update = async (taskId: string): Promise<UpdateTaskResponse | null> => {
+    let asked: UpdateTaskResponse | null = null;
+    await act({ taskId, action: "update", host: "panel" }, async (api) => {
+      asked = await api.updateTask(taskId);
+      return asked.task;
+    });
+    return asked;
+  };
+
   const { handoff, started } = useTaskActions(act, put, dispatchTabs);
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
   // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
@@ -190,6 +201,7 @@ function Workspace({ token }: { token: string }) {
           notice={notices[activeTask.id] ?? null}
           onOpen={(editor) => openInEditor(activeTask.id, editor)}
           onCreatePr={(body) => createPr(activeTask.id, body)}
+          onUpdate={() => update(activeTask.id)}
         />
       )}
     </div>

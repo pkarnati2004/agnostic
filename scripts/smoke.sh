@@ -440,6 +440,22 @@ agx changes "$TASK" --json | grep -q '"ahead": 1'
 curl -fsS -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/tasks/$TASK/changes" |
   grep -q '"pushed":false'
 
+echo "smoke: agn update asks the live agent to bring its branch up to date"
+agx update "$TASK" > "$WORK/update.txt"
+grep -q "^sent to the live session" "$WORK/update.txt"
+# Nothing has pushed this branch yet, so the agent is asked to rebase.
+grep -q "^mode: rebase (never pushed)" "$WORK/update.txt"
+grep -q "^base: main" "$WORK/update.txt"
+# The agent asked for bracketed paste, as a real composer does, so tmux frames what it typed in:
+# the line the agent read starts with the paste marker, not with the prompt itself.
+TYPED="^line: .*Fetch \`main\`. Bring \`$BRANCH\` up to date"
+for _ in 1 2 3 4 5; do
+  grep -q "$TYPED" "$WORK/agent.log" && break
+  sleep 1
+done
+grep -q "$TYPED" "$WORK/agent.log"
+grep -q "Do not push" "$WORK/agent.log"
+
 echo "smoke: agn pr pushes once to origin and hands back the compare page"
 # No clipboard tool on this PATH: agn prints the description instead of taking the author's
 # clipboard, which is also the machine-with-no-pbcopy path the command promises.
@@ -464,6 +480,9 @@ grep -q "^--- body ---" "$WORK/pr.txt"
 grep -q "^## Spec" "$WORK/pr.txt"
 # The second call pushes the same commits again and says so rather than claiming a new push.
 agx_noclip pr "$TASK" --no-open | grep -q "already on origin"
+# The branch is on origin now, so the same button asks for a merge instead: agn never rewrites a
+# branch someone else may have.
+agx update "$TASK" | grep -q "^mode: merge (pushed)"
 git -C "$WORK/runrepo" config --unset "url.$WORK/origin.git.pushInsteadOf"
 git -C "$WORK/runrepo" remote remove origin
 
@@ -516,6 +535,17 @@ rm -rf "$TRANSCRIPTS"
 agx resume "$TASK" --json > "$WORK/resume-fresh.json"
 grep -q '"via": "fresh"' "$WORK/resume-fresh.json"
 agx status "$TASK" | grep -q "running"
+agx stop "$TASK" | grep -q "^stopped $TASK"
+
+# A stopped task takes the prompt through the resume tree instead: the launch carries it as one
+# more section of the task context.
+agx update "$TASK" --json > "$WORK/update-fresh.json"
+grep -q '"via": "fresh"' "$WORK/update-fresh.json"
+for _ in 1 2 3 4 5; do
+  grep -q "## Bring up to date" "$WORK/agent.log" && break
+  sleep 1
+done
+grep -q "## Bring up to date" "$WORK/agent.log"
 agx stop "$TASK" | grep -q "^stopped $TASK"
 # And the line the user reads, which --json replaces with the body: without a terminal to hand
 # over, tmux refuses and what agn said before it is all that is left.
@@ -676,3 +706,7 @@ grep -q "raw.githubusercontent.com" packages/catalog/src/catalog-source.ts
 PUSHERS="$(grep -rl "git push\|\"push\"" packages/*/src --include='*.ts' | grep -v test | tr '\n' ' ')"
 test "$PUSHERS" = "packages/daemon/src/push-branch.ts "
 if grep -rq -- "--force" packages/daemon/src/push-branch.ts; then echo "smoke: push-branch.ts names --force" >&2; exit 1; fi
+# Bring up to date asks the agent to rebase, merge and fetch; agn runs none of them. The only git
+# command in the daemon or the executor that names one of those words is the merge-base read.
+GIT_WRITES="$(grep -rnE "git.*(rebase|merge|fetch)" packages/daemon/src packages/executor-tmux/src --include='*.ts' | grep -v "\.test\.ts:" | grep -v "merge-base" || true)"
+if [ -n "$GIT_WRITES" ]; then echo "smoke: agn runs a git write itself: $GIT_WRITES" >&2; exit 1; fi

@@ -20,3 +20,16 @@ export type CreatePrResponse = {
   base: string;
   branch: string;
 };
+
+export type UpdateMode = "rebase" | "merge";
+
+/** The answer to `POST /tasks/:id/update`: what the agent was asked to do, and how it was asked. */
+export type UpdateTaskResponse = {
+  task: Task;
+  /** rebase when the branch has no upstream (never published); merge when it has one. */
+  mode: UpdateMode;
+  /** live: typed into the running session; native | fresh: the resume tree ran with it (ADR 014). */
+  via: "live" | "native" | "fresh";
+  base: string;
+  prompt: string;
+};

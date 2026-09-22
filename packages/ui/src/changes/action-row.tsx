@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
 import type { TaskAction, TaskNotice } from "../store/task-notices";
 import { CreatePrDialog } from "./create-pr-dialog";
 import { OpenInEditor } from "./open-in-editor";
+import { updateTooltip } from "./update-tooltip";
 
 type ActionRowProps = {
   task: TaskListRow;
@@ -28,15 +29,16 @@ type ActionRowProps = {
   loading: boolean;
   onOpen: (editor: EditorId | null) => void;
   onCreatePr: (body: CreatePrRequest) => Promise<CreatePrResponse | null>;
+  onUpdate: () => void;
   onRefresh: () => void;
 };
 
-const NOT_YET = "Not available yet.";
 const RESUME_FIRST = "Resume first: the worktree was cleaned";
 const NO_ORIGIN = "This repo has no origin remote.";
 const NOTHING_YET = "Nothing to open a pull request for yet.";
+const NO_BRANCH = "This task works in the checkout itself, so it has no branch to update.";
 
-/** Everything the panel can do to a task. Bring up to date arrives in the next update. */
+/** Everything the panel can do to a task. */
 export function ActionRow(props: ActionRowProps) {
   const { cleaned, busy, refreshOnly, changes } = props;
   return (
@@ -61,11 +63,18 @@ export function ActionRow(props: ActionRowProps) {
               />
             </Held>
           )}
-          <Held tip={cleaned ? RESUME_FIRST : NOT_YET}>
-            <Button variant="outline" size="sm" disabled>
-              Bring up to date
-            </Button>
-          </Held>
+          {changes !== null && (
+            <Held tip={updateTip(props.task, changes, cleaned)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={updateBlocked(props.task, cleaned) || busy !== null}
+                onClick={props.onUpdate}
+              >
+                Bring up to date
+              </Button>
+            </Held>
+          )}
         </>
       )}
       <Button
@@ -79,6 +88,20 @@ export function ActionRow(props: ActionRowProps) {
       </Button>
     </div>
   );
+}
+
+/** What the agent will be asked to do, or why nobody can ask it yet (ADR 036 Q6). */
+function updateTip(task: TaskListRow, changes: ChangesResponse, cleaned: boolean): string {
+  if (cleaned) {
+    return RESUME_FIRST;
+  }
+  return task.branch === null
+    ? NO_BRANCH
+    : updateTooltip(task.branch, changes.base.ref, changes.pushed);
+}
+
+function updateBlocked(task: TaskListRow, cleaned: boolean): boolean {
+  return cleaned || task.branch === null;
 }
 
 /**

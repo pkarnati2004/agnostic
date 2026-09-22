@@ -21,14 +21,19 @@ const DONE_SHOWN = 5;
 // A harness that cannot take a session id back, on this route or at all, starts fresh instead.
 const FALLS_BACK_TO_FRESH = new Set(["resume-unsupported", "session-id-invalid"]);
 
+/** One more section on the end of the composed prompt: a turn the caller is opening with. */
+export type ExtraSection = { heading: string; body: string };
+
 /** A first start, or a resume with no session id: the whole task context in one prompt. */
 export async function freshLaunchCommand(
   ctx: DaemonContext,
   repo: Repo,
   task: Task,
   profile: Profile,
+  extra: ExtraSection | null = null,
 ): Promise<LaunchCommand> {
-  const prompt = composeLaunchPrompt(await promptInput(ctx, repo, task));
+  const context = composeLaunchPrompt(await promptInput(ctx, repo, task));
+  const prompt = extra === null ? context : `${context}\n## ${extra.heading}\n\n${extra.body}\n`;
   // A profile on the local route is launched against whichever server detection found serving it.
   const { servers } = await ctx.detection.current();
   const spec = launchSpec(profile, { prompt, env: ctx.env, servers });

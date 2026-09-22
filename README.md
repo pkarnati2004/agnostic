@@ -61,6 +61,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn outcomes <task>` | What the task changed, what passed, what you kept |
 | `agn changes [<task>]` | Files the task changed against its base, with counts. `--patch <path>` prints one file's diff |
 | `agn pr [<task>]` | Push the branch and open its pull request. `--title <t>`, `--no-open` |
+| `agn update [<task>]` | Ask the agent to bring the branch up to date with its base: rebase if never pushed, merge if pushed |
 | `agn open [<task>]` | Open the task's directory in your editor. `--editor <id>` |
 | `agn catalog show <profile>` / `agn catalog update` | Print the benchmark rows behind a recommendation, or fetch the latest catalog |
 | `agn ui` | Open the workspace in your browser. `--no-open` prints the address instead |

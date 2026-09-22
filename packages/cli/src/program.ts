@@ -24,6 +24,7 @@ import { statusCommand } from "./commands/status.js";
 import { stopCommand } from "./commands/stop.js";
 import { syncCommand } from "./commands/sync.js";
 import { uiCommand } from "./commands/ui.js";
+import { updateCommand } from "./commands/update.js";
 import { usageCommand } from "./commands/usage.js";
 import type { CliContext, Output } from "./context.js";
 import { renderError } from "./render-error.js";
@@ -71,6 +72,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     openCommand(ctx),
     changesCommand(ctx),
     prCommand(ctx),
+    updateCommand(ctx),
     catalogCommand(ctx),
     uiCommand(ctx),
   ]) {

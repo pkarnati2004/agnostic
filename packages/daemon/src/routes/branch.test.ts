@@ -1,13 +1,21 @@
+import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CreatePrResponse, Repo, Task, ToolReport } from "@agnostic/core";
+import {
+  type CreatePrResponse,
+  type Repo,
+  readRepoConfig,
+  type Task,
+  type ToolReport,
+  writeRepoConfig,
+} from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
 import { launchDetection } from "../test-detection.js";
 import { type GhShim, installGhShim } from "../test-gh-shim.js";
 import { type GitRecorder, recordGit } from "../test-git-recorder.js";
-import { commitLines, gitIn, repoWithConfig, startTask } from "../test-task-run.js";
+import { acceptTask, commitLines, gitIn, repoWithConfig, startTask } from "../test-task-run.js";
 
 const ORIGIN = "git@github.com:o/r.git";
 const CREATED = "https://github.com/o/r/pull/12";
@@ -31,6 +39,8 @@ beforeEach(async () => {
   git = await recordGit();
   daemon = await createTestDaemon({
     tmux: true,
+    // The daemon pushes with its own environment, so the recorder goes on that PATH, not this one.
+    pathPrefix: git.dir,
     // The launch environment is built under the daemon's own home, which is what `paths` names.
     detect: (paths) => Promise.resolve({ ...launchDetection(join(paths.home, "bin"), []), tools }),
   });
@@ -160,6 +170,20 @@ describe("POST /tasks/:id/pr", () => {
     expect(await pushes()).toEqual([]);
   });
 
+  it("refuses a GitHub Enterprise host, which is not github.com, before it pushes", async () => {
+    await gitIn(worktree, ["remote", "set-url", "origin", "https://github.example.com/o/r.git"]);
+    const error = await refused(await post(), 409);
+    expect(error.code).toBe("remote-not-github");
+    expect(await pushes()).toEqual([]);
+  });
+
+  it("refuses an ssh:// remote that does not name github.com, before it pushes", async () => {
+    await gitIn(worktree, ["remote", "set-url", "origin", "ssh://git@example.com/o/r.git"]);
+    const error = await refused(await post(), 409);
+    expect(error.code).toBe("remote-not-github");
+    expect(await pushes()).toEqual([]);
+  });
+
   it("refuses a repo with no origin", async () => {
     await gitIn(worktree, ["remote", "remove", "origin"]);
     const error = await refused(await post(), 409);
@@ -181,25 +205,44 @@ describe("POST /tasks/:id/pr", () => {
     expect((await refused(await post({}, inPlace.id), 409)).code).toBe("repo-not-git");
   });
 
+  it("refuses a branch that is what the repo branches from, before it pushes", async () => {
+    const config = await readRepoConfig(repo.path);
+    if (config === null) {
+      throw new Error("this test needs a repo with agnostic.yaml");
+    }
+    await writeRepoConfig(repo.path, { ...config, baseBranch: task.branch ?? "" });
+    const error = await refused(await post(), 409);
+    expect(error.code).toBe("branch-is-base");
+    expect(await pushes()).toEqual([]);
+  });
+
   it("targets the parent task's branch, and the base branch once the parent is accepted", async () => {
     const { parent, child } = await stacked();
     expect((await created({}, child.id)).base).toBe(parent.branch);
     expect(await ghCall("create")).toContain(parent.branch);
-    daemon.ledger.outcomes.record({
-      taskId: parent.id,
-      testsBefore: null,
-      testsAfter: null,
-      accepted: true,
-      reverted: false,
-      agentLines: 2,
-      humanChangedLines: null,
-      humanEditRatio: null,
-      durationSec: 1,
-      costUsd: null,
-      tokens: 0,
-      resolvedModel: null,
-    });
+    acceptTask(daemon, parent, 2);
     expect((await created({}, child.id)).base).toBe("main");
+  });
+
+  it("still shows the branch pushed when gh fails to create the pull request", async () => {
+    await gh.create({ exitCode: 1, stderr: "GraphQL: something went wrong\n" });
+    const error = await refused(await post(), 502);
+    expect(error.code).toBe("gh-failed");
+    expect(error.message).toContain("GraphQL: something went wrong");
+    expect(error.hint).toContain("gh auth status");
+    // The push is agn's one write to the remote, and it already happened before gh was asked.
+    expect(await pushes()).toEqual([
+      ["-C", worktree, "push", "--porcelain", "--set-upstream", "origin", task.branch ?? ""],
+    ]);
+  });
+
+  it("removes the --body-file temp file once gh has read it", async () => {
+    await created();
+    const create = await ghCall("create");
+    const at = (create ?? []).indexOf("--body-file");
+    expect(at).toBeGreaterThan(-1);
+    const bodyFile = create?.[at + 1] ?? "";
+    expect(existsSync(bodyFile)).toBe(false);
   });
 
   it("says to open the parent's PR first when gh refuses a stacked one", async () => {
@@ -232,6 +275,22 @@ describe("POST /tasks/:id/pr", () => {
       expect(push).not.toContain("--force");
       expect(push).not.toContain("--force-with-lease");
       expect(push).not.toContain("-f");
+    }
+  });
+
+  it("never asks git for a force push or a + refspec, in any command the route runs", async () => {
+    const { child } = await stacked();
+    await created({}, child.id);
+    await created();
+    const calls = await git.calls();
+    expect(calls.filter((call) => call.includes("push")).length).toBe(2);
+    for (const call of calls) {
+      expect(call).not.toContain("--force");
+      expect(call).not.toContain("--force-with-lease");
+      expect(call).not.toContain("-f");
+      for (const arg of call) {
+        expect(arg.startsWith("+")).toBe(false);
+      }
     }
   });
 });

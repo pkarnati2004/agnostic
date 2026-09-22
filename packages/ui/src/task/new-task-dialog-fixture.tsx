@@ -49,6 +49,7 @@ export function stubClient(overrides: Partial<WorkspaceClient> = {}): WorkspaceC
     changes: () => Promise.reject(new Error("unused")),
     diff: () => Promise.reject(new Error("unused")),
     createPr: () => Promise.reject(new Error("unused")),
+    updateTask: () => Promise.reject(new Error("unused")),
     editors: () => Promise.reject(new Error("unused")),
     openTask: () => Promise.reject(new Error("unused")),
     // Never resolves: these tests care about what is sent, not the reply.
