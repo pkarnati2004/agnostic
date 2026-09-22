@@ -48,7 +48,7 @@ plans:
   cursor: pro
 ```
 
-A detected plan wins over this file; the `plan` column in `agn doctor` says `(config)` when the file is what it is going on. The plan names come from the catalog, not from agnostic's code, so a new tier works as soon as the catalog knows it. Until then agnostic shows the name it read as `not in catalog` and leaves billing `unknown` rather than assuming what it covers.
+A detected plan wins over this file; the `plan` column in `agn doctor` says `(config)` when the file is what it is going on. The file wins in one case: the catalog has no row for the plan the agent reported and the file names a plan, and the column then reads `max20 (detected max50 not in catalog)`. The plan names come from the catalog, not from agnostic's code, so a new tier works as soon as the catalog knows it. Until then agnostic shows the name it read as `not in catalog` and leaves billing `unknown` rather than assuming what it covers.
 
 Tokens are counted per plan and per task from the agents' own transcripts; see
 [usage and cost](usage.md).

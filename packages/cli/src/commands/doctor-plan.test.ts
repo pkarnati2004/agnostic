@@ -56,7 +56,11 @@ function daemon(first: DoctorResponse, second = first) {
 
 const unknown = response([report({})]);
 const known = response(
-  [report({ plan: { value: "max20", source: "config", known: true, confirmed: true } })],
+  [
+    report({
+      plan: { value: "max20", source: "config", known: true, confirmed: true, overridden: null },
+    }),
+  ],
   {
     claude: "max20",
   },
@@ -100,13 +104,32 @@ describe("agn doctor --plan", () => {
 
   it("passes a plan the catalog has never heard of straight through", async () => {
     const notInCatalog = response([
-      report({ plan: { value: "max50", source: "config", known: false, confirmed: true } }),
+      report({
+        plan: { value: "max50", source: "config", known: false, confirmed: true, overridden: null },
+      }),
     ]);
     const { requests, client } = daemon(notInCatalog);
     const cli = createTestContext({ client });
     await runMain(argv("--plan", "claude=max50"), cli.ctx);
     expect(requests).toEqual([{ plans: { claude: "max50" } }]);
     expect(cli.out.join("\n")).toContain("max50 (not in catalog)");
+  });
+
+  it("says which detected plan the configured one stood in for", async () => {
+    const overridden = response([
+      report({
+        plan: {
+          value: "max20",
+          source: "config",
+          known: true,
+          confirmed: true,
+          overridden: "max50",
+        },
+      }),
+    ]);
+    const cli = createTestContext({ client: daemon(overridden).client });
+    await runMain(argv(), cli.ctx);
+    expect(cli.out.join("\n")).toContain("max20 (detected max50 not in catalog)");
   });
 
   it("names the flag and the plans the catalog knows when nobody is there to ask", async () => {
@@ -164,7 +187,9 @@ describe("agn doctor --plan", () => {
 
   it("asks again about a plan the harness's own models contradict", async () => {
     const doubted = response([
-      report({ plan: { value: "pro", source: "config", known: true, confirmed: false } }),
+      report({
+        plan: { value: "pro", source: "config", known: true, confirmed: false, overridden: null },
+      }),
     ]);
     const cli = createTestContext({ client: daemon(doubted).client });
     await runMain(argv(), cli.ctx);
@@ -175,7 +200,9 @@ describe("agn doctor --plan", () => {
 
   it("says which plan it doubts when it asks on a terminal", async () => {
     const doubted = response([
-      report({ plan: { value: "pro", source: "config", known: true, confirmed: false } }),
+      report({
+        plan: { value: "pro", source: "config", known: true, confirmed: false, overridden: null },
+      }),
     ]);
     const { requests, client } = daemon(doubted, known);
     const cli = createTestContext({ client, stdin: ["2"] });
@@ -198,7 +225,7 @@ describe("agn doctor --plan", () => {
     expect(unknownPlans(response([gemini])).map((row) => row.harness)).toEqual(["gemini"]);
     const answered = report({
       ...gemini,
-      plan: { value: "ai-pro", source: "config", known: true, confirmed: true },
+      plan: { value: "ai-pro", source: "config", known: true, confirmed: true, overridden: null },
     });
     expect(unknownPlans(response([answered]))).toEqual([]);
   });

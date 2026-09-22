@@ -20,6 +20,9 @@ export type PlanReport = {
   source: "detected" | "config";
   known: boolean;
   confirmed: boolean;
+  /** The name the harness reported, when config.yaml overrode it because the catalog has no
+   * row for it (ADR 016, amended); null otherwise. */
+  overridden: Plan | null;
 };
 
 /** A plan the catalog knows, which is what `agn doctor` offers and the workspace picker lists. */

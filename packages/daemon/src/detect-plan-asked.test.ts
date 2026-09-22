@@ -72,6 +72,7 @@ describe("the daemon reading a login whose file names no plan", () => {
       source: "config",
       known: true,
       confirmed: true,
+      overridden: null,
     });
     const profiles = (await doctor()).profiles.filter((row) => row.harness === "gemini");
     expect(profiles.map((row) => [row.billing, row.evidence])).toEqual([

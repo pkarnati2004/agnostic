@@ -13,6 +13,7 @@ import type { LocalServer } from "./detect-local-servers.js";
 import { planVendor } from "./detect-plan.js";
 import { gateways } from "./gateways.js";
 import { harnessDefinition } from "./harness-list.js";
+import { resolvePlan } from "./resolve-plan.js";
 
 /** The key that lets a harness bill by API when its own login says nothing. */
 const NATIVE_API_KEYS: Record<string, string> = {
@@ -62,15 +63,13 @@ function nativeProfiles(status: HarnessStatus, input: EnumerateInput): Profile[]
   if (vendor === null) {
     return models.map((model) => profile(status, model, "native", billing, "binary"));
   }
-  const plan = status.plan ?? input.configPlans[vendor] ?? null;
-  const known =
-    plan !== null && input.catalogPlans.some((row) => row.vendor === vendor && row.id === plan);
-  if (!known) {
+  const plan = resolvePlan(status.plan, input.configPlans[vendor], vendor, input.catalogPlans);
+  if (plan === null || !plan.known) {
     // Logged in on a subscription, but agn cannot say what it includes, so it says exactly that.
     const unclear: Billing = plan === null ? "subscription" : "unknown";
     return models.map((model) => profile(status, model, "native", unclear, "unknown-plan"));
   }
-  return models.flatMap((model) => entitledProfile(status, model, plan, input.entitlements));
+  return models.flatMap((model) => entitledProfile(status, model, plan.value, input.entitlements));
 }
 
 /** A model the plan does not carry is not a profile at all; the default model is always there. */

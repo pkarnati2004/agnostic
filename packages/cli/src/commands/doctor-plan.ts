@@ -41,6 +41,9 @@ export function planCell(row: HarnessReport): string {
   if (row.plan === null) {
     return "unknown";
   }
+  if (row.plan.overridden !== null) {
+    return `${row.plan.value} (detected ${row.plan.overridden} not in catalog)`;
+  }
   if (!row.plan.known) {
     return `${row.plan.value} (not in catalog)`;
   }

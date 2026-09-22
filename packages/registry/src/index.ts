@@ -40,3 +40,4 @@ export {
   parsePiModelList,
 } from "./model-list-parsers.js";
 export { type ModelListResult, probeModels } from "./probe-models.js";
+export { type PlanChoice, resolvePlan } from "./resolve-plan.js";

@@ -61,6 +61,7 @@ describe("the daemon reading xAI's tier off the Grok auth file", () => {
       // The fixture catalog carries no xai plan rows, so the tier is unrecognized but detected.
       known: false,
       confirmed: true,
+      overridden: null,
     });
   });
 
