@@ -1,3 +1,4 @@
+import type { CreatePrRequest, CreatePrResponse } from "./branch-api.js";
 import type { CatalogRowsResponse, CatalogUpdateResponse } from "./catalog-api.js";
 import type { ChangesResponse, DiffResponse } from "./changes-api.js";
 import {
@@ -91,6 +92,8 @@ export type DaemonClient = {
   taskChanges(id: string): Promise<ChangesResponse>;
   /** One file's unified patch, by the path `taskChanges` printed for it. */
   taskDiff(id: string, path: string): Promise<DiffResponse>;
+  /** Pushes the task's branch to origin once and opens its pull request (ADR 036 Q5). */
+  createPr(id: string, body: CreatePrRequest): Promise<CreatePrResponse>;
   /** What the task cost and what became of its branch; the daemon rechecks the verdict first. */
   taskOutcome(id: string): Promise<OutcomeResponse>;
   /** The catalog rows behind a profile, marked where the last recommendation leaned on them. */
@@ -186,6 +189,8 @@ export function createDaemonClient(opts: {
         "GET",
         `/tasks/${encodeURIComponent(id)}/diff?path=${encodeURIComponent(path)}`,
       ),
+    createPr: (id, body) =>
+      json<CreatePrResponse>("POST", `/tasks/${encodeURIComponent(id)}/pr`, body),
     taskOutcome: (id) => json<OutcomeResponse>("GET", `/tasks/${encodeURIComponent(id)}/outcome`),
     catalogRows: (profile) =>
       json<CatalogRowsResponse>("GET", `/catalog/rows?profile=${encodeURIComponent(profile)}`),

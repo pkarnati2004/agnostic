@@ -1,4 +1,11 @@
-import type { EditorId, HandoffTaskRequest, RepoListRow, Task } from "@agnostic/core";
+import type {
+  CreatePrRequest,
+  CreatePrResponse,
+  EditorId,
+  HandoffTaskRequest,
+  RepoListRow,
+  Task,
+} from "@agnostic/core";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { createClient } from "./api/client";
 import type { ApiError } from "./api/error";
@@ -88,6 +95,19 @@ function Workspace({ token }: { token: string }) {
     });
   };
 
+  // The response is the dialog's: it holds the URL and the description, which no row carries.
+  const createPr = async (
+    taskId: string,
+    body: CreatePrRequest,
+  ): Promise<CreatePrResponse | null> => {
+    let created: CreatePrResponse | null = null;
+    await act({ taskId, action: "pr", host: "dialog" }, async (api) => {
+      created = await api.createPr(taskId, body);
+      return created.task;
+    });
+    return created;
+  };
+
   const { handoff, started } = useTaskActions(act, put, dispatchTabs);
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
   // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
@@ -169,6 +189,7 @@ function Workspace({ token }: { token: string }) {
           client={client}
           notice={notices[activeTask.id] ?? null}
           onOpen={(editor) => openInEditor(activeTask.id, editor)}
+          onCreatePr={(body) => createPr(activeTask.id, body)}
         />
       )}
     </div>

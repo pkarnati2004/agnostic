@@ -440,6 +440,33 @@ agx changes "$TASK" --json | grep -q '"ahead": 1'
 curl -fsS -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/tasks/$TASK/changes" |
   grep -q '"pushed":false'
 
+echo "smoke: agn pr pushes once to origin and hands back the compare page"
+# No clipboard tool on this PATH: agn prints the description instead of taking the author's
+# clipboard, which is also the machine-with-no-pbcopy path the command promises.
+agx_noclip() {
+  HOME="$USAGE_HOME" PATH="$(dirname "$NODE")" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
+}
+git init -q --bare "$WORK/origin.git"
+git -C "$WORK/runrepo" remote add origin "$WORK/origin.git"
+# A local path is not a GitHub remote, and agn refuses before it pushes anything.
+! agx_noclip pr "$TASK" --no-open > "$WORK/pr-refused.txt" 2>&1
+grep -q "not a GitHub remote" "$WORK/pr-refused.txt"
+# A GitHub URL whose pushes git sends to the bare repo beside it: the push is real, GitHub is not.
+# `pushInsteadOf`, not `insteadOf`: `git remote get-url origin` expands `insteadOf`, so agn would
+# read the local path back and refuse the remote it was just handed.
+git -C "$WORK/runrepo" remote set-url origin git@github.com:agn/smoke.git
+git -C "$WORK/runrepo" config "url.$WORK/origin.git.pushInsteadOf" git@github.com:agn/smoke.git
+agx_noclip pr "$TASK" --no-open > "$WORK/pr.txt"
+grep -q "^pushed agn/" "$WORK/pr.txt"
+grep -q "^compare: https://github.com/agn/smoke/compare/main\.\.\.agn/" "$WORK/pr.txt"
+git -C "$WORK/origin.git" rev-parse --verify "refs/heads/$BRANCH" > /dev/null
+grep -q "^--- body ---" "$WORK/pr.txt"
+grep -q "^## Spec" "$WORK/pr.txt"
+# The second call pushes the same commits again and says so rather than claiming a new push.
+agx_noclip pr "$TASK" --no-open | grep -q "already on origin"
+git -C "$WORK/runrepo" config --unset "url.$WORK/origin.git.pushInsteadOf"
+git -C "$WORK/runrepo" remote remove origin
+
 agx stop "$TASK" | grep -q "^stopped $TASK"
 
 agx outcomes "$TASK" > "$WORK/outcomes.txt"
@@ -644,3 +671,8 @@ FETCHERS="$(grep -rlE "(^|[^A-Za-z.])fetch\(" packages/*/src --include='*.ts' | 
 test "$FETCHERS" = "packages/core/src/daemon-probe.ts packages/hooks/src/hook-post-source.ts packages/registry/src/detect-local-servers.ts "
 test "$(grep -rl "raw.githubusercontent.com" packages/*/src --include='*.ts' | wc -l | tr -d ' ')" -eq 1
 grep -q "raw.githubusercontent.com" packages/catalog/src/catalog-source.ts
+# One file writes to a remote, and it pushes without --force. Everything else git is asked to do
+# is a read.
+PUSHERS="$(grep -rl "git push\|\"push\"" packages/*/src --include='*.ts' | grep -v test | tr '\n' ' ')"
+test "$PUSHERS" = "packages/daemon/src/push-branch.ts "
+if grep -rq -- "--force" packages/daemon/src/push-branch.ts; then echo "smoke: push-branch.ts names --force" >&2; exit 1; fi

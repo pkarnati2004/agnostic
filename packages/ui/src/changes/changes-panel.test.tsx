@@ -28,7 +28,13 @@ function panelClient(over: Partial<WorkspaceClient> = {}): WorkspaceClient {
 async function panel(client: WorkspaceClient, task = taskRow()) {
   const view = render(
     <TooltipProvider>
-      <ChangesPanel task={task} client={client} notice={null} onOpen={() => Promise.resolve()} />
+      <ChangesPanel
+        task={task}
+        client={client}
+        notice={null}
+        onOpen={() => Promise.resolve()}
+        onCreatePr={() => Promise.resolve(null)}
+      />
     </TooltipProvider>,
   );
   await act(async () => undefined);

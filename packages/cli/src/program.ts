@@ -13,6 +13,7 @@ import { hooksCommand } from "./commands/hooks.js";
 import { initCommand } from "./commands/init.js";
 import { openCommand } from "./commands/open.js";
 import { outcomesCommand } from "./commands/outcomes.js";
+import { prCommand } from "./commands/pr.js";
 import { profilesCommand } from "./commands/profiles.js";
 import { recommendCommand } from "./commands/recommend.js";
 import { repoCommand } from "./commands/repo.js";
@@ -69,6 +70,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     outcomesCommand(ctx),
     openCommand(ctx),
     changesCommand(ctx),
+    prCommand(ctx),
     catalogCommand(ctx),
     uiCommand(ctx),
   ]) {

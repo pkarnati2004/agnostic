@@ -38,8 +38,8 @@ export async function taskChanges(
   return {
     task,
     base: { ref: base.ref, commit: base.commit },
-    ahead: base.commit === null ? 0 : await count(at.dir, `${base.commit}..${tip}`),
-    behind: refHead === null ? null : await count(at.dir, `${tip}..${refHead}`),
+    ahead: base.commit === null ? 0 : await countCommits(at.dir, `${base.commit}..${tip}`),
+    behind: refHead === null ? null : await countCommits(at.dir, `${tip}..${refHead}`),
     uncommitted: worktree ? await uncommitted(at.dir) : 0,
     pushed: (await branchUpstream(at.dir, task.branch ?? "HEAD")) !== null,
     remote: gitLines(await gitStdout(at.dir, ["remote", "get-url", "origin"]))[0] ?? null,
@@ -176,7 +176,8 @@ function number(field: string | undefined): number | null {
   return Number.isInteger(value) ? value : null;
 }
 
-async function count(cwd: string, range: string): Promise<number> {
+/** How many commits a range holds; 0 when git cannot answer, which is what an absent ref means. */
+export async function countCommits(cwd: string, range: string): Promise<number> {
   const value = Number(gitLines(await gitStdout(cwd, ["rev-list", "--count", range]))[0]);
   return Number.isInteger(value) ? value : 0;
 }

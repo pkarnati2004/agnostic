@@ -1,4 +1,10 @@
-import type { EditorId, EditorsResponse, TaskListRow } from "@agnostic/core";
+import type {
+  CreatePrRequest,
+  CreatePrResponse,
+  EditorId,
+  EditorsResponse,
+  TaskListRow,
+} from "@agnostic/core";
 import { useEffect, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { DiffView } from "../diff/diff-view";
@@ -24,10 +30,12 @@ type ChangesPanelProps = {
   /** This task's latest failure, drawn here when the click that raised it was on this panel. */
   notice: TaskNotice | null;
   onOpen: (editor: EditorId | null) => Promise<void>;
+  /** Null when the daemon refused; the dialog keeps itself open and shows the notice. */
+  onCreatePr: (body: CreatePrRequest) => Promise<CreatePrResponse | null>;
 };
 
 /** The third column: what the task's branch has changed, and the patch of the file selected in it. */
-export function ChangesPanel({ task, client, notice, onOpen }: ChangesPanelProps) {
+export function ChangesPanel({ task, client, notice, onOpen, onCreatePr }: ChangesPanelProps) {
   const changes = useChanges(client, task);
   const editors = useEditors(client);
   const [busy, setBusy] = useState<TaskAction | null>(null);
@@ -37,6 +45,14 @@ export function ChangesPanel({ task, client, notice, onOpen }: ChangesPanelProps
     setBusy("open");
     void onOpen(editor).finally(() => setBusy(null));
   };
+  // `pushed` and the commit counts move with the push, so the header is read again after one.
+  const createPr = async (body: CreatePrRequest): Promise<CreatePrResponse | null> => {
+    const response = await onCreatePr(body);
+    if (response !== null) {
+      changes.refresh();
+    }
+    return response;
+  };
 
   return (
     <aside className="flex min-w-0 flex-col overflow-hidden border-border border-l">
@@ -45,12 +61,16 @@ export function ChangesPanel({ task, client, notice, onOpen }: ChangesPanelProps
       )}
       {(view.kind === "changes" || view.kind === "failed") && (
         <ActionRow
+          task={task}
+          changes={view.kind === "changes" ? view.response : null}
+          notice={notice}
           editors={editors}
           busy={busy}
           cleaned={cleaned}
           refreshOnly={view.kind === "failed"}
           loading={changes.state.kind === "loading"}
           onOpen={open}
+          onCreatePr={createPr}
           onRefresh={changes.refresh}
         />
       )}

@@ -127,8 +127,30 @@ Some tasks have no file list to show:
 - A branch with nothing on it yet reads "No changes against `<base>` yet."
 - A binary file reads "binary file, no diff": git has no patch for it.
 
-**Create PR** and **Bring up to date** are drawn beside Open in editor and do nothing yet; the next
-update wires them.
+**Bring up to date** is drawn beside Open in editor and does nothing yet; the next update wires it.
+
+## Create PR
+
+**Create PR** opens a dialog that says what agn is about to do: the remote it will push to, the
+branch, the base the pull request will target, and the title, which is the only field you can
+change. If the worktree holds uncommitted changes the dialog says how many stay behind - only
+commits are pushed - and if the branch is behind its base it says by how many commits.
+
+"Push and create PR" pushes the branch to origin once. agn never force-pushes, never pushes to
+another remote, and never fetches. It uses git's own credentials, so the daemon has to be able to
+reach your ssh agent or credential helper. If git refuses the push, the dialog says what git said;
+when the remote is ahead, bring the branch up to date first and try again.
+
+With the `gh` CLI installed and logged in, agn creates the pull request and the tab it opened goes
+to it. A branch that already has a pull request open gets its new commits under that one, not a
+second. Without `gh`, the tab goes to GitHub's compare page with the title filled in. Either way
+the description - the task note's Spec, Acceptance and latest Handoff sections - is written to your
+clipboard, and the dialog keeps it on screen with a Copy description button if your browser refused.
+
+A task started with `agn run --base <task>` opens its pull request against that task's branch, so
+the diff holds only its own work. GitHub retargets it at the base branch when the parent merges.
+
+`agn pr [<task>]` does the same from a terminal, with `--title <t>` and `--no-open`.
 
 ## History
 

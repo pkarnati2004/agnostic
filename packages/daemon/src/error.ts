@@ -60,6 +60,14 @@ const statusByCode: Record<string, number> = {
   "editor-failed": 409,
   // A folder workspace has no git to read a diff from; `git init` is what changes that (ADR 001).
   "repo-not-git": 409,
+  // The repo has no origin, or one agn cannot open a pull request against: the repo's state.
+  "remote-missing": 409,
+  "remote-not-github": 409,
+  // git would not move the branch - usually the remote is ahead. Nothing here can decide that.
+  "push-rejected": 409,
+  // There is nothing to open a pull request for yet, or nothing to open it against.
+  "branch-empty": 409,
+  "branch-is-base": 409,
   // No `base_branch`, no `origin/HEAD` and a detached checkout: agn will not guess what to diff.
   "base-unresolved": 409,
   // The session found under the path is already a task: the request was right, it is just done.
@@ -71,6 +79,8 @@ const statusByCode: Record<string, number> = {
   // The daemon reached out and the far side did not answer: neither a bad request nor a bug.
   "catalog-fetch-failed": 502,
   "spec-writer-failed": 502,
+  // gh ran and refused: GitHub, not agn, decided. The compare page is still open to the user.
+  "gh-failed": 502,
   // git could not be asked - a lock, a timeout, a git that would not run. Nothing was decided and
   // nothing is wrong with the request, so the caller retries.
   "git-unavailable": 503,

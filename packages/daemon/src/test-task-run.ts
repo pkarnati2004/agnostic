@@ -70,6 +70,25 @@ export async function typeToAgent(daemon: TestDaemon, task: Task, line: string):
   );
 }
 
+/** The outcome a human review writes: this task's work was taken, which is what makes its branch
+ * part of the base again. */
+export function acceptTask(daemon: TestDaemon, task: Task, agentLines = 1): void {
+  daemon.ledger.outcomes.record({
+    taskId: task.id,
+    testsBefore: null,
+    testsAfter: null,
+    accepted: true,
+    reverted: false,
+    agentLines,
+    humanChangedLines: null,
+    humanEditRatio: null,
+    durationSec: 1,
+    costUsd: null,
+    tokens: 0,
+    resolvedModel: null,
+  });
+}
+
 /**
  * The row written at close, which is the first one to carry a duration: the partial row written
  * before launch holds the tests-before result and nothing else.
