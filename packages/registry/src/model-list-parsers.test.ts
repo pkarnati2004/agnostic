@@ -6,6 +6,7 @@ import {
   parseClaudeModelList,
   parseCodexModelList,
   parseCursorModelList,
+  parseGrokModelList,
   parseOpenCodeModelList,
   parsePiModelList,
 } from "./model-list-parsers.js";
@@ -158,5 +159,63 @@ describe("parseCursorModelList", () => {
     ["nothing to list\n\n", []],
   ])("reads %s as no models", (output, ids) => {
     expect(parseCursorModelList(output)).toEqual(ids);
+  });
+});
+
+describe("parseGrokModelList", () => {
+  it("reads the bulleted rows under the header and nothing above or below them", () => {
+    // Regression from Orca: grok stars only the default row and dashes the rest, so a `*`-only
+    // pattern published a one-model list. The `Default model:` line and the footer bullet are
+    // both id-shaped and neither is a model.
+    expect(parseGrokModelList(fixture("grok.txt"))).toEqual(["grok-4.6", "grok-4.5"]);
+  });
+
+  it("does not make the trailing marker part of the id, spaced or not", () => {
+    const listed = "Available models:\n  * grok-4.5 (default)\n  * grok-build(beta)\n";
+    expect(parseGrokModelList(listed)).toEqual(["grok-4.5", "grok-build"]);
+  });
+
+  it("lists each id once, in the order grok printed it", () => {
+    const listed = "Available models:\n  * grok-4.5 (default)\n  * grok-build\n  * grok-4.5\n";
+    expect(parseGrokModelList(listed)).toEqual(["grok-4.5", "grok-build"]);
+  });
+
+  it("still reads a listing whose first row sits under a blank line", () => {
+    expect(parseGrokModelList("Available models:\n\n  * grok-4.5\n")).toEqual(["grok-4.5"]);
+  });
+
+  it("returns nothing without the header, whatever follows it", () => {
+    expect(parseGrokModelList("Models:\n  * grok-4.5 (default)\n")).toEqual([]);
+    expect(parseGrokModelList("Default model: grok-4.5\n")).toEqual([]);
+    expect(parseGrokModelList("")).toEqual([]);
+  });
+
+  it("returns nothing for a header with no id under it", () => {
+    expect(parseGrokModelList("Available models:\n  * \n  * (default)\n")).toEqual([]);
+  });
+
+  it("reads CRLF line endings", () => {
+    expect(parseGrokModelList("Available models:\r\n  * grok-4.5 (default)\r\n")).toEqual([
+      "grok-4.5",
+    ]);
+  });
+
+  // `grok models` has no `--json` and no documented `--no-color`, so a build of the CLI that
+  // colorizes its output even when stdout is not a terminal reaches this parser with escape codes.
+  it("finds the header when ANSI codes wrap it", () => {
+    const ansi =
+      "\u001b[1mAvailable models:\u001b[0m\n  \u001b[32m*\u001b[0m grok-4.6 (default)\n  - grok-4.5\n";
+    expect(parseGrokModelList(ansi)).toEqual(["grok-4.6", "grok-4.5"]);
+  });
+
+  it("keeps the escape codes out of the id when the id itself is colored", () => {
+    const ansi =
+      "Available models:\n  * \u001b[1mgrok-4.6\u001b[0m (default)\n  - \u001b[1mgrok-4.5\u001b[0m\n";
+    expect(parseGrokModelList(ansi)).toEqual(["grok-4.6", "grok-4.5"]);
+  });
+
+  it("reads a colored id under a blank first row", () => {
+    const ansi = "Available models:\n\n  * \u001b[1mgrok-4.6\u001b[0m\n";
+    expect(parseGrokModelList(ansi)).toEqual(["grok-4.6"]);
   });
 });

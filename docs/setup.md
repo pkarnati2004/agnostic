@@ -56,6 +56,11 @@ each Devin turn twice; agn acts on the first report and ignores the second. agn 
 Devin `config.json` with comments in it is refused with the entries to paste in by hand rather than
 rewritten without them.
 
+Grok CLI and GitHub Copilot CLI each read every hook file in one directory, so agn writes one
+file of its own there: `~/.grok/hooks/agn.json` and `~/.copilot/hooks/agn.json`. Nothing else in
+those directories is read or changed. `agn hooks install` rewrites each file whole; delete the file
+to remove the hook.
+
 Codex gates hooks on a trust hash it keeps in `~/.codex/config.toml`. agn writes that hash itself, in a block marked with `# >>> agn hooks`, so status works from the first run; if Codex ever reports the hook as untrusted, run `/hooks` in Codex and approve it.
 
 After installing, run:

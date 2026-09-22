@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'SessionStart'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ],
+    "SessionEnd": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'SessionEnd'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'UserPromptSubmit'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'PreToolUse'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'PostToolUse'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'PostToolUseFailure'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'Stop'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ],
+    "ErrorOccurred": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'ErrorOccurred'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'PermissionRequest'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ],
+    "Notification": [
+      {
+        "type": "command",
+        "bash": "sh '<post.sh>' copilot 'Notification'; printf '%s\\n' '{}'",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

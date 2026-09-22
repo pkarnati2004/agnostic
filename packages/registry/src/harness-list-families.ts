@@ -1,10 +1,12 @@
 import type {
   HarnessDefinition,
   HookMechanism,
+  ModelProbe,
   PromptDelivery,
   ResumeSpec,
   SessionCapture,
 } from "./harness-definition.js";
+import { parseGrokModelList } from "./model-list-parsers.js";
 
 const argv: PromptDelivery = { kind: "argv" };
 const argvAfterSeparator: PromptDelivery = { kind: "argv", separator: "--" };
@@ -24,6 +26,8 @@ type FamilySource = {
   processNames?: string[];
   launch?: string[];
   prompt?: PromptDelivery;
+  modelFlag?: string;
+  modelSource?: ModelProbe;
   hooks: HookMechanism;
   resume: ResumeSpec | null;
   sessionCapture: SessionCapture | null;
@@ -132,6 +136,8 @@ export const familySources: FamilySource[] = [
     name: "Grok CLI",
     processNames: ["grok", "grok-"],
     prompt: argvAfterSeparator,
+    modelFlag: "-m",
+    modelSource: { args: ["models"], stdin: null, parse: parseGrokModelList },
     hooks: { container: "hooks-dir", dir: ".grok/hooks" },
     resume: resumesById("--resume"),
     sessionCapture: capturesId("sessionId"),
@@ -161,9 +167,9 @@ export function familyDefinition(source: FamilySource): HarnessDefinition {
     // No read-only form is claimed for these: a spec is written by a harness agn has run headless.
     headless: null,
     prompt: source.prompt ?? typeAfterStart,
-    modelFlag: null,
-    // Cursor and Grok list their own models; those probes land with their family's chunk.
-    modelSource: null,
+    modelFlag: source.modelFlag ?? null,
+    // Cursor lists its own models; that probe lands with its family's chunk.
+    modelSource: source.modelSource ?? null,
     routes: ["native"],
     resume: source.resume,
     sessionCapture: source.sessionCapture,

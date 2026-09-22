@@ -34,6 +34,15 @@ describe("probeModels", () => {
     expect(result.models).toEqual(["fable", "opus", "sonnet", "haiku"]);
   });
 
+  it("reads Grok's human listing, the only surface `grok models` has", async () => {
+    const def = harnessDefinition("grok");
+    expect(def.modelSource?.args).toEqual(["models"]);
+    // A listed model is only useful if a launch can ask for it, and grok takes `-m`.
+    expect(def.modelFlag).toBe("-m");
+    const result = await probeModels(def, { path: `${BIN}/probe/${def.binary}`, seeds: [] });
+    expect(result).toEqual({ models: ["grok-4.6", "grok-4.5"], origin: "probe", error: null });
+  });
+
   it("falls back to the seed rows it was given when the harness fails, and says why", async () => {
     const { def, path } = stub("claude-code", "probe-fails");
     const result = await probeModels(def, { path, seeds: CLAUDE_SEEDS });

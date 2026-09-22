@@ -32,6 +32,8 @@ export type HookPayload = z.infer<typeof HookPayloadSchema>;
 
 export type ParseOptions = {
   eventHint?: string;
+  /** The keys the event name may be under, in order. Grok spells it `hookEventName`. */
+  eventKeys?: string[];
   /** In order of preference; the first usable value wins. Defaults to Claude's `session_id`. */
   sessionKeys?: string[];
   /** A key may name an array of directories, such as Cursor's `workspace_roots`. */
@@ -47,7 +49,9 @@ export function parseHookEvent(
   opts: ParseOptions = {},
 ): ParsedHook {
   const parsed = HookPayloadSchema.safeParse(payload);
-  const event = parsed.success ? (parsed.data.hook_event_name ?? opts.eventHint) : undefined;
+  const event = parsed.success
+    ? (payloadString(parsed.data, opts.eventKeys ?? ["hook_event_name"]) ?? usableHint(opts))
+    : undefined;
   if (!parsed.success || event === undefined) {
     throw new HooksError("that hook payload has no event name", {
       code: "hook-payload-invalid",
@@ -62,6 +66,12 @@ export function parseHookEvent(
     sessionId: firstSessionId(parsed.data, opts.sessionKeys ?? ["session_id"]),
     cwd: firstDirectory(parsed.data, opts.cwdKeys ?? ["cwd"]),
   };
+}
+
+/** The hook script sends the header whether or not it was given an event, so blank is no hint. */
+function usableHint(opts: ParseOptions): string | undefined {
+  const hint = opts.eventHint?.trim();
+  return hint === undefined || hint === "" ? undefined : hint;
 }
 
 function firstSessionId(payload: HookPayload, keys: string[]): string | null {
@@ -85,6 +95,30 @@ function firstDirectory(payload: HookPayload, keys: string[]): string | null {
     }
   }
   return null;
+}
+
+/** The value of the first of these keys the payload holds a non-empty string under. */
+export function payloadString(
+  payload: Record<string, unknown>,
+  keys: string[],
+): string | undefined {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim() !== "") {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+/** Tool names differ by case and punctuation between releases; `ask_user` and `AskUser` are one. */
+export function isTool(name: string | undefined, canonical: string): boolean {
+  return name !== undefined && comparableToolName(name) === comparableToolName(canonical);
+}
+
+/** The form two spellings of one tool share: `AskUser`, `ask_user` and `Ask-User` all reduce here. */
+export function comparableToolName(name: string): string {
+  return name.replaceAll(/[^a-z0-9]/gi, "").toLowerCase();
 }
 
 /**

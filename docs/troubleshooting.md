@@ -10,6 +10,12 @@
 
 **Factory Droid reports nothing.** `~/.factory/settings.json` has `"hooksDisabled": true`. Set it to false; agn says so on install rather than changing it for you.
 
+**Grok or Copilot never shows "waiting".** Both read every hook file in one directory, and agn's
+is `~/.grok/hooks/agn.json` or `~/.copilot/hooks/agn.json`. Check that the file is there and that
+no other file in the directory sets `disableAllHooks: true`, which turns off Copilot's hooks. agn
+writes each file whole, so a hand edit is replaced on the next `agn hooks install`; delete the file
+to remove the hook. Neither agent is read for tokens, so `agn doctor` labels both `status`.
+
 **Codex says the agn hook is untrusted.** Codex runs a hook only when `~/.codex/config.toml` holds the hash of that exact hook. Run `/hooks` in Codex and approve it, or run `agn hooks install --repo <path>` again to rewrite the entry. If agn refuses to edit the file, the block it manages has been split or one of its entries exists outside it: remove the `[hooks.state."…post.sh…"]` tables and the `# >>> agn hooks` markers, then install again.
 
 **`agn catalog update` says it could not fetch.** The check could not reach the published catalog: no network, a proxy in the way, or the host is down. Nothing changed - the catalog already on disk stays in use, and the version it names is in the message. Try again later, or point `AGNOSTIC_CATALOG_URL` at a mirror or a local copy of the two files. If you would rather agn never reached out on its own, put `catalog_check: false` in `~/.agnostic/config.yaml`; `agn catalog update` still works when you run it.

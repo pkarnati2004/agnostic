@@ -6,10 +6,12 @@ describe("the harness hook table", () => {
     "claude-code",
     "codex",
     "command-code",
+    "copilot",
     "cursor-agent",
     "devin",
     "droid",
     "gemini",
+    "grok",
     "kimi",
     "openclaude",
   ] as const)("has an installer and a parser for %s", (harness) => {
@@ -17,7 +19,7 @@ describe("the harness hook table", () => {
     expect(hookParser(harness)?.harness).toBe(harness);
   });
 
-  it.each(["copilot", "opencode", "other:mytool"] as const)("has nothing for %s yet", (harness) => {
+  it.each(["opencode", "other:mytool"] as const)("has nothing for %s yet", (harness) => {
     expect(hookInstaller(harness)).toBeNull();
     expect(hookParser(harness)).toBeNull();
   });

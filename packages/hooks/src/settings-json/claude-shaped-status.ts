@@ -1,5 +1,5 @@
 import type { HookStatus } from "@agnostic/core";
-import type { HookPayload } from "../hook-event-parser.js";
+import { comparableToolName, type HookPayload } from "../hook-event-parser.js";
 
 /**
  * The event-to-status table Claude Code defined and Droid, Kimi, Devin, OpenClaude and Command
@@ -26,7 +26,7 @@ export type ClaudeShapedNames = {
 export function claudeShapedStatus(
   names: ClaudeShapedNames,
 ): (event: HookPayload) => HookStatus | null {
-  const questions = new Set(names.questionTools.map(comparable));
+  const questions = new Set(names.questionTools.map(comparableToolName));
   const notifications = new Set(names.waitingNotifications);
   return (event) => {
     switch (event.hook_event_name) {
@@ -56,7 +56,7 @@ function preToolUse(
   questions: Set<string>,
   everyTool: boolean,
 ): HookStatus | null {
-  if (questions.has(comparable(event.tool_name ?? ""))) {
+  if (questions.has(comparableToolName(event.tool_name ?? ""))) {
     return "waiting";
   }
   return everyTool ? "running" : null;
@@ -71,9 +71,4 @@ function notification(
     return "waiting";
   }
   return message?.test(event.message ?? "") === true ? "waiting" : null;
-}
-
-/** Harnesses spell the same tool `AskUser`, `ask_user` and `Ask-User`; all three are that tool. */
-function comparable(toolName: string): string {
-  return toolName.replaceAll(/[^a-z0-9]/gi, "").toLowerCase();
 }

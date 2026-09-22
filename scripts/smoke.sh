@@ -356,6 +356,15 @@ agx hooks install --repo "$WORK/runrepo" --harness gemini > "$WORK/gemini-hooks.
 grep -q "^installed gemini hooks: $USAGE_HOME/.gemini/settings.json" "$WORK/gemini-hooks.txt"
 grep -q "verify: Gemini has no permission hook" "$WORK/gemini-hooks.txt"
 test -f "$USAGE_HOME/.gemini/settings.json"
+# Grok and Copilot merge every file in a hooks directory, so agn owns one file in each.
+GROK_HOOKS="$USAGE_HOME/.grok/hooks/agn.json"
+COPILOT_HOOKS="$USAGE_HOME/.copilot/hooks/agn.json"
+agx hooks install --repo "$WORK/runrepo" --harness grok 2>/dev/null |
+  grep -q "^installed grok hooks: $GROK_HOOKS$"
+agx hooks install --repo "$WORK/runrepo" --harness copilot 2>/dev/null > "$WORK/copilot-hooks.txt"
+grep -q "^installed copilot hooks: $COPILOT_HOOKS$" "$WORK/copilot-hooks.txt"
+grep -q "^  verify: if Copilot ignores the hook" "$WORK/copilot-hooks.txt"
+grep -q '"version": 1' "$COPILOT_HOOKS"
 # No config agn wrote under the user's home carries the token: the script reads it at run time.
 if grep -rqF "$(cat "$AGNOSTIC_HOME/auth-token")" "$USAGE_HOME"; then echo "smoke: token written under HOME" >&2; exit 1; fi
 # `ask` is the fake agent's "my turn is over": it fires a Stop hook through the installed command.

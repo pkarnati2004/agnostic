@@ -2,7 +2,8 @@ import { z } from "zod";
 
 /**
  * Ported from Orca's model discovery (`src/shared/claude-model-list-probe.ts`,
- * `commit-message-model-parsers.ts`). MIT License, Copyright (c) Lovecast Inc.
+ * `commit-message-model-parsers.ts`, `grok-model-list-probe.ts`).
+ * MIT License, Copyright (c) Lovecast Inc.
  */
 
 /** Claude Code has no listing subcommand; one control request over stream-json returns the picker. */
@@ -103,6 +104,40 @@ export function parsePiModelList(output: string): string[] {
       return `${provider}/${model}`;
     }),
   );
+}
+
+const GROK_LIST_HEADER = "Available models:";
+
+/** grok bullets the default row with `*` and every other row with `-`; both are models. */
+const GROK_LIST_ROW = /^\s*[*-]\s+([^\s(]+)/;
+
+/** grok colors the listing when it takes stdout for a terminal; the codes are not part of an id. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: an ANSI escape starts with one.
+const ANSI_COLOR = /\u001b\[[0-9;]*m/g;
+
+/**
+ * `grok models` has no `--json`, so this human listing is the one machine surface. The `Default
+ * model:` line and the login line above the header both hold id-shaped tokens, and a footer bullet
+ * sits under the blank line that ends the section, so only the rows between the two are models.
+ * Color codes go first, because they hide the header and would otherwise ride along in an id.
+ */
+export function parseGrokModelList(output: string): string[] {
+  const rows = lines(output).map((row) => row.replaceAll(ANSI_COLOR, ""));
+  const header = rows.findIndex((line) => line.trim() === GROK_LIST_HEADER);
+  if (header === -1) {
+    return [];
+  }
+  const ids: string[] = [];
+  for (const row of rows.slice(header + 1)) {
+    if (row.trim() === "" && ids.length > 0) {
+      break;
+    }
+    const id = GROK_LIST_ROW.exec(row)?.[1];
+    if (id !== undefined) {
+      ids.push(id);
+    }
+  }
+  return unique(ids);
 }
 
 function claudeModelId(entry: unknown): string | null {

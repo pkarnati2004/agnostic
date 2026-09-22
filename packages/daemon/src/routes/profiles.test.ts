@@ -50,6 +50,17 @@ describe("POST /doctor", () => {
     expect(doctor.named).toEqual([]);
   });
 
+  it("labels Grok and Copilot status: each installs a hook, neither is read for tokens", async () => {
+    daemon = await createTestDaemon({
+      detect: () => Promise.resolve(fixtureDetection([], ["grok", "copilot"])),
+    });
+    const doctor = await body<DoctorResponse>(await daemon.request("/doctor", { method: "POST" }));
+    expect(doctor.harnesses.map((row) => [row.harness, row.support])).toEqual([
+      ["grok", "status"],
+      ["copilot", "status"],
+    ]);
+  });
+
   it("names the harnesses config.yaml and the tasks ask for, so doctor keeps their rows", async () => {
     daemon = await createTestDaemon();
     await writeFile(daemon.paths.config, "spec_writer: gemini:default:native\n");

@@ -5,6 +5,8 @@ import { codexInstaller } from "./codex/install.js";
 import { codexParser } from "./codex/parse.js";
 import type { HookEventParser } from "./hook-event-parser.js";
 import type { HookInstaller } from "./hook-installer.js";
+import { copilotInstaller, copilotParser } from "./hooks-dir/copilot.js";
+import { grokInstaller, grokParser } from "./hooks-dir/grok.js";
 import { commandCodeInstaller, commandCodeParser } from "./settings-json/command-code.js";
 import { cursorAgentInstaller, cursorAgentParser } from "./settings-json/cursor-agent.js";
 import { devinInstaller, devinParser } from "./settings-json/devin.js";
@@ -21,10 +23,12 @@ const installers: Partial<Record<HarnessId, HookInstaller>> = {
   "claude-code": claudeCodeInstaller,
   codex: codexInstaller,
   "command-code": commandCodeInstaller,
+  copilot: copilotInstaller,
   "cursor-agent": cursorAgentInstaller,
   devin: devinInstaller,
   droid: droidInstaller,
   gemini: geminiInstaller,
+  grok: grokInstaller,
   kimi: kimiInstaller,
   openclaude: openClaudeInstaller,
 };
@@ -33,10 +37,12 @@ const parsers: Partial<Record<HarnessId, HookEventParser>> = {
   "claude-code": claudeCodeParser,
   codex: codexParser,
   "command-code": commandCodeParser,
+  copilot: copilotParser,
   "cursor-agent": cursorAgentParser,
   devin: devinParser,
   droid: droidParser,
   gemini: geminiParser,
+  grok: grokParser,
   kimi: kimiParser,
   openclaude: openClaudeParser,
 };

@@ -17,6 +17,13 @@ let daemon: TestDaemon;
 let repo: Repo;
 let cwd = "";
 
+/** Grok's payloads come from Orca's listener test; Copilot's are inferred from its field readers. */
+function payloadFile(harness: string, event: string): string {
+  return fileURLToPath(
+    new URL(`../../../tests/fixtures/hooks/payloads/${harness}/${event}.json`, import.meta.url),
+  );
+}
+
 beforeEach(async () => {
   daemon = await createTestDaemon();
   repo = await daemon.addRepo();
@@ -194,6 +201,30 @@ describe("POST /hooks/:harness", () => {
     expect((await post("not json", { taskId: "x" })).status).toBe(400);
     const large = await post(`{"hook_event_name":"Stop","pad":"${"x".repeat(1024 * 1024)}"}`);
     expect(large.status).toBe(413);
+  });
+
+  it("reads Grok's camelCase payload and keeps the id it reports", async () => {
+    const task = seed({ harness: "grok" });
+    const payload: unknown = JSON.parse(await readFile(payloadFile("grok", "stop"), "utf8"));
+    const stopped = await body(await post(payload, { harness: "grok", taskId: task.id }));
+    expect(stopped.applied).toBe("waiting");
+    expect(stopped.task.session?.sessionId).toBe("019e37f4-5135-7b63-a4ab-6d13aa6bf528");
+  });
+
+  it("takes Copilot's event from the header, because its payload does not name one", async () => {
+    const task = seed({ harness: "copilot" });
+    const payload: unknown = JSON.parse(await readFile(payloadFile("copilot", "stop"), "utf8"));
+    const stopped = await body(
+      await post(payload, { harness: "copilot", taskId: task.id, event: "Stop" }),
+    );
+    expect(stopped.applied).toBe("waiting");
+
+    // The hook script sends the header whether or not it was given an event, so blank is no event.
+    for (const event of [undefined, ""]) {
+      const unnamed = await post(payload, { harness: "copilot", taskId: task.id, event });
+      expect(unnamed.status).toBe(400);
+      expect(await unnamed.json()).toMatchObject({ error: { code: "hook-payload-invalid" } });
+    }
   });
 
   it("needs the daemon's token like every other route", async () => {

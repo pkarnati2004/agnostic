@@ -42,13 +42,13 @@ describe("detectHarnesses", () => {
 
   it("reads version, login and model list for the tier-1 harnesses it finds", async () => {
     const statuses = await detect("probe", "codex-chatgpt");
-    expect(statuses.filter((row) => row.path !== null)).toHaveLength(4);
+    expect(statuses.filter((row) => row.path !== null)).toHaveLength(5);
     expect(status(statuses, "claude-code").version).toBe("2.1.0");
     expect(status(statuses, "codex").login).toBe("logged-in");
     expect(status(statuses, "codex").billing).toBe("subscription");
     // Claude Code's account lives in the Keychain, so this home cannot say either way.
     expect(status(statuses, "claude-code").login).toBe("unknown");
-    for (const harness of ["claude-code", "codex", "pi", "opencode"]) {
+    for (const harness of ["claude-code", "codex", "pi", "opencode", "grok"]) {
       expect(status(statuses, harness).models?.origin).toBe("probe");
     }
     expect(status(statuses, "claude-code").models?.models).toEqual([
