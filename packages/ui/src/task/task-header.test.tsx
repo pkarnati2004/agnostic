@@ -1,10 +1,12 @@
 // @vitest-environment happy-dom
 import type { RepoListRow, Task } from "@agnostic/core";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../api/error";
+import { CHANGES_KEY, readPanelOpen, writePanelOpen } from "../changes/panel-open";
 import type { TaskNotice } from "../store/task-notices";
 import { selectModifier } from "../terminal/select-modifier";
-import { render } from "../test/render";
+import { click, render } from "../test/render";
 import { PROFILE } from "./new-task-dialog-fixture";
 import { TaskHeader } from "./task-header";
 
@@ -53,6 +55,8 @@ function header(activeTask: Task, taskNotice: TaskNotice | null) {
       profiles={[PROFILE]}
       cost={null}
       notice={taskNotice}
+      changesOpen={false}
+      onToggleChanges={() => undefined}
       onStop={() => Promise.resolve()}
       onResume={() => Promise.resolve()}
       onHandoff={() => Promise.resolve(true)}
@@ -98,6 +102,8 @@ describe("TaskHeader notice", () => {
         profiles={[PROFILE]}
         cost={null}
         notice={null}
+        changesOpen={false}
+        onToggleChanges={() => undefined}
         onStop={() => Promise.resolve()}
         onResume={() => Promise.resolve()}
         onHandoff={() => Promise.resolve(true)}
@@ -119,6 +125,8 @@ describe("TaskHeader and a closed repo", () => {
         profiles={[PROFILE]}
         cost={null}
         notice={null}
+        changesOpen={false}
+        onToggleChanges={() => undefined}
         onStop={() => Promise.resolve()}
         onResume={() => Promise.resolve()}
         onHandoff={() => Promise.resolve(true)}
@@ -142,5 +150,71 @@ describe("TaskHeader terminal hint", () => {
     const { container, unmount } = header(queued, null);
     expect(container.textContent).not.toContain("Wheel scrolls");
     unmount();
+  });
+});
+
+/** Wires the toggle the way `app.tsx`'s `Workspace` does: `readPanelOpen`/`writePanelOpen` against
+ * the real `localStorage`, not a fixture, so the test also proves the two agree on the key. */
+function ChangesToggleHarness({ width }: { width: number }) {
+  const [open, setOpen] = useState(() => readPanelOpen(window.localStorage, width));
+  return (
+    <TaskHeader
+      task={task("task1", "Port the parser")}
+      repo={REPO}
+      profiles={[PROFILE]}
+      cost={null}
+      notice={null}
+      changesOpen={open}
+      onToggleChanges={() => {
+        writePanelOpen(window.localStorage, !open);
+        setOpen(!open);
+      }}
+      onStop={() => Promise.resolve()}
+      onResume={() => Promise.resolve()}
+      onHandoff={() => Promise.resolve(true)}
+    />
+  );
+}
+
+function changesButton(container: HTMLElement): HTMLButtonElement {
+  const found = Array.from(container.querySelectorAll("button")).find(
+    (one) => one.textContent === "Changes",
+  );
+  if (found === undefined) {
+    throw new Error("no Changes button");
+  }
+  return found;
+}
+
+describe("TaskHeader Changes toggle", () => {
+  it("flips aria-pressed and persists the choice to localStorage", () => {
+    // A real, shared key: try/finally leaves it as this test found it, pass or fail.
+    window.localStorage.removeItem(CHANGES_KEY);
+    try {
+      const { container, unmount } = render(<ChangesToggleHarness width={800} />);
+      expect(changesButton(container).getAttribute("aria-pressed")).toBe("false");
+
+      click(changesButton(container));
+      expect(changesButton(container).getAttribute("aria-pressed")).toBe("true");
+      expect(window.localStorage.getItem(CHANGES_KEY)).toBe("open");
+
+      click(changesButton(container));
+      expect(changesButton(container).getAttribute("aria-pressed")).toBe("false");
+      expect(window.localStorage.getItem(CHANGES_KEY)).toBe("closed");
+      unmount();
+    } finally {
+      window.localStorage.removeItem(CHANGES_KEY);
+    }
+  });
+
+  it("starts open on a wide window once localStorage has never been told otherwise", () => {
+    window.localStorage.removeItem(CHANGES_KEY);
+    try {
+      const { container, unmount } = render(<ChangesToggleHarness width={1440} />);
+      expect(changesButton(container).getAttribute("aria-pressed")).toBe("true");
+      unmount();
+    } finally {
+      window.localStorage.removeItem(CHANGES_KEY);
+    }
   });
 });

@@ -90,6 +90,12 @@
   --status-done: var(--muted-foreground);
   --status-failed: var(--destructive);
   --status-stopped: #525252;
+  /* The patch's own family: a tint behind the row and a stronger hue for its +/- marker. Orca has
+     no diff tokens, so these are agn's, not copied. */
+  --diff-add-bg: #e8f6ec;
+  --diff-add-fg: #15803d;
+  --diff-del-bg: #fdeceb;
+  --diff-del-fg: #b3261e;
 }
 
 .dark {
@@ -128,4 +134,8 @@
   --status-done: var(--muted-foreground);
   --status-failed: var(--destructive);
   --status-stopped: #737373;
+  --diff-add-bg: rgb(34 197 94 / 0.14);
+  --diff-add-fg: #86efac;
+  --diff-del-bg: rgb(248 113 113 / 0.14);
+  --diff-del-fg: #fca5a5;
 }

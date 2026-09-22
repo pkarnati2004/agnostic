@@ -17,6 +17,9 @@ type TaskHeaderProps = {
   cost: ReactNode;
   /** This task's latest failure, drawn here when that is where it was asked for. */
   notice: TaskNotice | null;
+  /** Whether the Changes column is open, which is what the toggle reports and flips. */
+  changesOpen: boolean;
+  onToggleChanges: () => void;
   /** None of these reject: a failure comes back as a notice instead. */
   onStop: () => Promise<void>;
   onResume: () => Promise<void>;
@@ -83,6 +86,14 @@ export function TaskHeader(props: TaskHeaderProps) {
           Resume
         </Button>
         <HandoffDialog task={task} profiles={profiles} notice={notice} onSubmit={onHandoff} />
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={props.changesOpen}
+          onClick={props.onToggleChanges}
+        >
+          Changes
+        </Button>
       </div>
     </header>
   );

@@ -46,6 +46,10 @@ export function stubClient(overrides: Partial<WorkspaceClient> = {}): WorkspaceC
     writeSpec: () => new Promise(() => undefined),
     usage: () => Promise.reject(new Error("unused")),
     taskUsage: () => Promise.reject(new Error("unused")),
+    changes: () => Promise.reject(new Error("unused")),
+    diff: () => Promise.reject(new Error("unused")),
+    editors: () => Promise.reject(new Error("unused")),
+    openTask: () => Promise.reject(new Error("unused")),
     // Never resolves: these tests care about what is sent, not the reply.
     recommend: () => new Promise(() => undefined),
     runTask: () => new Promise(() => undefined),

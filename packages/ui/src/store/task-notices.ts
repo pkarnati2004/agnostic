@@ -2,10 +2,10 @@ import type { Task } from "@agnostic/core";
 import type { ApiError } from "../api/error";
 import type { Notices } from "./notice-store";
 
-export type TaskAction = "stop" | "resume" | "handoff";
+export type TaskAction = "stop" | "resume" | "handoff" | "open" | "pr" | "update";
 
 /** Where the click happened, which is where the answer shows. */
-export type NoticeHost = "header" | "overlay" | "dialog";
+export type NoticeHost = "header" | "overlay" | "dialog" | "panel";
 
 /** One per task: the latest failure, because an older one is no longer what the daemon said. */
 export type TaskNotices = Notices<{ action: TaskAction; host: NoticeHost; error: ApiError }>;
@@ -15,6 +15,9 @@ const LABEL: Record<TaskAction, string> = {
   stop: "Stop",
   resume: "Resume",
   handoff: "Hand off",
+  open: "Open in editor",
+  pr: "Create PR",
+  update: "Bring up to date",
 };
 
 /** The task is named because the failure shows on a page that has several of them open. */
