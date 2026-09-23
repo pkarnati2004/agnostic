@@ -1,4 +1,11 @@
-import type { HandoffTaskRequest, Profile, RepoListRow, Task, TaskStatus } from "@agnostic/core";
+import type {
+  BudgetReport,
+  HandoffTaskRequest,
+  Profile,
+  RepoListRow,
+  Task,
+  TaskStatus,
+} from "@agnostic/core";
 import { type ReactNode, useState } from "react";
 import { Badge } from "../components/badge";
 import { Button } from "../components/button";
@@ -13,6 +20,8 @@ type TaskHeaderProps = {
   task: Task;
   repo: RepoListRow | null;
   profiles: Profile[];
+  /** Passed to the handoff dialog, which refuses a counted profile the daemon would refuse. */
+  budget: BudgetReport | null;
   /** What this task has spent, filled by the page that knows how to read it. */
   cost: ReactNode;
   /** This task's latest failure, drawn here when that is where it was asked for. */
@@ -85,7 +94,13 @@ export function TaskHeader(props: TaskHeaderProps) {
         >
           Resume
         </Button>
-        <HandoffDialog task={task} profiles={profiles} notice={notice} onSubmit={onHandoff} />
+        <HandoffDialog
+          task={task}
+          profiles={profiles}
+          budget={props.budget}
+          notice={notice}
+          onSubmit={onHandoff}
+        />
         <Button
           variant="outline"
           size="sm"

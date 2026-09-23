@@ -41,3 +41,12 @@ export type PlanUsage = {
   /** Claude only: tokens on a Fable model over all tokens, 0..1; null when nothing was counted. */
   fableShare: number | null;
 };
+
+/** Where a window's priced spend sits against its ceiling: ok, near it, or past it. */
+export type BudgetState = "ok" | "warn" | "exceeded";
+
+/** One window's ceiling against what agn priced in it. */
+export type BudgetWindow = { limitUsd: number; spentUsd: number; state: BudgetState };
+
+/** Null per window when config.yaml sets no limit for it. */
+export type BudgetReport = { day: BudgetWindow | null; week: BudgetWindow | null };

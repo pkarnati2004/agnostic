@@ -21,6 +21,7 @@ const FORM: NewTaskForm = {
   title: "",
   spec: "",
   acceptance: "",
+  ignoreBudget: false,
 };
 
 function profile(id: string): Profile {
@@ -74,6 +75,13 @@ describe("runRequest", () => {
 
   it("sends nothing the daemon does not take", () => {
     expect(RunTaskRequestSchema.safeParse(runRequest(FORM)).success).toBe(true);
+  });
+
+  it("asks to run past the budget only when the note's checkbox is ticked", () => {
+    expect(runRequest(FORM)?.ignoreBudget).toBeUndefined();
+    const request = runRequest({ ...FORM, ignoreBudget: true });
+    expect(request?.ignoreBudget).toBe(true);
+    expect(RunTaskRequestSchema.safeParse(request).success).toBe(true);
   });
 
   it("sends the approved spec, trimmed, and leaves out a field the user cleared", () => {

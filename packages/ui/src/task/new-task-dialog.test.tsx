@@ -1,16 +1,23 @@
 // @vitest-environment happy-dom
 // The Write spec story lives in new-task-dialog-spec.test.tsx, split out to stay under the line cap.
-import type { RecommendRequest } from "@agnostic/core";
+import type { BudgetReport, RecommendRequest } from "@agnostic/core";
 import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { click } from "../test/render";
 import {
   dialog,
+  KEYED_PROFILE,
   PROFILE,
   pickProfile,
   runButton,
   setValue,
   stubClient,
 } from "./new-task-dialog-fixture";
+
+const OVER_BUDGET: BudgetReport = {
+  day: { limitUsd: 5, spentUsd: 5.2, state: "exceeded" },
+  week: null,
+};
 
 describe("NewTaskDialog", () => {
   it("enables Run only once there is a prompt and a profile", () => {
@@ -80,6 +87,39 @@ describe("NewTaskDialog", () => {
     });
     expect(calls).toEqual([
       { repoId: "r1", body: { prompt: "add a retry budget", profile: PROFILE.id } },
+    ]);
+    unmount();
+  });
+
+  it("carries the note's ignore checkbox into the posted body for an over-budget profile", () => {
+    const calls: { repoId: string; body: unknown }[] = [];
+    const { unmount } = dialog(
+      stubClient({
+        runTask: (repoId, body) => {
+          calls.push({ repoId, body });
+          return new Promise(() => undefined);
+        },
+      }),
+      { profiles: [KEYED_PROFILE], budget: OVER_BUDGET },
+    );
+    const textarea = document.getElementById("new-task-prompt") as HTMLTextAreaElement;
+    act(() => setValue(textarea, "add a retry budget"));
+    pickProfile(KEYED_PROFILE.id);
+
+    expect(document.body.textContent).toContain("Over budget: today $5.20 of $5.00.");
+    const box = document.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    click(box);
+    click(runButton());
+
+    expect(calls).toEqual([
+      {
+        repoId: "r1",
+        body: {
+          prompt: "add a retry budget",
+          profile: KEYED_PROFILE.id,
+          ignoreBudget: true,
+        },
+      },
     ]);
     unmount();
   });

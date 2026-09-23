@@ -1,9 +1,11 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { agnosticPaths, ConfigError } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readDaemonConfig, writeDaemonConfigPlans } from "./daemon-config.js";
+
+const NO_BUDGET = { dailyUsd: null, weeklyUsd: null };
 
 describe("readDaemonConfig", () => {
   let home: string;
@@ -21,6 +23,7 @@ describe("readDaemonConfig", () => {
       editor: null,
       catalogCheck: true,
       specWriter: null,
+      budget: NO_BUDGET,
     });
   });
 
@@ -32,6 +35,7 @@ describe("readDaemonConfig", () => {
       editor: null,
       catalogCheck: true,
       specWriter: null,
+      budget: NO_BUDGET,
     });
   });
 
@@ -71,6 +75,44 @@ describe("readDaemonConfig", () => {
     await expect(readDaemonConfig(agnosticPaths(home))).rejects.toThrow(ConfigError);
   });
 
+  it("reads the spend ceiling, and leaves a window the file says nothing about null", async () => {
+    await writeFile(join(home, "config.yaml"), "budget:\n  daily_usd: 5\n");
+    expect((await readDaemonConfig(agnosticPaths(home))).budget).toEqual({
+      dailyUsd: 5,
+      weeklyUsd: null,
+    });
+    await writeFile(join(home, "config.yaml"), "budget:\n  daily_usd: 5\n  weekly_usd: 20\n");
+    expect((await readDaemonConfig(agnosticPaths(home))).budget).toEqual({
+      dailyUsd: 5,
+      weeklyUsd: 20,
+    });
+  });
+
+  it("has no ceiling when the file does not set one", async () => {
+    expect((await readDaemonConfig(agnosticPaths(home))).budget).toEqual({
+      dailyUsd: null,
+      weeklyUsd: null,
+    });
+  });
+
+  it("treats an empty budget section as no ceiling, both keys absent", async () => {
+    await writeFile(join(home, "config.yaml"), "budget: {}\n");
+    expect((await readDaemonConfig(agnosticPaths(home))).budget).toEqual(NO_BUDGET);
+  });
+
+  it("refuses a ceiling of zero, a ceiling that is not a number, and a key under it", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "budget:\n  daily_usd: 0\n");
+    const zero = await readDaemonConfig(paths).catch((cause: unknown) => cause);
+    expect(zero).toBeInstanceOf(ConfigError);
+    expect((zero as ConfigError).hint).toContain("delete it");
+    await writeFile(paths.config, "budget:\n  daily_usd: five\n");
+    await expect(readDaemonConfig(paths)).rejects.toBeInstanceOf(ConfigError);
+    await writeFile(paths.config, "budget:\n  daily_usd: 5\n  monthly_usd: 40\n");
+    const unknown = await readDaemonConfig(paths).catch((cause: unknown) => cause);
+    expect((unknown as ConfigError).message).toContain("monthly_usd");
+  });
+
   it("reads the plan each vendor bills on, and refuses a vendor it does not know", async () => {
     await writeFile(join(home, "config.yaml"), "plans:\n  claude: max20\n  chatgpt: plus\n");
     expect((await readDaemonConfig(agnosticPaths(home))).plans).toEqual({
@@ -107,6 +149,7 @@ describe("writeDaemonConfigPlans", () => {
       plans: { claude: "max20", chatgpt: "plus" },
       catalogCheck: true,
       specWriter: null,
+      budget: NO_BUDGET,
     });
   });
 
@@ -119,6 +162,7 @@ describe("writeDaemonConfigPlans", () => {
       plans: { claude: "pro" },
       catalogCheck: true,
       specWriter: null,
+      budget: NO_BUDGET,
     });
   });
 
@@ -140,6 +184,19 @@ describe("writeDaemonConfigPlans", () => {
       specWriter: "claude-code:haiku:native",
       plans: { claude: "pro" },
     });
+  });
+
+  it("keeps the spend ceiling when agn doctor --plan rewrites the file", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "budget:\n  daily_usd: 5\n  weekly_usd: 20\n");
+    await writeDaemonConfigPlans(paths, { claude: "pro" });
+    expect((await readDaemonConfig(paths)).budget).toEqual({ dailyUsd: 5, weeklyUsd: 20 });
+  });
+
+  it("writes no budget section for a file that had none", async () => {
+    const paths = agnosticPaths(home);
+    await writeDaemonConfigPlans(paths, { claude: "pro" });
+    expect(await readFile(paths.config, "utf8")).not.toContain("budget");
   });
 
   it("keeps an opted-out daily catalog check", async () => {

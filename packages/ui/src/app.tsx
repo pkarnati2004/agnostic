@@ -38,6 +38,7 @@ import {
 } from "./tabs/tabs-state";
 import { NewTaskDialog } from "./task/new-task-dialog";
 import { TaskCost } from "./usage/task-cost";
+import { lastResponse } from "./usage/usage-state";
 import { useTaskUsage } from "./usage/use-task-usage";
 import { useUsage } from "./usage/use-usage";
 
@@ -76,6 +77,8 @@ function Workspace({ token }: { token: string }) {
     [state.repos, state.tasks],
   );
   const usage = useUsage(client, state.usageStamp.plans);
+  // The budget rides on the usage body the bar already reads; no dialog asks for it on its own.
+  const budget = lastResponse(usage)?.budget ?? null;
   const activeId = tabs.active;
   const taskUsage = useTaskUsage(
     client,
@@ -180,6 +183,7 @@ function Workspace({ token }: { token: string }) {
         repos={activeRepos(state.repos)}
         defaultRepoId={defaultRepoId(state, tabs.active)}
         profiles={profiles}
+        budget={budget}
         client={client}
         onStarted={started}
       />
@@ -193,6 +197,7 @@ function Workspace({ token }: { token: string }) {
         token={token}
         client={client}
         usage={usage}
+        budget={budget}
         cost={<TaskCost usage={taskUsage} />}
         error={error === dismissed ? null : error}
         notices={notices}

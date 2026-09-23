@@ -16,6 +16,7 @@ import {
 } from "@agnostic/core";
 import { RecommenderError, recommend } from "@agnostic/recommender";
 import type { DaemonContext } from "./app.js";
+import { assertWithinBudget } from "./budget-guard.js";
 import { recordTestsBefore } from "./close-outcome.js";
 import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
@@ -70,6 +71,8 @@ export async function startTask(
     req,
     recommendation?.recommended.profileId ?? null,
   );
+  // Before the row exists: a refused run leaves nothing behind for the user to clean up.
+  await assertWithinBudget(ctx, profile, req.ignoreBudget === true);
   const config = await readRepoConfig(repo.path);
   const task = insertQueued(ctx, repo, req, {
     profileId: profile.id,

@@ -1,4 +1,11 @@
-import type { PlanUsage, Task, TaskUsageResponse, UsageResponse, UsageSum } from "@agnostic/core";
+import type {
+  BudgetReport,
+  PlanUsage,
+  Task,
+  TaskUsageResponse,
+  UsageResponse,
+  UsageSum,
+} from "@agnostic/core";
 
 // 2026-09-11 was a Friday; the week it is in starts on Monday the 7th - the CLI's own fixture dates.
 const SCANNED_AT = "2026-09-11T15:00:00";
@@ -48,10 +55,12 @@ const meteredPlan: PlanUsage = {
 export function usageResponse(
   day: PlanUsage[] = [claudePlan(), codexPlan, meteredPlan],
   week: PlanUsage[] = day,
+  budget: BudgetReport = { day: null, week: null },
 ): UsageResponse {
   return {
     day: { window: bounds("day", "2026-09-11T00:00:00"), plans: day },
     week: { window: bounds("week", "2026-09-07T00:00:00"), plans: week },
+    budget,
     scannedAt: new Date(SCANNED_AT).toISOString(),
   };
 }
