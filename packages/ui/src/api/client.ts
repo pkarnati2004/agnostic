@@ -1,5 +1,6 @@
 import type {
   ChangesResponse,
+  CompareResponse,
   CreatePrRequest,
   CreatePrResponse,
   DiffResponse,
@@ -9,6 +10,8 @@ import type {
   HandoffTaskResponse,
   OpenedTaskResponse,
   OpenTaskQuery,
+  PickCompareRequest,
+  PickCompareResponse,
   ProfilesResponse,
   RecommendRequest,
   RecommendResponse,
@@ -62,6 +65,10 @@ export type WorkspaceClient = {
   createPr(id: string, body: CreatePrRequest): Promise<CreatePrResponse>;
   /** Asks the agent itself to bring the branch up to date with its base (ADR 036 Q6). */
   updateTask(id: string): Promise<UpdateTaskResponse>;
+  /** The siblings of one compare side by side, with what each has spent and changed (ADR 036 Q7). */
+  compare(id: string): Promise<CompareResponse>;
+  /** Keeps one sibling and cleans the rest; their branches stay. */
+  pickCompare(id: string, body: PickCompareRequest): Promise<PickCompareResponse>;
   /** The editors on this machine and the configured one, for the Open in editor control. */
   editors(): Promise<EditorsResponse>;
   /** The daemon spawns the editor itself: the page has no terminal to run one in (ADR 036 Q4). */
@@ -143,6 +150,9 @@ export function createClient(opts: {
     createPr: (id, body) =>
       json<CreatePrResponse>("POST", `/tasks/${encodeURIComponent(id)}/pr`, body),
     updateTask: (id) => json<UpdateTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/update`),
+    compare: (id) => json<CompareResponse>("GET", `/compares/${encodeURIComponent(id)}`),
+    pickCompare: (id, body) =>
+      json<PickCompareResponse>("POST", `/compares/${encodeURIComponent(id)}/pick`, body),
     editors: () => json<EditorsResponse>("GET", "/editors"),
     openTask: (id, body) =>
       json<OpenedTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/open`, body),

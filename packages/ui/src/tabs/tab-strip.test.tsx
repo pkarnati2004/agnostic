@@ -3,7 +3,7 @@ import type { Task } from "@agnostic/core";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "../components/tooltip";
 import { click, render } from "../test/render";
-import { TabStrip } from "./tab-strip";
+import { type TabItem, TabStrip } from "./tab-strip";
 
 function task(id: string, title: string): Task {
   return {
@@ -23,10 +23,14 @@ function task(id: string, title: string): Task {
   };
 }
 
+function tab(id: string, title: string): TabItem {
+  return { kind: "task", id, task: task(id, title) };
+}
+
 const REPOS = new Map([["r1", "petal"]]);
 
 function strip(onActivate = vi.fn(), onClose = vi.fn()) {
-  const tabs = [task("a", "Add the retry budget"), task("b", "Port the parser to zod")];
+  const tabs = [tab("a", "Add the retry budget"), tab("b", "Port the parser to zod")];
   const rendered = render(
     <TooltipProvider>
       <TabStrip
@@ -68,7 +72,7 @@ describe("TabStrip", () => {
     const { container, unmount } = render(
       <TooltipProvider>
         <TabStrip
-          tabs={[task("a", "Rename every configuration key in the repo")]}
+          tabs={[tab("a", "Rename every configuration key in the repo")]}
           activeId="a"
           repoNames={REPOS}
           onActivate={vi.fn()}
@@ -77,6 +81,29 @@ describe("TabStrip", () => {
       </TooltipProvider>,
     );
     expect(container.textContent).toContain("Rename every configurat…");
+    unmount();
+  });
+
+  it("draws a compare tab with its icon and the count in the tooltip", () => {
+    const onActivate = vi.fn();
+    const { container, unmount } = render(
+      <TooltipProvider>
+        <TabStrip
+          tabs={[
+            tab("a", "Add the retry budget"),
+            { kind: "compare", id: "compare:c1", title: "Try two parsers", agents: 2 },
+          ]}
+          activeId="compare:c1"
+          repoNames={REPOS}
+          onActivate={onActivate}
+          onClose={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    const compare = container.querySelector("[aria-label='Close Try two parsers']");
+    expect(container.querySelectorAll("[aria-label^='Close']")).toHaveLength(2);
+    expect(compare?.parentElement?.querySelector("svg.lucide-git-compare")).not.toBeNull();
+    expect(container.textContent).toContain("Try two parsers");
     unmount();
   });
 

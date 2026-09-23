@@ -1,6 +1,15 @@
 import type { RepoListRow, RepoStatus } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
-import { NO_TABS, readTabs, TABS_KEY, tabbableTasks, tabsReducer, writeTabs } from "./tabs-state";
+import {
+  compareIdOf,
+  compareTabId,
+  NO_TABS,
+  readTabs,
+  TABS_KEY,
+  tabbableTasks,
+  tabsReducer,
+  writeTabs,
+} from "./tabs-state";
 
 const three = { open: ["a", "b", "c"], active: "b" };
 
@@ -50,6 +59,27 @@ describe("tabsReducer", () => {
     });
     expect(tabsReducer(three, { type: "prune", keep: new Set(["a", "b", "c"]) })).toBe(three);
   });
+
+  it("opens a compare tab like any other and closes it the same way, mixed ids and all", () => {
+    const mixed = { open: ["t1", "compare:cmp1", "t2"], active: "t1" };
+    const opened = tabsReducer(mixed, { type: "open", taskId: "compare:cmp1" });
+    expect(opened).toEqual({ open: mixed.open, active: "compare:cmp1" });
+
+    const reopened = tabsReducer(NO_TABS, { type: "open", taskId: "compare:cmp1" });
+    expect(reopened).toEqual({ open: ["compare:cmp1"], active: "compare:cmp1" });
+
+    // Closing the active compare tab hands the front to its right neighbour, a task tab.
+    expect(tabsReducer(opened, { type: "close", taskId: "compare:cmp1" })).toEqual({
+      open: ["t1", "t2"],
+      active: "t2",
+    });
+    // With nothing to its right, its left neighbour takes over instead.
+    const last = { open: ["t1", "compare:cmp1"], active: "compare:cmp1" };
+    expect(tabsReducer(last, { type: "close", taskId: "compare:cmp1" })).toEqual({
+      open: ["t1"],
+      active: "t1",
+    });
+  });
 });
 
 describe("tabbableTasks", () => {
@@ -63,7 +93,11 @@ describe("tabbableTasks", () => {
     testCommand: null,
     pathPresent: true,
   });
-  const tasks = { a: { repoId: "one" }, b: { repoId: "one" }, c: { repoId: "two" } };
+  const tasks = {
+    a: { repoId: "one", compareId: null },
+    b: { repoId: "one", compareId: null },
+    c: { repoId: "two", compareId: null },
+  };
 
   it("closes the tabs of a removed repo and hands the active one to its neighbour", () => {
     const keep = tabbableTasks([repo("one", "removed"), repo("two", "active")], tasks);
@@ -77,6 +111,48 @@ describe("tabbableTasks", () => {
 
   it("closes the tabs of a repo removed before the page loaded, which no list names", () => {
     expect(tabbableTasks([repo("two", "active")], tasks)).toEqual(new Set(["c"]));
+  });
+
+  it("keeps the compare tab of a group whose siblings it keeps, and drops it with them", () => {
+    const siblings = {
+      a: { repoId: "one", compareId: "cmp1" },
+      b: { repoId: "one", compareId: "cmp1" },
+      c: { repoId: "two", compareId: null },
+    };
+    const both = tabbableTasks([repo("one", "active"), repo("two", "active")], siblings);
+    expect(both).toEqual(new Set(["a", "b", "c", "compare:cmp1"]));
+    const gone = tabbableTasks([repo("one", "removed"), repo("two", "active")], siblings);
+    expect(gone).toEqual(new Set(["c"]));
+  });
+
+  it("keeps the compare tab while one sibling of the group is still kept", () => {
+    // 'a' and 'b' are one compare's siblings; only 'a' survives the repo filter, and that alone
+    // is enough to keep 'compare:cmp1' drawn.
+    const siblings = {
+      a: { repoId: "one", compareId: "cmp1" },
+      b: { repoId: "two", compareId: "cmp1" },
+    };
+    const oneLeft = tabbableTasks([repo("one", "active"), repo("two", "removed")], siblings);
+    expect(oneLeft).toEqual(new Set(["a", "compare:cmp1"]));
+  });
+
+  it("drops the compare tab once every sibling of the group has left", () => {
+    const siblings = {
+      a: { repoId: "one", compareId: "cmp1" },
+      b: { repoId: "two", compareId: "cmp1" },
+    };
+    const noneLeft = tabbableTasks([repo("one", "removed"), repo("two", "removed")], siblings);
+    expect(noneLeft).toEqual(new Set());
+  });
+});
+
+describe("compare tab ids", () => {
+  it("round-trips a compare id and answers for nothing else", () => {
+    expect(compareTabId("cmp1")).toBe("compare:cmp1");
+    expect(compareIdOf(compareTabId("cmp1"))).toBe("cmp1");
+    expect(compareIdOf("t3n9v2wxyz")).toBeNull();
+    expect(compareIdOf("compare:")).toBeNull();
+    expect(compareIdOf(null)).toBeNull();
   });
 });
 
@@ -94,13 +170,45 @@ describe("readTabs", () => {
     expect(readTabs(storage('{"open":["a"],"active":"b"}'))).toEqual({ open: ["a"], active: null });
   });
 
-  it("round-trips what the page wrote", () => {
+  it("reads a list written before compares existed unchanged", () => {
+    expect(readTabs(storage('{"open":["a","b"],"active":"b"}'))).toEqual({
+      open: ["a", "b"],
+      active: "b",
+    });
+  });
+
+  it("reads a stored compare tab whose group is gone, ready for the load-time prune to drop it", () => {
+    // readTabs itself does not know what a compare id stands for - it only checks the shape - so
+    // the raw string survives the read; it is `tabbableTasks` plus a "prune" dispatch on load
+    // (app.tsx) that drops it once no task in the store names that compareId any longer.
+    const stored = readTabs(storage('{"open":["t1","compare:cmp1"],"active":"compare:cmp1"}'));
+    expect(stored).toEqual({ open: ["t1", "compare:cmp1"], active: "compare:cmp1" });
+
+    const tasks = { t1: { repoId: "one", compareId: null } };
+    const repo: RepoListRow = {
+      id: "one",
+      name: "one",
+      path: "/tmp/one",
+      kind: "git",
+      addedAt: "2026-09-01T00:00:00.000Z",
+      status: "active",
+      testCommand: null,
+      pathPresent: true,
+    };
+    const pruned = tabsReducer(stored, { type: "prune", keep: tabbableTasks([repo], tasks) });
+    expect(pruned).toEqual({ open: ["t1"], active: "t1" });
+  });
+
+  it("round-trips what the page wrote, compare tabs and all", () => {
     let written: string | null = null;
     const storage = {
       setItem: (_key: string, value: string) => {
         written = value;
       },
     };
+    const withCompare = { open: ["a", "compare:cmp1"], active: "compare:cmp1" };
+    writeTabs(storage, withCompare);
+    expect(readTabs({ getItem: () => written })).toEqual(withCompare);
     writeTabs(storage, three);
     expect(readTabs({ getItem: () => written })).toEqual(three);
     expect(TABS_KEY).toBe("agn.tabs");

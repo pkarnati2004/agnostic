@@ -35,6 +35,9 @@ const TASKS: { status: TaskStatus; title: string; profileId: string }[] = [
   { status: "stopped", title: "Split the usage scanner", profileId: CODEX },
 ];
 
+// Two agents on one prompt, so the sidebar draws a compare row and its Compare view has columns.
+const COMPARE_TITLE = "Try two parsers on the config loader";
+
 const DEV_PORT = 5173;
 
 // The fixture harness that answers one spec, so Write spec can be tried with no agent installed.
@@ -100,6 +103,35 @@ function row(
     source: "transcript",
     ref: `preview-${ref}`,
   };
+}
+
+function findRepo(ledger: Ledger, path: string): Repo | undefined {
+  return ledger.repos.list().find((repo) => repo.path === path);
+}
+
+/** The siblings of one compare, in the first repo only: one row and one Compare view to look at. */
+function seedCompare(ledger: Ledger, repoId: string, path: string): void {
+  const compareId = newId();
+  for (const [position, profileId] of [CLAUDE, CODEX].entries()) {
+    const id = newId();
+    const at = new Date(Date.UTC(2026, 8, 13, 11, position)).toISOString();
+    ledger.tasks.insert({
+      id,
+      repoId,
+      title: COMPARE_TITLE,
+      prompt: "try two parsers on the config loader",
+      profileId,
+      worktreePath: join(path, ".worktree", id),
+      branch: `agn/two-parsers-${position}`,
+      status: "queued",
+      origin: "agn",
+      baseCommit: null,
+      compareId,
+      createdAt: at,
+      updatedAt: at,
+    });
+    ledger.tasks.setStatus(id, "running");
+  }
 }
 
 function seedRepo(ledger: Ledger, name: string, path: string, index: number): string[] {
@@ -182,6 +214,11 @@ async function main(): Promise<void> {
     env: { PATH: "/usr/bin:/bin" },
     seed: (ledger) => {
       const ids = repos.map((repo, index) => seedRepo(ledger, repo.name, repo.path, index));
+      const first = repos[0];
+      const row = first === undefined ? undefined : findRepo(ledger, first.path);
+      if (row !== undefined) {
+        seedCompare(ledger, row.id, row.path);
+      }
       insertRepo(ledger, closed.name, closed.path, repos.length, "archived");
       gone = seedRepo(ledger, MISSING_REPO.name, MISSING_REPO.path, repos.length + 1);
       seedUsage(ledger, ids[0] ?? []);

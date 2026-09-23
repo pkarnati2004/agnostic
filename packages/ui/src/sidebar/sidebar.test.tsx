@@ -78,6 +78,7 @@ function sidebar(state: WorkspaceState, handlers: Handlers = {}) {
         selectedId={null}
         collapsed={false}
         onSelect={vi.fn()}
+        onOpenCompare={vi.fn()}
         onNewTask={vi.fn()}
         onAddRepo={handlers.onAddRepo ?? vi.fn()}
         onCloseRepo={handlers.onCloseRepo ?? (() => Promise.resolve())}

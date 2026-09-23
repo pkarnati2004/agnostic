@@ -122,6 +122,15 @@ describe("agn status", () => {
     expect(test.out.join("\n")).toContain("parent:   t3n9v2wxyz");
   });
 
+  it("names the compare a sibling belongs to, and a dash when it belongs to none", async () => {
+    const test = cli([task("q4m8n2vwxy", "running", { compareId: "c7k2m4pqrs" })]);
+    await parse(test.ctx, ["q4m8n2vwxy"]);
+    expect(test.out.join("\n")).toContain("compare:  c7k2m4pqrs");
+    const alone = cli([task("t3n9v2wxyz", "running")]);
+    await parse(alone.ctx, ["t3n9v2wxyz"]);
+    expect(alone.out.join("\n")).toContain("compare:  -");
+  });
+
   it("shows a named task with its session", async () => {
     const test = cli([
       task("t3n9v2wxyz", "running", {

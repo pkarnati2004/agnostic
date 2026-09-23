@@ -17,6 +17,8 @@ type SidebarProps = {
   selectedId: string | null;
   collapsed: boolean;
   onSelect: (id: string) => void;
+  /** Opens the group's Compare view in the centre, which is a tab of its own (ADR 036 Q7). */
+  onOpenCompare: (compareId: string) => void;
   onNewTask: () => void;
   onAddRepo: () => void;
   /** Rejects when the daemon refused; by then the failure is already in `repoNotices`. */
@@ -33,6 +35,8 @@ export function Sidebar(props: SidebarProps) {
   const { groups, selectedId, onSelect } = props;
   // Collapsed on every load: History and Closed are the parts the page is not asking you to read.
   const [openHistory, setOpenHistory] = useState<ReadonlySet<string>>(new Set());
+  // Only the compares the user has opened or closed by hand; the rest follow what they are doing.
+  const [openCompares, setOpenCompares] = useState<ReadonlyMap<string, boolean>>(new Map());
   const [openClosed, setOpenClosed] = useState(false);
   if (props.collapsed) {
     return (
@@ -67,6 +71,11 @@ export function Sidebar(props: SidebarProps) {
             notice={props.repoNotices[group.repo.id] ?? null}
             onToggle={(repoId) => setOpenHistory(toggled(openHistory, repoId))}
             onSelect={onSelect}
+            openCompares={openCompares}
+            onToggleCompare={(compareId, expanded) =>
+              setOpenCompares(new Map(openCompares).set(compareId, expanded))
+            }
+            onOpenCompare={props.onOpenCompare}
             onClose={props.onCloseRepo}
             onRemove={props.onRemoveRepo}
           />

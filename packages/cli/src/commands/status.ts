@@ -76,6 +76,7 @@ function fields(task: Task): [string, string][] {
     ["tmux", task.session?.tmuxSession ?? "-"],
     ["cwd", task.session?.cwd ?? "-"],
     ["parent", task.parentTaskId ?? "-"],
+    ["compare", task.compareId ?? "-"],
     ["origin", task.origin],
     ["created", task.createdAt],
     ["updated", task.updatedAt],

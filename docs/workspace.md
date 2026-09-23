@@ -21,6 +21,7 @@ than the page.
 - **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback.
 - **+ Task:** describe the work, see the recommendation, pick or accept, run.
 - **Right:** what the selected task has changed, with the patch of the file you click. "Changes" in the task header opens and closes it.
+- **Compare:** `agn compare` runs one prompt on several agents at once. The siblings are one row in the sidebar, and the row opens a Compare view with a column per agent.
 - **Bottom:** tokens and cost per plan, for today and for this week.
 
 Everything the workspace shows comes from the local daemon; closing the tab loses nothing.
@@ -174,6 +175,37 @@ type into, so agn hands you the message to paste into that terminal yourself.
 `agn update [<task>]` does the same from a terminal. It prints where the message went, which mode
 the branch got and why, and the `agn attach` line for watching the work; it never takes the
 terminal over.
+
+## Compare
+
+`agn compare "<prompt>"` runs one prompt on two to four profiles at once. Each agent gets its own
+worktree and branch, so they never touch each other's work. Name the agents with
+`--profiles a,b`; leave it out and agn compares its own recommendation against the alternative it
+names.
+
+The siblings are one row in the sidebar, wherever their tasks would have been. The row carries the
+compare icon and the title, and its second line counts what the agents are doing:
+`compare · 2 agents · 1 running, 1 stopped`. The chevron lists the siblings under the row, each
+one a task row that opens its own terminal tab. The row is open while an agent is still running
+and closed once none is. Which agent a pick kept is said in the Compare view, not in the sidebar.
+
+Clicking the title opens the Compare view in the centre. It is a tab like a terminal: it sits in
+the strip beside them, closes the same way, and comes back when you reload the page. The view has
+one column per agent with the profile, the status, the files changed, the lines added and removed,
+the tests, the cost and the time. **Open** on a column brings that agent's terminal to the front.
+
+**Pick** keeps one agent. agn stops the others, removes their worktrees and keeps their branches,
+so nothing committed is lost; they read as reverted in History and in `agn outcomes`. A
+confirmation dialog says how many agents that is before anything happens. You can pick again
+later: the second pick stops and cleans whatever is still standing, including the agent the first
+pick kept, and its branch stays too.
+
+The table refreshes when the agents' events arrive - a stop, a clean, a usage row - and on
+**Refresh** in the header. Nothing polls. The tests column of an agent that has just stopped reads
+`-` until its close work records the outcome a few seconds later; Refresh fetches it.
+
+`agn compare show <id>` prints the same table in a terminal, and `agn compare pick <id> <task>`
+keeps one from there.
 
 ## History
 

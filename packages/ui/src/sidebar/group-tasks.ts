@@ -1,6 +1,14 @@
 import type { RepoListRow, Task, TaskListRow, TaskStatus } from "@agnostic/core";
 
-export type RepoGroup = { repo: RepoListRow; tasks: TaskListRow[]; history: TaskListRow[] };
+/** The siblings of one compare, oldest first, which is the order the profiles were given in. */
+export type CompareGroup = { compareId: string; title: string; tasks: TaskListRow[] };
+
+/** What the sidebar draws under a repo: one task, or one compare standing for all of its siblings. */
+export type SidebarRow =
+  | { kind: "task"; task: TaskListRow }
+  | { kind: "compare"; group: CompareGroup };
+
+export type RepoGroup = { repo: RepoListRow; rows: SidebarRow[]; history: SidebarRow[] };
 export type SidebarGroups = { needsYou: TaskListRow[]; repos: RepoGroup[] };
 
 const OPEN: TaskStatus[] = ["queued", "running", "waiting"];
@@ -24,14 +32,60 @@ export function groupTasks(repos: RepoListRow[], tasks: TaskListRow[]): SidebarG
     .filter((task) => task.status === "waiting")
     .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
   const groups = inSidebarOrder(repos).map((repo) => {
-    const own = byRepo.get(repo.id) ?? [];
+    const rows = sidebarRows(byRepo.get(repo.id) ?? []);
     return {
       repo,
-      tasks: inRepoOrder(own.filter((task) => !inHistory(task))),
-      history: newestFirst(own.filter((task) => inHistory(task))),
+      rows: inRepoOrder(rows.filter((row) => !rowInHistory(row))),
+      history: newestFirst(rows.filter(rowInHistory)),
     };
   });
   return { needsYou, repos: groups };
+}
+
+/**
+ * A task with a `compareId` joins its group and the group is one row, wherever its siblings would
+ * have been. Everything else is a row of its own, as it has always been.
+ */
+function sidebarRows(tasks: TaskListRow[]): SidebarRow[] {
+  const rows: SidebarRow[] = [];
+  const compares = new Map<string, TaskListRow[]>();
+  for (const task of tasks) {
+    const compareId = task.compareId;
+    if (compareId === null) {
+      rows.push({ kind: "task", task });
+    } else {
+      compares.set(compareId, [...(compares.get(compareId) ?? []), task]);
+    }
+  }
+  for (const [compareId, siblings] of compares) {
+    const oldestFirst = [...siblings].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const [first, ...rest] = oldestFirst;
+    if (first !== undefined) {
+      // Every sibling was started from the one request, so the first one names the group.
+      rows.push({
+        kind: "compare",
+        group: { compareId, title: first.title, tasks: [first, ...rest] },
+      });
+    }
+  }
+  return rows;
+}
+
+/** A compare is in History once every sibling is: one live agent keeps the group in the list. */
+function rowInHistory(row: SidebarRow): boolean {
+  return row.kind === "task" ? inHistory(row.task) : row.group.tasks.every(inHistory);
+}
+
+/** A group is as new as its newest sibling, and as open as its most open one. */
+function rowUpdatedAt(row: SidebarRow): string {
+  if (row.kind === "task") {
+    return row.task.updatedAt;
+  }
+  return row.group.tasks.reduce((newest, task) => max(newest, task.updatedAt), "");
+}
+
+function max(a: string, b: string): string {
+  return a.localeCompare(b) >= 0 ? a : b;
 }
 
 /**
@@ -83,18 +137,19 @@ export function closedRepos(repos: RepoListRow[]): RepoListRow[] {
     .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 }
 
-/** Open tasks before closed ones, each newest first: what is happening now is at the top. */
-function inRepoOrder(tasks: TaskListRow[]): TaskListRow[] {
-  return [...tasks].sort(
-    (a, b) => openFirst(a) - openFirst(b) || b.updatedAt.localeCompare(a.updatedAt),
+/** Open rows before closed ones, each newest first: what is happening now is at the top. */
+function inRepoOrder(rows: SidebarRow[]): SidebarRow[] {
+  return [...rows].sort(
+    (a, b) => openFirst(a) - openFirst(b) || rowUpdatedAt(b).localeCompare(rowUpdatedAt(a)),
   );
 }
 
-/** History has no open tasks in it, so the last thing that happened is all that orders it. */
-function newestFirst(tasks: TaskListRow[]): TaskListRow[] {
-  return [...tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+/** History has no open rows in it, so the last thing that happened is all that orders it. */
+function newestFirst(rows: SidebarRow[]): SidebarRow[] {
+  return [...rows].sort((a, b) => rowUpdatedAt(b).localeCompare(rowUpdatedAt(a)));
 }
 
-function openFirst(task: TaskListRow): number {
-  return OPEN.includes(task.status) ? 0 : 1;
+function openFirst(row: SidebarRow): number {
+  const tasks = row.kind === "task" ? [row.task] : row.group.tasks;
+  return tasks.some((task) => OPEN.includes(task.status)) ? 0 : 1;
 }

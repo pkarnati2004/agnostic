@@ -3,10 +3,10 @@ import type { WorkspaceClient } from "../api/client";
 import type { TaskNotices } from "../store/task-notices";
 import { TerminalView } from "../terminal/terminal-view";
 import type { ResumeNotice } from "./resume-notice";
-import type { TabsState } from "./tabs-state";
 
 type TaskTabsProps = {
-  state: TabsState;
+  /** The tab in front, or null while a tab that is not a terminal is: the Compare view. */
+  activeId: string | null;
   /** Every open tab's task, in tab order. */
   tasks: Task[];
   token: string;
@@ -20,7 +20,7 @@ type TaskTabsProps = {
 
 /** Every open tab stays mounted: a hidden one keeps its scrollback and its tmux client. */
 export function TaskTabs(props: TaskTabsProps) {
-  const { state, tasks, token, client, resumed, notices, onResume } = props;
+  const { activeId, tasks, token, client, resumed, notices, onResume } = props;
   if (tasks.length === 0) {
     return null;
   }
@@ -32,7 +32,7 @@ export function TaskTabs(props: TaskTabsProps) {
           task={task}
           token={token}
           client={client}
-          active={task.id === state.active}
+          active={task.id === activeId}
           resumeNotice={resumed?.taskId === task.id ? resumed.notice : null}
           failure={notices[task.id] ?? null}
           onResume={() => onResume(task.id)}
