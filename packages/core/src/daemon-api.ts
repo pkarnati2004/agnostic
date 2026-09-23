@@ -7,7 +7,7 @@ import type { Recommendation } from "./recommendation.js";
 import type { Repo } from "./repo.js";
 import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
 import { TaskIntentSchema } from "./task-intent.js";
-import type { PlanUsage, UsageSum, UsageWindow } from "./usage.js";
+import type { BudgetReport, PlanUsage, UsageSum, UsageWindow } from "./usage.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;
@@ -111,6 +111,8 @@ export const RunTaskRequestSchema = z.strictObject({
   /** The approved spec, written by hand or by a model; absent means the prompt is the spec. */
   spec: z.string().min(1).optional(),
   acceptance: z.string().min(1).optional(),
+  /** Runs the task past an exceeded budget, this once (ADR 036 Q9). */
+  ignoreBudget: z.boolean().optional(),
 });
 export type RunTaskRequest = z.infer<typeof RunTaskRequestSchema>;
 
@@ -137,6 +139,8 @@ export const HandoffTaskRequestSchema = z.strictObject({
   profile: z.string().min(1),
   /** What the user wrote, or the outgoing agent's own summary; agn adds the mechanical context. */
   note: z.string().min(1).optional(),
+  /** The same override a run takes: a handoff onto a counted profile is refused the same way. */
+  ignoreBudget: z.boolean().optional(),
 });
 export type HandoffTaskRequest = z.infer<typeof HandoffTaskRequestSchema>;
 
@@ -242,6 +246,8 @@ export type InitResponse = { writes: InitWrite[] };
 export type UsageResponse = {
   day: { window: UsageWindow; plans: PlanUsage[] };
   week: { window: UsageWindow; plans: PlanUsage[] };
+  /** The ceilings from config.yaml over these same windows, from this same scan. */
+  budget: BudgetReport;
   scannedAt: string;
 };
 

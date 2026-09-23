@@ -1,4 +1,4 @@
-import type { Profile, RepoListRow } from "@agnostic/core";
+import type { BudgetReport, Profile, RepoListRow } from "@agnostic/core";
 import { act } from "react";
 import { vi } from "vitest";
 import type { WorkspaceClient } from "../api/client";
@@ -28,6 +28,13 @@ export const PROFILE: Profile = {
   available: true,
   evidence: "binary",
   tier: 1,
+};
+
+/** The same profile billed by the token, for the tests that put the budget note in front of it. */
+export const KEYED_PROFILE: Profile = {
+  ...PROFILE,
+  id: "claude-code:opus:openrouter",
+  billing: "api-key",
 };
 
 export function stubClient(overrides: Partial<WorkspaceClient> = {}): WorkspaceClient {
@@ -69,12 +76,12 @@ export function setValue(el: HTMLTextAreaElement, value: string) {
   el.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-/** Opens the Profile select and clicks the one profile fixture; no keyboard, no typeahead. */
-export function pickProfile() {
+/** Opens the Profile select and clicks the fixture profile named; no keyboard, no typeahead. */
+export function pickProfile(id: string = PROFILE.id) {
   const trigger = document.getElementById("new-task-profile") as HTMLButtonElement;
   act(() => trigger.click());
   const item = Array.from(document.querySelectorAll('[role="option"]')).find(
-    (el) => el.textContent === PROFILE.id,
+    (el) => el.textContent === id,
   ) as HTMLElement | undefined;
   act(() => item?.click());
 }
@@ -89,14 +96,18 @@ export function runButton(): HTMLButtonElement {
   return button("Run");
 }
 
-export function dialog(client: WorkspaceClient) {
+export function dialog(
+  client: WorkspaceClient,
+  opts: { profiles?: Profile[]; budget?: BudgetReport | null } = {},
+) {
   return render(
     <NewTaskDialog
       open
       onOpenChange={vi.fn()}
       repos={[REPO]}
       defaultRepoId="r1"
-      profiles={[PROFILE]}
+      profiles={opts.profiles ?? [PROFILE]}
+      budget={opts.budget ?? null}
       client={client}
       onStarted={vi.fn()}
     />,

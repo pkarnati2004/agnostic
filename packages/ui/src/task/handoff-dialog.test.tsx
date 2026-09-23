@@ -1,12 +1,17 @@
 // @vitest-environment happy-dom
-import type { Task } from "@agnostic/core";
+import type { BudgetReport, Profile, Task } from "@agnostic/core";
 import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/error";
 import type { TaskNotice } from "../store/task-notices";
-import { render } from "../test/render";
+import { click, render } from "../test/render";
 import { HandoffDialog } from "./handoff-dialog";
-import { PROFILE } from "./new-task-dialog-fixture";
+import { KEYED_PROFILE, PROFILE } from "./new-task-dialog-fixture";
+
+const OVER_BUDGET: BudgetReport = {
+  day: { limitUsd: 5, spentUsd: 5.2, state: "exceeded" },
+  week: null,
+};
 
 const TASK: Task = {
   id: "task1",
@@ -45,15 +50,27 @@ function button(label: string): HTMLButtonElement {
   return found;
 }
 
-function open(notice: TaskNotice | null, onSubmit: () => Promise<boolean>) {
+function open(
+  notice: TaskNotice | null,
+  onSubmit: () => Promise<boolean>,
+  opts: { profiles?: Profile[]; budget?: BudgetReport | null; pick?: string } = {},
+) {
+  const profiles = opts.profiles ?? [PROFILE];
+  const pick = opts.pick ?? PROFILE.id;
   const rendered = render(
-    <HandoffDialog task={TASK} profiles={[PROFILE]} notice={notice} onSubmit={onSubmit} />,
+    <HandoffDialog
+      task={TASK}
+      profiles={profiles}
+      budget={opts.budget ?? null}
+      notice={notice}
+      onSubmit={onSubmit}
+    />,
   );
   act(() => button("Hand off").click());
   const trigger = document.getElementById("handoff-profile") as HTMLButtonElement;
   act(() => trigger.click());
   const item = Array.from(document.querySelectorAll('[role="option"]')).find(
-    (one) => one.textContent === PROFILE.id,
+    (one) => one.textContent === pick,
   ) as HTMLElement | undefined;
   act(() => item?.click());
   return rendered;
@@ -80,6 +97,23 @@ describe("HandoffDialog", () => {
 
     expect(onSubmit).toHaveBeenCalledWith({ profile: PROFILE.id });
     expect(document.body.textContent).not.toContain("Hand off Port the parser");
+    unmount();
+  });
+
+  it("carries the note's ignore checkbox into the posted body for an over-budget profile", async () => {
+    const onSubmit = vi.fn(() => Promise.resolve(true));
+    const { unmount } = open(null, onSubmit, {
+      profiles: [KEYED_PROFILE],
+      budget: OVER_BUDGET,
+      pick: KEYED_PROFILE.id,
+    });
+
+    expect(document.body.textContent).toContain("Over budget: today $5.20 of $5.00.");
+    const box = document.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    click(box);
+    await act(async () => button("Run").click());
+
+    expect(onSubmit).toHaveBeenCalledWith({ profile: KEYED_PROFILE.id, ignoreBudget: true });
     unmount();
   });
 });

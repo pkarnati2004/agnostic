@@ -45,7 +45,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn repo close\|open\|remove <repo>` | Close a repo so it leaves the list and the workspace, keeping its history, or open it again. `remove` hides a repo for good and deletes the worktrees agn made for its tasks, keeping its history; `agn add <path>` brings it back. Close and remove are refused while a task is running or waiting |
 | `agn doctor` | Detect installed agents, logins, provider keys, local model servers |
 | `agn profiles` | List the agent × model combinations you can run right now |
-| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>`, `--intent <class>`, `--skip-tests` |
+| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>`, `--intent <class>`, `--skip-tests`, `--ignore-budget` |
 | `agn status [<task>]` | One task, or every task across your repos. `--all` lists everything from inside a worktree |
 | `agn attach [<task>]` | Join the session in your terminal; defaults to the task of the worktree you are in |
 | `agn stop <task>` | Stop the session |

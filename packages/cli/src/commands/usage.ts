@@ -1,5 +1,6 @@
 import type { PlanUsage, TaskUsageResponse, UsageResponse, UsageWindow } from "@agnostic/core";
 import { Command } from "commander";
+import { budgetSummary } from "../budget-lines.js";
 import { type CliContext, writeJson } from "../context.js";
 import { renderFields } from "../fields.js";
 import { worktreeTask } from "../resolve-repo.js";
@@ -28,6 +29,13 @@ async function showWindows(ctx: CliContext): Promise<void> {
   print(ctx, response.day, "today");
   ctx.io.out("");
   print(ctx, response.week, "this week");
+  const budget = budgetSummary(response.budget);
+  if (budget.length > 0) {
+    ctx.io.out("");
+    for (const line of budget) {
+      ctx.io.out(line);
+    }
+  }
 }
 
 function print(

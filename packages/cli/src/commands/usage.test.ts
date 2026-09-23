@@ -1,5 +1,6 @@
 import {
   agnosticPaths,
+  type BudgetReport,
   type PlanUsage,
   type Task,
   type TaskUsageResponse,
@@ -11,6 +12,8 @@ import { createTestContext } from "../test-context.js";
 import { usageCommand } from "./usage.js";
 
 const PATHS = agnosticPaths("/home/.agnostic");
+
+const NO_BUDGET: BudgetReport = { day: null, week: null };
 
 const task: Task = {
   id: "t3n9v2wxyz",
@@ -52,11 +55,12 @@ function plan(over: Partial<PlanUsage> = {}): PlanUsage {
   };
 }
 
-function response(plans: PlanUsage[]): UsageResponse {
+function response(plans: PlanUsage[], budget: BudgetReport = NO_BUDGET): UsageResponse {
   return {
     // 2026-09-11 was a Friday; the week it is in starts on Monday the 7th.
     day: { window: dayWindow("day", "2026-09-11T00:00:00"), plans },
     week: { window: dayWindow("week", "2026-09-07T00:00:00"), plans },
+    budget,
     scannedAt: "2026-09-11T15:00:00.000Z",
   };
 }
@@ -134,6 +138,45 @@ describe("agn usage", () => {
     await parse(test.ctx, []);
 
     expect(test.out[2]).toContain("$1.23");
+  });
+
+  it("prints the budget under the tables, with the state of each window", async () => {
+    const test = cli({
+      usage: response([], {
+        day: { limitUsd: 5, spentUsd: 4.1, state: "warn" },
+        week: { limitUsd: 20, spentUsd: 20.8, state: "exceeded" },
+      }),
+    });
+
+    await parse(test.ctx, []);
+
+    expect(test.out.slice(-3)).toEqual([
+      "",
+      "budget today $4.10 of $5.00 (82%, warn)",
+      "budget this week $20.80 of $20.00 (104%, over)",
+    ]);
+  });
+
+  it("prints only the week's line for a weekly-only ceiling, with no daily line above it", async () => {
+    const test = cli({
+      usage: response([], { day: null, week: { limitUsd: 20, spentUsd: 18.4, state: "warn" } }),
+    });
+
+    await parse(test.ctx, []);
+
+    expect(test.out.slice(-2)).toEqual(["", "budget this week $18.40 of $20.00 (92%, warn)"]);
+  });
+
+  it("prints a window that is within its ceiling, and nothing when there is none", async () => {
+    const set = cli({
+      usage: response([], { day: { limitUsd: 5, spentUsd: 0.6, state: "ok" }, week: null }),
+    });
+    await parse(set.ctx, []);
+    expect(set.out.at(-1)).toBe("budget today $0.60 of $5.00 (12%, ok)");
+
+    const none = cli();
+    await parse(none.ctx, []);
+    expect(none.out.join("\n")).not.toContain("budget");
   });
 
   it("prints the response as it came when asked for JSON", async () => {

@@ -9,6 +9,7 @@ import { planVendor } from "@agnostic/registry";
 import { summarizePlans, usageWindow } from "@agnostic/usage";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
+import { budgetReport, spentUsd } from "../budget.js";
 import { readDaemonConfig } from "../daemon-config.js";
 import { resolveTaskId } from "../resolve-id.js";
 import { billingForProfile } from "../usage-scan.js";
@@ -25,14 +26,24 @@ export function usageRoutes(ctx: DaemonContext): Hono {
       // After the scan, not before: a turn the harness writes while the scan runs must be inside
       // the window the answer reports, and the window is half-open on `until`.
       const scannedAt = new Date();
-      const plans = await plansInUse(ctx);
-      const window = (kind: "day" | "week") => {
+      const config = await readDaemonConfig(ctx.paths);
+      const plans = await plansInUse(ctx, config.plans);
+      const read = (kind: "day" | "week") => {
         const bounds: UsageWindow = usageWindow(kind, scannedAt);
-        return { window: bounds, plans: summarizePlans(summarize(ctx, bounds), plans, planVendor) };
+        const rows = summarize(ctx, bounds);
+        // The budget counts the same rows the plan cells are built from: one read per window.
+        return {
+          window: bounds,
+          plans: summarizePlans(rows, plans, planVendor),
+          spent: spentUsd(rows),
+        };
       };
+      const day = read("day");
+      const week = read("week");
       const body: UsageResponse = {
-        day: window("day"),
-        week: window("week"),
+        day: { window: day.window, plans: day.plans },
+        week: { window: week.window, plans: week.plans },
+        budget: budgetReport(config.budget, { day: day.spent, week: week.spent }),
         scannedAt: scannedAt.toISOString(),
       };
       return c.json(body);
@@ -50,9 +61,8 @@ export function usageRoutes(ctx: DaemonContext): Hono {
 }
 
 /** The plan each vendor's rows are labelled with: what detection read, else what the user wrote. */
-async function plansInUse(ctx: DaemonContext): Promise<Plans> {
-  const { plans } = await readDaemonConfig(ctx.paths);
-  const detected: Plans = { ...plans };
+async function plansInUse(ctx: DaemonContext, configured: Plans): Promise<Plans> {
+  const detected: Plans = { ...configured };
   // One probe per request, outside the scan's snapshot: the label is the plan detection reads now.
   for (const report of (await ctx.detection.current()).harnesses) {
     if (report.planVendor !== null && report.plan !== null) {

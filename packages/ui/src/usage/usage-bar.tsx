@@ -1,5 +1,6 @@
 import type { PlanUsage, UsageResponse } from "@agnostic/core";
 import type { ReactNode } from "react";
+import { BudgetCell } from "./budget-cell";
 import { planLabel } from "./format-usage";
 import { PlanCell } from "./plan-cell";
 import { lastResponse, type UsageState } from "./usage-state";
@@ -39,6 +40,7 @@ export function UsageBar({ state }: { state: UsageState }) {
           />
         ))
       )}
+      <BudgetCell budget={response.budget} />
     </Bar>
   );
 }

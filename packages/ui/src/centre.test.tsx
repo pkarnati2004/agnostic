@@ -57,6 +57,7 @@ function centre(tabs: TabsState) {
         token="tok"
         client={stubClient({ compare: () => new Promise(() => undefined) })}
         usage={IDLE_USAGE}
+        budget={null}
         cost={null}
         error={null}
         resumed={null}
