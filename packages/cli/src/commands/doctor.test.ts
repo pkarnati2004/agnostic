@@ -39,6 +39,7 @@ function run(
   tools: ToolReport[] = [],
   tmuxConfigStale = false,
   named: HarnessReport["harness"][] = [],
+  pathVar = "/opt/bin",
 ) {
   const response: DoctorResponse = {
     tmuxConfigStale,
@@ -47,7 +48,7 @@ function run(
     tools,
     named,
     detectedAt: "2026-09-11T10:00:00.000Z",
-    pathVar: "/opt/bin",
+    pathVar,
     plans: {},
     planOptions: [
       { vendor: "claude", id: "pro", displayName: "Pro" },
@@ -55,7 +56,11 @@ function run(
     ],
   };
   const cli = createTestContext({ client: { doctor: () => Promise.resolve(response) } });
-  return { cli, response, done: () => doctorCommand(cli.ctx).parseAsync([], { from: "user" }) };
+  return {
+    cli,
+    response,
+    done: (args: string[] = []) => doctorCommand(cli.ctx).parseAsync(args, { from: "user" }),
+  };
 }
 
 describe("agn doctor", () => {
@@ -85,8 +90,44 @@ describe("agn doctor", () => {
       "claude-code  2.0.1    logged-in  full     1 (probed)  max20  /opt/bin/claude",
       "not installed: codex, gemini (2)",
       "profiles: 1 available (agn profiles)",
-      "PATH: /opt/bin",
     ]);
+  });
+
+  it("leaves the PATH out when every harness the user asked for is installed", async () => {
+    const { cli, done } = run([report({})]);
+    await done();
+    expect(cli.out.some((line) => line.startsWith("PATH:"))).toBe(false);
+  });
+
+  it("prints the PATH when a harness the user named has no binary on it", async () => {
+    const { cli, done } = run(
+      [report({}), report({ harness: "codex", path: null, version: null, login: "unknown" })],
+      undefined,
+      undefined,
+      false,
+      ["codex"],
+    );
+    await done();
+    expect(cli.out).toContain("PATH: /opt/bin");
+  });
+
+  it("prints the PATH with --verbose, missing harness or not", async () => {
+    const { cli, done } = run([report({})]);
+    await done(["--verbose"]);
+    expect(cli.out).toContain("PATH: /opt/bin");
+  });
+
+  it("prints an empty PATH when it found no agent at all", async () => {
+    const { cli, done } = run(
+      [report({ path: null, version: null, login: "unknown" })],
+      undefined,
+      undefined,
+      false,
+      [],
+      "",
+    );
+    await done();
+    expect(cli.out).toContain("PATH: ");
   });
 
   it("keeps a row for a harness the user named, installed or not", async () => {
