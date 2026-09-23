@@ -25,6 +25,7 @@ const task: Task = {
   worktreePath: DIR,
   branch: "agn/flag",
   baseCommit: null,
+  compareId: null,
   status: "running",
   origin: "agn",
   createdAt: "2026-09-11T10:00:00.000Z",

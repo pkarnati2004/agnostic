@@ -25,6 +25,28 @@ export function resolveTaskId(ledger: Ledger, idOrPrefix: string): Task {
   return one(matches, idOrPrefix, { noun: "task", list: "agn status" });
 }
 
+/**
+ * The compare one id or prefix names. Compare ids are not a table of their own: they live on the
+ * task rows, so the candidates are the distinct ids the tasks carry (ADR 036 Q7).
+ */
+export function resolveCompareId(ledger: Ledger, idOrPrefix: string): string {
+  const matches = byPrefix(idOrPrefix, () => ledger.tasks.compareIds(idOrPrefix));
+  const first = matches[0];
+  if (first === undefined) {
+    throw new DaemonError(`no compare matches "${idOrPrefix}"`, {
+      code: "compare-not-found",
+      hint: "Run `agn compare show <id>` with an id `agn status` lists.",
+    });
+  }
+  if (matches.length > 1) {
+    throw new DaemonError(`"${idOrPrefix}" matches ${matches.length} compares`, {
+      code: "ambiguous-id",
+      hint: `Type more of the id: ${matches.join(", ")}`,
+    });
+  }
+  return first;
+}
+
 /** Under three characters a prefix would match half the workspace, so it is not a prefix at all. */
 function byPrefix<T>(idOrPrefix: string, lookup: () => T[]): T[] {
   return idOrPrefix.length < MIN_PREFIX ? [] : lookup();

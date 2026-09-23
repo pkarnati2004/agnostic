@@ -12,6 +12,14 @@ let repoId = "";
 
 const WORKTREE = "/tmp/agn-usage-route";
 
+/**
+ * `GET /usage` bounds its windows at `[midnight, the instant the request arrived)`, so a turn
+ * written in the same millisecond as the request would fall outside them.
+ */
+function aMomentAgo(): string {
+  return new Date(Date.now() - 1_000).toISOString();
+}
+
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), "agn-usage-home-"));
   daemon = await createTestDaemon({ userHome: home });
@@ -45,6 +53,7 @@ function seedTask(profileId = "claude-code:default:native", sessionId = "s-aaaa"
     status: "running",
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: new Date(Date.now() - 60_000).toISOString(),
     updatedAt: now,
     session: {

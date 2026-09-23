@@ -12,6 +12,7 @@ export function taskRow(over: Partial<TaskListRow> = {}): TaskListRow {
     status: "running",
     origin: "agn",
     baseCommit: "c0ffee1",
+    compareId: null,
     createdAt: "2026-09-20T09:00:00.000Z",
     updatedAt: "2026-09-20T10:00:00.000Z",
     worktreePresent: true,

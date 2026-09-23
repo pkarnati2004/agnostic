@@ -30,6 +30,7 @@ const task: Task = {
   status: "queued",
   origin: "agn",
   baseCommit: null,
+  compareId: null,
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:00:00.000Z",
 };
@@ -84,6 +85,7 @@ describe("tasks.insert", () => {
       branch: "agn/t3n9v2wxyz",
       origin: "adopted",
       baseCommit: null,
+      compareId: null,
       recommendation,
       session,
       parentTaskId: parent.id,

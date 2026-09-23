@@ -35,6 +35,7 @@ function task(id: string, repoId: string, status: TaskStatus, minute: number): T
     status,
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: "2026-09-14T09:00:00.000Z",
     updatedAt: at,
     worktreePresent: true,

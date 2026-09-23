@@ -14,6 +14,7 @@ export type TaskRow = {
   status: string;
   origin: string;
   base_commit: string | null;
+  compare_id: string | null;
   session_json: string | null;
   recommendation_json: string | null;
   parent_task_id: string | null;
@@ -22,7 +23,7 @@ export type TaskRow = {
 };
 
 export const COLUMNS =
-  "id, repo_id, title, prompt, profile_id, worktree_path, branch, status, origin, base_commit, session_json, recommendation_json, parent_task_id, created_at, updated_at";
+  "id, repo_id, title, prompt, profile_id, worktree_path, branch, status, origin, base_commit, compare_id, session_json, recommendation_json, parent_task_id, created_at, updated_at";
 
 export function filterSql(filter: TaskFilter): { where: string; values: (string | number)[] } {
   const clauses: string[] = [];
@@ -35,6 +36,10 @@ export function filterSql(filter: TaskFilter): { where: string; values: (string 
   if (statuses.length > 0) {
     clauses.push(`status IN (${statuses.map(() => "?").join(", ")})`);
     values.push(...statuses);
+  }
+  if (filter.compareId !== undefined) {
+    clauses.push("compare_id = ?");
+    values.push(filter.compareId);
   }
   if (filter.idPrefix !== undefined) {
     // The id alphabet has no LIKE wildcards, so a prefix needs no escaping.
@@ -56,6 +61,7 @@ export function toTask(row: TaskRow): Task {
     status: row.status,
     origin: row.origin,
     baseCommit: row.base_commit,
+    compareId: row.compare_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.session_json === null ? {} : { session: JSON.parse(row.session_json) as unknown }),

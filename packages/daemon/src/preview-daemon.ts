@@ -120,6 +120,7 @@ function seedRepo(ledger: Ledger, name: string, path: string, index: number): st
       status: "queued",
       origin: "agn",
       baseCommit: null,
+      compareId: null,
       createdAt: at,
       updatedAt: at,
     });

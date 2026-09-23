@@ -38,6 +38,7 @@ import { adoptRoutes } from "./routes/adopt.js";
 import { branchRoutes } from "./routes/branch.js";
 import { catalogRoutes } from "./routes/catalog.js";
 import { changesRoutes } from "./routes/changes.js";
+import { compareRoutes } from "./routes/compares.js";
 import { editorRoutes } from "./routes/editors.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
@@ -124,6 +125,7 @@ export function createApp(deps: DaemonDeps): {
   app.route("/", healthRoutes(ctx));
   app.route("/", repoRoutes(ctx));
   app.route("/", taskRoutes(ctx));
+  app.route("/", compareRoutes(ctx));
   app.route("/", adoptRoutes(ctx));
   app.route("/", profileRoutes(ctx));
   app.route("/", recommendRoutes(ctx));

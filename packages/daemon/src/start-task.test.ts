@@ -58,6 +58,9 @@ describe("POST /repos/:id/tasks", () => {
     expect(task.session?.tmuxSession).toBe(`agn-${task.id}`);
     expect(task.session?.tmuxSocket).toBe(daemon.launch?.socketName);
     expect(task.session?.harness).toBe("claude-code");
+    // The one change migration 006 made to this path: every run but a compare's stamps compareId
+    // null (`startCompare` is the only caller that passes `{ compareId }`).
+    expect(task.compareId).toBeNull();
 
     const log = await agentLog("prompt:");
     expect(log).toContain(`# Task ${task.id}`);
@@ -220,6 +223,7 @@ function seedDoneTask(repo: Repo): void {
     status: "done",
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
   });

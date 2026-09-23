@@ -255,6 +255,7 @@ function seedRow(repoId: string) {
     worktreePath: null,
     branch: null,
     baseCommit: null,
+    compareId: null,
     status: "queued" as const,
     origin: "agn" as const,
     createdAt: now,

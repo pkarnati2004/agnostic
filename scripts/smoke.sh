@@ -561,6 +561,49 @@ grep -q "no longer exists" "$WORK/resume-error.txt"
 
 agx clean | grep -q "^cleaned $CHILD"
 
+echo "smoke: agn compare runs one prompt on two agents and keeps the one that is picked"
+# The fake `claude` folds `--model opus` into its prompt text, so both siblings launch.
+test "$(post compare "$WORK/compare.json" '{"prompt":"compare smoke","profiles":["claude-code","claude-code:opus:native"]}')" = "201"
+read -r CID T1 T2 T2_DIR T2_BRANCH <<EOF
+$("$NODE" -e "
+const body = JSON.parse(require('node:fs').readFileSync('$WORK/compare.json', 'utf8'));
+const [first, second] = body.tasks;
+process.stdout.write([body.compareId, first.id, second.id, second.worktreePath, second.branch].join(' '));
+")
+EOF
+agx status | grep -q "$T1"
+agx status "$T1" | grep -q running
+agx status "$T2" | grep -q running
+get_compare() {
+  curl -sS -H "Authorization: Bearer $SPEC_TOKEN" "http://127.0.0.1:$SPEC_PORT/compares/$CID"
+}
+get_compare | grep -q '"pickedTaskId":null'
+curl -sS -o "$WORK/pick.json" -X POST -H "Authorization: Bearer $SPEC_TOKEN" \
+  -H 'content-type: application/json' -d "{\"taskId\":\"$T1\"}" \
+  "http://127.0.0.1:$SPEC_PORT/compares/$CID/pick"
+grep -q "\"cleaned\":\[" "$WORK/pick.json"
+grep -q "$T2" "$WORK/pick.json"
+agx status "$T2" | grep -q stopped
+test ! -d "$T2_DIR"
+# The branch the losing agent worked on stays: a pick throws away the worktree, never the commits.
+git -C "$WORK/runrepo" rev-parse --verify "refs/heads/$T2_BRANCH" > /dev/null
+get_compare | grep -q "\"pickedTaskId\":\"$T1\""
+agx stop "$T1" | grep -q "^stopped $T1"
+agx clean "$T1" --force | grep -q "^cleaned $T1"
+
+# A folder workspace has one working tree, so it has nowhere to run a second agent.
+RUNFOLDER_ID="$(agx repos --json | "$NODE" -e "
+const { repos } = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+const repo = repos.find((row) => row.path.endsWith('/runfolder'));
+if (!repo) { throw new Error('runfolder is not registered'); }
+process.stdout.write(repo.id);
+")"
+test "$(curl -sS -o "$WORK/compare-folder.json" -w '%{http_code}' -X POST \
+  -H "Authorization: Bearer $SPEC_TOKEN" -H 'content-type: application/json' \
+  -d '{"prompt":"compare smoke","profiles":["claude-code","codex"]}' \
+  "http://127.0.0.1:$SPEC_PORT/repos/$RUNFOLDER_ID/compare")" = "409"
+grep -q '"code":"repo-not-git"' "$WORK/compare-folder.json"
+
 agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"
 grep -q "^in place: " "$WORK/folder.txt"
 FOLDER_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/folder.txt")"

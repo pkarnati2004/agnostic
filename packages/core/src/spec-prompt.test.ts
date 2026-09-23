@@ -34,6 +34,7 @@ function task(id: string, title: string): Task {
     status: "running",
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: NOW,
     updatedAt: NOW,
   };

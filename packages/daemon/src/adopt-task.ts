@@ -85,6 +85,7 @@ export async function adoptTask(ctx: DaemonContext, repo: Repo, req: AdoptReques
       status: "running",
       origin: "adopted",
       baseCommit: null,
+      compareId: null,
       createdAt: now,
       updatedAt: now,
     });

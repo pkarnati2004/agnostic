@@ -98,6 +98,7 @@ describe("POST /repos/:id/hooks", () => {
         status: "queued",
         origin: "agn",
         baseCommit: null,
+        compareId: null,
         createdAt: now,
         updatedAt: now,
       });

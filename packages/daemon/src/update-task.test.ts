@@ -78,6 +78,7 @@ function seedAdopted(daemon: TestDaemon, repo: Repo, opts: { cwd: string; branch
     status: "running",
     origin: "adopted",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
   });

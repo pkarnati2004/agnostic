@@ -121,6 +121,7 @@ describe("close work that fails", () => {
       status: "running",
       origin: "agn",
       baseCommit: null,
+      compareId: null,
       createdAt: now,
       updatedAt: now,
       session: {

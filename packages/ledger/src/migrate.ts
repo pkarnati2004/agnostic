@@ -5,6 +5,7 @@ import { taskBaseCommit } from "./migrations/002-task-base-commit.js";
 import { repoStatus } from "./migrations/003-repo-status.js";
 import { repoStatusRemoved } from "./migrations/004-repo-status-removed.js";
 import { harnessIds } from "./migrations/005-harness-ids.js";
+import { taskCompareId } from "./migrations/006-task-compare-id.js";
 
 export type Migration = { version: number; name: string; sql: string };
 
@@ -14,6 +15,7 @@ const migrations: readonly Migration[] = [
   repoStatus,
   repoStatusRemoved,
   harnessIds,
+  taskCompareId,
 ];
 
 // migrate owns this table: it has to read the applied versions before any migration can run.
