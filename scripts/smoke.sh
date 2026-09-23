@@ -171,6 +171,20 @@ if (!planOptions.some((option) => option.vendor === 'claude')) {
 grep -q "claude, chatgpt, google, xai, moonshot, cursor" "$WORK/plan-error.txt"
 agn doctor --plan chatgpt=go > /dev/null
 grep -q "chatgpt: go" "$AGNOSTIC_HOME/config.yaml"
+# Google, xAI, Moonshot and Cursor take the same flag and come from the same catalog table.
+agn doctor --plan google=ai-pro > /dev/null
+grep -q "google: ai-pro" "$AGNOSTIC_HOME/config.yaml"
+agn doctor --plan xai=supergrok > /dev/null
+grep -q "xai: supergrok" "$AGNOSTIC_HOME/config.yaml"
+agn doctor --json | "$NODE" -e "
+const read = require('node:fs').readFileSync(0, 'utf8');
+const { planOptions } = JSON.parse(read);
+for (const vendor of ['google', 'xai', 'moonshot', 'cursor']) {
+  if (!planOptions.some((option) => option.vendor === vendor)) {
+    throw new Error(\`doctor offered no \${vendor} plans from the catalog\`);
+  }
+}
+"
 # The port line goes back: every daemon the rest of the smoke starts must stay off the real 7431,
 # where the author's own daemon lives.
 printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"

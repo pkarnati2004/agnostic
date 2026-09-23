@@ -18,6 +18,9 @@ import { harnessDefinition } from "./harness-list.js";
 const NATIVE_API_KEYS: Record<string, string> = {
   "claude-code": "ANTHROPIC_API_KEY",
   codex: "OPENAI_API_KEY",
+  gemini: "GEMINI_API_KEY",
+  grok: "XAI_API_KEY",
+  kimi: "MOONSHOT_API_KEY",
 };
 
 export type EnumerateInput = {

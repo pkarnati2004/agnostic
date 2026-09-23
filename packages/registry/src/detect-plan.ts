@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { HarnessId, Plan, PlanVendor } from "@agnostic/core";
 import { z } from "zod";
+import { grokSession } from "./grok-auth-file.js";
 import type { HarnessDefinition } from "./harness-definition.js";
 
 /** The vendors that bill a CLI by plan; everything else is billed per provider key (ADR 016). */
@@ -113,4 +114,21 @@ function decodeJwtPayload(token: string): unknown {
   } catch {
     return null;
   }
+}
+
+/**
+ * xAI is the one vendor of the four that names the tier in the auth file. The plan page spells it
+ * `SuperGrok Heavy` and the catalog `supergrok-heavy`, so spaces and underscores become dashes;
+ * a tier agn has never seen comes through as a name the catalog can learn.
+ */
+export function parseGrokPlan(contents: unknown): Plan | null {
+  const tier = grokSession(contents)?.subscription_tier;
+  if (!tier) {
+    return null;
+  }
+  const name = tier
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-");
+  return name === "" ? null : name;
 }

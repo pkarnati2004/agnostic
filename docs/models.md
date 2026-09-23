@@ -4,7 +4,7 @@ agnostic never routes tokens itself. To use a different model inside an agent, y
 
 ## Subscriptions (default)
 
-If `claude` or `codex` is logged in, their subscription-backed models are profiles automatically. These are preferred by the recommender when quality is comparable, because their marginal cost to you is zero.
+If an agent is signed in to a subscription - `claude`, `codex`, `gemini`, `grok`, `kimi` or `cursor-agent` - its subscription-backed models are profiles automatically. These are preferred by the recommender when quality is comparable, because their marginal cost to you is zero.
 
 ## Plans
 
@@ -14,13 +14,26 @@ A subscription lists more models than it includes. Claude Code lists Fable on ev
 - `credits` - the model runs on your login, metered, and costs money on top of the plan. The recommender prices a credits profile the way it prices an API key.
 - A model your plan cannot run at all is not offered as a profile.
 
-agnostic detects the plan from the agent's own files where it can: Codex from the plan in `~/.codex/auth.json`, Claude Code from the account block in `~/.claude.json`. Both are read locally; nothing is sent anywhere. Agents billed per provider key (Pi, OpenCode) have no plan.
+Six vendors bill their CLI by plan: Anthropic, OpenAI, Google, xAI, Moonshot and Cursor. agnostic reads each one's own auth file to see whether you are signed in, and reads the plan from that file when it is there:
+
+| Vendor | Agents | File agnostic reads | Plan in the file |
+|---|---|---|---|
+| Anthropic | claude-code | `~/.claude.json` | The account's rate limit tier |
+| OpenAI | codex | `~/.codex/auth.json` | The `chatgpt_plan_type` claim |
+| Google | gemini | `~/.gemini/oauth_creds.json` | No; agnostic asks |
+| xAI | grok | `~/.grok/auth.json` | The `subscription_tier` field |
+| Moonshot | kimi | `~/.kimi-code/credentials/kimi-code.json` | No; agnostic asks |
+| Cursor | cursor-agent | `~/.cursor/auth.json` | No; agnostic asks |
+
+Every one of these is read locally; nothing is sent anywhere, and agnostic never asks a vendor for your quota. Claude Code and Cursor keep the account in the macOS Keychain, which agnostic does not read, so a missing file there means "cannot tell" rather than "signed out". Agents billed per provider key (Pi, OpenCode) have no plan.
 
 When it cannot tell, it asks rather than guessing. `agn doctor` shows a numbered list of the plans it knows for that vendor when you run it in a terminal, and prints the flag to use when its output is going somewhere else:
 
 ```
 agn doctor --plan claude=max20
 agn doctor --plan chatgpt=plus
+agn doctor --plan google=ai-pro
+agn doctor --plan cursor=pro
 ```
 
 The answer is written to `~/.agnostic/config.yaml`:
@@ -29,6 +42,10 @@ The answer is written to `~/.agnostic/config.yaml`:
 plans:
   claude: max20
   chatgpt: plus
+  google: ai-pro
+  xai: supergrok
+  moonshot: allegretto
+  cursor: pro
 ```
 
 A detected plan wins over this file; the `plan` column in `agn doctor` says `(config)` when the file is what it is going on. The plan names come from the catalog, not from agnostic's code, so a new tier works as soon as the catalog knows it. Until then agnostic shows the name it read as `not in catalog` and leaves billing `unknown` rather than assuming what it covers.

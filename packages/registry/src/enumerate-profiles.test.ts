@@ -138,6 +138,13 @@ describe("enumerateProfiles", () => {
     expect(profile?.billing).toBe("api-key");
   });
 
+  it("bills Grok and Kimi by their own native provider keys", () => {
+    const [grok] = enumerate([installed("grok")], { XAI_API_KEY: "sk-x" }, []);
+    expect(grok?.billing).toBe("api-key");
+    const [kimi] = enumerate([installed("kimi")], { MOONSHOT_API_KEY: "moon" }, []);
+    expect(kimi?.billing).toBe("api-key");
+  });
+
   it("adds the gateway profiles the environment pays for", () => {
     const statuses = [installed("claude-code"), installed("pi"), installed("codex")];
     const profiles = enumerate(

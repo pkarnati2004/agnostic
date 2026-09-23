@@ -1,17 +1,27 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { detectPlan, parseClaudePlan, parseCodexPlan, planVendor } from "./detect-plan.js";
+import {
+  detectPlan,
+  parseClaudePlan,
+  parseCodexPlan,
+  parseGrokPlan,
+  planVendor,
+} from "./detect-plan.js";
 import { harnessDefinition } from "./harness-list.js";
 
 const HOMES = fileURLToPath(new URL("../../../tests/fixtures/home", import.meta.url));
 
-const plan = (harness: "claude-code" | "codex" | "pi", home: string) =>
+const plan = (harness: "claude-code" | "codex" | "pi" | "grok" | "gemini", home: string) =>
   detectPlan(harnessDefinition(harness), `${HOMES}/${home}`);
 
 describe("planVendor", () => {
-  it("names the two harnesses billed by plan and nothing else", () => {
+  it("names the six harnesses billed by plan and nothing else", () => {
     expect(planVendor("claude-code")).toBe("claude");
     expect(planVendor("codex")).toBe("chatgpt");
+    expect(planVendor("gemini")).toBe("google");
+    expect(planVendor("grok")).toBe("xai");
+    expect(planVendor("kimi")).toBe("moonshot");
+    expect(planVendor("cursor-agent")).toBe("cursor");
     expect(planVendor("pi")).toBeNull();
     expect(planVendor("opencode")).toBeNull();
     expect(planVendor("aider")).toBeNull();
@@ -31,7 +41,15 @@ describe("detectPlan", () => {
     expect(await plan("claude-code", "claude-max")).toBe("max20");
   });
 
+  it("reads the tier xAI writes beside the token", async () => {
+    expect(await plan("grok", "grok-subscribed")).toBe("supergrok-heavy");
+  });
+
   it("says nothing rather than guessing", async () => {
+    expect(await plan("grok", "grok-alt-issuer")).toBeNull();
+    expect(await plan("grok", "grok-signed-out")).toBeNull();
+    expect(await plan("grok", "malformed")).toBeNull();
+    expect(await plan("grok", "empty")).toBeNull();
     expect(await plan("codex", "codex-chatgpt")).toBeNull();
     expect(await plan("codex", "codex-api-key")).toBeNull();
     expect(await plan("codex", "malformed")).toBeNull();
@@ -42,6 +60,11 @@ describe("detectPlan", () => {
 
   it("has nothing to read for a harness billed per provider key", async () => {
     expect(await plan("pi", "pi-auth")).toBeNull();
+  });
+
+  it("has nothing to read for a vendor that keeps the tier off the machine", async () => {
+    // Google, Moonshot and Cursor name no tier in their files, so doctor asks for it instead.
+    expect(await plan("gemini", "gemini-oauth")).toBeNull();
   });
 });
 
@@ -84,5 +107,33 @@ describe("the plan parsers", () => {
     ).toBe("pro");
     expect(parseClaudePlan({ oauthAccount: {} })).toBeNull();
     expect(parseClaudePlan({})).toBeNull();
+  });
+
+  it("write the xAI tier the way the plan page writes it", () => {
+    const tiered = (subscription_tier: string) => ({
+      "https://auth.x.ai": { key: "k", subscription_tier },
+    });
+    expect(parseGrokPlan(tiered("SuperGrok Heavy"))).toBe("supergrok-heavy");
+    expect(parseGrokPlan(tiered("super_grok"))).toBe("super-grok");
+    expect(parseGrokPlan(tiered(" Free "))).toBe("free");
+  });
+
+  it("take the xAI tier from the entry the CLI would use", () => {
+    const stale = { key: "old", expires_at: "2020-01-01T00:00:00.000Z", subscription_tier: "Free" };
+    const fresh = {
+      key: "new",
+      expires_at: "2099-01-01T00:00:00.000Z",
+      subscription_tier: "SuperGrok",
+    };
+    // An expired default entry loses to a fresh one, and an alternate issuer only wins alone.
+    expect(parseGrokPlan({ "https://auth.x.ai": stale, "https://auth.x.ai::cli": fresh })).toBe(
+      "supergrok",
+    );
+    expect(parseGrokPlan({ "https://other.example.com": fresh, "https://auth.x.ai": stale })).toBe(
+      "free",
+    );
+    expect(parseGrokPlan({ "https://other.example.com": fresh })).toBe("supergrok");
+    expect(parseGrokPlan({ "https://auth.x.ai": { user_id: "u1" } })).toBeNull();
+    expect(parseGrokPlan("not an object")).toBeNull();
   });
 });
