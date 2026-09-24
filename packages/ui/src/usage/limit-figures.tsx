@@ -1,4 +1,5 @@
 import type { LimitFreshness, LimitWindow, PlanLimit } from "@agnostic/core";
+import { limitFreshness } from "@agnostic/core/browser";
 import { cn } from "../class-names";
 import { formatPercent } from "./format-usage";
 
@@ -14,12 +15,6 @@ const APPROXIMATE_OPACITY = 0.5;
 
 /** A window agn has no figure for: an en dash, not a zero the user would read as spent. */
 const STALE = "–";
-
-/** Without a reset time, an observation is worth showing for this long and no longer. */
-const LIMIT_TTL_MS = 60 * 60 * 1_000;
-
-/** Past this, the account has had time to spend against the window without agn hearing about it. */
-const APPROXIMATE_AFTER_MS = 2 * 60 * 60 * 1_000;
 
 /**
  * What the plan's own meter says: a bar for the 5-hour window, which is the one that moves within
@@ -63,27 +58,13 @@ export function hasFigure(limit: PlanLimit, now: number): boolean {
   );
 }
 
-/**
- * Core's `limitFreshness`, restated: the page bundles no runtime code from `@agnostic/core`, which
- * carries the process helpers. `limit-figures.test.tsx` pins core's own cases against this.
- */
-export function windowFreshness(
+/** A window the harness never reported has no figure at all, fresh or stale. */
+function windowFreshness(
   window: LimitWindow | null,
   observedAt: string,
   now: number,
 ): LimitFreshness {
-  const observed = Date.parse(observedAt);
-  if (window === null || !Number.isFinite(observed)) {
-    return "stale";
-  }
-  const age = now - observed;
-  if (window.resetsAt === null) {
-    return age < LIMIT_TTL_MS ? "current" : "stale";
-  }
-  if (Date.parse(window.resetsAt) <= now) {
-    return "stale";
-  }
-  return age < APPROXIMATE_AFTER_MS ? "current" : "approximate";
+  return window === null ? "stale" : limitFreshness(window, observedAt, new Date(now));
 }
 
 /**

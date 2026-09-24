@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatAgo, formatTokens3 } from "./usage-format.js";
+import type { UsageWindow } from "./usage.js";
+import { formatAgo, formatReset, formatTokens3, windowHeading } from "./usage-format.js";
 
 describe("formatAgo", () => {
   const now = new Date("2026-09-11T13:00:00.000Z");
@@ -48,3 +49,34 @@ describe("formatTokens3", () => {
     expect(formatTokens3(null)).toBe("-");
   });
 });
+
+describe("formatReset", () => {
+  const now = new Date("2026-09-11T13:00:00");
+
+  it("gives the clock time alone while the reset is today", () => {
+    expect(formatReset(new Date("2026-09-11T14:05:00").toISOString(), now)).toBe("14:05");
+  });
+
+  it("names the weekday once the reset is another day", () => {
+    expect(formatReset(new Date("2026-09-14T09:00:00").toISOString(), now)).toBe("Mon 09:00");
+  });
+});
+
+// The daemon computes the boundaries in its own zone, so the fixtures are written as local times.
+describe("windowHeading", () => {
+  it("heads the day with the date the daemon computed it in", () => {
+    expect(windowHeading(window("day", "2026-09-11T00:00:00"))).toBe("2026-09-11");
+  });
+
+  it("heads the week with the weekday it starts on", () => {
+    expect(windowHeading(window("week", "2026-09-07T00:00:00"))).toBe("from Mon 2026-09-07");
+  });
+});
+
+function window(kind: UsageWindow["kind"], since: string): UsageWindow {
+  return {
+    kind,
+    since: new Date(since).toISOString(),
+    until: new Date("2026-09-11T13:00:00").toISOString(),
+  };
+}

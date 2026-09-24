@@ -1,6 +1,7 @@
 import type { LimitFreshness, PlanLimit } from "@agnostic/core";
-import { formatPercent, formatReset } from "./format-usage";
-import { barFill, windowFreshness } from "./limit-figures";
+import { formatReset, limitFreshness } from "@agnostic/core/browser";
+import { formatPercent } from "./format-usage";
+import { barFill } from "./limit-figures";
 
 const BAR_WIDTH_PX = 72;
 const BAR_HEIGHT_PX = 6;
@@ -60,7 +61,7 @@ export function UsageRows({ rows, now }: { rows: UsageRow[]; now: number }) {
             <span>{row.label}</span>
             {row.resetsAt !== null && (
               <span className="text-primary-foreground-muted">
-                Resets at {formatReset(row.resetsAt, now)}
+                Resets at {formatReset(row.resetsAt, new Date(now))}
               </span>
             )}
           </span>
@@ -101,7 +102,7 @@ function row(
   limit: PlanLimit,
   now: number,
 ): UsageRow {
-  const freshness = windowFreshness(window, limit.observedAt, now);
+  const freshness = limitFreshness(window, limit.observedAt, new Date(now));
   const stale = freshness === "stale";
   return {
     key,

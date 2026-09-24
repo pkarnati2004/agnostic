@@ -1,3 +1,5 @@
+import type { UsageWindow } from "./usage.js";
+
 /** The scales a token count is read at; anything smaller is printed as it is. */
 const UNITS = [
   { scale: 1_000_000_000, suffix: "B" },
@@ -6,6 +8,9 @@ const UNITS = [
 ];
 
 const SIGNIFICANT = 3;
+
+// Named in English rather than by locale, so `agn usage` and the page read the same wherever agn runs.
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /** How old a figure is, in the one unit the reader needs: minutes, then hours, then days. */
 export function formatAgo(iso: string, now: Date): string {
@@ -18,6 +23,24 @@ export function formatAgo(iso: string, now: Date): string {
   }
   const hours = Math.floor(minutes / 60);
   return hours < 24 ? `${hours} h ago` : `${Math.floor(hours / 24)} d ago`;
+}
+
+/** The clock time on its own while the reset is today, and the weekday too once it is not. */
+export function formatReset(iso: string, now: Date): string {
+  const at = new Date(iso);
+  const time = `${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  return at.toDateString() === now.toDateString() ? time : `${DAYS[at.getDay()]} ${time}`;
+}
+
+/** The day the window starts, in the zone the daemon computed it in. */
+export function windowHeading(window: UsageWindow): string {
+  const since = new Date(window.since);
+  const date = [
+    since.getFullYear(),
+    String(since.getMonth() + 1).padStart(2, "0"),
+    String(since.getDate()).padStart(2, "0"),
+  ].join("-");
+  return window.kind === "day" ? date : `from ${DAYS[since.getDay()]} ${date}`;
 }
 
 /**
@@ -52,4 +75,8 @@ function decimal(value: number): string {
   const places = magnitude >= 100 ? 0 : magnitude >= 10 ? 1 : 2;
   const text = value.toFixed(places);
   return places === 0 ? text : text.replace(/\.?0+$/, "");
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
 }

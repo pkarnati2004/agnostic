@@ -9,6 +9,7 @@ The types every other package shares, and the two things they all need to do saf
 - `launch-prompt.ts`: the pure composer that turns a task, its note and the ledger's repo state into
   the prompt a harness is launched with. Rows in, markdown out; it reads no file.
 - `run` and `spawn` in `process.ts`: the only place in agnostic that starts a child process, so env scrubbing happens once.
+- `browser.ts`, exported as `@agnostic/core/browser`: the subpath the web page imports at runtime, for rules the page and the CLI must agree on. Nothing it re-exports may import a Node built-in or execa, which is why the page cannot import the root entry; `browser.test.ts` enforces it.
 - `daemon-api.ts` and `daemon-client.ts`: the daemon's request and response types with their zod
   schemas, and the fetch client the CLI and tools use to talk to it, including the SSE reader and
   the readers for `auth-token` and `daemon.json`. `terminal-frames.ts` is the same for the one

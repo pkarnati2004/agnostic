@@ -1,12 +1,13 @@
 import {
   formatAgo,
+  formatReset,
   type LimitWindow,
   limitFreshness,
   type PlanLimit,
   type PlanUsage,
   type TaskUsageResponse,
   type UsageResponse,
-  type UsageWindow,
+  windowHeading,
 } from "@agnostic/core";
 import { Command } from "commander";
 import { budgetSummary } from "../budget-lines.js";
@@ -14,8 +15,6 @@ import { type CliContext, writeJson } from "../context.js";
 import { renderFields } from "../fields.js";
 import { worktreeTask } from "../resolve-repo.js";
 import { type Column, renderTable } from "../table.js";
-
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function usageCommand(ctx: CliContext): Command {
   return new Command("usage")
@@ -55,7 +54,7 @@ function print(
   { window, plans }: UsageResponse["day"],
   label: "today" | "this week",
 ): void {
-  ctx.io.out(`${label} (${heading(window)})`);
+  ctx.io.out(`${label} (${windowHeading(window)})`);
   if (plans.length === 0) {
     ctx.io.out(`no usage ${label}`);
     return;
@@ -99,30 +98,8 @@ function phrase(
     return null;
   }
   const about = freshness === "approximate" ? "~" : "";
-  const resets = window.resetsAt === null ? "" : ` (resets ${reset(window.resetsAt, now)})`;
+  const resets = window.resetsAt === null ? "" : ` (resets ${formatReset(window.resetsAt, now)})`;
   return `${about}${Math.round(window.usedPercent)}% of ${named}${resets}`;
-}
-
-/** The clock time on its own while the reset is today, and the weekday too once it is not. */
-function reset(iso: string, now: Date): string {
-  const at = new Date(iso);
-  const time = `${pad(at.getHours())}:${pad(at.getMinutes())}`;
-  return at.toDateString() === now.toDateString() ? time : `${DAYS[at.getDay()]} ${time}`;
-}
-
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
-}
-
-/** The day the window starts, in the zone the daemon computed it in. */
-function heading(window: UsageWindow): string {
-  const since = new Date(window.since);
-  const date = [
-    since.getFullYear(),
-    String(since.getMonth() + 1).padStart(2, "0"),
-    String(since.getDate()).padStart(2, "0"),
-  ].join("-");
-  return window.kind === "day" ? date : `from ${DAYS[since.getDay()]} ${date}`;
 }
 
 function columns(): Column<PlanUsage>[] {
