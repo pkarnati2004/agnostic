@@ -1,5 +1,6 @@
 import type {
   BudgetReport,
+  PlanLimit,
   PlanUsage,
   Task,
   TaskUsageResponse,
@@ -52,15 +53,30 @@ const meteredPlan: PlanUsage = {
   fableShare: null,
 };
 
+/** The plan's own meter as `GET /usage` reports it, current against the fixture's scan time. */
+export function claudeLimit(over: Partial<PlanLimit> = {}): PlanLimit {
+  return {
+    harness: "claude-code",
+    vendor: "claude",
+    fiveHour: { usedPercent: 58, resetsAt: new Date("2026-09-11T17:05:00").toISOString() },
+    week: { usedPercent: 41, resetsAt: new Date("2026-09-14T09:00:00").toISOString() },
+    observedAt: new Date("2026-09-11T14:50:00").toISOString(),
+    source: "claude-statusline",
+    ...over,
+  };
+}
+
 export function usageResponse(
   day: PlanUsage[] = [claudePlan(), codexPlan, meteredPlan],
   week: PlanUsage[] = day,
   budget: BudgetReport = { day: null, week: null },
+  limits: PlanLimit[] = [],
 ): UsageResponse {
   return {
     day: { window: bounds("day", "2026-09-11T00:00:00"), plans: day },
     week: { window: bounds("week", "2026-09-07T00:00:00"), plans: week },
     budget,
+    limits,
     scannedAt: new Date(SCANNED_AT).toISOString(),
   };
 }

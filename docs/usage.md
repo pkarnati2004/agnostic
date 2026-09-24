@@ -34,6 +34,49 @@ their subscription limits over rolling windows of their own - five hours, seven 
 percentages Claude Code or Codex show you will not match these totals. They are counting a
 different window, not different tokens.
 
+## Limits
+
+Some agents write what their vendor's meter says into a file on your machine. agn reads those
+files and shows the percentage of the plan's rolling windows that is spent. agn calls no vendor
+endpoint for this, and there is nothing to configure.
+
+| Agent | What this machine has |
+| --- | --- |
+| Codex CLI | Every rollout under `~/.codex/sessions` records the 5-hour and weekly percentages. agn reads them in the same pass that counts its tokens. |
+| Claude Code | The percentages arrive on the status line, not in a file. agn captures them (below). |
+| Gemini, Grok, Kimi, Cursor | Login and plan only. Tokens and cost. |
+| Pi, OpenCode | Billed per provider key, so there is no plan limit. Tokens and cost. |
+
+A figure is shown while it can still be true: until the window it names resets, or, when the agent
+reported no reset time, for an hour after agn read it. An older figure is dropped, and the plan
+falls back to its tokens and cost.
+
+The percentages are your account's, not this machine's or this task's. A session you ran outside
+agn moves them, and agn sees the new figure the next time one of these files is written.
+
+### How agn captures Claude Code's figures
+
+Claude Code sends the percentages to the `statusLine` command it runs every turn. agn installs a
+command of its own in the `.claude/settings.local.json` it already writes for hooks, in each
+checkout and each task worktree. The command writes the payload to
+`~/.agnostic/rate-limits/claude-code.json`, at most once every 15 seconds, and carries no token.
+
+- A status line of your own, from `~/.claude/settings.json`, keeps working: agn's command runs it
+  on the same payload and prints what it prints.
+- A status line of your own in a repo's `.claude/settings.local.json` is left alone. agn captures
+  no figures for that repo and `agn hooks install` says so under `verify`.
+- The figures appear after one Claude Code turn in an agn task, because that is when Claude Code
+  first sends them.
+
+### `agn usage`
+
+Under the two tables, `agn usage` prints one line per agent whose figures still hold:
+
+```
+claude-code  58% of the 5-hour window (resets 14:05) · 41% of the week (resets Mon 09:00)
+codex  1% of the 5-hour window (resets 15:00) · 17% of the week (resets Sun 02:00)
+```
+
 ## Cost
 
 A model that runs on your subscription costs nothing per token, so the task view says

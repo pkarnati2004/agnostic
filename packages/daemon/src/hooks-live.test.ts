@@ -68,7 +68,10 @@ describe("a hook from a live harness", () => {
     const repo = await daemon.addRepo({ defaultProfile: PROFILE });
     const task = await start(repo);
     const settings = join(task.session?.cwd ?? "", ".claude", "settings.local.json");
-    expect(JSON.parse(await readFile(settings, "utf8"))).toHaveProperty("hooks.Stop");
+    const config = JSON.parse(await readFile(settings, "utf8"));
+    expect(config).toHaveProperty("hooks.Stop");
+    // The same install fills the statusLine slot, which is where Claude reports its rate limits.
+    expect(config.statusLine.command).toContain(join(daemon.paths.hooks, "statusline.sh"));
 
     await waitFor(
       "the fake agent to report its session id",

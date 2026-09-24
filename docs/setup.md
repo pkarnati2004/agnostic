@@ -37,8 +37,14 @@ agn installs each agent's hook in the directory that agent reads by default, und
 Moving an agent's config with `GROK_HOME`, `COPILOT_HOME`, `KIMI_CODE_HOME`, `XDG_CONFIG_HOME` or
 `OPENCODE_CONFIG_DIR` is not supported.
 
-Claude Code's hook is the one agn installs per repo. Every other agent keeps its hooks in one file
-per user, and agn prints one line to stderr naming the file it wrote:
+Claude Code's hook is the one agn installs per repo. In that same
+`.claude/settings.local.json`, agn also sets `statusLine` to a command of its own, which is how
+agn captures the rate-limit percentages Claude Code sends to its status line. A status line you set up yourself keeps
+working, and one you wrote into a repo's own `settings.local.json` is left alone. See
+[Limits](usage.md#limits).
+
+Every other agent keeps its hooks in one file per user, and agn prints one line to stderr naming
+the file it wrote:
 
 | Agent | File |
 |---|---|

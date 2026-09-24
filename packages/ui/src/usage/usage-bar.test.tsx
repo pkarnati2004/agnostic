@@ -1,8 +1,11 @@
 // @vitest-environment happy-dom
+import type { UsageResponse } from "@agnostic/core";
 import { act, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { TooltipProvider } from "../components/tooltip";
 import { render } from "../test/render";
 import { UsageBar } from "./usage-bar";
+import { claudeLimit, usageResponse } from "./usage-response.fixture";
 import type { UsageState } from "./usage-state";
 
 const IDLE: UsageState = { kind: "idle" };
@@ -98,5 +101,37 @@ describe("UsageBar flash", () => {
 
     unmount();
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe("UsageBar figures", () => {
+  function bar(state: UsageState) {
+    return render(
+      <TooltipProvider>
+        <UsageBar state={state} flash={0} />
+      </TooltipProvider>,
+    );
+  }
+
+  const loaded = (response: UsageResponse): UsageState => ({
+    kind: "ready",
+    response,
+    fetchedAt: 1_000,
+  });
+
+  it("says nothing about Fable: the plan's own percent replaced that line", () => {
+    const { container, unmount } = bar(loaded(usageResponse()));
+
+    expect(footer(container).textContent?.toLowerCase()).not.toContain("fable");
+    unmount();
+  });
+
+  it("draws each plan's own meter where a file on this machine reports one", () => {
+    const { container, unmount } = bar(
+      loaded(usageResponse(undefined, undefined, undefined, [claudeLimit()])),
+    );
+
+    expect(footer(container).textContent).toContain("58% 5h · 41% wk");
+    unmount();
   });
 });

@@ -7,7 +7,7 @@ import type { Recommendation } from "./recommendation.js";
 import type { Repo } from "./repo.js";
 import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
 import { TaskIntentSchema } from "./task-intent.js";
-import type { BudgetReport, PlanUsage, UsageSum, UsageWindow } from "./usage.js";
+import type { BudgetReport, PlanLimit, PlanUsage, UsageSum, UsageWindow } from "./usage.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;
@@ -248,6 +248,11 @@ export type UsageResponse = {
   week: { window: UsageWindow; plans: PlanUsage[] };
   /** The ceilings from config.yaml over these same windows, from this same scan. */
   budget: BudgetReport;
+  /**
+   * What the harnesses last said about their plans' own meters, one row per harness with a local
+   * source. Raw: a reader decides with `limitIsCurrent` whether a window still holds.
+   */
+  limits: PlanLimit[];
   scannedAt: string;
 };
 

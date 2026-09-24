@@ -11,6 +11,16 @@ export function hookScriptPath(paths: AgnosticPaths): string {
   return join(paths.hooks, "post.sh");
 }
 
+/** The statusline command agn installs for Claude Code, beside the hook script. */
+export function statusLineScriptPath(paths: AgnosticPaths): string {
+  return join(paths.hooks, "statusline.sh");
+}
+
+/** Where that script leaves what a harness reported about its plan's rate limit. */
+export function rateLimitsFile(paths: AgnosticPaths, harness: HarnessId): string {
+  return join(paths.home, "rate-limits", `${harness}.json`);
+}
+
 /**
  * What goes in a harness's hook config: one script and the harness it reports for. A harness whose
  * payload does not name its own event is installed with the event as a third argument instead.
@@ -81,6 +91,6 @@ exit 0
 }
 
 /** POSIX single quoting: the only byte that cannot appear inside is the quote itself. */
-function quoted(value: string): string {
+export function quoted(value: string): string {
   return `'${value.replaceAll("'", `'\\''`)}'`;
 }

@@ -100,6 +100,22 @@ describe("scanTranscripts", () => {
     expect(turns.filter((turn) => turn.harness === "codex")).toHaveLength(3);
   });
 
+  it("carries one rate limit per file that had one", async () => {
+    const dir = join(home, "codex/sessions/2026/09/24");
+    await mkdir(dir, { recursive: true });
+    const fixture = fileURLToPath(
+      new URL("../../../tests/fixtures/usage/codex-rate-limits.jsonl", import.meta.url),
+    );
+    await cp(fixture, join(dir, "rollout-2026-09-24T11-58-00-0198d1f4.jsonl"));
+
+    const { limits } = await scanTranscripts({ roots, memo, modifiedSince: null });
+
+    // Only the new file carries one: the other rollouts under the fixture root report none.
+    expect(limits).toEqual([
+      expect.objectContaining({ harness: "codex", source: "codex-rollout" }),
+    ]);
+  });
+
   it("counts the turns that reported a total and no buckets", async () => {
     const desktop = {
       timestamp: "2026-09-11T22:00:01.000Z",

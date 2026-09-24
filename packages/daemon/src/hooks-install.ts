@@ -1,6 +1,12 @@
 import { homedir } from "node:os";
 import { CoreError, type HarnessId, type HookInstallResult, type Repo } from "@agnostic/core";
-import { type HookInstaller, hookCommand, hookInstaller, writeHookScript } from "@agnostic/hooks";
+import {
+  type HookInstaller,
+  hookCommand,
+  hookInstaller,
+  writeHookScript,
+  writeStatusLineScript,
+} from "@agnostic/hooks";
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 
@@ -56,6 +62,8 @@ async function install(
   repoPath: string,
 ): Promise<HookInstallResult> {
   await writeHookScript(ctx.paths);
+  // Claude Code's install fills a statusLine slot with this script; it exists before it is named.
+  await writeStatusLineScript(ctx.paths);
   return requireInstaller(harness).install({
     repoPath,
     home: ctx.env.HOME ?? homedir(),

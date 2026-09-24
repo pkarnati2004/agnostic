@@ -7,6 +7,7 @@ import { harnesses } from "@agnostic/registry";
 import {
   attributeTurns,
   costForTurn,
+  type ObservedLimit,
   type ScanMemo,
   type SessionOwner,
   scanTranscripts,
@@ -18,6 +19,8 @@ import type { DaemonContext } from "./app.js";
 export type UsageScanner = {
   /** Reads the transcripts and records what is new; `taskId` only says what asked for the scan. */
   scan(opts?: { taskId?: string }): Promise<{ inserted: number }>;
+  /** The newest rate limit each harness has reported to this process, from any scan it has run. */
+  limits(): ObservedLimit[];
 };
 
 type ScanDeps = Pick<DaemonContext, "ledger" | "detection" | "catalog" | "env" | "log">;
@@ -38,30 +41,45 @@ const TERMINAL = new Set(["done", "failed", "stopped"]);
  */
 export function createUsageScanner(deps: ScanDeps): UsageScanner {
   const memo: ScanMemo = new Map();
+  // A rescan opens only the files that changed, so the newest limit a scan read has to be kept.
+  const newest = new Map<string, ObservedLimit>();
   let inFlight: Promise<{ inserted: number }> | null = null;
 
   return {
     scan(opts = {}) {
       // A second request while a scan runs shares it rather than reading every file twice.
-      inFlight ??= run(deps, memo, opts.taskId).finally(() => {
+      inFlight ??= run(deps, memo, newest, opts.taskId).finally(() => {
         inFlight = null;
       });
       return inFlight;
     },
+    limits: () => [...newest.values()],
   };
+}
+
+/** One row per harness: a rollout written after the one agn read replaces what it said. */
+function keepNewest(newest: Map<string, ObservedLimit>, limits: ObservedLimit[]): void {
+  for (const limit of limits) {
+    const seen = newest.get(limit.harness);
+    if (seen === undefined || seen.observedAt <= limit.observedAt) {
+      newest.set(limit.harness, limit);
+    }
+  }
 }
 
 async function run(
   deps: ScanDeps,
   memo: ScanMemo,
+  newest: Map<string, ObservedLimit>,
   taskId: string | undefined,
 ): Promise<{ inserted: number }> {
   const started = Date.now();
-  const { turns, parsedFiles, skipped, problems } = await scanTranscripts({
+  const { turns, parsedFiles, skipped, limits, problems } = await scanTranscripts({
     roots: transcriptRoots(deps.env.HOME),
     memo,
     modifiedSince: started - FLOOR_DAYS * 24 * 60 * 60 * 1_000,
   });
+  keepNewest(newest, limits);
   for (const problem of problems) {
     deps.log.error("usage scan problem", { message: problem.message, code: problem.code });
   }

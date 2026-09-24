@@ -94,3 +94,25 @@ async function append(path: string, record: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(record)}\n`, { flag: "a" });
 }
+
+/** A Codex rollout whose newest `token_count` carries the plan's own meter, as the real one does. */
+export async function writeCodexRateLimits(home: string): Promise<void> {
+  const path = join(home, ".codex", "sessions", "2026", "09", "24", "rollout-t-limits.jsonl");
+  await append(path, {
+    timestamp: "2026-09-24T11:58:00.000Z",
+    type: "session_meta",
+    payload: { id: "t-limits", cwd: "/Users/me/other", originator: "codex_cli_rs" },
+  });
+  await append(path, {
+    timestamp: "2026-09-24T11:59:30.000Z",
+    type: "event_msg",
+    payload: {
+      type: "token_count",
+      info: { last_token_usage: { input_tokens: 10, output_tokens: 5 } },
+      rate_limits: {
+        primary: { used_percent: 1, window_minutes: 300, resets_at: 1790258700 },
+        secondary: { used_percent: 17, window_minutes: 10_080, resets_at: 1790586000 },
+      },
+    },
+  });
+}

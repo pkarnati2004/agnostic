@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatAgo,
   formatCount,
   formatMoney,
+  formatPercent,
+  formatReset,
   formatShare,
   formatTaskCost,
   planLabel,
@@ -86,5 +89,37 @@ describe("windowHeading", () => {
 
   it("heads the week with the weekday it starts on", () => {
     expect(windowHeading(usageResponse().week.window)).toBe("from Mon 2026-09-07");
+  });
+});
+
+describe("formatPercent", () => {
+  it("rounds a 0..100 figure to whole percent", () => {
+    expect(formatPercent(58)).toBe("58%");
+    expect(formatPercent(0.4)).toBe("0%");
+    expect(formatPercent(99.6)).toBe("100%");
+  });
+});
+
+describe("formatReset", () => {
+  const now = new Date("2026-09-11T13:00:00").getTime();
+
+  it("gives the clock time alone while the reset is today", () => {
+    expect(formatReset(new Date("2026-09-11T14:05:00").toISOString(), now)).toBe("14:05");
+  });
+
+  it("names the weekday once the reset is another day", () => {
+    expect(formatReset(new Date("2026-09-14T09:00:00").toISOString(), now)).toBe("Mon 09:00");
+  });
+});
+
+describe("formatAgo", () => {
+  const now = new Date("2026-09-11T13:00:00").getTime();
+  const ago = (minutes: number) => formatAgo(new Date(now - minutes * 60_000).toISOString(), now);
+
+  it("counts minutes, then hours, then days", () => {
+    expect(ago(0)).toBe("just now");
+    expect(ago(3)).toBe("3 min ago");
+    expect(ago(90)).toBe("1 h ago");
+    expect(ago(60 * 30)).toBe("1 d ago");
   });
 });

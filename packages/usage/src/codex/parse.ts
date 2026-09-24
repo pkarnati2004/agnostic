@@ -1,7 +1,13 @@
 import { basename } from "node:path";
+import type { LimitWindow } from "@agnostic/core";
 import { z } from "zod";
 import { jsonlLines } from "../jsonl-lines.js";
-import type { ParsedTranscript, TranscriptParser, TranscriptTurn } from "../transcript-parser.js";
+import type {
+  ObservedLimit,
+  ParsedTranscript,
+  TranscriptParser,
+  TranscriptTurn,
+} from "../transcript-parser.js";
 
 const Tokens = z.number().int().nonnegative().catch(0);
 
@@ -16,6 +22,16 @@ const TurnUsageSchema = z.object({
   output_tokens: Tokens.optional(),
 });
 
+/**
+ * The plan's own meter, which Codex piggybacks on the same `token_count` event. `window_minutes`
+ * names the window, so a rename of `primary` does not move a figure onto the wrong one.
+ */
+const RateLimitWindowSchema = z.object({
+  used_percent: z.number(),
+  window_minutes: z.number(),
+  resets_at: z.number(),
+});
+
 const RolloutRecordSchema = z.object({
   timestamp: z.string().min(1),
   type: z.string().min(1),
@@ -26,9 +42,19 @@ const RolloutRecordSchema = z.object({
       cwd: z.string().min(1).optional(),
       model: z.string().min(1).optional(),
       info: z.object({ last_token_usage: TurnUsageSchema.optional() }).nullish(),
+      rate_limits: z
+        .object({
+          primary: RateLimitWindowSchema.nullish(),
+          secondary: RateLimitWindowSchema.nullish(),
+        })
+        .nullish(),
     })
     .optional(),
 });
+
+/** The window lengths Codex reports, in minutes; anything else is dropped rather than guessed. */
+const FIVE_HOUR_MINUTES = 300;
+const WEEK_MINUTES = 10_080;
 
 type RolloutRecord = z.infer<typeof RolloutRecordSchema>;
 
@@ -54,6 +80,7 @@ async function parseCodexRollout(path: string): Promise<ParsedTranscript> {
   let cwd: string | null = null;
   let model: string | null = null;
   let ordinal = 0;
+  let limit: ObservedLimit | null = null;
   for await (const { text } of jsonlLines(path)) {
     const record = rolloutRecord(text);
     if (record === null) {
@@ -69,6 +96,10 @@ async function parseCodexRollout(path: string): Promise<ParsedTranscript> {
       cwd = record.payload?.cwd ?? cwd;
       continue;
     }
+    if (record.payload?.type === "token_count") {
+      // The last event that carried one wins: a thread's newest figure is the account's newest.
+      limit = toLimit(record) ?? limit;
+    }
     const used = record.payload?.info?.last_token_usage;
     if (record.payload?.type !== "token_count" || !used || sessionId === null) {
       continue;
@@ -82,7 +113,37 @@ async function parseCodexRollout(path: string): Promise<ParsedTranscript> {
     }
     turns.push(turn);
   }
-  return { turns, skipped };
+  return { turns, skipped, limit };
+}
+
+/** A `token_count` event with neither window agn knows carries no limit, not an empty one. */
+function toLimit(record: RolloutRecord): ObservedLimit | null {
+  const limits = record.payload?.rate_limits;
+  if (limits === null || limits === undefined) {
+    return null;
+  }
+  const fiveHour = toWindow(limits.primary, FIVE_HOUR_MINUTES);
+  const week = toWindow(limits.secondary, WEEK_MINUTES);
+  if (fiveHour === null && week === null) {
+    return null;
+  }
+  return {
+    harness: "codex",
+    fiveHour,
+    week,
+    observedAt: record.timestamp,
+    source: "codex-rollout",
+  };
+}
+
+function toWindow(
+  raw: z.infer<typeof RateLimitWindowSchema> | null | undefined,
+  minutes: number,
+): LimitWindow | null {
+  if (raw === null || raw === undefined || raw.window_minutes !== minutes) {
+    return null;
+  }
+  return { usedPercent: raw.used_percent, resetsAt: new Date(raw.resets_at * 1_000).toISOString() };
 }
 
 function rolloutRecord(line: string): RolloutRecord | null {

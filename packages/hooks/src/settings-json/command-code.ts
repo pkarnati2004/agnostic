@@ -25,6 +25,7 @@ const commandCodeMember: SettingsJsonMember = {
   timeout: 5,
   reply: null,
   verify: null,
+  statusLine: false,
 };
 
 export const commandCodeInstaller: HookInstaller = settingsJsonInstaller(commandCodeMember);

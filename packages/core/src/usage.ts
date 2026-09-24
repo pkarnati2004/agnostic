@@ -50,3 +50,41 @@ export type BudgetWindow = { limitUsd: number; spentUsd: number; state: BudgetSt
 
 /** Null per window when config.yaml sets no limit for it. */
 export type BudgetReport = { day: BudgetWindow | null; week: BudgetWindow | null };
+
+/** One rolling window of a plan's rate limit, as the harness last reported it. */
+export type LimitWindow = {
+  /** 0..100, the share of the window the account has spent. */
+  usedPercent: number;
+  /** ISO, or null when the harness reported a percentage and no reset time. */
+  resetsAt: string | null;
+};
+
+/**
+ * What a harness said about the plan's own meter, read from a file this machine already has.
+ * The figure is the account's, not the session's: a run outside agn moves it too.
+ */
+export type PlanLimit = {
+  harness: HarnessId;
+  vendor: PlanVendor | null;
+  fiveHour: LimitWindow | null;
+  week: LimitWindow | null;
+  /** When the harness reported it: the record's timestamp (Codex), the file's mtime (Claude Code). */
+  observedAt: string;
+  source: "codex-rollout" | "claude-statusline";
+};
+
+/** Without a reset time, an observation is worth showing for this long and no longer. */
+const LIMIT_TTL_MS = 60 * 60 * 1_000;
+
+/**
+ * A window is current while its reset is still ahead: the percentage cannot have fallen yet.
+ * A window with no reset time is current for an hour after it was observed, which is short enough
+ * that a figure the user has since spent past is not drawn as if it were now.
+ */
+export function limitIsCurrent(window: LimitWindow, observedAt: string, now: Date): boolean {
+  if (window.resetsAt !== null) {
+    return Date.parse(window.resetsAt) > now.getTime();
+  }
+  const observed = Date.parse(observedAt);
+  return Number.isFinite(observed) && now.getTime() - observed < LIMIT_TTL_MS;
+}

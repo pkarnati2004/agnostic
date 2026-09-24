@@ -1,0 +1,11 @@
+{
+  "hook_event_name": "Status",
+  "session_id": "5f2a1c30-9b44-4d3e-8a77-2c1b9e6d0f11",
+  "model": { "id": "claude-fable-5-1", "display_name": "Fable 5.1" },
+  "workspace": { "current_dir": "/Users/me/code/agnostic" },
+  "total_duration_ms": 1758700000000,
+  "rate_limits": {
+    "five_hour": { "used_percentage": 58, "resets_at": 1790258700 },
+    "seven_day": { "used_percentage": 41, "resets_at": 1790586000 }
+  }
+}

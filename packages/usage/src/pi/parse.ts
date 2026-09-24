@@ -88,7 +88,7 @@ async function parseMessageGraph(harness: "pi" | "omp", path: string): Promise<P
     }
     turns.push(turn);
   }
-  return { turns, skipped };
+  return { turns, skipped, limit: null };
 }
 
 function graphRecord(line: string): GraphRecord | null {

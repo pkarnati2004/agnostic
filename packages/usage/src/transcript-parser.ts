@@ -1,4 +1,4 @@
-import type { HarnessId } from "@agnostic/core";
+import type { HarnessId, PlanLimit } from "@agnostic/core";
 
 /** One priced unit of work as the harness recorded it: an assistant turn, or one API response. */
 export type TranscriptTurn = {
@@ -20,6 +20,12 @@ export type TranscriptTurn = {
   ref: string;
 };
 
+/**
+ * A rate limit as a parser read it. The vendor is not the parser's to know: the harness names
+ * itself and the registry maps that to a plan vendor.
+ */
+export type ObservedLimit = Omit<PlanLimit, "vendor">;
+
 export type ParsedTranscript = {
   turns: TranscriptTurn[];
   /**
@@ -27,6 +33,8 @@ export type ParsedTranscript = {
    * price or attribute. Zero for a harness that always reports its buckets.
    */
   skipped: number;
+  /** The newest rate limit the file carried, or null for a harness that writes none. */
+  limit: ObservedLimit | null;
 };
 
 export interface TranscriptParser {

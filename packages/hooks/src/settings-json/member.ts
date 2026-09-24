@@ -1,9 +1,16 @@
 import { join } from "node:path";
 import type { HarnessId, HookInstallResult } from "@agnostic/core";
 import { type HookMechanism, harnessDefinition } from "@agnostic/registry";
+import {
+  readUserStatusLine,
+  statusLineCommand,
+  statusLineSlot,
+  withManagedStatusLine,
+  withoutManagedStatusLine,
+} from "../claude-code/statusline.js";
 import { HooksError } from "../error.js";
 import type { HookInstaller, HookInstallInput } from "../hook-installer.js";
-import { hookCommand, hookScriptMarker } from "../hook-script.js";
+import { hookCommand, hookScriptMarker, quoted, statusLineScriptPath } from "../hook-script.js";
 import {
   type HookLayout,
   type ManagedEvent,
@@ -32,7 +39,17 @@ export type SettingsJsonMember = {
   reply: string | Partial<Record<string, string>> | null;
   /** The one step of the install agn cannot do itself, or null when there is none. */
   verify: string | null;
+  /**
+   * Whether agn also owns this harness's status-line slot, which is where Claude Code reports the
+   * plan's rate limits. True for Claude Code only; no other member has such a slot.
+   */
+  statusLine: boolean;
 };
+
+/** A status line the user wrote is theirs; agn captures no rate limits for that file. */
+function userStatusLineVerify(file: string): string {
+  return `a statusLine of your own is in ${file}; agn's rate-limit capture is off for this repo`;
+}
 
 export function settingsJsonInstaller(member: SettingsJsonMember): HookInstaller {
   return {
@@ -41,31 +58,57 @@ export function settingsJsonInstaller(member: SettingsJsonMember): HookInstaller
     async install(input: HookInstallInput): Promise<HookInstallResult> {
       const mechanism = settingsJson(member.harness);
       const file = settingsFile(mechanism, input);
-      const changed = await updateHooksJson(file, (config) =>
-        withManagedHooks(config, member.events, (event) => commandFor(member, input, event), {
-          layout: member.layout,
-          timeout: member.timeout,
-          marker: hookScriptMarker(input.paths),
-        } satisfies ManagedHooksOptions),
-      );
+      const status = member.statusLine ? await statusLineFor(input) : null;
+      let verify = member.verify;
+      const changed = await updateHooksJson(file, (config) => {
+        const withHooks = withManagedHooks(
+          config,
+          member.events,
+          (event) => commandFor(member, input, event),
+          {
+            layout: member.layout,
+            timeout: member.timeout,
+            marker: hookScriptMarker(input.paths),
+          } satisfies ManagedHooksOptions,
+        );
+        if (status === null) {
+          return withHooks;
+        }
+        if (statusLineSlot(withHooks, statusLineMarker(input)) === "user") {
+          verify = userStatusLineVerify(file);
+          return withHooks;
+        }
+        return withManagedStatusLine(withHooks, status, statusLineMarker(input));
+      });
       if (mechanism.scope === "repo") {
         await excludeFromGit(input.repoPath, mechanism.file);
       } else if (changed) {
         // A per-user config is outside the repo the user asked about, so agn says what it wrote.
         process.stderr.write(`agn wrote its ${name(member.harness)} status hook to ${file}\n`);
       }
-      return { harness: member.harness, file, changed, verify: member.verify };
+      return { harness: member.harness, file, changed, verify };
     },
 
     async uninstall(input: HookInstallInput): Promise<HookInstallResult> {
       // The `.git/info/exclude` line stays: the file it names is still there, still the user's.
       const file = settingsFile(settingsJson(member.harness), input);
-      const changed = await updateHooksJson(file, (config) =>
-        withoutManagedHooks(config, hookScriptMarker(input.paths)),
-      );
+      const changed = await updateHooksJson(file, (config) => {
+        const swept = withoutManagedHooks(config, hookScriptMarker(input.paths));
+        return member.statusLine ? withoutManagedStatusLine(swept, statusLineMarker(input)) : swept;
+      });
       return { harness: member.harness, file, changed, verify: null };
     },
   };
+}
+
+/** agn's own status-line entries carry the script path, as its hook entries do. */
+function statusLineMarker(input: HookInstallInput): string {
+  return quoted(statusLineScriptPath(input.paths));
+}
+
+/** The command to install: agn's script, chaining whatever status line the user set up. */
+async function statusLineFor(input: HookInstallInput): Promise<string> {
+  return statusLineCommand(input.paths, await readUserStatusLine(input.home, input.env));
 }
 
 /** The command for one event: the shared script, plus the answer a gating harness waits for. */

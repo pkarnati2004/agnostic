@@ -42,3 +42,31 @@ export function windowHeading(window: UsageWindow): string {
   ].join("-");
   return window.kind === "day" ? date : `from ${DAYS[since.getDay()]} ${date}`;
 }
+
+export function formatPercent(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
+/** The clock time on its own while the reset is today, and the weekday too once it is not. */
+export function formatReset(iso: string, now: number): string {
+  const at = new Date(iso);
+  const time = `${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  return at.toDateString() === new Date(now).toDateString() ? time : `${DAYS[at.getDay()]} ${time}`;
+}
+
+/** How old a figure is, for the tooltip line that says the percentages are the account's. */
+export function formatAgo(iso: string, now: number): string {
+  const minutes = Math.floor((now - Date.parse(iso)) / 60_000);
+  if (!Number.isFinite(minutes) || minutes < 1) {
+    return "just now";
+  }
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `${hours} h ago` : `${Math.floor(hours / 24)} d ago`;
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}

@@ -77,7 +77,7 @@ export async function recommendContext(
     },
     lifecycle: stubLifecycle(),
     resumeWatch: createNativeResumeWatch({ ledger, log: stubLog() }),
-    usage: { scan: () => Promise.resolve({ inserted: 0 }) },
+    usage: { scan: () => Promise.resolve({ inserted: 0 }), limits: () => [] },
     verdicts: { runOnce: () => Promise.resolve(), close: () => undefined },
     catalogChecker: {
       update: () => Promise.reject(new Error("no catalog check in this test")),

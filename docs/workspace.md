@@ -261,13 +261,23 @@ is the one for a workspace that could not load.
 
 ## The usage bar
 
-Along the bottom there is one cell per plan: tokens and cost for today and for this week, and for
-Claude the share of those tokens that ran on Fable. The figures are the ones `agn usage` prints,
-from the same scan of your transcripts on this machine. Hover a cell for the week figures when the
-window is too narrow to show them, and for tokens from sessions agn did not start - your plan's
-meter counts those and agn cannot price them. Both windows are calendar windows in your own time
-zone: today is today, and the week starts on Monday. Vendors measure their limits over rolling
-windows, so these numbers and the ones your harness reports will differ.
+Along the bottom there is one cell per plan. Each cell starts with a mark for the vendor the plan
+is billed to: C for Claude, O for OpenAI, G for Google, X for xAI, M for Moonshot, Cu for Cursor.
+
+Where a file on this machine says how much of the plan's rate limit is spent, the cell shows a bar
+for the 5-hour window and the two percentages: `58% 5h · 41% wk`. The bar turns amber at 80% and
+red at 95%. A window whose figure is too old to trust reads `–`. See
+[Limits](usage.md#limits) for which agents report this and how agn reads it.
+
+Where nothing on this machine reports a limit, the cell shows tokens and cost for today and for
+this week, the figures `agn usage` prints from the same scan.
+
+Hover a cell for the token figures either way, for the week pair when the window is too narrow to
+show it, for tokens from sessions agn did not start - your plan's meter counts those and agn cannot
+price them - and, where there is a limit, for when each window resets and how old the figure is.
+The token windows are calendar windows in your own time zone: today is today, and the week starts
+on Monday. The rate-limit windows are the vendor's own rolling ones, so the two sets of figures
+count different spans.
 
 The selected task's own tokens and cost sit in its header, beside Stop and Resume. A task billed to
 a subscription reads `included in plan` rather than a price.
