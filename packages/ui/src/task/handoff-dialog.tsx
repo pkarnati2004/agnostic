@@ -31,11 +31,20 @@ type HandoffDialogProps = {
   notice: TaskNotice | null;
   /** False when the daemon refused: the dialog stays open where the profile can be changed. */
   onSubmit: (body: HandoffTaskRequest) => Promise<boolean>;
+  /** Given when something other than the trigger opens the dialog, as the command palette does. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /** Hands the task to another profile. The child starts from the note; the parent is stopped. */
-export function HandoffDialog({ task, profiles, budget, notice, onSubmit }: HandoffDialogProps) {
-  const [open, setOpen] = useState(false);
+export function HandoffDialog(props: HandoffDialogProps) {
+  const { task, profiles, budget, notice, onSubmit } = props;
+  const [own, setOwn] = useState(false);
+  const open = props.open ?? own;
+  const setOpen = (next: boolean) => {
+    setOwn(next);
+    props.onOpenChange?.(next);
+  };
   const [profileId, setProfileId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [ignoreBudget, setIgnoreBudget] = useState(false);

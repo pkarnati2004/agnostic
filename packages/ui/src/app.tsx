@@ -2,13 +2,11 @@ import type {
   CreatePrRequest,
   CreatePrResponse,
   EditorId,
-  HandoffTaskRequest,
   PickCompareResponse,
   RepoListRow,
-  Task,
   UpdateTaskResponse,
 } from "@agnostic/core";
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useMemo, useReducer, useState } from "react";
 import { createClient } from "./api/client";
 import type { ApiError } from "./api/error";
 import { browserTokenSources, readToken } from "./auth/token";
@@ -17,6 +15,7 @@ import { ChangesPanel } from "./changes/changes-panel";
 import { readPanelOpen, writePanelOpen } from "./changes/panel-open";
 import { cn } from "./class-names";
 import { TooltipProvider } from "./components/tooltip";
+import { WorkspacePalette } from "./palette/workspace-palette";
 import { AddRepoDialog } from "./repo/add-repo-dialog";
 import { RemoveRepoDialog } from "./repo/remove-repo-dialog";
 import { useRepoActions } from "./repo/use-repo-actions";
@@ -24,19 +23,12 @@ import { activeRepos, defaultRepoId, groupTasks } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
 import type { NoticeHost } from "./store/task-notices";
 import { useProfiles } from "./store/use-profiles";
-import { useWorkspace, type Workspace as WorkspaceStore } from "./store/use-workspace";
-import type { WorkspaceState } from "./store/workspace-state";
+import { useWorkspace } from "./store/use-workspace";
 import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
-import {
-  compareTabId,
-  readTabs,
-  type TabsAction,
-  type TabsState,
-  tabbableTasks,
-  tabsReducer,
-  writeTabs,
-} from "./tabs/tabs-state";
+import { compareTabId, readTabs, tabsReducer } from "./tabs/tabs-state";
+import { useTabsStorage } from "./tabs/use-tabs-storage";
 import { NewTaskDialog } from "./task/new-task-dialog";
+import { useTaskActions } from "./task/use-task-actions";
 import { TaskCost } from "./usage/task-cost";
 import { lastResponse } from "./usage/usage-state";
 import { useTaskUsage } from "./usage/use-task-usage";
@@ -63,7 +55,14 @@ function Workspace({ token }: { token: string }) {
   const profiles = useProfiles(client);
   const [collapsed, setCollapsed] = useState(false);
   const [newTask, setNewTask] = useState(false);
+  // What the palette's "Run: <prompt>" seeds the new-task dialog with, or null for a blank one.
+  const [prefill, setPrefill] = useState<{ prompt: string } | null>(null);
   const [addRepo, setAddRepo] = useState(false);
+  // The task whose handoff dialog, and whose Create PR dialog, the palette has opened.
+  const [handoffFor, setHandoffFor] = useState<string | null>(null);
+  const [prFor, setPrFor] = useState<string | null>(null);
+  // Counts the times the palette's Cost row was run; the usage bar reads it and shows itself.
+  const [flash, setFlash] = useState(0);
   // The repo the Remove confirmation is about, or null while it is closed.
   const [removing, setRemoving] = useState<RepoListRow | null>(null);
   const repoActions = useRepoActions(client);
@@ -88,6 +87,9 @@ function Workspace({ token }: { token: string }) {
   useTabsStorage(tabs, state, dispatchTabs);
 
   const activeTask = activeId === null ? null : (state.tasks[activeId] ?? null);
+  // The tab in front's repo, or the first in the sidebar: what a new task and the palette's Run,
+  // Recommend and Sync rows act on.
+  const repo = state.repos.find((row) => row.id === defaultRepoId(state, activeId)) ?? null;
   const showChanges = changesOpen && activeTask !== null;
   const toggleChanges = () => {
     writePanelOpen(localStorage, !changesOpen);
@@ -134,6 +136,12 @@ function Workspace({ token }: { token: string }) {
     return picked;
   };
 
+  const stop = (taskId: string) =>
+    act(
+      { taskId, action: "stop", host: "header" },
+      async (api) => (await api.stopTask(taskId)).task,
+    );
+
   const { handoff, started } = useTaskActions(act, put, dispatchTabs);
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
   // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
@@ -156,7 +164,10 @@ function Workspace({ token }: { token: string }) {
         onOpenCompare={(compareId) =>
           dispatchTabs({ type: "open", taskId: compareTabId(compareId) })
         }
-        onNewTask={() => setNewTask(true)}
+        onNewTask={() => {
+          setPrefill(null);
+          setNewTask(true);
+        }}
         onAddRepo={() => setAddRepo(true)}
         onCloseRepo={repoActions.close}
         onReopenRepo={repoActions.reopen}
@@ -181,9 +192,10 @@ function Workspace({ token }: { token: string }) {
         open={newTask}
         onOpenChange={setNewTask}
         repos={activeRepos(state.repos)}
-        defaultRepoId={defaultRepoId(state, tabs.active)}
+        defaultRepoId={repo?.id ?? null}
         profiles={profiles}
         budget={budget}
+        prefill={prefill}
         client={client}
         onStarted={started}
       />
@@ -204,15 +216,13 @@ function Workspace({ token }: { token: string }) {
         onDismiss={() => setDismissed(error)}
         resumed={resumed}
         onResume={resume}
-        onStop={(taskId) =>
-          act(
-            { taskId, action: "stop", host: "header" },
-            async (api) => (await api.stopTask(taskId)).task,
-          )
-        }
+        onStop={stop}
         changesOpen={changesOpen}
         onToggleChanges={toggleChanges}
         onHandoff={handoff}
+        handoffFor={handoffFor}
+        onHandoffFor={setHandoffFor}
+        flash={flash}
         usageStamp={state.usageStamp}
         onPick={pick}
       />
@@ -224,8 +234,35 @@ function Workspace({ token }: { token: string }) {
           onOpen={(editor) => openInEditor(activeTask.id, editor)}
           onCreatePr={(body) => createPr(activeTask.id, body)}
           onUpdate={() => update(activeTask.id)}
+          prOpen={prFor === activeTask.id}
+          onPrOpenChange={(open) => setPrFor(open ? activeTask.id : null)}
         />
       )}
+      <WorkspacePalette
+        client={client}
+        context={{ activeTask, repo }}
+        onStarted={started}
+        handlers={{
+          newTask: (seed) => {
+            setPrefill(seed);
+            setNewTask(true);
+          },
+          stop: (taskId) => void stop(taskId),
+          resume: (taskId) => void resume(taskId, "header"),
+          handoff: setHandoffFor,
+          openInEditor: (taskId) => void openInEditor(taskId, null),
+          createPr: (taskId) => {
+            writePanelOpen(localStorage, true);
+            setChangesOpen(true);
+            setPrFor(taskId);
+          },
+          update: (taskId) => void update(taskId),
+          showCost: () => setFlash((count) => count + 1),
+          addRepo: () => setAddRepo(true),
+          // The sidebar draws the failure under the repo's heading; a rejection here has no reader.
+          sync: (repoId) => void repoActions.sync(repoId).catch(() => undefined),
+        }}
+      />
     </div>
   );
 }
@@ -236,49 +273,4 @@ function gridColumns(collapsed: boolean, changes: boolean): string {
     return changes ? "grid-cols-[52px_1fr_360px]" : "grid-cols-[52px_1fr]";
   }
   return changes ? "grid-cols-[240px_1fr_360px]" : "grid-cols-[240px_1fr]";
-}
-
-/**
- * The tab list outlives the page; a task that has been cleaned takes its tab with it, and so does a
- * repo that has been removed. The repo comes from state, not from the click, so `agn repo remove`
- * run elsewhere closes the tabs on its `repo.updated` event too.
- */
-function useTabsStorage(
-  tabs: TabsState,
-  state: Pick<WorkspaceState, "loaded" | "repos" | "tasks">,
-  dispatchTabs: (action: TabsAction) => void,
-): void {
-  const { loaded, repos, tasks } = state;
-  useEffect(() => {
-    writeTabs(localStorage, tabs);
-  }, [tabs]);
-  useEffect(() => {
-    if (loaded) {
-      dispatchTabs({ type: "prune", keep: tabbableTasks(repos, tasks) });
-    }
-  }, [loaded, repos, tasks, dispatchTabs]);
-}
-
-/** The two actions that open a tab: a handoff opens the child, a run opens what it started. */
-function useTaskActions(
-  act: WorkspaceStore["act"],
-  put: WorkspaceStore["put"],
-  dispatchTabs: (action: TabsAction) => void,
-) {
-  // Answers the dialog: false leaves it open with the failure in it, where the profile can change.
-  const handoff = async (task: Task, body: HandoffTaskRequest) => {
-    const scope = { taskId: task.id, action: "handoff" as const, host: "dialog" as const };
-    const child = await act(scope, async (api) => (await api.handoffTask(task.id, body)).task);
-    if (child === undefined) {
-      return false;
-    }
-    dispatchTabs({ type: "open", taskId: child.id });
-    return true;
-  };
-  // The run answered with the row, so the task is in the store before its event arrives.
-  const started = (task: Task) => {
-    put(task);
-    dispatchTabs({ type: "open", taskId: task.id });
-  };
-  return { handoff, started };
 }

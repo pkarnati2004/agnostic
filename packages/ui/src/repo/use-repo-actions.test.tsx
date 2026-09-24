@@ -133,6 +133,30 @@ describe("useRepoActions", () => {
     unmount();
   });
 
+  it("syncs a repo with no notice recorded when the generated files were already current", async () => {
+    const syncRepo = vi.fn(() =>
+      Promise.resolve({ writes: [], roles: [], mcp: [], applied: false }),
+    );
+    const client = stubClient({ syncRepo });
+    const { current, unmount } = harness(client);
+    await act(async () => {
+      await current().sync("r1");
+    });
+    expect(syncRepo).toHaveBeenCalledWith("r1", {});
+    expect(current().notices).toEqual({});
+    unmount();
+  });
+
+  it("records a sync failure under the repo and rejects for the caller to see", async () => {
+    const client = stubClient({ syncRepo: () => Promise.reject(BUSY) });
+    const { current, unmount } = harness(client);
+    await act(async () => {
+      await expect(current().sync("r1")).rejects.toBe(BUSY);
+    });
+    expect(current().notices.r1).toMatchObject({ action: "sync", error: BUSY });
+    unmount();
+  });
+
   it("clears a repo's own notice on its next success, leaving the other repo's alone", async () => {
     let refuse = true;
     const client = stubClient({

@@ -31,6 +31,9 @@ type ActionRowProps = {
   onCreatePr: (body: CreatePrRequest) => Promise<CreatePrResponse | null>;
   onUpdate: () => void;
   onRefresh: () => void;
+  /** Given when the command palette opened the Create PR dialog rather than its button. */
+  prOpen?: boolean;
+  onPrOpenChange?: (open: boolean) => void;
 };
 
 const RESUME_FIRST = "Resume first: the worktree was cleaned";
@@ -60,6 +63,8 @@ export function ActionRow(props: ActionRowProps) {
                 notice={props.notice}
                 disabled={prBlocker(changes) !== null || busy !== null}
                 onSubmit={props.onCreatePr}
+                open={props.prOpen}
+                onOpenChange={props.onPrOpenChange}
               />
             </Held>
           )}

@@ -36,20 +36,17 @@ type ChangesPanelProps = {
   onCreatePr: (body: CreatePrRequest) => Promise<CreatePrResponse | null>;
   /** Null when the daemon refused, which the notice says; otherwise what the agent was asked. */
   onUpdate: () => Promise<UpdateTaskResponse | null>;
+  /** Given when the command palette opened the Create PR dialog rather than its button. */
+  prOpen?: boolean;
+  onPrOpenChange?: (open: boolean) => void;
 };
 
 // Long enough to read the line the update answered with, short enough not to sit in the way.
 const UPDATE_SHOWN_MS = 8_000;
 
 /** The third column: what the task's branch has changed, and the patch of the file selected in it. */
-export function ChangesPanel({
-  task,
-  client,
-  notice,
-  onOpen,
-  onCreatePr,
-  onUpdate,
-}: ChangesPanelProps) {
+export function ChangesPanel(props: ChangesPanelProps) {
+  const { task, client, notice, onOpen, onCreatePr, onUpdate } = props;
   const changes = useChanges(client, task);
   const editors = useEditors(client);
   const [busy, setBusy] = useState<TaskAction | null>(null);
@@ -99,6 +96,8 @@ export function ChangesPanel({
           onCreatePr={createPr}
           onUpdate={update}
           onRefresh={changes.refresh}
+          prOpen={props.prOpen}
+          onPrOpenChange={props.onPrOpenChange}
         />
       )}
       {notice !== null && notice.host === "panel" ? (

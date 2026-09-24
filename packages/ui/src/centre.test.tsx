@@ -68,6 +68,9 @@ function centre(tabs: TabsState) {
         onResume={() => Promise.resolve()}
         onStop={() => Promise.resolve()}
         onHandoff={() => Promise.resolve(true)}
+        flash={0}
+        handoffFor={null}
+        onHandoffFor={vi.fn()}
         usageStamp={{ plans: 0, byTask: {} }}
         onPick={() => Promise.resolve(null)}
       />

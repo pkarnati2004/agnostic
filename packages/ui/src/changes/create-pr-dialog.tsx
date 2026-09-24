@@ -28,6 +28,9 @@ type CreatePrDialogProps = {
   disabled: boolean;
   /** Null when the daemon refused: the dialog stays open with the notice in it. */
   onSubmit: (body: CreatePrRequest) => Promise<CreatePrResponse | null>;
+  /** Given when something other than the trigger opens the dialog, as the command palette does. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 type Opened = { outcome: PrOutcome; url: string; body: string };
@@ -37,7 +40,12 @@ type Opened = { outcome: PrOutcome; url: string; body: string };
  * request. Everything but the title is shown to be read, not changed (ADR 036 Q5).
  */
 export function CreatePrDialog({ disabled, ...props }: CreatePrDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [own, setOwn] = useState(false);
+  const open = props.open ?? own;
+  const setOpen = (next: boolean) => {
+    setOwn(next);
+    props.onOpenChange?.(next);
+  };
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -52,7 +60,9 @@ export function CreatePrDialog({ disabled, ...props }: CreatePrDialogProps) {
   );
 }
 
-type ConfirmProps = Omit<CreatePrDialogProps, "disabled"> & { onClose: () => void };
+type ConfirmProps = Omit<CreatePrDialogProps, "disabled" | "open" | "onOpenChange"> & {
+  onClose: () => void;
+};
 
 function Confirm({ task, changes, notice, onSubmit, onClose }: ConfirmProps) {
   const [title, setTitle] = useState(task.title);

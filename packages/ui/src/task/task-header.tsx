@@ -33,6 +33,9 @@ type TaskHeaderProps = {
   onStop: () => Promise<void>;
   onResume: () => Promise<void>;
   onHandoff: (body: HandoffTaskRequest) => Promise<boolean>;
+  /** Given when the command palette opened the handoff dialog rather than its button. */
+  handoffOpen?: boolean;
+  onHandoffOpenChange?: (open: boolean) => void;
 };
 
 const STOPPABLE: TaskStatus[] = ["running", "waiting"];
@@ -100,6 +103,8 @@ export function TaskHeader(props: TaskHeaderProps) {
           budget={props.budget}
           notice={notice}
           onSubmit={onHandoff}
+          open={props.handoffOpen}
+          onOpenChange={props.onHandoffOpenChange}
         />
         <Button
           variant="outline"

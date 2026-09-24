@@ -3,11 +3,13 @@
 import type { BudgetReport, RecommendRequest } from "@agnostic/core";
 import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { click } from "../test/render";
+import { click, render } from "../test/render";
 import {
   dialog,
   KEYED_PROFILE,
   PROFILE,
+  type PrefillControls,
+  PrefillHarness,
   pickProfile,
   runButton,
   setValue,
@@ -121,6 +123,32 @@ describe("NewTaskDialog", () => {
         },
       },
     ]);
+    unmount();
+  });
+
+  it("seeds the prompt from the palette's Run: <query> once the dialog opens", () => {
+    let controls: PrefillControls | undefined;
+    const { unmount } = render(
+      <PrefillHarness client={stubClient()} onRender={(found) => (controls = found)} />,
+    );
+    act(() => controls?.openWith({ prompt: "port the parser" }));
+
+    const textarea = document.getElementById("new-task-prompt") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("port the parser");
+    unmount();
+  });
+
+  it("replaces the seeded prompt when the palette opens the dialog again with a new one", () => {
+    let controls: PrefillControls | undefined;
+    const { unmount } = render(
+      <PrefillHarness client={stubClient()} onRender={(found) => (controls = found)} />,
+    );
+    act(() => controls?.openWith({ prompt: "port the parser" }));
+    act(() => controls?.close());
+    act(() => controls?.openWith({ prompt: "add the invite links" }));
+
+    const textarea = document.getElementById("new-task-prompt") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("add the invite links");
     unmount();
   });
 });

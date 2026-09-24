@@ -116,4 +116,40 @@ describe("HandoffDialog", () => {
     expect(onSubmit).toHaveBeenCalledWith({ profile: KEYED_PROFILE.id, ignoreBudget: true });
     unmount();
   });
+
+  it("stays closed with no click, as every caller but the palette leaves it", () => {
+    const { unmount } = render(
+      <HandoffDialog
+        task={TASK}
+        profiles={[PROFILE]}
+        budget={null}
+        notice={null}
+        onSubmit={() => Promise.resolve(true)}
+      />,
+    );
+
+    expect(document.body.textContent).not.toContain("Hand off Port the parser");
+    unmount();
+  });
+
+  it("opens under the palette's control, with no click on its own trigger, and reports Cancel back", () => {
+    const onOpenChange = vi.fn();
+    const { unmount } = render(
+      <HandoffDialog
+        task={TASK}
+        profiles={[PROFILE]}
+        budget={null}
+        notice={null}
+        onSubmit={() => Promise.resolve(true)}
+        open
+        onOpenChange={onOpenChange}
+      />,
+    );
+
+    expect(document.body.textContent).toContain("Hand off Port the parser");
+    act(() => button("Cancel").click());
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    unmount();
+  });
 });

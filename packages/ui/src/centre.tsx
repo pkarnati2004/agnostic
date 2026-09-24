@@ -53,6 +53,11 @@ type CentreProps = {
   usageStamp: UsageStamp;
   /** Null when the daemon refused; the notice under the Compare view's header says why. */
   onPick: (compareId: string, taskId: string) => Promise<PickCompareResponse | null>;
+  /** Counts the times the page was asked for the cost; each one brings the usage bar into view. */
+  flash: number;
+  /** The task whose handoff dialog the command palette opened, or null while none is open. */
+  handoffFor: string | null;
+  onHandoffFor: (taskId: string | null) => void;
 };
 
 /** The tab strip, the header for the tab in front, and every open terminal under them. */
@@ -87,6 +92,8 @@ export function Centre(props: CentreProps) {
           changesOpen={props.changesOpen}
           onToggleChanges={props.onToggleChanges}
           onHandoff={(body) => props.onHandoff(active, body)}
+          handoffOpen={props.handoffFor === active.id}
+          onHandoffOpenChange={(open) => props.onHandoffFor(open ? active.id : null)}
         />
       )}
       {/* The one failure with no task to sit on: the page never loaded. */}
@@ -114,7 +121,7 @@ export function Centre(props: CentreProps) {
         notices={props.notices}
         onResume={(taskId) => props.onResume(taskId, "overlay")}
       />
-      <UsageBar state={props.usage} />
+      <UsageBar state={props.usage} flash={props.flash} />
     </main>
   );
 }

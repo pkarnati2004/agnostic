@@ -102,6 +102,34 @@ which branch it came from. If the daemon restarts, the tab reconnects by itself:
 it was gone. A session that was adopted from outside tmux cannot be attached to, and the tab says
 that instead.
 
+## Command palette
+
+Press Cmd-K (Ctrl-K outside macOS) to open the command palette. It lists what agn can do on this
+page, filtered by what you type, and runs the row you pick. The arrow keys move, Enter runs, Escape
+closes. The shortcut works while a terminal tab has the focus: agn takes the keystroke before the
+terminal does.
+
+Four rows are always there: "New task"; "Cost", which brings the usage bar into view and highlights
+it; "Add repo"; and "Sync `<repo>`" for the repo you are working in. Sync writes that repo's
+generated files, the same ones `agn sync` writes, and says nothing when they are already current. A
+failure appears under the repo in the sidebar.
+
+Typing a prompt adds two more rows:
+
+- **Run: `<prompt>`** opens the new-task dialog with the prompt filled in. Use it when you want a
+  title, a spec, or a profile of your own choosing before the task starts.
+- **Recommend: `<prompt>`** asks agn which profile fits and replaces the list with the answer: the
+  recommended profile, the alternative when there is one, and "Back". Enter on a profile runs the
+  prompt on it at once, with no title and no spec.
+
+The rest of the rows act on the tab in front: "Stop", "Resume", "Hand off", "Open in editor",
+"Create PR for" and "Bring up to date", each named after the task. A row appears only when the
+button it stands for would work, as far as the palette can tell without reading the branch, so a
+finished task offers Resume and not Stop. A task whose
+worktree has been cleaned offers neither "Open in editor" nor "Bring up to date" until you resume
+it; "Create PR for" stays, because the push reads the branch from the repo itself. The Compare tab
+has no task of its own, so no task rows appear while it is in front.
+
 ## Changes
 
 "Changes" in the task header opens a third column on the right, and closes it again. The workspace
