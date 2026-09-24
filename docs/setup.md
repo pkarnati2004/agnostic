@@ -87,7 +87,9 @@ You should see each agent you have installed, with its version, login state and 
 | `basic` | Starts the agent and attaches to it; the task is running until the agent exits |
 
 Agents that are not installed are named on one `not installed:` line under the table. "Unknown"
-means agnostic couldn't verify login - start the agent once by hand and re-run.
+means agnostic couldn't verify login - start the agent once by hand and re-run. `agn doctor
+--verbose` adds the PATH agnostic searched, which the plain command prints only when an agent you
+named is missing.
 
 ## The daemon
 

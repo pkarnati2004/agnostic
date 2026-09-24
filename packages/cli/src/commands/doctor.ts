@@ -26,7 +26,8 @@ export function doctorCommand(ctx: CliContext): Command {
       collect,
       [],
     )
-    .action(async (flags: { plan: string[] }) => {
+    .option("--verbose", "print the PATH agn searched even when nothing is missing")
+    .action(async (flags: { plan: string[]; verbose?: boolean }) => {
       const client = await ctx.client();
       const plans = parsePlanFlags(command, flags.plan);
       const response = await client.doctor(Object.keys(plans).length > 0 ? { plans } : undefined);
@@ -34,17 +35,18 @@ export function doctorCommand(ctx: CliContext): Command {
         writeJson(ctx.io, response);
         return;
       }
-      report(ctx, response);
+      const verbose = flags.verbose === true;
+      report(ctx, response, verbose);
       // Asking comes last: the table is the answer, and the question is about what is missing.
       const answered = await resolvePlans(ctx, response);
       if (answered) {
-        report(ctx, await client.doctor({ plans: answered }));
+        report(ctx, await client.doctor({ plans: answered }), verbose);
       }
     });
   return command;
 }
 
-function report(ctx: CliContext, response: DoctorResponse): void {
+function report(ctx: CliContext, response: DoctorResponse, verbose: boolean): void {
   for (const line of renderTable(reported(response), COLUMNS)) {
     ctx.io.out(line);
   }
@@ -56,7 +58,9 @@ function report(ctx: CliContext, response: DoctorResponse): void {
     ctx.io.out(toolLine(tool));
   }
   ctx.io.out(`profiles: ${response.profiles.length} available (agn profiles)`);
-  ctx.io.out(`PATH: ${response.pathVar}`);
+  if (verbose || pathExplainsAGap(response)) {
+    ctx.io.out(`PATH: ${response.pathVar}`);
+  }
   if (response.tmuxConfigStale) {
     ctx.io.out(
       "tmux server predates the current config; stop every task or run tmux -L agn kill-server",
@@ -98,6 +102,17 @@ function notInstalled(response: DoctorResponse): string | null {
     .filter((row) => row.tier === 1 && row.path === null && !response.named.includes(row.harness))
     .map((row) => row.harness);
   return missing.length === 0 ? null : `not installed: ${missing.join(", ")} (${missing.length})`;
+}
+
+/** The PATH only answers a question the user already has: a harness they named is missing, or agn
+ * found no agent at all. Otherwise the per-harness path column has already said where each one is. */
+function pathExplainsAGap(response: DoctorResponse): boolean {
+  if (response.harnesses.every((row) => row.path === null)) {
+    return true;
+  }
+  return response.harnesses.some(
+    (row) => row.path === null && response.named.includes(row.harness),
+  );
 }
 
 /** Not a harness and not in the table: `gh` is what `agn handoff` opens a pull request with. */
