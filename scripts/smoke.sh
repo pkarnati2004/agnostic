@@ -297,6 +297,28 @@ grep -q "^Recommended: claude-code:" "$WORK/recommend.txt"
 grep -q "^Risk: touches auth" "$WORK/recommend.txt"
 agx recommend "fix the flaky auth test" --repo "$WORK/runrepo" --json | grep -q '"taskClass"'
 
+echo "smoke: agn mcp answers the MCP handshake and a tool call on stdout"
+INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}'
+{
+  printf '%s\n' "$INIT"
+  printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+  printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+  printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"agn_status","arguments":{}}}'
+} | agx mcp > "$WORK/mcp.jsonl"
+# Three requests, three answers: the notification is not one of them.
+test "$(grep -c '' "$WORK/mcp.jsonl")" -eq 3
+grep -q '"protocolVersion":"2025-06-18"' "$WORK/mcp.jsonl"
+grep -q '"name":"agn_run"' "$WORK/mcp.jsonl"
+grep -q 'runrepo' "$WORK/mcp.jsonl"
+# The token goes from ~/.agnostic/auth-token to the daemon and never onto the agent's side of the pipe.
+! grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$WORK/mcp.jsonl"
+
+echo "smoke: agn mcp hands a daemon refusal to the agent as an isError result"
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"agn_stop","arguments":{"task":"nope"}}}' |
+  agx mcp > "$WORK/mcp-error.jsonl"
+grep -q '"isError":true' "$WORK/mcp-error.jsonl"
+grep -q 'task-not-found' "$WORK/mcp-error.jsonl"
+
 echo "smoke: agn spec, from no eligible agent to an approved spec in the note"
 SPEC_PORT="$("$NODE" -e "process.stdout.write(String(require('$AGNOSTIC_HOME/daemon.json').port))")"
 SPEC_TOKEN="$(cat "$AGNOSTIC_HOME/auth-token")"
