@@ -1,9 +1,10 @@
-import { agnosticPaths, ProcessError, type ProcessOptions, type spawn } from "@agnostic/core";
 import { describe, expect, it, vi } from "vitest";
+import { ProcessError } from "./error.js";
 import { launchDetached } from "./launch-detached.js";
-import { createTestContext } from "./test-context.js";
+import type { ProcessOptions, spawn } from "./process.js";
 
 const LOG = "/home/.agnostic/logs/agn-ui.log";
+const ENV = { PATH: "/usr/bin" };
 
 type Spawned = { command: string; args: string[]; opts: ProcessOptions };
 
@@ -30,23 +31,18 @@ function context(exit: "now" | "never" | { rejects: unknown }) {
       },
     }) as unknown as ReturnType<typeof spawn>;
   }) as typeof spawn;
-  const test = createTestContext({
-    paths: agnosticPaths("/home/.agnostic"),
-    env: { PATH: "/usr/bin" },
-    spawn: fakeSpawn,
-  });
-  return { ...test, spawned, firstSpawn, unrefs: () => unrefs };
+  return { spawn: fakeSpawn, spawned, firstSpawn, unrefs: () => unrefs };
 }
 
 describe("launchDetached", () => {
-  it("starts the command detached, in agn's own environment, with its output in a log", async () => {
+  it("starts the command detached, in the caller's environment, with its output in a log", async () => {
     const test = context("now");
-    await launchDetached(test.ctx, ["open", "https://example.test"], LOG);
+    await launchDetached(test.spawn, ["open", "https://example.test"], { env: ENV, logFile: LOG });
     expect(test.spawned).toEqual([
       {
         command: "open",
         args: ["https://example.test"],
-        opts: { detached: true, inheritEnv: false, env: { PATH: "/usr/bin" }, logFile: LOG },
+        opts: { detached: true, inheritEnv: false, env: ENV, logFile: LOG },
       },
     ]);
   });
@@ -61,21 +57,23 @@ describe("launchDetached", () => {
         stderr: "Unable to find application",
       }),
     });
-    await expect(launchDetached(test.ctx, ["open", "x"], LOG)).rejects.toThrow(
-      "Unable to find application",
-    );
+    await expect(
+      launchDetached(test.spawn, ["open", "x"], { env: ENV, logFile: LOG }),
+    ).rejects.toThrow("Unable to find application");
   });
 
   it("throws the failure itself when the child left no output", async () => {
     const test = context({ rejects: new Error("spawn xdg-open ENOENT") });
-    await expect(launchDetached(test.ctx, ["xdg-open", "x"], LOG)).rejects.toThrow("ENOENT");
+    await expect(
+      launchDetached(test.spawn, ["xdg-open", "x"], { env: ENV, logFile: LOG }),
+    ).rejects.toThrow("ENOENT");
   });
 
   it("lets go of a child that is still running when the window closes", async () => {
     vi.useFakeTimers();
     try {
       const test = context("never");
-      const launched = launchDetached(test.ctx, ["open", "x"], LOG);
+      const launched = launchDetached(test.spawn, ["open", "x"], { env: ENV, logFile: LOG });
       await test.firstSpawn;
       await vi.advanceTimersByTimeAsync(3_000);
       await launched;
@@ -87,7 +85,9 @@ describe("launchDetached", () => {
 
   it("refuses an empty argv rather than spawning the shell's idea of one", async () => {
     const test = context("now");
-    await expect(launchDetached(test.ctx, [], LOG)).rejects.toThrow("no command to run");
+    await expect(launchDetached(test.spawn, [], { env: ENV, logFile: LOG })).rejects.toThrow(
+      "no command to run",
+    );
     expect(test.spawned).toEqual([]);
   });
 });

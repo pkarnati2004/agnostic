@@ -55,6 +55,44 @@ describe("createClient", () => {
     expect(calls.every((call) => call.token === "Bearer tok")).toBe(true);
   });
 
+  it("reads a task's changes, one file's patch, the editors and the open", async () => {
+    const { client, calls } = stubClient(() => ok({}));
+    await client.changes("t1");
+    await client.diff("t1", "src/a b.ts");
+    await client.editors();
+    await client.openTask("t1", { editor: "zed" });
+    expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
+      "GET /tasks/t1/changes",
+      "GET /tasks/t1/diff?path=src%2Fa%20b.ts",
+      "GET /editors",
+      "POST /tasks/t1/open",
+    ]);
+    expect(calls.at(-1)?.body).toBe(JSON.stringify({ editor: "zed" }));
+    expect(calls.every((call) => call.token === "Bearer tok")).toBe(true);
+  });
+
+  it("maps a refused open to the daemon's own message and hint", async () => {
+    const { client } = stubClient(() =>
+      Response.json(
+        {
+          error: {
+            code: "editor-failed",
+            message: "zed did not start",
+            hint: "Run `agn open t1`.",
+          },
+        },
+        { status: 409 },
+      ),
+    );
+    const failure = await client.openTask("t1", {}).catch((cause: unknown) => cause);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(failure).toMatchObject({
+      code: "editor-failed",
+      status: 409,
+      hint: "Run `agn open t1`.",
+    });
+  });
+
   it("reads the snapshot cursor each list carries", async () => {
     const { client } = stubClient((call) =>
       ok(call.url === "/repos?all=1" ? { repos: [], cursor: 7 } : { tasks: [], cursor: 9 }),

@@ -22,6 +22,8 @@ export type ProcessErrorOptions = CoreErrorOptions & {
   args: string[];
   exitCode: number | null;
   stderr: string;
+  /** The child's whole stdout: git answers some questions there and still exits non-zero. */
+  stdout?: string;
 };
 
 export class ProcessError extends CoreError {
@@ -29,6 +31,7 @@ export class ProcessError extends CoreError {
   readonly args: string[];
   readonly exitCode: number | null;
   readonly stderr: string;
+  readonly stdout: string;
 
   constructor(message: string, opts: ProcessErrorOptions) {
     super(message, opts);
@@ -37,6 +40,7 @@ export class ProcessError extends CoreError {
     this.args = opts.args;
     this.exitCode = opts.exitCode;
     this.stderr = opts.stderr;
+    this.stdout = opts.stdout ?? "";
   }
 }
 

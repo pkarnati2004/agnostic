@@ -53,6 +53,19 @@ describe("run", () => {
     expect((error as ProcessError).exitCode).toBe(3);
   });
 
+  it("keeps stdout of a command that answered there and still failed", async () => {
+    const error = await run("sh", ["-c", "echo answer; exit 1"]).catch((thrown: unknown) => thrown);
+    expect((error as ProcessError).stdout).toBe("answer");
+    expect((error as ProcessError).stderr).toBe("");
+  });
+
+  it("leaves a long answer on stdout whole, because the message never carries it", async () => {
+    const error = await run("sh", ["-c", "seq 1 50; exit 1"]).catch((thrown: unknown) => thrown);
+    const lines = (error as ProcessError).stdout.split("\n");
+    expect(lines).toHaveLength(50);
+    expect(lines[0]).toBe("1");
+  });
+
   it("hides npm_ variables from the child", async () => {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: this is shell syntax for the child.
     const result = await run("sh", ["-c", "echo ${npm_config_probe:-unset}"]);

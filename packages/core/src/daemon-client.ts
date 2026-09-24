@@ -1,4 +1,5 @@
 import type { CatalogRowsResponse, CatalogUpdateResponse } from "./catalog-api.js";
+import type { ChangesResponse, DiffResponse } from "./changes-api.js";
 import {
   type AdoptRequest,
   ApiErrorBodySchema,
@@ -86,6 +87,10 @@ export type DaemonClient = {
   /** Today's and this week's tokens per plan, from the transcripts on this machine. */
   usage(): Promise<UsageResponse>;
   taskUsage(id: string): Promise<TaskUsageResponse>;
+  /** What the task's branch changed against its base, and the facts the right panel's header shows. */
+  taskChanges(id: string): Promise<ChangesResponse>;
+  /** One file's unified patch, by the path `taskChanges` printed for it. */
+  taskDiff(id: string, path: string): Promise<DiffResponse>;
   /** What the task cost and what became of its branch; the daemon rechecks the verdict first. */
   taskOutcome(id: string): Promise<OutcomeResponse>;
   /** The catalog rows behind a profile, marked where the last recommendation leaned on them. */
@@ -175,6 +180,12 @@ export function createDaemonClient(opts: {
       json<SyncResponse>("POST", `/repos/${encodeURIComponent(repoId)}/sync`, body),
     usage: () => json<UsageResponse>("GET", "/usage"),
     taskUsage: (id) => json<TaskUsageResponse>("GET", `/tasks/${encodeURIComponent(id)}/usage`),
+    taskChanges: (id) => json<ChangesResponse>("GET", `/tasks/${encodeURIComponent(id)}/changes`),
+    taskDiff: (id, path) =>
+      json<DiffResponse>(
+        "GET",
+        `/tasks/${encodeURIComponent(id)}/diff?path=${encodeURIComponent(path)}`,
+      ),
     taskOutcome: (id) => json<OutcomeResponse>("GET", `/tasks/${encodeURIComponent(id)}/outcome`),
     catalogRows: (profile) =>
       json<CatalogRowsResponse>("GET", `/catalog/rows?profile=${encodeURIComponent(profile)}`),

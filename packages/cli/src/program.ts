@@ -4,6 +4,7 @@ import { addCommand } from "./commands/add.js";
 import { adoptCommand } from "./commands/adopt.js";
 import { attachCommand } from "./commands/attach.js";
 import { catalogCommand } from "./commands/catalog.js";
+import { changesCommand } from "./commands/changes.js";
 import { cleanCommand } from "./commands/clean.js";
 import { daemonCommand } from "./commands/daemon.js";
 import { doctorCommand } from "./commands/doctor.js";
@@ -67,6 +68,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     usageCommand(ctx),
     outcomesCommand(ctx),
     openCommand(ctx),
+    changesCommand(ctx),
     catalogCommand(ctx),
     uiCommand(ctx),
   ]) {

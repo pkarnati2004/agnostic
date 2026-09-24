@@ -14,6 +14,7 @@ import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { DaemonError, requestInvalid } from "../error.js";
 import { handoffTask } from "../handoff-task.js";
+import { requestBody } from "../request-body.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
 import { resumeTask } from "../resume-task.js";
 import { attachableHandle } from "../task-session.js";
@@ -34,7 +35,7 @@ export function taskActionRoutes(ctx: DaemonContext): Hono {
       return c.json(body);
     })
     .post("/tasks/:id/handoff", async (c) => {
-      const parsed = HandoffTaskRequestSchema.safeParse(await body(c.req.raw));
+      const parsed = HandoffTaskRequestSchema.safeParse(await requestBody(c.req.raw));
       if (!parsed.success) {
         throw requestInvalid(parsed.error);
       }
@@ -48,7 +49,7 @@ export function taskActionRoutes(ctx: DaemonContext): Hono {
       return c.json(body);
     })
     .post("/tasks/:id/clean", async (c) => {
-      const parsed = CleanTaskRequestSchema.safeParse(await body(c.req.raw));
+      const parsed = CleanTaskRequestSchema.safeParse(await requestBody(c.req.raw));
       if (!parsed.success) {
         throw requestInvalid(parsed.error);
       }
@@ -93,18 +94,4 @@ async function clean(
   }
   await ctx.executor.clean({ task, repo, deleteBranch: opts.deleteBranch });
   return { task: ctx.ledger.tasks.clean(task.id, opts.deleteBranch), removed: true };
-}
-
-/** A POST with no body at all is the common case for an action with only optional fields. */
-async function body(request: Request): Promise<unknown> {
-  const text = await request.text().catch(() => "");
-  if (text.trim() === "") {
-    return {};
-  }
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    // Not json at all: the schema below says so in the same words as every other bad request.
-    return null;
-  }
 }

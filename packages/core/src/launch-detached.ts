@@ -1,5 +1,5 @@
-import { ProcessError, type spawn } from "@agnostic/core";
-import type { CliContext } from "./context.js";
+import { ProcessError } from "./error.js";
+import type { spawn } from "./process.js";
 
 /**
  * How long a launch gets to fail in. `open` reports a missing application in milliseconds, and a
@@ -8,24 +8,25 @@ import type { CliContext } from "./context.js";
 const FAILURE_WINDOW_MS = 3_000;
 
 /**
- * Detached and with agn's own environment, so what it starts joins the user's login session and
- * outlives the command (ADR 023). agn waits out the failure window before it lets go, and throws
- * the child's own words; the caller says what failed.
+ * Detached and with the caller's own environment, so what it starts joins the user's login session
+ * and outlives the command (ADR 023). agn waits out the failure window before it lets go, and
+ * throws the child's own words; the caller says what failed. The spawn is passed in because the
+ * CLI and the daemon each have their own.
  */
 export async function launchDetached(
-  ctx: CliContext,
+  spawnFn: typeof spawn,
   argv: string[],
-  logFile: string,
+  opts: { env: Record<string, string>; logFile: string },
 ): Promise<void> {
   const [command, ...args] = argv;
   if (command === undefined) {
     throw new Error("there is no command to run");
   }
-  const child = ctx.spawn(command, args, {
+  const child = spawnFn(command, args, {
     detached: true,
     inheritEnv: false,
-    env: ctx.env,
-    logFile,
+    env: opts.env,
+    logFile: opts.logFile,
   });
   const failure = await earlyFailure(child, FAILURE_WINDOW_MS);
   if (failure !== null) {

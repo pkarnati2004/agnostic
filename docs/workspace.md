@@ -20,6 +20,7 @@ than the page.
 - **Left:** your repos and their tasks. Dot = status: running, waiting for you, queued, done. A closed repo and its tasks are not in the list; they are under "Closed" at the foot of the sidebar.
 - **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback.
 - **+ Task:** describe the work, see the recommendation, pick or accept, run.
+- **Right:** what the selected task has changed, with the patch of the file you click. "Changes" in the task header opens and closes it.
 - **Bottom:** tokens and cost per plan, for today and for this week.
 
 Everything the workspace shows comes from the local daemon; closing the tab loses nothing.
@@ -94,6 +95,40 @@ same worktree, rebuilding it from the task's branch first if the worktree was cl
 which branch it came from. If the daemon restarts, the tab reconnects by itself: tmux held the session while
 it was gone. A session that was adopted from outside tmux cannot be attached to, and the tab says
 that instead.
+
+## Changes
+
+"Changes" in the task header opens a third column on the right, and closes it again. The workspace
+remembers which it was, per daemon address. On a window narrower than 1280 px the column starts
+closed, so the terminal keeps its width; the state is read when the page loads, so a window you
+widen afterwards still needs the toggle.
+
+The line at the top names the task's branch, the base branch it is read against, how many commits
+it is ahead, how many files have uncommitted changes, and "behind n" when the base has moved on.
+Under it are the files the branch changed: everything the agent has written, committed or not,
+including files git has not been told about yet. Each row has the status letter `agn changes`
+prints - A, M, D, R, `?` for untracked - and the lines added and removed. Click a row for that
+file's patch below the list. The first file is selected when the panel opens.
+
+The panel re-reads itself when the task changes status and when you click Refresh; nothing watches
+the files, so Refresh is how you see what the agent wrote a moment ago. **Open in editor** opens
+the task's worktree in the editor agn is configured for, and the chevron beside it lists the other
+editors on this machine. The daemon starts the editor, so a daemon running over ssh cannot: it
+says so, and `agn open <task>` from your own terminal does it instead.
+
+Some tasks have no file list to show:
+
+- A folder workspace has no git to read, so the panel says "git init to enable" and gives the
+  command.
+- A task agn adopted has no base commit of its own, so its header reads
+  "adopted: changes against `main`".
+- A task whose worktree was cleaned reads "worktree cleaned; branch `<branch>` kept" and shows what
+  was committed. Open in editor waits until Resume rebuilds the worktree.
+- A branch with nothing on it yet reads "No changes against `<base>` yet."
+- A binary file reads "binary file, no diff": git has no patch for it.
+
+**Create PR** and **Bring up to date** are drawn beside Open in editor and do nothing yet; the next
+update wires them.
 
 ## History
 

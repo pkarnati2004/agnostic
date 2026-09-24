@@ -1,22 +1,23 @@
-import type { HandoffTaskRequest, Profile, RepoListRow, Task } from "@agnostic/core";
-import { type ReactNode, useEffect, useMemo, useReducer, useState } from "react";
-import { createClient, type WorkspaceClient } from "./api/client";
+import type { EditorId, HandoffTaskRequest, RepoListRow, Task } from "@agnostic/core";
+import { useEffect, useMemo, useReducer, useState } from "react";
+import { createClient } from "./api/client";
 import type { ApiError } from "./api/error";
 import { browserTokenSources, readToken } from "./auth/token";
+import { Centre, Centred } from "./centre";
+import { ChangesPanel } from "./changes/changes-panel";
+import { readPanelOpen, writePanelOpen } from "./changes/panel-open";
 import { cn } from "./class-names";
 import { TooltipProvider } from "./components/tooltip";
-import { Notice } from "./notice";
 import { AddRepoDialog } from "./repo/add-repo-dialog";
 import { RemoveRepoDialog } from "./repo/remove-repo-dialog";
 import { useRepoActions } from "./repo/use-repo-actions";
 import { activeRepos, defaultRepoId, groupTasks } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
-import type { NoticeHost, TaskNotices } from "./store/task-notices";
+import type { NoticeHost } from "./store/task-notices";
 import { useProfiles } from "./store/use-profiles";
 import { useWorkspace, type Workspace as WorkspaceStore } from "./store/use-workspace";
 import type { WorkspaceState } from "./store/workspace-state";
 import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
-import { TabStrip } from "./tabs/tab-strip";
 import {
   readTabs,
   type TabsAction,
@@ -25,12 +26,8 @@ import {
   tabsReducer,
   writeTabs,
 } from "./tabs/tabs-state";
-import { TaskTabs } from "./tabs/task-tabs";
 import { NewTaskDialog } from "./task/new-task-dialog";
-import { TaskHeader } from "./task/task-header";
 import { TaskCost } from "./usage/task-cost";
-import { UsageBar } from "./usage/usage-bar";
-import type { UsageState } from "./usage/usage-state";
 import { useTaskUsage } from "./usage/use-task-usage";
 import { useUsage } from "./usage/use-usage";
 
@@ -60,6 +57,9 @@ function Workspace({ token }: { token: string }) {
   const [removing, setRemoving] = useState<RepoListRow | null>(null);
   const repoActions = useRepoActions(client);
   const [dismissed, setDismissed] = useState<ApiError | null>(null);
+  const [changesOpen, setChangesOpen] = useState(() =>
+    readPanelOpen(localStorage, window.innerWidth),
+  );
   const [tabs, dispatchTabs] = useReducer(tabsReducer, undefined, () => readTabs(localStorage));
   const groups = useMemo(
     () => groupTasks(state.repos, Object.values(state.tasks)),
@@ -74,6 +74,20 @@ function Workspace({ token }: { token: string }) {
   );
   useTabsStorage(tabs, state, dispatchTabs);
 
+  const activeTask = activeId === null ? null : (state.tasks[activeId] ?? null);
+  const showChanges = changesOpen && activeTask !== null;
+  const toggleChanges = () => {
+    writePanelOpen(localStorage, !changesOpen);
+    setChangesOpen(!changesOpen);
+  };
+  // The open answers with the editor it started, not with the task, so only a failure is drawn.
+  const openInEditor = async (taskId: string, editor: EditorId | null): Promise<void> => {
+    await act({ taskId, action: "open", host: "panel" }, async (api) => {
+      await api.openTask(taskId, editor === null ? {} : { editor });
+      return undefined;
+    });
+  };
+
   const { handoff, started } = useTaskActions(act, put, dispatchTabs);
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
   // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
@@ -86,9 +100,7 @@ function Workspace({ token }: { token: string }) {
   };
 
   return (
-    <div
-      className={cn("grid h-full", collapsed ? "grid-cols-[52px_1fr]" : "grid-cols-[240px_1fr]")}
-    >
+    <div className={cn("grid h-full", gridColumns(collapsed, showChanges))}>
       <Sidebar
         groups={groups}
         repos={state.repos}
@@ -147,82 +159,28 @@ function Workspace({ token }: { token: string }) {
             async (api) => (await api.stopTask(taskId)).task,
           )
         }
+        changesOpen={changesOpen}
+        onToggleChanges={toggleChanges}
         onHandoff={handoff}
       />
+      {showChanges && activeTask !== null && (
+        <ChangesPanel
+          task={activeTask}
+          client={client}
+          notice={notices[activeTask.id] ?? null}
+          onOpen={(editor) => openInEditor(activeTask.id, editor)}
+        />
+      )}
     </div>
   );
 }
 
-type CentreProps = {
-  tabs: TabsState;
-  dispatchTabs: (action: TabsAction) => void;
-  repos: RepoListRow[];
-  tasks: Record<string, Task>;
-  loaded: boolean;
-  profiles: Profile[];
-  token: string;
-  client: WorkspaceClient;
-  usage: UsageState;
-  /** What the tab in front has spent; the page holds the hook that reads it. */
-  cost: ReactNode;
-  /** The bootstrap failure, and only that: every other failure is in `notices`. */
-  error: ApiError | null;
-  /** What the last resume had to say, for the tab it belongs to; the rest of the page ignores it. */
-  resumed: ResumeNotice | null;
-  /** Keyed by task: the latest failure per task, each drawn where its click was. */
-  notices: TaskNotices;
-  onDismiss: () => void;
-  onResume: (taskId: string, host: NoticeHost) => Promise<void>;
-  onStop: (taskId: string) => Promise<unknown>;
-  onHandoff: (task: Task, body: HandoffTaskRequest) => Promise<boolean>;
-};
-
-/** The tab strip, the header for the tab in front, and every open terminal under them. */
-function Centre(props: CentreProps) {
-  const { tabs, dispatchTabs, tasks, loaded, client, token } = props;
-  const open = tabs.open.map((id) => tasks[id]).filter((task) => task !== undefined);
-  const active = tabs.active === null ? undefined : tasks[tabs.active];
-  const repoNames = new Map(props.repos.map((repo) => [repo.id, repo.name]));
-
-  return (
-    <main className="flex min-w-[640px] flex-col overflow-hidden">
-      <TabStrip
-        tabs={open}
-        activeId={tabs.active}
-        repoNames={repoNames}
-        onActivate={(taskId) => dispatchTabs({ type: "activate", taskId })}
-        onClose={(taskId) => dispatchTabs({ type: "close", taskId })}
-      />
-      {active !== undefined && (
-        <TaskHeader
-          task={active}
-          repo={props.repos.find((repo) => repo.id === active.repoId) ?? null}
-          profiles={props.profiles}
-          cost={props.cost}
-          notice={props.notices[active.id] ?? null}
-          onStop={() => props.onStop(active.id).then(() => undefined)}
-          onResume={() => props.onResume(active.id, "header")}
-          onHandoff={(body) => props.onHandoff(active, body)}
-        />
-      )}
-      {/* The one failure with no task to sit on: the page never loaded. */}
-      <Notice error={props.error} onDismiss={props.onDismiss} />
-      {open.length === 0 ? (
-        <Centred>{emptyCentre(loaded, props.error !== null)}</Centred>
-      ) : (
-        <TaskTabs
-          state={tabs}
-          tasks={open}
-          token={token}
-          client={client}
-          resumed={props.resumed}
-          notices={props.notices}
-          onResume={(taskId) => props.onResume(taskId, "overlay")}
-        />
-      )}
-      <UsageBar state={props.usage} />
-    </main>
-  );
+/** The Changes column takes its 360 px from the centre, which keeps its own 640 px minimum. */
+function gridColumns(collapsed: boolean, changes: boolean): string {
+  if (collapsed) {
+    return changes ? "grid-cols-[52px_1fr_360px]" : "grid-cols-[52px_1fr]";
+  }
+  return changes ? "grid-cols-[240px_1fr_360px]" : "grid-cols-[240px_1fr]";
 }
 
 /**
@@ -268,20 +226,4 @@ function useTaskActions(
     dispatchTabs({ type: "open", taskId: task.id });
   };
   return { handoff, started };
-}
-
-/** With no tab open the centre says where the page got to; the notice above it says why. */
-function emptyCentre(loaded: boolean, failed: boolean): string {
-  if (loaded) {
-    return "Pick a task on the left to open it.";
-  }
-  return failed ? "The workspace did not load." : "Loading the workspace…";
-}
-
-function Centred({ children }: { children: string }) {
-  return (
-    <div className="flex flex-1 items-center justify-center p-6 text-muted-foreground text-sm">
-      {children}
-    </div>
-  );
 }

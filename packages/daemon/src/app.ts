@@ -41,6 +41,7 @@ import type { NativeResumeWatch } from "./native-resume-watch.js";
 import { originCheck } from "./origin.js";
 import { adoptRoutes } from "./routes/adopt.js";
 import { catalogRoutes } from "./routes/catalog.js";
+import { changesRoutes } from "./routes/changes.js";
 import { editorRoutes } from "./routes/editors.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
@@ -132,6 +133,7 @@ export function createApp(deps: DaemonDeps): {
   app.route("/", recommendRoutes(ctx));
   app.route("/", specRoutes(ctx));
   app.route("/", editorRoutes(ctx));
+  app.route("/", changesRoutes(ctx));
   app.route("/", eventRoutes(ctx));
   app.route("/", hookRoutes(ctx));
   app.route("/", syncRoutes(ctx));

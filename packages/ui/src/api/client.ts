@@ -1,7 +1,12 @@
 import type {
+  ChangesResponse,
+  DiffResponse,
+  EditorsResponse,
   Event,
   HandoffTaskRequest,
   HandoffTaskResponse,
+  OpenedTaskResponse,
+  OpenTaskQuery,
   ProfilesResponse,
   RecommendRequest,
   RecommendResponse,
@@ -46,6 +51,14 @@ export type WorkspaceClient = {
   /** Both windows in one body; the daemon scans the transcripts before it answers (ADR 021). */
   usage(): Promise<UsageResponse>;
   taskUsage(id: string): Promise<TaskUsageResponse>;
+  /** What the task's branch changed against its base, with the counts the panel's header shows. */
+  changes(id: string): Promise<ChangesResponse>;
+  /** One file's unified patch, by the path `changes` listed for it. */
+  diff(id: string, path: string): Promise<DiffResponse>;
+  /** The editors on this machine and the configured one, for the Open in editor control. */
+  editors(): Promise<EditorsResponse>;
+  /** The daemon spawns the editor itself: the page has no terminal to run one in (ADR 036 Q4). */
+  openTask(id: string, body: OpenTaskQuery): Promise<OpenedTaskResponse>;
   /** Ends when `signal` aborts; resumes from the last id seen while it does not. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -114,6 +127,15 @@ export function createClient(opts: {
       json<SpecResponse>("POST", `/repos/${encodeURIComponent(repoId)}/spec`, body),
     usage: () => json<UsageResponse>("GET", "/usage"),
     taskUsage: (id) => json<TaskUsageResponse>("GET", `/tasks/${encodeURIComponent(id)}/usage`),
+    changes: (id) => json<ChangesResponse>("GET", `/tasks/${encodeURIComponent(id)}/changes`),
+    diff: (id, path) =>
+      json<DiffResponse>(
+        "GET",
+        `/tasks/${encodeURIComponent(id)}/diff?path=${encodeURIComponent(path)}`,
+      ),
+    editors: () => json<EditorsResponse>("GET", "/editors"),
+    openTask: (id, body) =>
+      json<OpenedTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/open`, body),
     events: (after, signal) =>
       streamEvents({ fetch: doFetch, baseUrl: base, token: opts.token, after, signal }),
   };

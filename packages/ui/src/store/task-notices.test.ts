@@ -18,6 +18,13 @@ describe("noticeLine", () => {
     expect(line).toBe("Resume failed for Port the parser: the worktree is gone");
   });
 
+  it("names the panel's own actions the way their buttons do", () => {
+    const task = { title: "Add invite links" };
+    expect(noticeLine(notice({ action: "open" }), task)).toContain("Open in editor failed");
+    expect(noticeLine(notice({ action: "pr" }), task)).toContain("Create PR failed");
+    expect(noticeLine(notice({ action: "update" }), task)).toContain("Bring up to date failed");
+  });
+
   it("says Hand off the way the button does", () => {
     expect(noticeLine(notice({ action: "handoff" }), { title: "Cache rows" })).toContain(
       "Hand off failed for Cache rows",

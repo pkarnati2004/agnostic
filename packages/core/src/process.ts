@@ -39,7 +39,7 @@ export type RunResult = {
   durationMs: number;
 };
 
-const STDERR_TAIL_LINES = 20;
+const OUTPUT_TAIL_LINES = 20;
 
 let processLog: ((entry: ProcessLogEntry) => void) | null = null;
 
@@ -230,6 +230,9 @@ function toProcessError(command: string, args: string[], cause: unknown): Proces
     args,
     exitCode,
     stderr,
+    // Whole, not tailed: stdout never enters the message, and `git diff --no-index` answers a
+    // patch of any length here with exit 1.
+    stdout: text(cause.stdout),
     cause,
   });
 }
@@ -263,6 +266,6 @@ function describe(command: string, args: string[]): string {
   return args.length > 0 ? `${command} ${args.join(" ")}` : command;
 }
 
-function tail(stderr: string): string {
-  return stderr.split("\n").slice(-STDERR_TAIL_LINES).join("\n").trim();
+function tail(output: string): string {
+  return output.split("\n").slice(-OUTPUT_TAIL_LINES).join("\n").trim();
 }
