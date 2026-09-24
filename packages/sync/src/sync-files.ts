@@ -1,5 +1,5 @@
-import { chmod, rename, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { chmod, mkdir, rename, stat, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { readAgText, readTextFile, type SyncWrite } from "@agnostic/core";
 import { SyncError } from "./error.js";
 import type { SyncInputs } from "./sync-plan.js";
@@ -39,12 +39,15 @@ function conflictError(conflicts: SyncWrite[]): SyncError {
   const verb = conflicts.length === 1 ? "was" : "were";
   return new SyncError(`${files} ${verb} written by hand and agn will not overwrite that`, {
     code: "sync-conflict",
-    hint: "Merge what you want to keep into .ag/instructions.md, then run `agn sync --force`.",
+    hint: "Merge what you want to keep into .ag/instructions.md or the workflow file, then run `agn sync --force`.",
   });
 }
 
 /** Temp file and rename, so an agent reading the file never sees half of it. */
 async function writeTarget(file: string, content: string): Promise<void> {
+  // `.claude/agents/` and `.claude/commands/` are agn's to create; the instruction targets sit at
+  // the repo root, which is always there.
+  await mkdir(dirname(file), { recursive: true });
   const mode = await stat(file).then(
     (stats) => stats.mode,
     () => null,

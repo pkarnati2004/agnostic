@@ -89,6 +89,20 @@ describe("readWorkflow", () => {
       file: expect.stringContaining("broken.yaml"),
     });
   });
+
+  it("refuses a file whose top level is a list, not a mapping", async () => {
+    await expect(readWorkflow(`${FIXTURES}/invalid`, "list-root")).rejects.toMatchObject({
+      code: "ag-file-invalid",
+      file: expect.stringContaining("list-root.yaml"),
+    });
+  });
+
+  it("refuses a file whose top level is a bare scalar", async () => {
+    await expect(readWorkflow(`${FIXTURES}/invalid`, "scalar-root")).rejects.toMatchObject({
+      code: "ag-file-invalid",
+      file: expect.stringContaining("scalar-root.yaml"),
+    });
+  });
 });
 
 describe("readWorkflows", () => {
@@ -101,9 +115,19 @@ describe("readWorkflows", () => {
     expect(await readWorkflows(`${FIXTURES}/none`)).toEqual([]);
   });
 
+  it("returns nothing when the folder is there but empty", async () => {
+    expect(await readWorkflows(`${FIXTURES}/empty-folder`)).toEqual([]);
+  });
+
   it("throws on the first file it cannot use", async () => {
     await expect(readWorkflows(`${FIXTURES}/malformed`)).rejects.toMatchObject({
       code: "ag-file-malformed",
+    });
+  });
+
+  it("throws the raw fs error when a name ending in .yaml is a directory, not a file", async () => {
+    await expect(readWorkflows(`${FIXTURES}/dir-entry`)).rejects.toMatchObject({
+      code: "EISDIR",
     });
   });
 });
@@ -131,5 +155,47 @@ describe("WorkflowSchema", () => {
       roles: [{ name: "dev", class: "implement", instructions: "" }],
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it("refuses an empty description", () => {
+    const parsed = WorkflowSchema.safeParse({
+      name: "one",
+      description: "",
+      roles: [{ name: "dev", class: "implement" }],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("refuses roles given as a mapping instead of a list", () => {
+    const parsed = WorkflowSchema.safeParse({
+      name: "one",
+      roles: { dev: { name: "dev", class: "implement" } },
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("accepts a 64-character role name and refuses a 65th character", () => {
+    const sixtyFour = `a${"b".repeat(63)}`;
+    expect(sixtyFour).toHaveLength(64);
+    const legal = WorkflowSchema.safeParse({
+      name: "one",
+      roles: [{ name: sixtyFour, class: "implement" }],
+    });
+    expect(legal.success).toBe(true);
+
+    const sixtyFive = `${sixtyFour}c`;
+    const illegal = WorkflowSchema.safeParse({
+      name: "one",
+      roles: [{ name: sixtyFive, class: "implement" }],
+    });
+    expect(illegal.success).toBe(false);
+  });
+
+  it("accepts a name that ends in a dash: the regex has no rule against it", () => {
+    const parsed = WorkflowSchema.safeParse({
+      name: "audit-",
+      roles: [{ name: "dev", class: "implement" }],
+    });
+    expect(parsed.success).toBe(true);
   });
 });

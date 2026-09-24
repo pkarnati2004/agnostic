@@ -95,6 +95,10 @@ const statusByCode: Record<string, number> = {
   "path-inside-worktrees": 400,
   "ag-file-malformed": 400,
   "ag-file-invalid": 400,
+  // Two workflows name the same role, and Claude Code has one agent file per name.
+  "workflow-role-collision": 400,
+  // One workflow, one file: the `name:` in the file and the file's own name have to agree.
+  "workflow-name-mismatch": 400,
   // Nothing to generate from, or nothing to seed from: `agn init` is the next step either way.
   "instructions-missing": 400,
   "init-source-missing": 400,

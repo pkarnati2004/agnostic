@@ -5,6 +5,8 @@ import { GENERATED_HEADER } from "@agnostic/sync";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
 
+// The workflow-compiling half of this route lives in sync-workflows.test.ts, which shares this
+// file's shape (post, repoWithClaudeMd, read, sync) but not its module, to stay under the file cap.
 const INSTRUCTIONS = "# app\n\nRun `pnpm test` before you finish.\n";
 
 let daemon: TestDaemon;
