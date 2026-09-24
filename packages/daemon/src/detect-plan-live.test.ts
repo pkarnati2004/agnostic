@@ -57,6 +57,7 @@ describe("the daemon reading a plan off disk", () => {
       source: "detected",
       known: true,
       confirmed: true,
+      overridden: null,
     });
     expect(codexProfiles((await doctor()).profiles).map((row) => [row.model, row.billing])).toEqual(
       [
@@ -88,11 +89,37 @@ describe("the daemon reading a plan off disk", () => {
       source: "detected",
       known: false,
       confirmed: true,
+      overridden: null,
     });
     for (const profile of codexProfiles(after.profiles)) {
       expect(profile.billing).toBe("unknown");
       expect(profile.evidence).toBe("unknown-plan");
     }
+  });
+
+  it("keeps the detected plan the catalog knows over the one config.yaml names", async () => {
+    await writeFile(daemon.paths.config, "plans:\n  chatgpt: pro\n");
+    const report = (await doctor()).harnesses.find((row) => row.harness === "codex");
+    expect(report?.plan).toMatchObject({ value: "plus", source: "detected", overridden: null });
+  });
+
+  it("takes config.yaml's plan when the detected one is not in the catalog", async () => {
+    await login("business");
+    await writeFile(daemon.paths.config, "plans:\n  chatgpt: plus\n");
+    const after = await doctor();
+    expect(after.harnesses.find((row) => row.harness === "codex")?.plan).toEqual({
+      value: "plus",
+      source: "config",
+      known: true,
+      confirmed: true,
+      overridden: "business",
+    });
+    // Billed on the plan the user named, not left unknown because the harness renamed theirs.
+    expect(codexProfiles(after.profiles).map((row) => [row.model, row.billing])).toEqual([
+      [null, "subscription"],
+      ["gpt-6-astra", "credits"],
+      ["gpt-6-mini", "subscription"],
+    ]);
   });
 
   it("looks again on its own when the auth file changes under it", async () => {
@@ -114,6 +141,7 @@ describe("the daemon reading a plan off disk", () => {
       source: "config",
       known: true,
       confirmed: true,
+      overridden: null,
     });
   });
 
@@ -127,6 +155,7 @@ describe("the daemon reading a plan off disk", () => {
       source: "config",
       known: true,
       confirmed: false,
+      overridden: null,
     });
   });
 });

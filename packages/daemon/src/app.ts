@@ -1,10 +1,4 @@
-import {
-  type Catalog,
-  type CatalogSource,
-  entitlement,
-  knowsPlan,
-  type PlanRow,
-} from "@agnostic/catalog";
+import { type Catalog, type CatalogSource, entitlement, type PlanRow } from "@agnostic/catalog";
 import type {
   AgnosticPaths,
   Editor,
@@ -25,6 +19,7 @@ import {
   harnessDefinition,
   harnessSupport,
   planVendor,
+  resolvePlan,
 } from "@agnostic/registry";
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -237,23 +232,21 @@ function toReport(status: HarnessStatus, plans: Plans, catalog: Catalog): Harnes
   };
 }
 
-/** A detected plan wins over config.yaml, and doctor says which of the two it is showing. */
+/** A detected plan the catalog knows wins over config.yaml, and doctor says which one it shows. */
 function planReport(status: HarnessStatus, plans: Plans, catalog: Catalog): HarnessReport["plan"] {
   const vendor = planVendor(status.harness);
   if (vendor === null) {
     return null;
   }
-  const value = status.plan ?? plans[vendor] ?? null;
-  if (value === null) {
+  const choice = resolvePlan(status.plan, plans[vendor], vendor, catalog.plans);
+  if (choice === null) {
     return null;
   }
   return {
-    value,
-    source: status.plan === null ? "config" : "detected",
-    known: knowsPlan(catalog, vendor, value),
+    ...choice,
     // The harness's own files are the confirmation; a plan only config.yaml claims is confirmed
     // by the models the harness offers, and contradicted when one of them needs another plan.
-    confirmed: status.plan !== null || !contradicts(status, value, catalog),
+    confirmed: choice.source === "detected" || !contradicts(status, choice.value, catalog),
   };
 }
 

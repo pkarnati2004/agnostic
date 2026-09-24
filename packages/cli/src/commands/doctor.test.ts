@@ -17,7 +17,7 @@ function report(over: Partial<HarnessReport>): HarnessReport {
     models: ["sonnet-4.5"],
     modelSource: "probe",
     planVendor: "claude",
-    plan: { value: "max20", source: "detected", known: true, confirmed: true },
+    plan: { value: "max20", source: "detected", known: true, confirmed: true, overridden: null },
     ...over,
   };
 }

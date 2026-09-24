@@ -48,7 +48,7 @@ function fixtureReport(models: string[], harness: HarnessId): HarnessReport {
     planVendor: harness === "claude-code" ? "claude" : null,
     plan:
       harness === "claude-code"
-        ? { value: "max20", source: "detected", known: true, confirmed: true }
+        ? { value: "max20", source: "detected", known: true, confirmed: true, overridden: null }
         : null,
   };
 }

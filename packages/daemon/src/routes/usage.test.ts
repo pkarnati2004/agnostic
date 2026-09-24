@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { newId, type Task, type TaskUsageResponse, type UsageResponse } from "@agnostic/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
 import { writeClaudeTranscript, writeCodexRollout } from "../test-transcripts.js";
 
@@ -27,6 +27,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.useRealTimers();
   await daemon.close();
   await rm(home, { recursive: true, force: true });
 });
@@ -59,6 +60,11 @@ function seedTask(profileId = "claude-code:default:native", sessionId = "s-aaaa"
   });
 }
 
+/** A second back, so a fixture turn cannot share a millisecond with the request that reads it. */
+function aMomentAgo(): string {
+  return new Date(Date.now() - 1_000).toISOString();
+}
+
 async function usage(path = "/usage"): Promise<UsageResponse> {
   const response = await daemon.request(path);
   expect(response.status).toBe(200);
@@ -68,8 +74,10 @@ async function usage(path = "/usage"): Promise<UsageResponse> {
 describe("GET /usage", () => {
   it("answers with both windows and one row per harness", async () => {
     seedTask();
-    await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE }]);
-    await writeCodexRollout(home, [{ session: "t-1111", cwd: "/Users/me/other" }]);
+    await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE, ts: aMomentAgo() }]);
+    await writeCodexRollout(home, [
+      { session: "t-1111", cwd: "/Users/me/other", ts: aMomentAgo() },
+    ]);
 
     const body = await usage();
 
@@ -97,7 +105,7 @@ describe("GET /usage", () => {
 
   it("records each turn once, however often it is asked", async () => {
     seedTask();
-    await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE }]);
+    await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE, ts: aMomentAgo() }]);
 
     const first = await usage();
     const second = await usage();
@@ -107,6 +115,25 @@ describe("GET /usage", () => {
       .after(0, 1_000)
       .filter((event) => event.kind === "usage.recorded");
     expect(recorded).toHaveLength(1);
+  });
+
+  it("counts a turn stamped in the millisecond the request arrived", async () => {
+    seedTask();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const arrived = Date.now();
+    await writeClaudeTranscript(home, [
+      { session: "s-aaaa", cwd: WORKTREE, ts: new Date(arrived).toISOString() },
+    ]);
+    // The clock moves on while the scan reads the transcripts, as it does on a real machine.
+    const record = daemon.ledger.usage.record;
+    daemon.ledger.usage.record = (taskId, rows) => {
+      vi.setSystemTime(arrived + 1);
+      return record(taskId, rows);
+    };
+
+    const body = await usage();
+
+    expect(body.day.plans[0]?.usage).toMatchObject({ tokens: 1_500 });
   });
 
   it("answers with no rows when nothing has been spent", async () => {
@@ -122,7 +149,7 @@ describe("GET /usage", () => {
   it("still counts tokens from a task whose repo is closed", async () => {
     seedTask();
     daemon.ledger.repos.update(repoId, { status: "archived" });
-    await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE }]);
+    await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE, ts: aMomentAgo() }]);
 
     const body = await usage();
 
@@ -139,8 +166,8 @@ describe("GET /tasks/:id/usage", () => {
   it("answers with the task, its tokens and how they are billed", async () => {
     const task = seedTask();
     await writeClaudeTranscript(home, [
-      { session: "s-aaaa", cwd: WORKTREE, message: "a" },
-      { session: "s-other", cwd: "/Users/me/elsewhere", message: "b" },
+      { session: "s-aaaa", cwd: WORKTREE, message: "a", ts: aMomentAgo() },
+      { session: "s-other", cwd: "/Users/me/elsewhere", message: "b", ts: aMomentAgo() },
     ]);
 
     const response = await daemon.request(`/tasks/${task.id}/usage`);
@@ -160,7 +187,7 @@ describe("GET /tasks/:id/usage", () => {
   it("prices a task that runs on a key", async () => {
     const task = seedTask("claude-code:claude-fable-5-1:openrouter");
     await writeClaudeTranscript(home, [
-      { session: "s-aaaa", cwd: WORKTREE, input: 1_000_000, output: 0 },
+      { session: "s-aaaa", cwd: WORKTREE, input: 1_000_000, output: 0, ts: aMomentAgo() },
     ]);
 
     const response = await daemon.request(`/tasks/${task.id}/usage`);

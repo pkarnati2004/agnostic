@@ -95,7 +95,7 @@ agn() {
 FREE_PORT="$("$NODE" -e "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>process.stdout.write(String(p)))})")"
 printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
 
-! agn daemon status
+if agn daemon status; then echo "smoke: daemon status answered with no daemon running" >&2; exit 1; fi
 agn repos | grep -q "^no repos yet"
 agn daemon status | grep -q "^running"
 
@@ -131,7 +131,7 @@ process.stdout.write(repo.id);
 ")"
 mv "$WORK/plain" "$WORK/plain-away"
 agn repos | grep -q "plain.*(missing)"
-! agn run "x" --repo "$PLAIN_ID" > "$WORK/run-missing.txt" 2>&1
+if agn run "x" --repo "$PLAIN_ID" > "$WORK/run-missing.txt" 2>&1; then echo "smoke: run accepted a repo whose folder is gone" >&2; exit 1; fi
 grep -q "agn repo remove" "$WORK/run-missing.txt"
 mkdir -p "$AGNOSTIC_HOME/worktrees/$PLAIN_ID/t1"
 agn repo remove "$PLAIN_ID" | grep -q "^removed plain $PLAIN_ID, worktrees of 1 task deleted"
@@ -152,7 +152,7 @@ test "$(agn profiles | wc -l)" -eq 2
 
 # No harness is installed here, so the table has no rows, and there is no plan to ask about.
 agn doctor | head -1 | grep -q "^not installed:"
-! agn doctor | grep -q "plan unknown for"
+if agn doctor | grep -q "plan unknown for"; then echo "smoke: doctor asked for a plan with no harness installed" >&2; exit 1; fi
 # The plan the user names is written to config.yaml, which keeps the port line it already had.
 echo "port: 7439" > "$AGNOSTIC_HOME/config.yaml"
 agn doctor --plan claude=max20 > /dev/null
@@ -167,7 +167,7 @@ if (!planOptions.some((option) => option.vendor === 'claude')) {
 }
 "
 # A plan agn does not bill for is a usage error; a plan the catalog does not know is recorded.
-! agn doctor --plan nope=pro 2> "$WORK/plan-error.txt"
+if agn doctor --plan nope=pro 2> "$WORK/plan-error.txt"; then echo "smoke: doctor took a plan for a vendor agn does not bill" >&2; exit 1; fi
 grep -q "claude, chatgpt, google, xai, moonshot, cursor" "$WORK/plan-error.txt"
 agn doctor --plan chatgpt=go > /dev/null
 grep -q "chatgpt: go" "$AGNOSTIC_HOME/config.yaml"
@@ -189,9 +189,9 @@ for (const vendor of ['google', 'xai', 'moonshot', 'cursor']) {
 # where the author's own daemon lives.
 printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
 
-! agn add "$WORK/nope" 2> "$WORK/add-error.txt"
+if agn add "$WORK/nope" 2> "$WORK/add-error.txt"; then echo "smoke: add accepted a path that does not exist" >&2; exit 1; fi
 grep -q "does not exist" "$WORK/add-error.txt"
-! agn add "$WORK/nope" --json 2> "$WORK/add-error.json"
+if agn add "$WORK/nope" --json 2> "$WORK/add-error.json"; then echo "smoke: add --json accepted a path that does not exist" >&2; exit 1; fi
 grep -q '"code":"path-not-found"' "$WORK/add-error.json"
 
 echo "smoke: agn init and agn sync on a repo that already has a CLAUDE.md"
@@ -215,7 +215,7 @@ agn sync --repo "$WORK/gitrepo" > /dev/null
 cmp "$WORK/gitrepo/AGENTS.md" "$WORK/agents-after-second-sync.md"
 
 agn daemon stop | grep -q "^agnd stopped"
-! agn daemon status
+if agn daemon status; then echo "smoke: daemon status answered after the daemon stopped" >&2; exit 1; fi
 
 echo "smoke: agn run, status, stop and clean against the fake agent under tmux"
 # A private tmux tmpdir keeps the smoke off the author's own `agn` socket, and it has to be short:
@@ -331,9 +331,9 @@ TASK="$(awk 'NR == 1 { print $2 }' "$WORK/run.txt")"
 agx status | grep -q "running"
 # A repo with a live task is not closable: the task would be hidden while it runs. Removing it is
 # refused for the same reason, before anything is deleted.
-! agx repo close "$RUNREPO_ID" > "$WORK/close-busy.txt" 2>&1
+if agx repo close "$RUNREPO_ID" > "$WORK/close-busy.txt" 2>&1; then echo "smoke: repo close accepted a repo with a running task" >&2; exit 1; fi
 grep -q "agn stop" "$WORK/close-busy.txt"
-! agx repo remove "$RUNREPO_ID" > "$WORK/remove-busy.txt" 2>&1
+if agx repo remove "$RUNREPO_ID" > "$WORK/remove-busy.txt" 2>&1; then echo "smoke: repo remove accepted a repo with a running task" >&2; exit 1; fi
 grep -q "agn stop" "$WORK/remove-busy.txt"
 agx status "$TASK" | grep -q "^tmux: *agn-$TASK"
 
@@ -514,7 +514,7 @@ agx stop "$CHILD" | grep -q "^stopped $CHILD"
 
 # A worktree holding work no commit is keeping is kept until the person asking says --force.
 touch "$WORKTREE/scratch.txt"
-! agx clean "$TASK" 2> "$WORK/clean-error.txt"
+if agx clean "$TASK" 2> "$WORK/clean-error.txt"; then echo "smoke: clean deleted a worktree holding uncommitted work" >&2; exit 1; fi
 grep -q "uncommitted" "$WORK/clean-error.txt"
 agx clean "$TASK" --force | grep -q "^cleaned $TASK"
 # With the worktree gone the changes are read from the main checkout. The branch was merged into
@@ -556,7 +556,7 @@ agx stop "$TASK" | grep -q "^stopped $TASK"
 agx clean "$TASK" --force | grep -q "^cleaned $TASK"
 # With the branch gone too there is nothing left to rebuild from, and agn says so.
 git -C "$WORK/runrepo" branch -D "$BRANCH" > /dev/null
-! agx resume "$TASK" 2> "$WORK/resume-error.txt"
+if agx resume "$TASK" 2> "$WORK/resume-error.txt"; then echo "smoke: resume rebuilt a task whose branch is gone" >&2; exit 1; fi
 grep -q "no longer exists" "$WORK/resume-error.txt"
 
 agx clean | grep -q "^cleaned $CHILD"
@@ -564,7 +564,7 @@ agx clean | grep -q "^cleaned $CHILD"
 agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"
 grep -q "^in place: " "$WORK/folder.txt"
 FOLDER_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/folder.txt")"
-! agx run "second folder task" --profile claude-code --repo "$WORK/runfolder" 2> "$WORK/folder-error.txt"
+if agx run "second folder task" --profile claude-code --repo "$WORK/runfolder" 2> "$WORK/folder-error.txt"; then echo "smoke: a second task started in a folder workspace" >&2; exit 1; fi
 grep -q "folder workspaces run one task at a time" "$WORK/folder-error.txt"
 agx stop "$FOLDER_TASK" | grep -q "^stopped"
 # A folder task has no branch of agn's, so it has no lines and no verdict to report.

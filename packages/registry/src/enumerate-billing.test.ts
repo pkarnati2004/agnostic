@@ -106,6 +106,13 @@ describe("enumerateProfiles billing", () => {
     ]);
   });
 
+  it("bills the configured plan when the detected one is not in the catalog", () => {
+    expect(billing(loggedIn("max50", ["fable"]), { claude: "max20" })).toEqual([
+      [null, "subscription", "binary"],
+      ["fable", "subscription", "binary"],
+    ]);
+  });
+
   it("leaves a harness that is not billed by plan alone", () => {
     const pi: HarnessStatus = {
       ...loggedIn(null, ["a"]),

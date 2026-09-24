@@ -111,7 +111,7 @@ describe("createDetectionCache", () => {
       return Promise.resolve(detection);
     }, ledger);
     await cache.refresh();
-    plan = { value: "max20", source: "detected", known: true, confirmed: true };
+    plan = { value: "max20", source: "detected", known: true, confirmed: true, overridden: null };
     await cache.refresh();
     const [event] = ledger.events.after(0).filter((row) => row.kind === "plan.changed");
     expect(event?.payload).toEqual({
@@ -121,7 +121,7 @@ describe("createDetectionCache", () => {
       source: "detected",
     });
     const before = ledger.events.latestId();
-    plan = { value: "max20", source: "config", known: true, confirmed: true };
+    plan = { value: "max20", source: "config", known: true, confirmed: true, overridden: null };
     await cache.refresh();
     expect(ledger.events.after(before)).toEqual([]);
   });
