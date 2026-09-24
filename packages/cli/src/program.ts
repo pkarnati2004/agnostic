@@ -12,6 +12,7 @@ import { doctorCommand } from "./commands/doctor.js";
 import { handoffCommand } from "./commands/handoff.js";
 import { hooksCommand } from "./commands/hooks.js";
 import { initCommand } from "./commands/init.js";
+import { mcpCommand } from "./commands/mcp.js";
 import { openCommand } from "./commands/open.js";
 import { outcomesCommand } from "./commands/outcomes.js";
 import { prCommand } from "./commands/pr.js";
@@ -76,6 +77,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     prCommand(ctx),
     updateCommand(ctx),
     catalogCommand(ctx),
+    mcpCommand(ctx, version),
     uiCommand(ctx),
   ]) {
     program.addCommand(command);
