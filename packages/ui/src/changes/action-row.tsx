@@ -1,11 +1,24 @@
-import type { EditorId, EditorsResponse } from "@agnostic/core";
+import type {
+  ChangesResponse,
+  CreatePrRequest,
+  CreatePrResponse,
+  EditorId,
+  EditorsResponse,
+  TaskListRow,
+} from "@agnostic/core";
 import type { ReactNode } from "react";
 import { Button } from "../components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
-import type { TaskAction } from "../store/task-notices";
+import type { TaskAction, TaskNotice } from "../store/task-notices";
+import { CreatePrDialog } from "./create-pr-dialog";
 import { OpenInEditor } from "./open-in-editor";
+import { updateTooltip } from "./update-tooltip";
 
 type ActionRowProps = {
+  task: TaskListRow;
+  /** Null when the read failed: only Refresh is drawn, so there is nothing to act on. */
+  changes: ChangesResponse | null;
+  notice: TaskNotice | null;
   editors: EditorsResponse | null;
   /** Which action the panel is waiting on, so its controls do not take a second click. */
   busy: TaskAction | null;
@@ -15,15 +28,19 @@ type ActionRowProps = {
   refreshOnly: boolean;
   loading: boolean;
   onOpen: (editor: EditorId | null) => void;
+  onCreatePr: (body: CreatePrRequest) => Promise<CreatePrResponse | null>;
+  onUpdate: () => void;
   onRefresh: () => void;
 };
 
-const NOT_YET = "Not available yet.";
 const RESUME_FIRST = "Resume first: the worktree was cleaned";
+const NO_ORIGIN = "This repo has no origin remote.";
+const NOTHING_YET = "Nothing to open a pull request for yet.";
+const NO_BRANCH = "This task works in the checkout itself, so it has no branch to update.";
 
-/** Everything the panel can do to a task. Create PR and Bring up to date arrive in the next update. */
+/** Everything the panel can do to a task. */
 export function ActionRow(props: ActionRowProps) {
-  const { cleaned, busy, refreshOnly } = props;
+  const { cleaned, busy, refreshOnly, changes } = props;
   return (
     <div className="flex flex-wrap items-center gap-2 border-border border-b px-4 py-2">
       {!refreshOnly && (
@@ -35,16 +52,29 @@ export function ActionRow(props: ActionRowProps) {
               onOpen={props.onOpen}
             />
           </Held>
-          <Held tip={NOT_YET}>
-            <Button variant="outline" size="sm" disabled>
-              Create PR
-            </Button>
-          </Held>
-          <Held tip={cleaned ? RESUME_FIRST : NOT_YET}>
-            <Button variant="outline" size="sm" disabled>
-              Bring up to date
-            </Button>
-          </Held>
+          {changes !== null && (
+            <Held tip={prBlocker(changes)}>
+              <CreatePrDialog
+                task={props.task}
+                changes={changes}
+                notice={props.notice}
+                disabled={prBlocker(changes) !== null || busy !== null}
+                onSubmit={props.onCreatePr}
+              />
+            </Held>
+          )}
+          {changes !== null && (
+            <Held tip={updateTip(props.task, changes, cleaned)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={updateBlocked(props.task, cleaned) || busy !== null}
+                onClick={props.onUpdate}
+              >
+                Bring up to date
+              </Button>
+            </Held>
+          )}
         </>
       )}
       <Button
@@ -58,6 +88,31 @@ export function ActionRow(props: ActionRowProps) {
       </Button>
     </div>
   );
+}
+
+/** What the agent will be asked to do, or why nobody can ask it yet (ADR 036 Q6). */
+function updateTip(task: TaskListRow, changes: ChangesResponse, cleaned: boolean): string {
+  if (cleaned) {
+    return RESUME_FIRST;
+  }
+  return task.branch === null
+    ? NO_BRANCH
+    : updateTooltip(task.branch, changes.base.ref, changes.pushed);
+}
+
+function updateBlocked(task: TaskListRow, cleaned: boolean): boolean {
+  return cleaned || task.branch === null;
+}
+
+/**
+ * Why Create PR cannot be clicked, or null. A cleaned worktree is not a reason: the branch is
+ * still there, and the push reads it from the main checkout.
+ */
+function prBlocker(changes: ChangesResponse): string | null {
+  if (changes.remote === null) {
+    return NO_ORIGIN;
+  }
+  return changes.files.length === 0 && changes.ahead === 0 ? NOTHING_YET : null;
 }
 
 /** A disabled control swallows its own hover, so the tooltip listens on a wrapper around it. */

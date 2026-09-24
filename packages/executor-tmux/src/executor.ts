@@ -15,6 +15,7 @@ import { isExitFileFor } from "./exit-file.js";
 import { createExitWatch } from "./exit-watch.js";
 import { launchSession } from "./launch.js";
 import { processProbe, readProcessTable } from "./process-table.js";
+import { sendText } from "./send.js";
 import { createEventFanout } from "./session-events.js";
 import { stopSession } from "./stop.js";
 import { openTerminal } from "./terminal.js";
@@ -81,6 +82,7 @@ export async function createTmuxExecutor(opts: TmuxExecutorOptions): Promise<Exe
     attach(handle): AttachInfo {
       return { kind: "tmux", argv: attachArgv(handle, configFile) };
     },
+    send: (handle, text) => sendText(clientFor(handle), handle, text),
     async terminal(handle, size: TerminalSize): Promise<TerminalStream> {
       if (!(await hasSession(clientFor(handle), handle.tmuxSession))) {
         throw new ExecutorError(`task ${handle.taskId} has no running session`, {

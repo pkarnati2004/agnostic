@@ -71,6 +71,18 @@ describe("createClient", () => {
     expect(calls.every((call) => call.token === "Bearer tok")).toBe(true);
   });
 
+  it("posts the title to the task's pr route", async () => {
+    const { client, calls } = stubClient(() => ok({}));
+    await client.createPr("t1", { title: "Ship it" });
+    await client.createPr("t1", {});
+    expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
+      "POST /tasks/t1/pr",
+      "POST /tasks/t1/pr",
+    ]);
+    expect(calls[0]?.body).toBe(JSON.stringify({ title: "Ship it" }));
+    expect(calls[1]?.body).toBe("{}");
+  });
+
   it("maps a refused open to the daemon's own message and hint", async () => {
     const { client } = stubClient(() =>
       Response.json(

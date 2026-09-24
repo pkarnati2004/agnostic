@@ -123,12 +123,57 @@ Some tasks have no file list to show:
 - A task agn adopted has no base commit of its own, so its header reads
   "adopted: changes against `main`".
 - A task whose worktree was cleaned reads "worktree cleaned; branch `<branch>` kept" and shows what
-  was committed. Open in editor waits until Resume rebuilds the worktree.
+  was committed. Open in editor and Bring up to date wait until Resume rebuilds the worktree.
 - A branch with nothing on it yet reads "No changes against `<base>` yet."
 - A binary file reads "binary file, no diff": git has no patch for it.
 
-**Create PR** and **Bring up to date** are drawn beside Open in editor and do nothing yet; the next
-update wires them.
+## Create PR
+
+**Create PR** opens a dialog that says what agn is about to do: the remote it will push to, the
+branch, the base the pull request will target, and the title, which is the only field you can
+change. If the worktree holds uncommitted changes the dialog says how many stay behind - only
+commits are pushed - and if the branch is behind its base it says by how many commits.
+
+"Push and create PR" pushes the branch to origin once. agn never force-pushes, never pushes to
+another remote, and never fetches. It uses git's own credentials, so the daemon has to be able to
+reach your ssh agent or credential helper. If git refuses the push, the dialog says what git said;
+when the remote is ahead, bring the branch up to date first and try again.
+
+With the `gh` CLI installed and logged in, agn creates the pull request and the tab it opened goes
+to it. A branch that already has a pull request open gets its new commits under that one, not a
+second. Without `gh`, the tab goes to GitHub's compare page with the title filled in. Either way
+the description - the task note's Spec, Acceptance and latest Handoff sections - is written to your
+clipboard, and the dialog keeps it on screen with a Copy description button if your browser refused.
+
+A task started with `agn run --base <task>` opens its pull request against that task's branch, so
+the diff holds only its own work. GitHub retargets it at the base branch when the parent merges.
+
+`agn pr [<task>]` does the same from a terminal, with `--title <t>` and `--no-open`.
+
+## Bring up to date
+
+**Bring up to date** asks the agent to bring its branch level with the base it is read against.
+agn runs no git command for it: it sends the agent one message, and the agent fetches, rebases or
+merges, resolves the conflicts and runs the tests in its own session. The tooltip says what the
+message will ask for before you click.
+
+The message is one line: fetch the base, bring the branch up to date with it, resolve conflicts,
+run the repo's `test_command` and keep it green, and do not push. Which way depends on where the
+branch has been. A branch nobody has pushed is rebased onto the base. A branch that is on origin is
+merged into instead, because rewriting a published branch would break whoever has it.
+
+If the agent's session is still running, the message is typed into it, as if you had typed it in
+the terminal yourself. If the session has ended, agn resumes the task with the message as the
+first turn: the agent picks its conversation up where it can, and starts fresh with the task
+context and the message where it cannot. The panel says which happened.
+
+Two tasks cannot be asked this way. A task whose worktree was cleaned needs Resume first, which
+rebuilds the worktree. A session agn adopted that is not running under tmux has no pane agn can
+type into, so agn hands you the message to paste into that terminal yourself.
+
+`agn update [<task>]` does the same from a terminal. It prints where the message went, which mode
+the branch got and why, and the `agn attach` line for watching the work; it never takes the
+terminal over.
 
 ## History
 

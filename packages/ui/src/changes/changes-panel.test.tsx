@@ -24,11 +24,18 @@ function panelClient(over: Partial<WorkspaceClient> = {}): WorkspaceClient {
   });
 }
 
+/** The panel's callbacks: every test but the ones that watch a click answers the same way. */
+const HANDLERS = {
+  onOpen: () => Promise.resolve(),
+  onCreatePr: () => Promise.resolve(null),
+  onUpdate: () => Promise.resolve(null),
+};
+
 /** The list and the first file's patch both arrive before the panel has drawn anything. */
 async function panel(client: WorkspaceClient, task = taskRow()) {
   const view = render(
     <TooltipProvider>
-      <ChangesPanel task={task} client={client} notice={null} onOpen={() => Promise.resolve()} />
+      <ChangesPanel task={task} client={client} notice={null} {...HANDLERS} />
     </TooltipProvider>,
   );
   await act(async () => undefined);
@@ -137,12 +144,7 @@ describe("ChangesPanel", () => {
     const client = panelClient({ changes: () => new Promise<ChangesResponse>(() => undefined) });
     const { container, unmount } = render(
       <TooltipProvider>
-        <ChangesPanel
-          task={taskRow()}
-          client={client}
-          notice={null}
-          onOpen={() => Promise.resolve()}
-        />
+        <ChangesPanel task={taskRow()} client={client} notice={null} {...HANDLERS} />
       </TooltipProvider>,
     );
     await act(async () => undefined);
@@ -246,12 +248,7 @@ describe("ChangesPanel", () => {
     const client = panelClient();
     const rendered = render(
       <TooltipProvider>
-        <ChangesPanel
-          task={taskRow()}
-          client={client}
-          notice={openNotice}
-          onOpen={() => Promise.resolve()}
-        />
+        <ChangesPanel task={taskRow()} client={client} notice={openNotice} {...HANDLERS} />
       </TooltipProvider>,
     );
     await act(async () => undefined);
@@ -263,12 +260,7 @@ describe("ChangesPanel", () => {
 
     rendered.update(
       <TooltipProvider>
-        <ChangesPanel
-          task={taskRow()}
-          client={client}
-          notice={null}
-          onOpen={() => Promise.resolve()}
-        />
+        <ChangesPanel task={taskRow()} client={client} notice={null} {...HANDLERS} />
       </TooltipProvider>,
     );
     expect(rendered.container.querySelector('[role="alert"]')).toBeNull();

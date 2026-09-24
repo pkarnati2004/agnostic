@@ -6,7 +6,7 @@ import type { DaemonContext } from "./app.js";
 import { resolveTaskBase } from "./task-base.js";
 import { taskDir } from "./task-dir.js";
 import { createTestDaemon, type TestDaemon } from "./test-daemon.js";
-import { gitIn, repoWithConfig, startTask } from "./test-task-run.js";
+import { acceptTask, gitIn, repoWithConfig, startTask } from "./test-task-run.js";
 
 let daemon: TestDaemon;
 let repo: Repo;
@@ -54,20 +54,7 @@ describe("resolveTaskBase", () => {
     const first = await startTask(daemon, repo);
     await commit(first.worktreePath ?? "", "first.ts");
     const second = await startTask(daemon, repo, { base: first.id });
-    daemon.ledger.outcomes.record({
-      taskId: first.id,
-      testsBefore: null,
-      testsAfter: null,
-      accepted: true,
-      reverted: false,
-      agentLines: 1,
-      humanChangedLines: null,
-      humanEditRatio: null,
-      durationSec: 1,
-      costUsd: null,
-      tokens: 0,
-      resolvedModel: null,
-    });
+    acceptTask(daemon, first);
     expect(await base(second)).toMatchObject({ ref: "main", baseTaskId: null });
   });
 

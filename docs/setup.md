@@ -112,7 +112,11 @@ Both generated files start with a comment saying they are generated, and both ar
 
 ## GitHub (optional)
 
-agnostic never merges for you. Creating a pull request from the workspace pushes the task branch and, if the `gh` CLI is installed and logged in (`gh auth login`), opens the PR directly and shows you the link. Without `gh`, it opens GitHub's compare page in your browser with the title filled in and the description on your clipboard. `agn doctor` shows whether `gh` is available.
+agnostic never merges for you. Creating a pull request from the workspace, or `agn pr <task>`, pushes the task branch and, if the `gh` CLI is installed and logged in (`gh auth login`), opens the PR directly and shows you the link. Without `gh`, it opens GitHub's compare page in your browser with the title filled in and the description on your clipboard. `agn doctor` shows whether `gh` is available.
+
+agn pushes with git's own credentials and never force-pushes. A daemon started by launchd has no ssh agent, so start `agnd` from a shell that can already `git push` - one with your ssh agent or credential helper reachable - or the push fails with git's authentication message.
+
+A task started with `agn run --base <task>` opens its pull request against that task's branch rather than the base branch, so its diff holds only its own work. GitHub retargets it when the parent's PR merges.
 
 ## Editors for `agn open`
 

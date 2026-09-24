@@ -1,5 +1,7 @@
 import type {
   ChangesResponse,
+  CreatePrRequest,
+  CreatePrResponse,
   DiffResponse,
   EditorsResponse,
   Event,
@@ -22,6 +24,7 @@ import type {
   TaskListResponse,
   TaskResponse,
   TaskUsageResponse,
+  UpdateTaskResponse,
   UsageResponse,
 } from "@agnostic/core";
 import { apiError, isAbortError, unreachable } from "./error";
@@ -55,6 +58,10 @@ export type WorkspaceClient = {
   changes(id: string): Promise<ChangesResponse>;
   /** One file's unified patch, by the path `changes` listed for it. */
   diff(id: string, path: string): Promise<DiffResponse>;
+  /** Pushes the task's branch to origin once and opens its pull request (ADR 036 Q5). */
+  createPr(id: string, body: CreatePrRequest): Promise<CreatePrResponse>;
+  /** Asks the agent itself to bring the branch up to date with its base (ADR 036 Q6). */
+  updateTask(id: string): Promise<UpdateTaskResponse>;
   /** The editors on this machine and the configured one, for the Open in editor control. */
   editors(): Promise<EditorsResponse>;
   /** The daemon spawns the editor itself: the page has no terminal to run one in (ADR 036 Q4). */
@@ -133,6 +140,9 @@ export function createClient(opts: {
         "GET",
         `/tasks/${encodeURIComponent(id)}/diff?path=${encodeURIComponent(path)}`,
       ),
+    createPr: (id, body) =>
+      json<CreatePrResponse>("POST", `/tasks/${encodeURIComponent(id)}/pr`, body),
+    updateTask: (id) => json<UpdateTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/update`),
     editors: () => json<EditorsResponse>("GET", "/editors"),
     openTask: (id, body) =>
       json<OpenedTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/open`, body),

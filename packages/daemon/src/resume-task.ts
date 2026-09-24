@@ -10,7 +10,7 @@ import {
 import type { DaemonContext } from "./app.js";
 import { assertFolderFree } from "./folder-guard.js";
 import { ensureHooks } from "./hooks-install.js";
-import { freshLaunchCommand, resumeLaunchCommand } from "./launch-command.js";
+import { type ExtraSection, freshLaunchCommand, resumeLaunchCommand } from "./launch-command.js";
 import { assertRepoUsable } from "./repo-guard.js";
 import { resolveRepoId } from "./resolve-id.js";
 import { resolveProfile } from "./resolve-profile.js";
@@ -27,8 +27,16 @@ const TERMINAL: Task["status"][] = ["done", "failed", "stopped"];
  * harness again in the same directory with the task context composed into one prompt. A worktree
  * that was cleaned is rebuilt from its branch before any of that, so a resume after a clean takes
  * the same three ways as a resume after a stop (ADR 031).
+ *
+ * `opts.prompt` is a turn to open the session with: the native route pastes it once the harness
+ * has restored its history, and a fresh launch carries it as one more section of the context
+ * prompt. A live session takes no prompt here - the caller types into the session it was given.
  */
-export async function resumeTask(ctx: DaemonContext, task: Task): Promise<ResumeTaskResponse> {
+export async function resumeTask(
+  ctx: DaemonContext,
+  task: Task,
+  opts: { prompt?: string } = {},
+): Promise<ResumeTaskResponse> {
   const live = sessionHandle(task);
   if (live !== null && (await ctx.executor.sessionState(live)) === "running") {
     return {
@@ -59,7 +67,11 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
   await ensureHooks(ctx, profile.harness, cwd);
   const native = await nativeResume(ctx, task, profile);
   const branch = prepared?.branch ?? task.branch;
-  const command = native ?? (await freshLaunchCommand(ctx, repo, { ...task, branch }, profile));
+  const prompt = opts.prompt ?? null;
+  const command =
+    native === null
+      ? await freshLaunchCommand(ctx, repo, { ...task, branch }, profile, extraSection(prompt))
+      : { ...native, promptAfterStart: prompt };
   const handle = await ctx.executor.launch({ taskId: task.id, cwd, command });
   if (native !== null && handle.launchId !== null) {
     // The belt behind the check above: a harness that rejects the id exits without a hook.
@@ -76,6 +88,12 @@ export async function resumeTask(ctx: DaemonContext, task: Task): Promise<Resume
     attach: ctx.executor.attach(handle),
     recreatedFrom,
   };
+}
+
+/** The heading a prompt handed to a fresh launch is composed under, so the agent reads it as
+ * an instruction of its own and not as part of the spec. */
+function extraSection(prompt: string | null): ExtraSection | null {
+  return prompt === null ? null : { heading: "Bring up to date", body: prompt };
 }
 
 /**

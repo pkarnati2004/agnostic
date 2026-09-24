@@ -116,6 +116,9 @@ export interface ExecutorProvider {
   /** Running, ended with its exit code still to come, or gone without a trace. */
   sessionState(handle: SessionHandle): Promise<SessionState>;
   attach(handle: SessionHandle): AttachInfo;
+  /** Types `text` into the session and submits it, the way a launch delivers its prompt-after-start.
+   * Throws `session-not-running` when the session is gone or its pane is dead. */
+  send(handle: SessionHandle, text: string): Promise<void>;
   /** Throws `session-not-running` when the session is gone; a session that dies afterwards ends
    * the stream with exit instead. */
   terminal(handle: SessionHandle, size: TerminalSize): Promise<TerminalStream>;

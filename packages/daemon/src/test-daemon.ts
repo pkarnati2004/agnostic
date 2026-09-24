@@ -7,7 +7,6 @@ import {
   agnosticPaths,
   type DaemonInfo,
   type Editor,
-  type ExecutorProvider,
   type RegisterRepoResponse,
   type Repo,
 } from "@agnostic/core";
@@ -29,6 +28,7 @@ import {
   fixtureEditors,
   launchDetection,
 } from "./test-detection.js";
+import { idleExecutor } from "./test-idle-executor.js";
 import { createLaunchEnv, type LaunchEnv } from "./test-launch-env.js";
 import { createWorkspace, type TestRepoOptions } from "./test-workspace.js";
 import { createVerdictSweep, type VerdictSweep } from "./verdict-sweep.js";
@@ -97,22 +97,9 @@ function listener(app: Hono, upgrade: UpgradeHandler, onPort: (port: number) => 
   };
 }
 
-/** Nothing runs: the daemon tests that never start a task must not need tmux to be installed. */
-function idleExecutor(): ExecutorProvider {
-  const refuse = () => Promise.reject(new Error("this test daemon has no executor"));
-  return {
-    id: "tmux-local",
-    prepare: refuse,
-    launch: refuse,
-    sessionState: () => Promise.resolve("gone" as const),
-    attach: () => ({ kind: "tmux", argv: [] }),
-    terminal: refuse,
-    stop: () => Promise.resolve(),
-    clean: () => Promise.resolve(),
-    detect: () => Promise.resolve([]),
-    onEvent: () => () => undefined,
-    close: () => Promise.resolve(),
-  };
+/** A test's shim ahead of the real tool on the PATH every command the daemon runs is found on. */
+function shimmed(env: Record<string, string>, prefix?: string): Record<string, string> {
+  return prefix === undefined ? env : { ...env, PATH: `${prefix}:${env.PATH ?? ""}` };
 }
 
 type TestDaemonOptions = {
@@ -121,6 +108,8 @@ type TestDaemonOptions = {
   heartbeatMs?: number;
   /** A real tmux executor on a private socket, with the fake harnesses on the launch PATH. */
   tmux?: boolean;
+  /** Put first on the PATH the daemon runs commands with, for a test that shims a real tool. */
+  pathPrefix?: string;
   /** Rows that must already be there when the app starts, for the reconcile it runs at start. */
   seed?: (ledger: Ledger) => void;
   /** Local model servers the stub detection reports, for a launch on the `local` route. */
@@ -221,7 +210,10 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
     catalogSource: catalogSource({ AGNOSTIC_CATALOG_URL: opts.catalogUrl ?? "http://127.0.0.1:1" }),
     catalogCheck: opts.catalogCheck ?? false,
     // HOME is always the test's own: an installer that writes per user must never find the real one.
-    env: { ...(launch?.env ?? { PATH: "/opt/bin", HOME: userHome }), ...opts.env },
+    env: shimmed(
+      { ...(launch?.env ?? { PATH: "/opt/bin", HOME: userHome }), ...opts.env },
+      opts.pathPrefix,
+    ),
     token: TEST_TOKEN,
     log,
     version: "0.0.0-test",

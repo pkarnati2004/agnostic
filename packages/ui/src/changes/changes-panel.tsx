@@ -1,4 +1,11 @@
-import type { EditorId, EditorsResponse, TaskListRow } from "@agnostic/core";
+import type {
+  CreatePrRequest,
+  CreatePrResponse,
+  EditorId,
+  EditorsResponse,
+  TaskListRow,
+  UpdateTaskResponse,
+} from "@agnostic/core";
 import { useEffect, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { DiffView } from "../diff/diff-view";
@@ -16,6 +23,7 @@ import {
   type PanelView,
   panelView,
 } from "./panel-state";
+import { updateLine } from "./update-result";
 import { type Changes, useChanges } from "./use-changes";
 
 type ChangesPanelProps = {
@@ -24,18 +32,52 @@ type ChangesPanelProps = {
   /** This task's latest failure, drawn here when the click that raised it was on this panel. */
   notice: TaskNotice | null;
   onOpen: (editor: EditorId | null) => Promise<void>;
+  /** Null when the daemon refused; the dialog keeps itself open and shows the notice. */
+  onCreatePr: (body: CreatePrRequest) => Promise<CreatePrResponse | null>;
+  /** Null when the daemon refused, which the notice says; otherwise what the agent was asked. */
+  onUpdate: () => Promise<UpdateTaskResponse | null>;
 };
 
+// Long enough to read the line the update answered with, short enough not to sit in the way.
+const UPDATE_SHOWN_MS = 8_000;
+
 /** The third column: what the task's branch has changed, and the patch of the file selected in it. */
-export function ChangesPanel({ task, client, notice, onOpen }: ChangesPanelProps) {
+export function ChangesPanel({
+  task,
+  client,
+  notice,
+  onOpen,
+  onCreatePr,
+  onUpdate,
+}: ChangesPanelProps) {
   const changes = useChanges(client, task);
   const editors = useEditors(client);
   const [busy, setBusy] = useState<TaskAction | null>(null);
+  const [updated, showUpdated] = useFading(UPDATE_SHOWN_MS);
   const view = panelView(changes.state);
   const cleaned = !task.worktreePresent && task.worktreePath !== null;
   const open = (editor: EditorId | null) => {
     setBusy("open");
     void onOpen(editor).finally(() => setBusy(null));
+  };
+  // `pushed` and the commit counts move with the push, so the header is read again after one.
+  const createPr = async (body: CreatePrRequest): Promise<CreatePrResponse | null> => {
+    const response = await onCreatePr(body);
+    if (response !== null) {
+      changes.refresh();
+    }
+    return response;
+  };
+  // The list is not re-read here: the agent works in its own time, and the status it moves to is
+  // what makes the read stale.
+  const update = () => {
+    setBusy("update");
+    void onUpdate().then((response) => {
+      setBusy(null);
+      if (response !== null) {
+        showUpdated(updateLine(response));
+      }
+    });
   };
 
   return (
@@ -45,19 +87,26 @@ export function ChangesPanel({ task, client, notice, onOpen }: ChangesPanelProps
       )}
       {(view.kind === "changes" || view.kind === "failed") && (
         <ActionRow
+          task={task}
+          changes={view.kind === "changes" ? view.response : null}
+          notice={notice}
           editors={editors}
           busy={busy}
           cleaned={cleaned}
           refreshOnly={view.kind === "failed"}
           loading={changes.state.kind === "loading"}
           onOpen={open}
+          onCreatePr={createPr}
+          onUpdate={update}
           onRefresh={changes.refresh}
         />
       )}
-      {notice !== null && notice.host === "panel" && (
+      {notice !== null && notice.host === "panel" ? (
         <div className="px-4 py-2">
           <TaskNoticeLine notice={notice} task={task} />
         </div>
+      ) : (
+        updated !== null && <p className="px-4 py-2 text-muted-foreground text-sm">{updated}</p>
       )}
       <PanelBody view={view} changes={changes} />
     </aside>
@@ -99,6 +148,22 @@ function Patch({ changes }: { changes: Changes }) {
     return <FailedLine error={patch.error} />;
   }
   return <DiffView patch={patch.patch} path={patch.path} />;
+}
+
+/**
+ * A line the panel says once and then drops. The state is an object so that showing the same line
+ * twice is a new value, which is what starts its timer again.
+ */
+function useFading(ms: number): [string | null, (line: string) => void] {
+  const [shown, setShown] = useState<{ line: string } | null>(null);
+  useEffect(() => {
+    if (shown === null) {
+      return;
+    }
+    const timer = setTimeout(() => setShown(null), ms);
+    return () => clearTimeout(timer);
+  }, [shown, ms]);
+  return [shown?.line ?? null, (line) => setShown({ line })];
 }
 
 /** The editors are the machine's, not the task's, so the panel reads them once. A failed read
