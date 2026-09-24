@@ -9,6 +9,7 @@
   decisions.md        # architecture decisions agents should respect
   tasks/              # one markdown file per task: spec, acceptance, status, handoff notes
   workflows/          # optional: the roles a task's pipeline runs - see docs/workflows.md
+  mcp.yaml            # optional: the MCP servers every agent here gets - see docs/mcp.md
   agnostic.yaml       # test and lint commands, default profile
 ```
 
@@ -27,6 +28,13 @@ From each workflow under `.ag/workflows/`, it writes Claude Code's own two file 
 
 - `.claude/agents/<role>.md` - one subagent per role, with that role's model and instructions.
 - `.claude/commands/<workflow>.md` - the workflow as a slash command, the roles as ordered steps.
+
+From `mcp.yaml`, it writes each agent's own MCP configuration ([MCP](mcp.md)):
+
+- `.mcp.json` - Claude Code's servers, merged by entry name; no header.
+- `opencode.json` - OpenCode's servers, merged by entry name; no header.
+
+Codex's servers go in a per-repo block of `~/.codex/config.toml`, which is outside the repo and is not committed.
 
 The two instruction files start with the same first line:
 

@@ -6,6 +6,7 @@ export type AgPaths = {
   preferencesYaml: string;
   instructionsMd: string;
   decisionsMd: string;
+  mcpYaml: string;
   tasksDir: string;
   workflowsDir: string;
 };
@@ -19,6 +20,7 @@ export function agPaths(repoPath: string): AgPaths {
     preferencesYaml: join(dir, "preferences.yaml"),
     instructionsMd: join(dir, "instructions.md"),
     decisionsMd: join(dir, "decisions.md"),
+    mcpYaml: join(dir, "mcp.yaml"),
     tasksDir: join(dir, "tasks"),
     workflowsDir: join(dir, "workflows"),
   };

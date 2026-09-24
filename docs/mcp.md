@@ -4,6 +4,8 @@
 
 The server speaks MCP revision 2025-06-18 over the stdio transport. It exposes tools only: no resources, no prompts, no sampling.
 
+The other direction - the MCP servers every agent working on a repo should have - is [`.ag/mcp.yaml`](#servers-for-a-repo-agmcpyaml).
+
 ## The tools
 
 Five read the state:
@@ -65,3 +67,66 @@ printf '%s\n' \
 ```
 
 Two lines come back: the server's `initialize` result and the tool list. Stdout carries protocol messages and nothing else; anything agn has to say to you goes to stderr.
+
+## Servers for a repo: `.ag/mcp.yaml`
+
+`agn mcp` points an agent at agn. This file points every agent at the same servers. Declare them once, and `agn sync` writes them into each harness's own config.
+
+```yaml
+# .ag/mcp.yaml - the MCP servers every agent on this repo gets; `agn sync` writes them out.
+servers:
+  db:
+    command: npx
+    args: ["-y", "@acme/db-mcp"]
+    env:
+      DATABASE_URL: $DATABASE_URL     # your shell's value, never the value itself
+      LOG_LEVEL: info
+  docs:
+    url: https://mcp.example.com/docs
+    headers:
+      Authorization: $MCP_AUTH        # the whole header value: MCP_AUTH="Bearer …"
+```
+
+A server has a `command` to run or a `url` to reach, never both. A name is a JSON key and a TOML key at once, so it matches `[A-Za-z0-9][A-Za-z0-9_-]*`.
+
+A value is either a literal with no `$` in it, or exactly `$NAME` - the variable of that name, read from the environment the agent starts in. `${NAME}`, `Bearer $TOKEN` and every other use of `$` is refused: write the whole value as `$NAME` and put the rest in the variable, `MCP_AUTH="Bearer …"`.
+
+### What each agent gets
+
+| Agent | File | How `$NAME` is written | Skipped when |
+|---|---|---|---|
+| Claude Code | `.mcp.json` in the repo | `${NAME}` | nothing of its own; a secret literal skips a server in every target, below |
+| OpenCode | `opencode.json` in the repo | `{env:NAME}` | an `opencode.jsonc` is there instead: agn does not edit JSONC |
+| Codex | a block in `~/.codex/config.toml` | `env_vars`, `env_http_headers` | an env key renames the variable: Codex forwards one only under its own name |
+
+A skipped server is named in the output with the reason. The rest of the sync goes on.
+
+The two files in the repo are merged by entry name: agn replaces the entries it declares, and every other entry, key and line stays where it was. Commit them, as you commit `CLAUDE.md` and `AGENTS.md`. Claude Code asks once, per project, before it uses a `.mcp.json` it has not seen.
+
+An entry agn wrote earlier, which you then took out of `.ag/mcp.yaml`, stays in `.mcp.json` and `opencode.json`: agn cannot tell its own old entry from one you added by hand, so deleting it is yours. The Codex block is the exception, because it is rebuilt whole on every sync and holds only what the file names today.
+
+### The Codex block
+
+Codex has one config for the whole machine, so agn owns one marked block in it per repo:
+
+```toml
+# >>> agn mcp for r7k2m4pqrs: managed block, edits here are replaced >>>
+[mcp_servers.db]
+command = "npx"
+args = ["-y", "@acme/db-mcp"]
+env = { "LOG_LEVEL" = "info" }
+env_vars = ["DATABASE_URL"]
+# <<< agn mcp for r7k2m4pqrs <<<
+```
+
+Nothing outside the markers is touched, and the block is rebuilt whole on every sync. Two `[mcp_servers.db]` tables would make the file unparsable, so a name already used outside this repo's block - by another repo, or by you - stops the sync and says so. Rename the server in `.ag/mcp.yaml`, or remove the other table.
+
+That check reads table headers written as a bare key, which is the form agn writes. A table you wrote as `[mcp_servers."db"]`, with the name in quotes, is not seen, so declaring `db` in `.ag/mcp.yaml` would leave Codex with two tables of one name; quote a table header only for a name that needs it, and give agn's servers names that do not.
+
+### Secrets
+
+A literal that looks like a credential - a known key prefix, a long high-entropy string, a hex digest - is never written to any of the three files. The server is skipped everywhere and the output says which key it was. Write `$NAME` and set `NAME` in your shell.
+
+Each word of a value is judged on its own, so `Bearer ghp_…` written as a header literal is caught by the token in it. A short secret with no known prefix, and a password inside a connection string such as `postgres://app:hunter2@db/app`, both pass the rule; write those as `$NAME` too.
+
+The value is in a committed file either way, so the message is the fix, not the protection: rotate anything you have already committed.
