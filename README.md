@@ -54,7 +54,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn adopt <path>` | Register an agent session you started outside agn. `--task "<title>"`, `--pid <n>`, `--repo <r>` |
 | `agn hooks install` | Install the status hook in a repo. `--repo <r>`, `--harness <id>` |
 | `agn init` | Create `.ag/`, seeding `instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--from <file>`, `--force`, `--repo <r>` |
-| `agn sync` | Regenerate `CLAUDE.md` and `AGENTS.md` from `.ag/instructions.md`. `--dry-run`, `--force`, `--repo <r>` |
+| `agn sync` | Regenerate `CLAUDE.md`, `AGENTS.md` and, from `.ag/workflows/`, Claude Code's agents and commands. `--dry-run`, `--force`, `--repo <r>` |
 | `agn workflow init\|list\|show` | Declare roles for a repo's pipeline in `.ag/workflows/`. `--template none\|single\|tiered`, `--name <n>`, `--force`, `--repo <r>` |
 | `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--intent <class>`, `--subscriptions-only` |
 | `agn handoff [<task>] --to <id\|harness>` | Stop a task and hand its work to another agent with a structured note. `--note <text>` (`-` reads stdin), `--note-file <path>` |

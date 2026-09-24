@@ -63,7 +63,7 @@ export async function resumeTask(
   await assertDirectory(task, cwd);
   // Whether the harness picks its conversation up or starts over, it reads its instructions and
   // its hook config from this directory as it starts. A live session never gets here.
-  await ensureSynced(ctx, cwd);
+  await ensureSynced(ctx, repo, cwd);
   await ensureHooks(ctx, profile.harness, cwd);
   const native = await nativeResume(ctx, task, profile);
   const branch = prepared?.branch ?? task.branch;

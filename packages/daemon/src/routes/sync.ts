@@ -34,7 +34,7 @@ export function syncRoutes(ctx: DaemonContext): Hono {
       if (!parsed.success) {
         throw requestInvalid(parsed.error);
       }
-      const body: SyncResponse = await syncRepo(repo.path, parsed.data);
+      const body: SyncResponse = await syncRepo(ctx, repo, repo.path, parsed.data);
       return c.json(body);
     });
 }

@@ -8,6 +8,13 @@ import { seedTranscript } from "./test-transcript.js";
 
 const PROFILE = "claude-code:default:native";
 const INSTRUCTIONS = "# app\n\nRun `pnpm test` before you finish.\n";
+const SINGLE = `name: single
+roles:
+  - name: developer
+    class: implement
+    instructions: |
+      Implement exactly what the task asks.
+`;
 
 let daemon: TestDaemon;
 
@@ -92,6 +99,39 @@ describe("a task's worktree is synced before the agent starts", () => {
     expect(await daemon.readLog()).toContain("code=sync-conflict");
   });
 
+  it("compiles the workflow files the worktree's own commit carries", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    await commit(repo.path, {
+      ".ag/instructions.md": INSTRUCTIONS,
+      "CLAUDE.md": INSTRUCTIONS,
+      ".ag/workflows/single.yaml": SINGLE,
+    });
+    const cwd = await started(await runTask(repo));
+
+    expect(await readFile(join(cwd, ".claude/agents/developer.md"), "utf8")).toContain(
+      `model: inherit`,
+    );
+    expect(await readFile(join(cwd, ".claude/commands/single.md"), "utf8")).toContain(
+      "1. developer (claude-code:default:native): use the developer subagent.",
+    );
+  });
+
+  it("starts the task on an agent file the commit wrote by hand", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    await commit(repo.path, {
+      ".ag/instructions.md": INSTRUCTIONS,
+      "CLAUDE.md": INSTRUCTIONS,
+      ".ag/workflows/single.yaml": SINGLE,
+      ".claude/agents/developer.md": "mine\n",
+    });
+    const cwd = await started(await runTask(repo));
+
+    expect(await readFile(join(cwd, ".claude/agents/developer.md"), "utf8")).toBe("mine\n");
+    await waitFor("the daemon to log the skipped sync", async () =>
+      (await daemon.readLog()).includes("sync skipped"),
+    );
+  });
+
   it("syncs again before a fresh resume relaunches the agent", async () => {
     const repo = await daemon.addRepo({ defaultProfile: PROFILE });
     await commit(repo.path, { ".ag/instructions.md": INSTRUCTIONS, "CLAUDE.md": INSTRUCTIONS });
@@ -132,6 +172,59 @@ describe("a task's worktree is synced before the agent starts", () => {
     expect(await readFile(join(cwd, "AGENTS.md"), "utf8")).toBe(
       `${GENERATED_HEADER}\n\n${INSTRUCTIONS}`,
     );
+  });
+
+  it("compiles the committed workflow again on a fresh resume", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    await commit(repo.path, {
+      ".ag/instructions.md": INSTRUCTIONS,
+      "CLAUDE.md": INSTRUCTIONS,
+      ".ag/workflows/single.yaml": SINGLE,
+    });
+    const task = await runTask(repo);
+    const cwd = await started(task);
+    await rm(join(cwd, ".claude/agents/developer.md"));
+
+    expect((await daemon.request(`/tasks/${task.id}/stop`, { method: "POST" })).status).toBe(200);
+    const resumed = await daemon.request(`/tasks/${task.id}/resume`, { method: "POST" });
+    expect(resumed.status).toBe(200);
+    // No hook ever reported a session id here, so this is the fresh-launch branch.
+    expect(((await resumed.json()) as { via: string }).via).toBe("fresh");
+    expect(await readFile(join(cwd, ".claude/agents/developer.md"), "utf8")).toContain(
+      "model: inherit",
+    );
+  });
+
+  it("compiles a repo that carries workflows and no instructions.md", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    await commit(repo.path, { ".ag/workflows/single.yaml": SINGLE });
+    const cwd = await started(await runTask(repo));
+
+    expect(await readFile(join(cwd, ".claude/agents/developer.md"), "utf8")).toContain(
+      "name: developer",
+    );
+    // Nothing to generate the instruction files from, and that is not a refusal.
+    await expect(readFile(join(cwd, "AGENTS.md"), "utf8")).rejects.toThrow();
+    expect(await daemon.readLog()).not.toContain("sync skipped");
+  });
+
+  it("still starts the task, with sync skipped, when the committed workflow will not parse", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    await commit(repo.path, {
+      ".ag/instructions.md": INSTRUCTIONS,
+      "CLAUDE.md": INSTRUCTIONS,
+      ".ag/workflows/broken.yaml": "name: broken\nroles:\n  - name: x\n    class: nope\n",
+    });
+    const cwd = await started(await runTask(repo));
+
+    // Reading the workflow fails before any write is planned, so the task runs on the committed
+    // files verbatim: no CLAUDE.md header, no compiled command file.
+    expect(await readFile(join(cwd, "CLAUDE.md"), "utf8")).toBe(INSTRUCTIONS);
+    await expect(readFile(join(cwd, ".claude/commands/broken.md"), "utf8")).rejects.toThrow();
+    await waitFor("the daemon to log the skipped sync", async () =>
+      (await daemon.readLog()).includes("sync skipped"),
+    );
+    expect(await daemon.readLog()).toContain("code=ag-file-invalid");
   });
 });
 
