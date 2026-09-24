@@ -31,14 +31,15 @@ if (ws.protocol !== `agn-token.${token}`) {
 ws.send(JSON.stringify({ type: "resize", cols: 120, rows: 40 }));
 await until("the daemon says ready", () => ready);
 await until("the pane draws itself", () => received.length > 0);
-// The redraw carries the agent's own ready line, which a tmux stuck on a config error never draws.
-await until("the pane drew the agent's ready line", () => drawn().includes("ready cwd="));
 
 ws.send(JSON.stringify({ type: "resize", cols: 97, rows: 30 }));
 await until("the pane is 97 columns wide", () => paneWidth() === "97");
 
 ws.send(Buffer.from("smoke-typed\r", "utf8"));
 await until("the agent read the typed line", () => log().includes("line: smoke-typed"));
+// The redraw carries the agent's own output, which a tmux stuck on a config error never draws. The
+// typed line is what this reads rather than the agent's first line: the launch prompt is long
+// enough to scroll that one out of the pane.
 await until("the pane drew the typed line", () => drawn().includes("line: smoke-typed"));
 
 ws.close();

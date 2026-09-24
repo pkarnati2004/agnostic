@@ -67,6 +67,7 @@ function input(over: Partial<LaunchPromptInput> = {}): LaunchPromptInput {
     inFlight: [],
     decisions: null,
     handoff: null,
+    commit: null,
     ...over,
   };
 }
@@ -127,6 +128,15 @@ describe("composeLaunchPrompt", () => {
     expect(prompt).toContain("## Handoff from eeeeeeeeee\n\nwhat is left");
   });
 
+  it("ends with Before you finish, verbatim, when the launch carries a commit prompt", () => {
+    const prompt = composeLaunchPrompt(input({ commit: "Commit on `agn/x`. Do not push." }));
+    expect(prompt.endsWith("## Before you finish\n\nCommit on `agn/x`. Do not push.\n")).toBe(true);
+  });
+
+  it("leaves the section out for a task with no branch of agn's", () => {
+    expect(composeLaunchPrompt(input())).not.toContain("Before you finish");
+  });
+
   it("never carries the project instructions", () => {
     const prompt = composeLaunchPrompt(input({ decisions: "a decision" }));
     expect(prompt).not.toContain("instructions");
@@ -140,6 +150,7 @@ describe("composeLaunchPrompt", () => {
       inFlight: [task("ccccccccc1", { title: "in flight one" })],
       decisions: "a decision",
       handoff: { toProfileId: "codex:default:native", at: NOW, body: "what is left" },
+      commit: "Commit on `agn/task-aaaaaaaaaa`.",
     });
     const prompt = composeLaunchPrompt(full);
     const headings = [
@@ -151,6 +162,7 @@ describe("composeLaunchPrompt", () => {
       "In flight:",
       "Recent decisions:",
       "## Handoff from eeeeeeeeee",
+      "## Before you finish",
     ];
     let cursor = -1;
     for (const heading of headings) {

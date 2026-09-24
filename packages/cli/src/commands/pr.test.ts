@@ -1,6 +1,7 @@
 import { rm } from "node:fs/promises";
 import {
   agnosticPaths,
+  type ChangesResponse,
   type CreatePrRequest,
   type CreatePrResponse,
   type ProcessOptions,
@@ -41,7 +42,24 @@ afterEach(async () => {
 
 type Spawned = { command: string; args: string[]; opts: ProcessOptions };
 
-async function cli(over: Partial<CreatePrResponse> = {}, tools: string[] = []) {
+/** What the panel's header reads; `agn pr` looks at `uncommitted` alone. */
+function changes(uncommitted: number): ChangesResponse {
+  return {
+    task,
+    base: { ref: "main", commit: "c0ffee" },
+    ahead: 1,
+    behind: 0,
+    uncommitted,
+    pushed: false,
+    remote: "git@github.com:agn/petal.git",
+    files: [],
+  };
+}
+
+type PrOpts = { tools?: string[]; uncommitted?: number; changesFail?: boolean };
+
+async function cli(over: Partial<CreatePrResponse> = {}, opts: PrOpts = {}) {
+  const tools = opts.tools ?? [];
   const shims = await installCopyShims(tools);
   dirs.push(shims.dir);
   const spawned: Spawned[] = [];
@@ -52,18 +70,26 @@ async function cli(over: Partial<CreatePrResponse> = {}, tools: string[] = []) {
       unref: () => undefined,
     }) as unknown as ReturnType<typeof spawn>;
   }) as typeof spawn;
+  const order: string[] = [];
   const test = createTestContext({
     paths: PATHS,
     env: { PATH: shims.dir },
     spawn: fakeSpawn,
     client: {
+      taskChanges: () => {
+        order.push("changes");
+        return opts.changesFail === true
+          ? Promise.reject(new Error("the worktree is gone"))
+          : Promise.resolve(changes(opts.uncommitted ?? 0));
+      },
       createPr: (_id: string, body: CreatePrRequest) => {
+        order.push("pr");
         asked.push(body);
         return Promise.resolve(response(over));
       },
     },
   });
-  return { ...test, spawned, asked, shims };
+  return { ...test, spawned, asked, shims, order };
 }
 
 async function runPr(test: { ctx: ReturnType<typeof createTestContext>["ctx"] }, argv: string[]) {
@@ -72,7 +98,7 @@ async function runPr(test: { ctx: ReturnType<typeof createTestContext>["ctx"] },
 
 describe("agn pr", () => {
   it("says what was pushed, where the PR is, and opens it", async () => {
-    const test = await cli({}, ["pbcopy"]);
+    const test = await cli({}, { tools: ["pbcopy"] });
     await runPr(test, ["t3n9v2wxyz"]);
     expect(test.out).toEqual([
       `pushed ${BRANCH} to origin`,
@@ -87,7 +113,12 @@ describe("agn pr", () => {
 
   it("names the compare page, and says the PR is made on it", async () => {
     const compare = "https://github.com/agn/petal/compare/main...agn%2Fx?expand=1";
-    const test = await cli({ via: "compare", url: compare, pushed: false }, ["pbcopy"]);
+    const test = await cli(
+      { via: "compare", url: compare, pushed: false },
+      {
+        tools: ["pbcopy"],
+      },
+    );
     await runPr(test, ["t3n9v2wxyz"]);
     expect(test.out).toEqual([
       `${BRANCH} already on origin`,
@@ -130,7 +161,7 @@ describe("agn pr", () => {
   });
 
   it("opens nothing with --no-open even when pbcopy is on this machine", async () => {
-    const test = await cli({}, ["pbcopy"]);
+    const test = await cli({}, { tools: ["pbcopy"] });
     await runPr(test, ["t3n9v2wxyz", "--no-open"]);
     expect(test.spawned).toEqual([]);
     expect(await test.shims.received("pbcopy")).toBe(BODY);
@@ -139,6 +170,33 @@ describe("agn pr", () => {
       "pr: https://github.com/agn/petal/pull/12",
       "body copied to the clipboard",
     ]);
+  });
+
+  it("says how much work stays behind, on stderr, before it pushes", async () => {
+    const test = await cli({}, { uncommitted: 2 });
+    await runPr(test, ["t3n9v2wxyz", "--no-open"]);
+    expect(test.err).toEqual([
+      "agn: 2 uncommitted changes stay in the worktree; only commits are pushed",
+    ]);
+    expect(test.order).toEqual(["changes", "pr"]);
+  });
+
+  it("says nothing when the worktree is clean, or when the read failed", async () => {
+    const clean = await cli();
+    await runPr(clean, ["t3n9v2wxyz", "--no-open"]);
+    expect(clean.err).toEqual([]);
+    const failed = await cli({}, { changesFail: true });
+    await runPr(failed, ["t3n9v2wxyz", "--no-open"]);
+    expect(failed.err).toEqual([]);
+    expect(failed.out[0]).toBe(`pushed ${BRANCH} to origin`);
+  });
+
+  it("reads nothing before the push with --json", async () => {
+    const test = await cli({}, { uncommitted: 2 });
+    test.ctx.json = true;
+    await runPr(test, ["t3n9v2wxyz"]);
+    expect(test.err).toEqual([]);
+    expect(test.order).toEqual(["pr"]);
   });
 
   it("prints the response and opens nothing with --json", async () => {

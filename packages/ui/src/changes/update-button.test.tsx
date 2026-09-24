@@ -43,6 +43,8 @@ async function panel(
         onOpen={() => Promise.resolve()}
         onCreatePr={() => Promise.resolve(null)}
         onUpdate={onUpdate}
+        onAskCommit={() => Promise.resolve(null)}
+        onLoaded={() => undefined}
       />
     </TooltipProvider>,
   );

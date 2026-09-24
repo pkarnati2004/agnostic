@@ -29,6 +29,8 @@ const HANDLERS = {
   onOpen: () => Promise.resolve(),
   onCreatePr: () => Promise.resolve(null),
   onUpdate: () => Promise.resolve(null),
+  onAskCommit: () => Promise.resolve(null),
+  onLoaded: () => undefined,
 };
 
 /** The list and the first file's patch both arrive before the panel has drawn anything. */

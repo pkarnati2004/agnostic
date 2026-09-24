@@ -2,20 +2,17 @@ import {
   isDirectory,
   type Repo,
   readRepoConfig,
-  sessionHandle,
   type Task,
   type UpdateMode,
   type UpdateTaskResponse,
 } from "@agnostic/core";
 import type { DaemonContext } from "./app.js";
+import { askAgent } from "./ask-agent.js";
 import { DaemonError } from "./error.js";
-import { resumeTask } from "./resume-task.js";
 import { resolveTaskBase } from "./task-base.js";
 import { branchUpstream } from "./task-changes.js";
 import { taskDir } from "./task-dir.js";
 import { updatePrompt } from "./update-prompt.js";
-
-const LIVE: Task["status"][] = ["running", "waiting"];
 
 /**
  * Asks the agent to bring its branch up to date with what the task is judged against (ADR 036 Q6).
@@ -48,25 +45,8 @@ export async function updateTask(
     mode,
     testCommand: (await readRepoConfig(repo.path))?.testCommand ?? null,
   });
-  assertReachable(task, prompt);
-  // One liveness check and one race window: the resume answers `live` for a session still running,
-  // and the prompt is typed into that session rather than launched with a new one.
-  const result = await resumeTask(ctx, task, { prompt });
-  const handle = sessionHandle(result.task);
-  if (result.via === "live" && handle !== null) {
-    await ctx.executor.send(handle, prompt);
-  }
-  return { task: result.task, mode, via: result.via, base: base.ref, prompt };
-}
-
-/** A session started outside tmux is agn's to watch, never agn's to type into (ADR 014). */
-function assertReachable(task: Task, prompt: string): void {
-  if (task.session?.tmuxSession === null && LIVE.includes(task.status)) {
-    throw new DaemonError(`task ${task.id} was started outside tmux, so agn cannot type into it`, {
-      code: "session-not-attachable",
-      hint: `Type the prompt into that terminal yourself: ${prompt}`,
-    });
-  }
+  const asked = await askAgent(ctx, task, { heading: "Bring up to date", body: prompt });
+  return { task: asked.task, mode, via: asked.via, base: base.ref, prompt };
 }
 
 function noBranch(task: Task): DaemonError {

@@ -6,6 +6,7 @@ import { attachCommand } from "./commands/attach.js";
 import { catalogCommand } from "./commands/catalog.js";
 import { changesCommand } from "./commands/changes.js";
 import { cleanCommand } from "./commands/clean.js";
+import { commitCommand } from "./commands/commit.js";
 import { compareCommand } from "./commands/compare.js";
 import { daemonCommand } from "./commands/daemon.js";
 import { doctorCommand } from "./commands/doctor.js";
@@ -76,6 +77,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     compareCommand(ctx),
     prCommand(ctx),
     updateCommand(ctx),
+    commitCommand(ctx),
     catalogCommand(ctx),
     mcpCommand(ctx, version),
     uiCommand(ctx),

@@ -41,6 +41,10 @@ Enter writes a newline; Cmd+Enter (Ctrl+Enter) runs, as does the Run button. If 
 `test_command`, agn runs it before the agent starts and the dialog says so while it waits. The
 task opens in a tab as soon as it starts.
 
+The first prompt ends with a "Before you finish" section that asks the agent to commit its work on
+the task branch. The text is `.ag/prompts/commit.md` if the repo has one, and agn's own prompt if
+not. agn never commits and never pushes; the agent does both or neither.
+
 If you have set a `budget` and the selected profile is billed by the token, a note under the
 Profile select says what has been spent. Past the ceiling the note says the run would be refused
 and offers a checkbox, "Ignore the budget for this task", which runs it anyway this once. The
@@ -123,12 +127,14 @@ Typing a prompt adds two more rows:
   prompt on it at once, with no title and no spec.
 
 The rest of the rows act on the tab in front: "Stop", "Resume", "Hand off", "Open in editor",
-"Create PR for" and "Bring up to date", each named after the task. A row appears only when the
-button it stands for would work, as far as the palette can tell without reading the branch, so a
-finished task offers Resume and not Stop. A task whose
-worktree has been cleaned offers neither "Open in editor" nor "Bring up to date" until you resume
-it; "Create PR for" stays, because the push reads the branch from the repo itself. The Compare tab
-has no task of its own, so no task rows appear while it is in front.
+"Create PR for", "Ask <task> to commit" and "Bring up to date", each named after the task. A row
+appears only when the button it stands for would work, as far as the palette can tell without
+reading the branch, so a finished task offers Resume and not Stop. A task whose worktree has been
+cleaned offers none of "Hand off", "Open in editor" and "Bring up to date" until you resume it;
+"Create PR for" stays, because the push reads the branch from the repo itself. "Ask <task> to
+commit" appears once the Changes panel has read the task and found uncommitted work, since the
+count comes from that read. The Compare tab has no task of its own, so no task rows appear while it
+is in front.
 
 ## Changes
 
@@ -182,7 +188,28 @@ clipboard, and the dialog keeps it on screen with a Copy description button if y
 A task started with `agn run --base <task>` opens its pull request against that task's branch, so
 the diff holds only its own work. GitHub retargets it at the base branch when the parent merges.
 
-`agn pr [<task>]` does the same from a terminal, with `--title <t>` and `--no-open`.
+Uncommitted changes stay in the worktree: only commits are pushed. "Ask the agent to commit" is
+how you get them into a commit first.
+
+`agn pr [<task>]` does the same from a terminal, with `--title <t>` and `--no-open`. When the
+worktree holds uncommitted changes it prints one line to stderr saying how many stay behind.
+
+## Ask the agent to commit
+
+**Ask the agent to commit** in the Changes panel sends the agent a prompt to commit what it has
+written on the task branch. The prompt is `.ag/prompts/commit.md` if the repo has one and agn's own
+if not, and it is sent as written. agn runs no git command for it, and never pushes.
+
+If the agent's session is still running, the prompt is typed into it. If the session has ended, agn
+resumes the task with the prompt as the first turn. The panel says which happened. Nothing on the
+page moves when the commit lands, so click Refresh to see it.
+
+The button is enabled while the task has a worktree of agn's, uncommitted changes in it, and an
+agent to ask: a running or waiting session, or a task that can be resumed. It reads "Nothing to
+commit." at zero uncommitted changes, and a task whose worktree was cleaned needs Resume first.
+
+`agn commit [<task>]` does the same from a terminal. It prints one line: which profile was asked,
+and whether the prompt went to a live session or to a resume.
 
 ## Bring up to date
 
@@ -250,6 +277,10 @@ The section holding the task you have open shows its rows without being clicked.
 Tasks reach History when `agn clean` removes their worktree, when the sweep does, and when you
 delete the directory yourself. A task that ran in a folder workspace never had a worktree of agn's,
 so it stays under its repo.
+
+Hand off is not offered for a task whose worktree is gone: the next agent would have nowhere to
+work. Resume rebuilds the worktree from the task's branch and the button comes back. `agn handoff`
+still accepts the task.
 
 ## When an action fails
 

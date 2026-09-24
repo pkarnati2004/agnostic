@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { type CreatePrResponse, launchDetached } from "@agnostic/core";
+import { type CreatePrResponse, type DaemonClient, launchDetached } from "@agnostic/core";
 import { Command } from "commander";
 import { copyToClipboard } from "../clipboard.js";
 import { type CliContext, writeJson } from "../context.js";
@@ -25,6 +25,9 @@ export function prCommand(ctx: CliContext, platform: NodeJS.Platform = process.p
     .action(async (task: string | undefined, flags: PrFlags, command: Command) => {
       const client = await ctx.client();
       const id = await requireTaskId(ctx, command, task);
+      if (!ctx.json) {
+        await warnUncommitted(ctx, client, id);
+      }
       const response = await client.createPr(
         id,
         flags.title === undefined ? {} : { title: flags.title },
@@ -40,6 +43,20 @@ export function prCommand(ctx: CliContext, platform: NodeJS.Platform = process.p
         await openUrl(ctx, platform, response.url);
       }
     });
+}
+
+/**
+ * What the push will leave behind, said before it happens: only commits are pushed, and work the
+ * agent has not committed stays in the worktree. A read that fails says nothing - the push is what
+ * this command is for, and the panel says the same thing in the dialog.
+ */
+async function warnUncommitted(ctx: CliContext, client: DaemonClient, id: string): Promise<void> {
+  const changes = await client.taskChanges(id).catch(() => null);
+  if (changes !== null && changes.uncommitted > 0) {
+    ctx.io.err(
+      `agn: ${changes.uncommitted} uncommitted changes stay in the worktree; only commits are pushed`,
+    );
+  }
 }
 
 async function report(

@@ -551,6 +551,28 @@ done
 grep -q "$TYPED" "$WORK/agent.log"
 grep -q "Do not push" "$WORK/agent.log"
 
+echo "smoke: the launch prompt asked for a commit, and agn commit asks for one again"
+# Every launch in a worktree agn made ends with the section, so the running task already read it.
+for _ in 1 2 3 4 5; do
+  grep -q "Commit your work on \`$BRANCH\`" "$WORK/agent.log" && break
+  sleep 1
+done
+grep -q "Commit your work on \`$BRANCH\`" "$WORK/agent.log"
+# A repo that says how it commits is sent its own file, as written, in place of agn's default.
+mkdir -p "$WORK/runrepo/.ag/prompts"
+printf 'Smoke commit rule: one commit per task.\nDo not push.\n' > "$WORK/runrepo/.ag/prompts/commit.md"
+agx commit "$TASK" > "$WORK/commit.txt"
+grep -q "^asked .* to commit (live)$" "$WORK/commit.txt"
+test "$(wc -l < "$WORK/commit.txt")" -eq 1
+# tmux frames the paste, so the marker sits between the log's prefix and the first line sent.
+for _ in 1 2 3 4 5; do
+  grep -q "^line: .*Smoke commit rule: one commit per task\.$" "$WORK/agent.log" && break
+  sleep 1
+done
+grep -q "^line: .*Smoke commit rule: one commit per task\.$" "$WORK/agent.log"
+agx commit "$TASK" --json | grep -q '"via": "live"'
+rm -r "$WORK/runrepo/.ag/prompts"
+
 echo "smoke: agn pr pushes once to origin and hands back the compare page"
 # No clipboard tool on this PATH: agn prints the description instead of taking the author's
 # clipboard, which is also the machine-with-no-pbcopy path the command promises.
@@ -885,6 +907,8 @@ test -n "$(grep -l 'binary file, no diff' packages/ui/dist/assets/*.js)"
 test -n "$(grep -l 'Type a command' packages/ui/dist/assets/*.js)"
 # And the plan cell's usage panel, whose API-rate line is written nowhere else.
 test "$(grep -l 'at API rates, not billed' packages/ui/dist/assets/*.js | wc -l | tr -d ' ')" = 1
+# And the Changes panel's commit ask, which is the only place its label is written.
+test -n "$(grep -l 'Ask the agent to commit' packages/ui/dist/assets/*.js)"
 # And nothing of the daemon's own runtime is: the page imports types from core and never its code.
 test "$(grep -L execa packages/ui/dist/assets/*.js | wc -l)" = "$(ls packages/ui/dist/assets/*.js | wc -l)"
 test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$UI_PORT/ui/nope.js")" = 404

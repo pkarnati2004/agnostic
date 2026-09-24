@@ -2,7 +2,15 @@ import type { Task } from "@agnostic/core";
 import type { ApiError } from "../api/error";
 import type { Notices } from "./notice-store";
 
-export type TaskAction = "stop" | "resume" | "handoff" | "open" | "pr" | "update" | "pick";
+export type TaskAction =
+  | "stop"
+  | "resume"
+  | "handoff"
+  | "open"
+  | "pr"
+  | "update"
+  | "commit"
+  | "pick";
 
 /** Where the click happened, which is where the answer shows. */
 export type NoticeHost = "header" | "overlay" | "dialog" | "panel" | "compare";
@@ -18,6 +26,7 @@ const LABEL: Record<TaskAction, string> = {
   open: "Open in editor",
   pr: "Create PR",
   update: "Bring up to date",
+  commit: "Ask the agent to commit",
   pick: "Pick",
 };
 

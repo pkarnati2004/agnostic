@@ -24,6 +24,7 @@ function handlers(): PaletteHandlers {
     openInEditor: vi.fn(),
     createPr: vi.fn(),
     update: vi.fn(),
+    commit: vi.fn(),
     showCost: vi.fn(),
     addRepo: vi.fn(),
     sync: vi.fn(),
@@ -31,7 +32,7 @@ function handlers(): PaletteHandlers {
 }
 
 function ids(ctx: Partial<PaletteContext>, on: PaletteHandlers = handlers()): string[] {
-  const full = { query: "", activeTask: null, repo: REPO, ...ctx };
+  const full = { query: "", activeTask: null, repo: REPO, uncommitted: null, ...ctx };
   return paletteCommands(full, on).map((command) => command.id);
 }
 
@@ -72,18 +73,52 @@ describe("paletteCommands", () => {
     ]);
   });
 
-  it("drops Open and Bring up to date for a cleaned worktree, and keeps Create PR", () => {
+  it("drops Hand off, Open and Bring up to date for a cleaned worktree, and keeps Create PR", () => {
     // The push reads the branch from the main checkout, so Create PR needs no worktree, and the
-    // panel's own button is enabled here too.
+    // panel's own button is enabled here too. A resume rebuilds the worktree and the rest return.
     const rows = ids({ activeTask: taskRow({ status: "stopped", worktreePresent: false }) });
-    expect(rows).toEqual(["new-task", "resume", "handoff", "pr", "cost", "add-repo", "sync"]);
+    expect(rows).toEqual(["new-task", "resume", "pr", "cost", "add-repo", "sync"]);
   });
 
   it("offers nothing about the branch for a cleaned worktree with no branch either", () => {
     const rows = ids({
       activeTask: taskRow({ status: "stopped", worktreePresent: false, branch: null }),
     });
-    expect(rows).toEqual(["new-task", "resume", "handoff", "cost", "add-repo", "sync"]);
+    expect(rows).toEqual(["new-task", "resume", "cost", "add-repo", "sync"]);
+  });
+
+  it("keeps Hand off for a folder task and for an adopted one, which had no worktree", () => {
+    const folder = taskRow({ worktreePath: null, worktreePresent: false, branch: null });
+    expect(ids({ activeTask: folder })).toEqual([
+      "new-task",
+      "stop",
+      "handoff",
+      "cost",
+      "add-repo",
+      "sync",
+    ]);
+    const adopted = taskRow({ worktreePath: null, worktreePresent: false });
+    expect(ids({ activeTask: adopted })).toContain("handoff");
+  });
+
+  it("offers the commit row once the panel has read uncommitted work, live or resumable", () => {
+    const running = { activeTask: taskRow({ status: "running" }), uncommitted: 2 };
+    expect(ids(running)).toContain("commit");
+    expect(ids({ activeTask: taskRow({ status: "stopped" }), uncommitted: 2 })).toContain("commit");
+  });
+
+  it("leaves the commit row out with nothing to commit, and before the panel has read the task", () => {
+    expect(ids({ activeTask: taskRow({ status: "running" }), uncommitted: 0 })).not.toContain(
+      "commit",
+    );
+    expect(ids({ activeTask: taskRow({ status: "running" }) })).not.toContain("commit");
+  });
+
+  it("leaves the commit row out for a folder task and for an adopted one", () => {
+    const folder = taskRow({ worktreePath: null, worktreePresent: false, branch: null });
+    expect(ids({ activeTask: folder, uncommitted: 2 })).not.toContain("commit");
+    const adopted = taskRow({ worktreePath: null, worktreePresent: false });
+    expect(ids({ activeTask: adopted, uncommitted: 2 })).not.toContain("commit");
   });
 
   it("offers neither Create PR nor Bring up to date for a task with no branch", () => {
@@ -97,7 +132,7 @@ describe("paletteCommands", () => {
     expect(ids({ query: "   " })).not.toContain("run");
     expect(ids({ query: "add invite links", repo: null })).not.toContain("run");
     const rows = paletteCommands(
-      { query: "add invite links", activeTask: null, repo: REPO },
+      { query: "add invite links", activeTask: null, repo: REPO, uncommitted: null },
       handlers(),
     );
     expect(rows.map((row) => row.label)).toContain("Run: add invite links");
@@ -108,7 +143,10 @@ describe("paletteCommands", () => {
   it("gives every row the handler its button calls, with the task or the repo it is about", () => {
     const on = handlers();
     const task = taskRow({ id: "task9", status: "waiting" });
-    const rows = paletteCommands({ query: "port it", activeTask: task, repo: REPO }, on);
+    const rows = paletteCommands(
+      { query: "port it", activeTask: task, repo: REPO, uncommitted: 2 },
+      on,
+    );
     for (const row of rows) {
       row.run();
     }
@@ -120,6 +158,7 @@ describe("paletteCommands", () => {
     expect(on.openInEditor).toHaveBeenCalledWith("task9");
     expect(on.createPr).toHaveBeenCalledWith("task9");
     expect(on.update).toHaveBeenCalledWith("task9");
+    expect(on.commit).toHaveBeenCalledWith("task9");
     expect(on.showCost).toHaveBeenCalledTimes(1);
     expect(on.addRepo).toHaveBeenCalledTimes(1);
     expect(on.sync).toHaveBeenCalledWith("repo1");
@@ -128,13 +167,15 @@ describe("paletteCommands", () => {
 
   it("names the task in the label, which is what the filter reads", () => {
     const task = taskRow({ title: "Add the invite links", status: "running" });
-    const labels = paletteCommands({ query: "", activeTask: task, repo: REPO }, handlers()).map(
-      (row) => row.label,
-    );
+    const labels = paletteCommands(
+      { query: "", activeTask: task, repo: REPO, uncommitted: 2 },
+      handlers(),
+    ).map((row) => row.label);
     expect(labels).toContain("Stop Add the invite links");
     expect(labels).toContain("Open Add the invite links in editor");
     expect(labels).toContain("Create PR for Add the invite links");
     expect(labels).toContain("Bring Add the invite links up to date");
+    expect(labels).toContain("Ask Add the invite links to commit");
     expect(labels).toContain("Sync petal");
   });
 });

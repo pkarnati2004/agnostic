@@ -1,4 +1,5 @@
 import type { RepoListRow, Task, TaskListRow, TaskStatus } from "@agnostic/core";
+import { worktreeGone } from "../task/worktree-gone";
 
 /** The siblings of one compare, oldest first, which is the order the profiles were given in. */
 export type CompareGroup = { compareId: string; title: string; tasks: TaskListRow[] };
@@ -94,7 +95,7 @@ function max(a: string, b: string): string {
  * checks the worktree per list; the page keeps the flag up to date from the feed.
  */
 export function inHistory(task: TaskListRow): boolean {
-  return FINISHED.includes(task.status) && task.worktreePath !== null && !task.worktreePresent;
+  return FINISHED.includes(task.status) && worktreeGone(task);
 }
 
 /**

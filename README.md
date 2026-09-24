@@ -63,6 +63,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn changes [<task>]` | Files the task changed against its base, with counts. `--patch <path>` prints one file's diff |
 | `agn pr [<task>]` | Push the branch and open its pull request. `--title <t>`, `--no-open` |
 | `agn update [<task>]` | Ask the agent to bring the branch up to date with its base: rebase if never pushed, merge if pushed |
+| `agn commit [<task>]` | Ask the agent to commit its uncommitted work, with the prompt in `.ag/prompts/commit.md` or agn's default |
 | `agn compare "<prompt>"` | Run one prompt on 2-4 profiles at once, one worktree each. `--profiles a,b`; omitted, agn's pick and its alternative |
 | `agn compare show <id>` | One table over the agents: files, lines, tests, cost, time |
 | `agn compare pick <id> <task>` | Keep one; the others are stopped and their worktrees removed, branches kept |

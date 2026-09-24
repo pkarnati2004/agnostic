@@ -8,6 +8,7 @@
   preferences.yaml    # how the recommender should weigh quality, cost, speed
   decisions.md        # architecture decisions agents should respect
   tasks/              # one markdown file per task: spec, acceptance, status, handoff notes
+  prompts/commit.md   # optional: the prompt agn sends when it asks the agent to commit
   mcp.yaml            # optional: the MCP servers every agent here gets - see docs/mcp.md
   agnostic.yaml       # test and lint commands, default profile
 ```
@@ -64,6 +65,28 @@ Four keys change what `agn run` does.
 - `setup_command` runs once, when the worktree is created.
 - `base_branch` is the branch tasks are cut from, and the branch agn compares against when it decides whether a task's work was merged.
 - `clean_after_merge: true` removes a task's worktree once agn sees its branch merged. The branch stays; `agn clean --delete-branch` is still yours to run.
+
+## Commit prompt
+
+`.ag/prompts/commit.md` is the prompt agn sends when it asks an agent to commit. agn sends the file
+as written: it fills nothing in and parses nothing out. The text goes to the agent twice - at the end
+of the first prompt of every task, under "Before you finish", and again whenever you click "Ask the
+agent to commit" or run `agn commit`.
+
+Without the file, or with an empty one, agn sends its own:
+
+```
+Commit your work on `<branch>`. Stage every change this task made and commit it. Write the message as one line that says what changed, and add a short body when the reason is not obvious from the diff. Do not push. If this repo has its own commit or land command, run that instead.
+```
+
+Write the file when this repo has its own way of committing:
+
+```markdown
+Run `/land`. It runs the tests, commits with the house message format and stops there. Do not push.
+```
+
+Every agent this repo runs reads the same file, so name a command each of them has. Nothing creates
+the folder: `agn init` and `agn sync` leave it alone. agn never commits and never pushes.
 
 ## Handoff notes
 
