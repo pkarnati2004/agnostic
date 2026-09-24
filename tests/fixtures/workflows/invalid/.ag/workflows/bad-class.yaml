@@ -1,0 +1,6 @@
+name: bad-class
+roles:
+  - name: architect
+    class: research
+  - name: developer
+    class: build

@@ -55,6 +55,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn hooks install` | Install the status hook in a repo. `--repo <r>`, `--harness <id>` |
 | `agn init` | Create `.ag/`, seeding `instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--from <file>`, `--force`, `--repo <r>` |
 | `agn sync` | Regenerate `CLAUDE.md` and `AGENTS.md` from `.ag/instructions.md`. `--dry-run`, `--force`, `--repo <r>` |
+| `agn workflow init\|list\|show` | Declare roles for a repo's pipeline in `.ag/workflows/`. `--template none\|single\|tiered`, `--name <n>`, `--force`, `--repo <r>` |
 | `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--intent <class>`, `--subscriptions-only` |
 | `agn handoff [<task>] --to <id\|harness>` | Stop a task and hand its work to another agent with a structured note. `--note <text>` (`-` reads stdin), `--note-file <path>` |
 | `agn usage [<task>]` | Today's and this week's usage per plan, or one task's |
@@ -92,6 +93,7 @@ Model overrides (Kimi in Claude Code, a local model in Codex, anything via OpenR
 - [Setup: installing and logging into agents](docs/setup.md)
 - [Models and providers: OpenRouter, Kimi, local models](docs/models.md)
 - [Project context: `.ag/` and `agn sync`](docs/project-context.md)
+- [Workflows: the roles a repo's pipeline runs](docs/workflows.md)
 - [Recommendations: how the catalog works](docs/recommendations.md)
 - [Usage and cost: what agn counts](docs/usage.md)
 - [Catalog: what it holds, how it updates](docs/catalog.md)

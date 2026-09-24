@@ -1,0 +1,19 @@
+name: tiered
+description: Plan, implement, test and review, each by its own role.
+roles:
+  - name: architect
+    class: research
+    instructions: |
+      Turn the task into a short plan.
+  - name: developer
+    class: implement
+    profile: claude-code:sonnet-4.5:native
+    instructions: |
+      Implement the architect's plan.
+  - name: test-writer
+    class: implement
+    instructions: |
+      Write unit tests for the developer's change.
+  - name: reviewer
+    class: review
+    profile: codex:gpt-5:native

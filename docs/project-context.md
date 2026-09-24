@@ -8,6 +8,7 @@
   preferences.yaml    # how the recommender should weigh quality, cost, speed
   decisions.md        # architecture decisions agents should respect
   tasks/              # one markdown file per task: spec, acceptance, status, handoff notes
+  workflows/          # optional: the roles a task's pipeline runs - see docs/workflows.md
   agnostic.yaml       # test and lint commands, default profile
 ```
 

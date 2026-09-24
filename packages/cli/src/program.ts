@@ -28,6 +28,7 @@ import { syncCommand } from "./commands/sync.js";
 import { uiCommand } from "./commands/ui.js";
 import { updateCommand } from "./commands/update.js";
 import { usageCommand } from "./commands/usage.js";
+import { workflowCommand } from "./commands/workflow.js";
 import type { CliContext, Output } from "./context.js";
 import { renderError } from "./render-error.js";
 
@@ -69,6 +70,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     hooksCommand(ctx),
     initCommand(ctx),
     syncCommand(ctx),
+    workflowCommand(ctx),
     usageCommand(ctx),
     outcomesCommand(ctx),
     openCommand(ctx),

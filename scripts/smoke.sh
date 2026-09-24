@@ -297,6 +297,28 @@ grep -q "^Recommended: claude-code:" "$WORK/recommend.txt"
 grep -q "^Risk: touches auth" "$WORK/recommend.txt"
 agx recommend "fix the flaky auth test" --repo "$WORK/runrepo" --json | grep -q '"taskClass"'
 
+echo "smoke: agn workflow writes, lists and shows a repo's roles"
+mkdir -p "$WORK/wfrepo"
+git -C "$WORK/wfrepo" init -q
+git -C "$WORK/wfrepo" -c user.email=t@agn.test -c user.name=agn commit -q --allow-empty -m first
+agx add "$WORK/wfrepo" > /dev/null
+agx init --repo "$WORK/wfrepo" > /dev/null
+agx workflow init --repo "$WORK/wfrepo" > "$WORK/wf.txt"
+grep -q "^wrote .ag/workflows/tiered.yaml$" "$WORK/wf.txt"
+grep -q "^roles: architect (research) > developer (implement) > test-writer (implement) > reviewer (review)$" "$WORK/wf.txt"
+agx workflow list --repo "$WORK/wfrepo" | grep -q "^tiered "
+agx workflow show tiered --repo "$WORK/wfrepo" | grep -q "^4. reviewer  review  agn picks at sync$"
+# A second init keeps the file the user may have edited; --force is how you say otherwise.
+! agx workflow init --repo "$WORK/wfrepo" 2> "$WORK/wf-err.txt"
+grep -q "exists" "$WORK/wf-err.txt"
+# A workflow file that does not parse names the file and the key, and stops the whole list.
+printf 'name: broken\nroles:\n  - name: x\n    class: nope\n' > "$WORK/wfrepo/.ag/workflows/broken.yaml"
+! agx workflow list --repo "$WORK/wfrepo" 2> "$WORK/wf-err.txt"
+grep -q "roles.0.class" "$WORK/wf-err.txt"
+grep -q "broken.yaml" "$WORK/wf-err.txt"
+rm "$WORK/wfrepo/.ag/workflows/broken.yaml"
+agx workflow init --template none --repo "$WORK/wfrepo" | grep -q "^nothing written"
+
 echo "smoke: agn mcp answers the MCP handshake and a tool call on stdout"
 INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}'
 {

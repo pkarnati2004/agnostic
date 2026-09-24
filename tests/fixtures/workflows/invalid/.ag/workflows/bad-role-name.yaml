@@ -1,0 +1,4 @@
+name: bad-role-name
+roles:
+  - name: Test Writer
+    class: implement

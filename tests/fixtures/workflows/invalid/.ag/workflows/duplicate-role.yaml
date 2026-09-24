@@ -1,0 +1,6 @@
+name: duplicate-role
+roles:
+  - name: developer
+    class: implement
+  - name: developer
+    class: review
