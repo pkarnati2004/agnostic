@@ -1,0 +1,4 @@
+name: something-else
+roles:
+  - name: developer
+    class: implement

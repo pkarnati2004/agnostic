@@ -1,0 +1,5 @@
+name: bad-profile
+roles:
+  - name: developer
+    class: implement
+    profile: sonnet

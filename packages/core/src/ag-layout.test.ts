@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agPaths, taskNotePath } from "./ag-layout.js";
+import { agPaths, taskNotePath, workflowPath } from "./ag-layout.js";
 
 describe("agPaths", () => {
   it("puts every file under <repo>/.ag", () => {
@@ -10,6 +10,7 @@ describe("agPaths", () => {
       instructionsMd: "/repos/app/.ag/instructions.md",
       decisionsMd: "/repos/app/.ag/decisions.md",
       tasksDir: "/repos/app/.ag/tasks",
+      workflowsDir: "/repos/app/.ag/workflows",
     });
   });
 });
@@ -17,5 +18,11 @@ describe("agPaths", () => {
 describe("taskNotePath", () => {
   it("names the note after the task id", () => {
     expect(taskNotePath("/repos/app", "t3n9v2wxyz")).toBe("/repos/app/.ag/tasks/t3n9v2wxyz.md");
+  });
+});
+
+describe("workflowPath", () => {
+  it("names the file after the workflow", () => {
+    expect(workflowPath("/repos/app", "tiered")).toBe("/repos/app/.ag/workflows/tiered.yaml");
   });
 });
