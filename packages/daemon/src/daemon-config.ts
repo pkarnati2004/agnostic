@@ -1,5 +1,7 @@
 import {
   type AgnosticPaths,
+  type DesignToolId,
+  DesignToolIdSchema,
   type EditorId,
   EditorIdSchema,
   type Plans,
@@ -27,6 +29,7 @@ const DaemonConfigFileSchema = z.strictObject({
   port: z.number().int().min(1).max(65535).optional(),
   plans: PlansSchema.optional(),
   editor: EditorIdSchema.optional(),
+  design_tool: DesignToolIdSchema.optional(),
   catalog_check: z.boolean().optional(),
   spec_writer: ProfileIdSchema.optional(),
   budget: BudgetFileSchema.optional(),
@@ -36,6 +39,9 @@ const DaemonConfigFileSchema = z.strictObject({
 /** Where agn installs Claude Code's status-line command, and so which sessions it captures. */
 export type HooksConfig = { claudeStatusline: "user" | "repo" };
 
+/** The design tool a design task is opened in when the file names none (ADR 036 Q15). */
+const DEFAULT_DESIGN_TOOL: DesignToolId = "claude-design";
+
 /** Null per window when the file sets no ceiling for it (ADR 036 Q8). */
 export type BudgetConfig = { dailyUsd: number | null; weeklyUsd: number | null };
 
@@ -43,6 +49,8 @@ type DaemonConfig = {
   port: number | null;
   plans: Plans;
   editor: EditorId | null;
+  /** Never null: a design run has to open something, so the file only ever changes which tool. */
+  designTool: DesignToolId;
   catalogCheck: boolean;
   /** The profile that writes specs, overriding the automatic choice (ADR 028). */
   specWriter: string | null;
@@ -56,8 +64,9 @@ const FIX_HINT = "Fix the file, or delete it to use the defaults.";
 
 /**
  * `~/.agnostic/config.yaml` holds user settings for the machine, not for a repo: the port to bind,
- * the plan each vendor bills the user on, the editor `agn open` uses, whether the daily catalog
- * check runs, the spend ceiling, and where agn installs Claude Code's status-line command. The port and the check are read once at start and the rest
+ * the plan each vendor bills the user on, the editor `agn open` uses, the design tool a design
+ * task opens, whether the daily catalog check runs, the spend ceiling, and where agn installs
+ * Claude Code's status-line command. The port and the check are read once at start and the rest
  * per request. This reader moves to core when a second component needs it.
  */
 export async function readDaemonConfig(paths: AgnosticPaths): Promise<DaemonConfig> {
@@ -66,6 +75,7 @@ export async function readDaemonConfig(paths: AgnosticPaths): Promise<DaemonConf
     port: file?.port ?? null,
     plans: file?.plans ?? {},
     editor: file?.editor ?? null,
+    designTool: file?.design_tool ?? DEFAULT_DESIGN_TOOL,
     // Absent means on: the check is opt-out, so a file that says nothing about it keeps it.
     catalogCheck: file?.catalog_check ?? true,
     specWriter: file?.spec_writer ?? null,
@@ -80,7 +90,8 @@ export async function readDaemonConfig(paths: AgnosticPaths): Promise<DaemonConf
 
 /**
  * Records what the user told `agn doctor --plan`, one vendor at a time, keeping the port, the
- * editor, the catalog setting, the spec writer, the budget and the vendors they did not mention.
+ * editor, the design tool, the catalog setting, the spec writer, the budget and the vendors they
+ * did not mention.
  * The file is rewritten from its parsed contents, so a comment in it does not survive being
  * edited this way.
  */
@@ -93,6 +104,10 @@ export async function writeDaemonConfigPlans(paths: AgnosticPaths, plans: Plans)
   }
   if (current.editor !== null) {
     file.editor = current.editor;
+  }
+  // The default is not written back, so a rewrite adds no key the user never wrote.
+  if (current.designTool !== DEFAULT_DESIGN_TOOL) {
+    file.design_tool = current.designTool;
   }
   if (!current.catalogCheck) {
     file.catalog_check = false;

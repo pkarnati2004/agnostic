@@ -147,6 +147,7 @@ describe("POST /repos/:id/tasks", () => {
       branchPrefix: null,
       setupCommand: "exit 3",
       cleanAfterMerge: false,
+      designFolder: "design",
     });
     const response = await run(repo, { prompt: "ship it" });
     expect(response.status).toBeGreaterThanOrEqual(400);

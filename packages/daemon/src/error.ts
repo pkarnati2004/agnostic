@@ -63,6 +63,10 @@ const statusByCode: Record<string, number> = {
   "branch-gone": 409,
   // The editor is installed and did not start: the machine's state now, not the request's fault.
   "editor-failed": 409,
+  // The same for a design tool, and the same answer: run the open from a terminal instead.
+  "design-tool-failed": 409,
+  // A design task has no agent session, so resume, attach and update have nothing to work with.
+  "design-task-no-session": 409,
   // The machine has spent its ceiling for the window: the moment, not the request (ADR 036 Q9).
   "budget-exceeded": 409,
   // A folder workspace has no git to read a diff from; `git init` is what changes that (ADR 001).
@@ -122,6 +126,12 @@ const statusByCode: Record<string, number> = {
   // An editor agn cannot see is the machine's state; the caller picks from the ones it can.
   "editor-not-found": 400,
   "editor-none": 400,
+  // A design run is a session for a human in a design tool, so no profile can be named for it.
+  "design-no-profile": 400,
+  // The task runs on an agent, so it has no design tool and no design folder to open.
+  "not-a-design-task": 400,
+  // config.yaml names a design tool detection did not report; the caller names one it did.
+  "design-tool-not-found": 400,
   "path-outside-repo": 400,
   "adopt-pid-not-found": 400,
   // Registry refusals are all "that combination cannot be launched", which is the caller's choice.

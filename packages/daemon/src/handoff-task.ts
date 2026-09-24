@@ -106,9 +106,10 @@ async function stopParent(ctx: DaemonContext, repo: Repo, parent: Task): Promise
 /**
  * ADR 014: the note is repo history, not the ledger - it is written after the transaction, so a
  * refused handoff cannot leave a section naming a child that was never created, and a note that
- * cannot be written loses the context rather than the child that already exists.
+ * cannot be written loses the context rather than the child that already exists. `agn stop` on a
+ * design task appends its own section the same guarded way.
  */
-async function appendHandoff(
+export async function appendHandoff(
   ctx: DaemonContext,
   repo: Repo,
   from: Task,

@@ -45,7 +45,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn repo close\|open\|remove <repo>` | Close a repo so it leaves the list and the workspace, keeping its history, or open it again. `remove` hides a repo for good and deletes the worktrees agn made for its tasks, keeping its history; `agn add <path>` brings it back. Close and remove are refused while a task is running or waiting |
 | `agn doctor` | Detect installed agents, logins, provider keys, local model servers |
 | `agn profiles` | List the agent × model combinations you can run right now |
-| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>`, `--intent <class>`, `--skip-tests`, `--ignore-budget` |
+| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>`, `--intent <class>`, `--skip-tests`, `--ignore-budget`. `--intent design` starts a design task instead of an agent, see [docs/design-tasks.md](docs/design-tasks.md) |
 | `agn status [<task>]` | One task, or every task across your repos. `--all` lists everything from inside a worktree |
 | `agn attach [<task>]` | Join the session in your terminal; defaults to the task of the worktree you are in |
 | `agn stop <task>` | Stop the session |
@@ -66,7 +66,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn compare "<prompt>"` | Run one prompt on 2-4 profiles at once, one worktree each. `--profiles a,b`; omitted, agn's pick and its alternative |
 | `agn compare show <id>` | One table over the agents: files, lines, tests, cost, time |
 | `agn compare pick <id> <task>` | Keep one; the others are stopped and their worktrees removed, branches kept |
-| `agn open [<task>]` | Open the task's directory in your editor. `--editor <id>` |
+| `agn open [<task>]` | Open the task's directory in your editor. `--editor <id>`; `--tool` opens a design task's design tool |
 | `agn catalog show <profile>` / `agn catalog update` | Print the benchmark rows behind a recommendation, or fetch the latest catalog |
 | `agn mcp` | Serve agn's commands to an agent over MCP on stdin and stdout; see [docs/mcp.md](docs/mcp.md) |
 | `agn ui` | Open the workspace in your browser. `--no-open` prints the address instead |
@@ -93,6 +93,7 @@ Model overrides (Kimi in Claude Code, a local model in Codex, anything via OpenR
 - [Setup: installing and logging into agents](docs/setup.md)
 - [Models and providers: OpenRouter, Kimi, local models](docs/models.md)
 - [Project context: `.ag/` and `agn sync`](docs/project-context.md)
+- [Design tasks: a task you do in a design tool](docs/design-tasks.md)
 - [Recommendations: how the catalog works](docs/recommendations.md)
 - [Usage and cost: what agn counts](docs/usage.md)
 - [Catalog: what it holds, how it updates](docs/catalog.md)

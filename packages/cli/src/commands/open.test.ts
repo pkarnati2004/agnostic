@@ -1,5 +1,6 @@
 import {
   agnosticPaths,
+  type DesignOpenResponse,
   type EditorId,
   type OpenTaskResponse,
   ProcessError,
@@ -39,6 +40,13 @@ const response: OpenTaskResponse = {
   argv: ARGV,
 };
 
+const designResponse: DesignOpenResponse = {
+  task,
+  tool: { id: "figma", name: "Figma", via: "app", path: "/Applications/Figma.app" },
+  folder: `${DIR}/design`,
+  argv: ["open", "-a", "/Applications/Figma.app"],
+};
+
 type Spawned = { command: string; args: string[]; opts: ProcessOptions };
 
 /** `exit` is what the fake editor does: exit at once, fail at once, or keep running. */
@@ -75,6 +83,7 @@ function cli(exit: "now" | "never" | { rejects: unknown } = "now", cwd = "/work/
         asked.push(editor);
         return Promise.resolve(response);
       },
+      designOpenInfo: () => Promise.resolve(designResponse),
     },
   });
   return { ...test, spawned, asked, firstSpawn, unrefs: () => unrefs };
@@ -155,6 +164,25 @@ describe("agn open", () => {
     const test = cli("now", DIR);
     await openCommand(test.ctx).parseAsync([], { from: "user" });
     expect(test.spawned).toHaveLength(1);
+  });
+
+  it("opens a design task's tool with --tool, and names the folder it did not pass", async () => {
+    const test = cli();
+    await openCommand(test.ctx).parseAsync(["t3n9v2wxyz", "--tool"], { from: "user" });
+    expect(test.spawned).toHaveLength(1);
+    expect(test.spawned[0]?.args).toEqual(["-a", "/Applications/Figma.app"]);
+    expect(test.out).toEqual([`opened ${DIR}/design in Figma`]);
+  });
+
+  it("is a usage error when --tool and --editor are passed together", async () => {
+    const test = cli();
+    const code = await runMain(
+      ["node", "agn", "open", "t3n9v2wxyz", "--tool", "--editor", "cursor"],
+      test.ctx,
+    );
+    expect(code).toBe(2);
+    expect(test.err.join("\n")).toContain("not both");
+    expect(test.spawned).toEqual([]);
   });
 
   it("is a usage error with no task and no worktree", async () => {

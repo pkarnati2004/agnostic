@@ -37,6 +37,7 @@ describe("toolDefinition", () => {
       "review",
       "research",
       "ui",
+      "design",
       "general",
     ]);
   });

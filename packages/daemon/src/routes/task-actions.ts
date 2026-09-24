@@ -2,6 +2,7 @@ import {
   type AttachResponse,
   CleanTaskRequestSchema,
   type CleanTaskResponse,
+  designToolOf,
   HandoffTaskRequestSchema,
   type HandoffTaskResponse,
   isDirectory,
@@ -12,6 +13,7 @@ import {
 } from "@agnostic/core";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
+import { closeDesignTask } from "../close-design-task.js";
 import { DaemonError, requestInvalid } from "../error.js";
 import { handoffTask } from "../handoff-task.js";
 import { requestBody } from "../request-body.js";
@@ -45,7 +47,12 @@ export function taskActionRoutes(ctx: DaemonContext): Hono {
     })
     .post("/tasks/:id/stop", async (c) => {
       const task = await ctx.lifecycle.reconcile(resolveTaskId(ctx.ledger, c.req.param("id")));
-      const body: TaskResponse = { task: await ctx.lifecycle.stop(task) };
+      // Stopping a design task is finishing it, and it writes the note that says what was done.
+      const stopped =
+        designToolOf(task.profileId) === null
+          ? await ctx.lifecycle.stop(task)
+          : await closeDesignTask(ctx, task);
+      const body: TaskResponse = { task: stopped };
       return c.json(body);
     })
     .post("/tasks/:id/clean", async (c) => {

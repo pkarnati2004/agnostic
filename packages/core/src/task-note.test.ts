@@ -165,6 +165,34 @@ describe("parseTaskNote edge cases", () => {
     expect(error.code).toBe("task-note-invalid");
   });
 
+  it("reads a handoff that names nobody, and writes it back the same way", () => {
+    const text = note("## Spec\n\nA\n\n## Handoff at 2026-09-09T09:30:00.000Z\n\nBody\n");
+    const parsed = parseTaskNote(text);
+    expect(parsed.handoffs).toEqual([
+      { toProfileId: null, at: "2026-09-09T09:30:00.000Z", body: "Body" },
+    ]);
+    expect(formatTaskNote(parsed)).toBe(text);
+  });
+
+  it("round-trips a note holding both handoff forms, in file order", () => {
+    const text = note(
+      "## Spec\n\nA\n\n## Handoff to codex:default:native at 2026-09-09T09:30:00.000Z\n\nOne\n" +
+        "\n## Handoff at 2026-09-10T09:30:00.000Z\n\nTwo\n",
+    );
+    const parsed = parseTaskNote(text);
+    expect(parsed.handoffs.map((handoff) => handoff.toProfileId)).toEqual([
+      "codex:default:native",
+      null,
+    ]);
+    expect(formatTaskNote(parsed)).toBe(text);
+  });
+
+  it("rejects a handoff that names nobody and carries no timestamp", () => {
+    const error = rejection(note("## Spec\n\nA\n\n## Handoff at yesterday\n\nBody\n"));
+    expect(error.code).toBe("task-note-invalid");
+    expect(error.message).toContain("not a handoff heading");
+  });
+
   it("carries a hint naming the file to fix", () => {
     const error = rejection(note("## Acceptance\n\nOnly acceptance, no spec.\n"));
     expect(error.hint).toContain("<inline>");

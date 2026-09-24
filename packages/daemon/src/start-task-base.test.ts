@@ -110,6 +110,7 @@ describe("the --base option", () => {
       branchPrefix: null,
       setupCommand: null,
       cleanAfterMerge: false,
+      designFolder: "design",
     });
 
     const task = await started(repo, { prompt: "no --base here" });

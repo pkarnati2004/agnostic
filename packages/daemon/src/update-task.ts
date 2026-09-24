@@ -13,6 +13,7 @@ import { resumeTask } from "./resume-task.js";
 import { resolveTaskBase } from "./task-base.js";
 import { branchUpstream } from "./task-changes.js";
 import { taskDir } from "./task-dir.js";
+import { assertAgentTask } from "./task-session.js";
 import { updatePrompt } from "./update-prompt.js";
 
 const LIVE: Task["status"][] = ["running", "waiting"];
@@ -29,6 +30,7 @@ export async function updateTask(
   repo: Repo,
   task: Task,
 ): Promise<UpdateTaskResponse> {
+  assertAgentTask(task);
   const at = await taskDir(ctx, repo, task);
   const branch = task.branch;
   if (branch === null) {

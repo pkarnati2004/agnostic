@@ -6,6 +6,7 @@ import {
   type AgnosticPaths,
   agnosticPaths,
   type DaemonInfo,
+  type DesignTool,
   type Editor,
   type RegisterRepoResponse,
   type Repo,
@@ -24,6 +25,7 @@ import type { UpgradeHandler } from "./terminal-socket.js";
 import {
   fixtureCatalog,
   fixtureCatalogPath,
+  fixtureDesignTools,
   fixtureDetection,
   fixtureEditors,
   launchDetection,
@@ -127,6 +129,8 @@ type TestDaemonOptions = {
   userHome?: string;
   /** The editors the stub detection reports; `[]` is a machine with none installed. */
   editors?: Editor[];
+  /** The design tools the stub detection reports; `[]` is a machine agn can open none on. */
+  designTools?: DesignTool[];
   /** A directory standing in for `packages/ui/dist`; null is a checkout nobody has built. */
   uiDist?: string;
   /** Merged over the base environment every harness is launched with, for a fixture to read. */
@@ -224,6 +228,7 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
       return detect();
     },
     detectEditors: () => Promise.resolve(opts.editors ?? fixtureEditors),
+    detectDesignTools: () => Promise.resolve(opts.designTools ?? fixtureDesignTools),
     uiDist: opts.uiDist ?? null,
     ...(opts.heartbeatMs === undefined ? {} : { heartbeatMs: opts.heartbeatMs }),
     ...(opts.specTimeoutMs === undefined ? {} : { specTimeoutMs: opts.specTimeoutMs }),

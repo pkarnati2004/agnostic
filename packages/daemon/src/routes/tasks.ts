@@ -11,6 +11,7 @@ import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { requestInvalid } from "../error.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
+import { startDesignTask } from "../start-design-task.js";
 import { startTask } from "../start-task.js";
 import { taskActionRoutes } from "./task-actions.js";
 
@@ -31,7 +32,10 @@ export function taskRoutes(ctx: DaemonContext): Hono {
       if (!parsed.success) {
         throw requestInvalid(parsed.error);
       }
-      const body: TaskResponse = { task: await startTask(ctx, repo, parsed.data) };
+      // A design run is asked for outright and never read out of the prompt: a word nobody meant
+      // as an instruction must not turn an agent run into a session for a human (ADR 036 Q15).
+      const start = parsed.data.intent === "design" ? startDesignTask : startTask;
+      const body: TaskResponse = { task: await start(ctx, repo, parsed.data) };
       return c.json(body, 201);
     })
     .get("/tasks/:id", async (c) => {

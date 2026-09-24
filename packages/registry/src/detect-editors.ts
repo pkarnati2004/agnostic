@@ -56,7 +56,8 @@ async function inAppDirs(entry: EditorEntry, dirs: string[]): Promise<Editor | n
   return null;
 }
 
-function appDirsFor(opts: DetectEditorsOptions): string[] {
+/** The folders a Mac keeps applications in; `detect-design-tools.ts` scans the same ones. */
+export function appDirsFor(opts: DetectEditorsOptions): string[] {
   return (
     opts.appDirs ?? [
       "/Applications",

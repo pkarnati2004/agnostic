@@ -1,4 +1,5 @@
 import {
+  designToolOf,
   type ExecutorProvider,
   type HarnessId,
   type SessionHandle,
@@ -7,6 +8,20 @@ import {
   type TaskSession,
 } from "@agnostic/core";
 import { DaemonError } from "./error.js";
+
+/**
+ * A design task is worked on by a human in a design tool, so resume, attach and update have
+ * nothing to work with: there is no session now and there never was one.
+ */
+export function assertAgentTask(task: Task): void {
+  if (designToolOf(task.profileId) === null) {
+    return;
+  }
+  throw new DaemonError(`task ${task.id} is a design task and has no agent session`, {
+    code: "design-task-no-session",
+    hint: `Open the tool with \`agn open ${task.id} --tool\`; \`agn stop ${task.id}\` finishes it.`,
+  });
+}
 
 /**
  * What the ledger records after a launch, for a first run and for a resume alike. `sessionId` is
@@ -38,6 +53,7 @@ export async function attachableHandle(
   executor: ExecutorProvider,
   task: Task,
 ): Promise<SessionHandle> {
+  assertAgentTask(task);
   const handle = sessionHandle(task);
   if (handle === null && task.session?.tmuxSession === null) {
     throw new DaemonError(`task ${task.id} was started outside tmux and cannot be attached to`, {

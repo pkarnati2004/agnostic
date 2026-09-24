@@ -2,6 +2,12 @@ import type { Task, TaskSession, TaskStatus } from "@agnostic/core";
 import type { Database } from "better-sqlite3";
 import { LedgerError, writeFailure } from "./error.js";
 import type { EventQueries } from "./event-queries.js";
+import {
+  markStarted,
+  markWaiting,
+  type StartedTask,
+  type StartedWithoutSession,
+} from "./task-launch-queries.js";
 import { COLUMNS, filterSql, type TaskRow, toTask } from "./task-row.js";
 
 export type TaskFilter = {
@@ -14,20 +20,14 @@ export type TaskFilter = {
   limit?: number;
 };
 
-/** What the executor decided at launch: the branch, the commit it forked from, and the session. */
-export type StartedTask = {
-  branch: string | null;
-  /** Null when a worktree or branch was reused, or the task has no branch at all. */
-  baseCommit: string | null;
-  session: TaskSession;
-};
-
 export type TaskQueries = {
   insert(task: Task): Task;
   setStatus(id: string, to: TaskStatus): Task;
   setSession(id: string, session: TaskSession): Task;
   /** Branch, session and running status in one write, so a task is never running with no session. */
   start(id: string, started: StartedTask): Task;
+  /** Branch and base commit recorded and the status set to waiting, for a task with no session. */
+  startWaiting(id: string, started: StartedWithoutSession): Task;
   /** The worktree agn removed; the row keeps its path and branch as the record of what ran. */
   clean(id: string, deletedBranch: boolean): Task;
   get(id: string): Task | null;
@@ -61,6 +61,7 @@ export function createTaskQueries(db: Database, events: EventQueries): TaskQueri
     setStatus: setTaskStatus(db, events, requireTask),
     setSession: setTaskSession(db, events, requireTask),
     start: markStarted(db, events, requireTask),
+    startWaiting: markWaiting(db, events, requireTask),
     clean: markCleaned(db, events, requireTask),
     get,
     list(filter: TaskFilter = {}): Task[] {
@@ -170,45 +171,6 @@ function setTaskSession(
       payload: { session },
     });
     return { ...current, session, updatedAt };
-  });
-}
-
-function markStarted(
-  db: Database,
-  events: EventQueries,
-  requireTask: (id: string) => Task,
-): TaskQueries["start"] {
-  const updateRow = db.prepare(
-    `UPDATE tasks SET branch = ?, base_commit = COALESCE(?, base_commit), session_json = ?,
-       status = 'running', updated_at = ? WHERE id = ?`,
-  );
-  return db.transaction((id: string, started: StartedTask): Task => {
-    const current = requireTask(id);
-    const updatedAt = new Date().toISOString();
-    // A relaunch into an existing worktree has no base to report; the first one's stands.
-    updateRow.run(
-      started.branch,
-      started.baseCommit,
-      JSON.stringify(started.session),
-      updatedAt,
-      id,
-    );
-    const meta = { ts: updatedAt, taskId: id, repoId: current.repoId } as const;
-    events.append({ ...meta, kind: "session.captured", payload: { session: started.session } });
-    if (current.status !== "running") {
-      events.append({
-        ...meta,
-        kind: "task.status",
-        payload: { from: current.status, to: "running" },
-      });
-    }
-    return {
-      ...current,
-      ...started,
-      baseCommit: started.baseCommit ?? current.baseCommit,
-      status: "running",
-      updatedAt,
-    };
   });
 }
 
