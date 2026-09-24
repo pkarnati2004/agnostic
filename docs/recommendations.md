@@ -21,15 +21,17 @@ The first line is what agn made of your prompt: intent, scope, the risk areas it
 whether it needs a browser. The rules are keyword rules, so the same prompt always gives the same
 class:
 
-- **Intent** is the first match among debug, review, refactor, research, ui, implement, in that
-  order. Nothing matched means `general`, and agn says so rather than guessing.
+- **Intent** is the first match among debug, review, refactor, research, design, ui, implement, in
+  that order. Nothing matched means `general`, and agn says so rather than guessing. `design` is
+  the tool words - mockup, wireframe, figma, prototype; the word *design* itself reads as `ui`.
 - **Scope** is `large` when the prompt uses a word like *across*, *every*, *rewrite* or *migrate*,
   `small` under fifteen words, `medium` otherwise. Scope decides the token estimate behind the cost.
 - **Risk** is the areas whose keywords matched in `.ag/preferences.yaml`. The defaults are auth, db,
   payments and infra. A `risk_rules` list in the file replaces them.
 
 If the class is wrong, pass `--intent <intent>` to `agn recommend` or `agn run`. The task records
-both what you asked for and what the rules read.
+both what you asked for and what the rules read. `--intent design` on `agn run` is not a class for
+an agent: it starts a [design task](design-tasks.md), which you do yourself in a design tool.
 
 ## How the pick is made
 

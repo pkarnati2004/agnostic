@@ -18,6 +18,11 @@ describe("classifyTask", () => {
     expect(classify("review the diff on the release branch").intent).toBe("review");
   });
 
+  it('reads a design tool\'s own words as design, and leaves "design" itself on ui', () => {
+    expect(classify("wireframe the onboarding").intent).toBe("design");
+    expect(classify("design the settings page").intent).toBe("ui");
+  });
+
   it("answers general when no rule matched, rather than guessing", () => {
     const taskClass = classify("do the thing");
     expect(taskClass.intent).toBe("general");
@@ -74,6 +79,7 @@ describe("the keyword tables", () => {
       "review",
       "refactor",
       "research",
+      "design",
       "ui",
       "implement",
     ]);

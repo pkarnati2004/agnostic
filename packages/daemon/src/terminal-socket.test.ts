@@ -70,6 +70,17 @@ describe("the terminal socket's upgrade", () => {
     expect(outside.body.error.code).toBe("session-not-attachable");
   }, 30_000);
 
+  it("refuses a design task, which never had a session to attach to", async () => {
+    const design = await startTask(daemon, repo, {
+      prompt: "wireframe the onboarding",
+      intent: "design",
+    });
+    const refused = await refusal(connect(port, `/tasks/${design.id}/terminal`));
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe("design-task-no-session");
+    expect(refused.body.error.hint).toContain(`agn open ${design.id} --tool`);
+  }, 30_000);
+
   it("answers 400 ambiguous-id when a prefix matches two tasks", async () => {
     const first = seededTask("ambqrstuvw");
     const second = seededTask("ambzyxwvut");

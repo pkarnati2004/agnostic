@@ -269,6 +269,12 @@ chmod +x "$FAKEBIN/claude"
   echo "echo \"\$@\" >> $WORK/code.log"
 } > "$FAKEBIN/code"
 chmod +x "$FAKEBIN/code"
+# The system opener a design task's tool is launched through, recording what it was asked to open.
+{
+  echo '#!/bin/sh'
+  echo "echo \"\$@\" >> $WORK/open.log"
+} > "$FAKEBIN/open"
+chmod +x "$FAKEBIN/open"
 # /usr/sbin is where macOS keeps lsof, which is how the executor reads a process's directory.
 SMOKE_PATH="$FAKEBIN:$(dirname "$NODE"):$(dirname "$(command -v tmux)"):/usr/bin:/bin:/usr/sbin:/sbin"
 
@@ -334,6 +340,28 @@ MCP_TREE="$("$NODE" -e "process.stdout.write(JSON.parse(require('node:fs').readF
 test -f "$MCP_TREE/.mcp.json"
 agx stop "$MCP_TASK" | grep -q "^stopped $MCP_TASK"
 agx clean "$MCP_TASK" | grep -q "^cleaned $MCP_TASK"
+
+echo "smoke: a design task waits in its own worktree until agn stop finishes it"
+agx run "wireframe the onboarding" --intent design --repo "$WORK/mcprepo" > "$WORK/design.txt"
+grep -q "^started " "$WORK/design.txt"
+grep -q "^design folder: .*/design$" "$WORK/design.txt"
+grep -q "^opened Claude Design$" "$WORK/design.txt"
+# The tool is opened by its app bundle when this machine has one, and by its address otherwise.
+grep -qE "claude.ai/design|Claude.app" "$WORK/open.log"
+DESIGN_TASK="$(sed -n 's/^started \([^ ]*\) .*/\1/p' "$WORK/design.txt")"
+DESIGN_TREE="$(sed -n 's/^worktree: //p' "$WORK/design.txt")"
+agx status "$DESIGN_TASK" | grep -q waiting
+test -d "$DESIGN_TREE/design"
+# What the human does in the design tool; the note names it when the task is finished.
+printf 'x\n' > "$DESIGN_TREE/design/home.md"
+# A design task has no agent session, so there is nothing to resume.
+! agx resume "$DESIGN_TASK" 2> "$WORK/design-err.txt"
+grep -q "has no agent session" "$WORK/design-err.txt"
+agx stop "$DESIGN_TASK" | grep -q "^stopped $DESIGN_TASK"
+agx status "$DESIGN_TASK" | grep -q "^status: *done"
+grep -q "^## Handoff at " "$WORK/mcprepo/.ag/tasks/$DESIGN_TASK.md"
+grep -q "design/" "$WORK/mcprepo/.ag/tasks/$DESIGN_TASK.md"
+agx clean "$DESIGN_TASK" --force > /dev/null
 
 echo "smoke: agn mcp answers the MCP handshake and a tool call on stdout"
 INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}'

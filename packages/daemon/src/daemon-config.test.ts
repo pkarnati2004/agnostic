@@ -21,6 +21,7 @@ describe("readDaemonConfig", () => {
       port: null,
       plans: {},
       editor: null,
+      designTool: "claude-design",
       catalogCheck: true,
       specWriter: null,
       budget: NO_BUDGET,
@@ -33,6 +34,7 @@ describe("readDaemonConfig", () => {
       port: 7500,
       plans: {},
       editor: null,
+      designTool: "claude-design",
       catalogCheck: true,
       specWriter: null,
       budget: NO_BUDGET,
@@ -42,6 +44,19 @@ describe("readDaemonConfig", () => {
   it("reads the editor agn open should use", async () => {
     await writeFile(join(home, "config.yaml"), "editor: cursor\n");
     expect(await readDaemonConfig(agnosticPaths(home))).toMatchObject({ editor: "cursor" });
+  });
+
+  it("reads the design tool a design task is opened in, and defaults it to Claude Design", async () => {
+    await writeFile(join(home, "config.yaml"), "design_tool: figma\n");
+    expect(await readDaemonConfig(agnosticPaths(home))).toMatchObject({ designTool: "figma" });
+  });
+
+  it("refuses a design tool that is not one of the ids", async () => {
+    await writeFile(join(home, "config.yaml"), "design_tool: sketch\n");
+    const error = await readDaemonConfig(agnosticPaths(home)).catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(ConfigError);
+    expect((error as ConfigError).code).toBe("ag-file-invalid");
+    expect((error as ConfigError).message).toContain("design_tool");
   });
 
   it("refuses an editor that is not one of the ids, and names the ones that are", async () => {
@@ -146,11 +161,22 @@ describe("writeDaemonConfigPlans", () => {
     expect(await readDaemonConfig(paths)).toEqual({
       port: 7500,
       editor: "cursor",
+      designTool: "claude-design",
       plans: { claude: "max20", chatgpt: "plus" },
       catalogCheck: true,
       specWriter: null,
       budget: NO_BUDGET,
     });
+  });
+
+  it("keeps a design tool the user chose, and writes no key for the default", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "design_tool: figma\n");
+    await writeDaemonConfigPlans(paths, { claude: "max20" });
+    expect(await readFile(paths.config, "utf8")).toContain("design_tool: figma");
+    await writeFile(paths.config, "plans:\n  claude: max20\n");
+    await writeDaemonConfigPlans(paths, { chatgpt: "plus" });
+    expect(await readFile(paths.config, "utf8")).not.toContain("design_tool");
   });
 
   it("writes a file that was not there", async () => {
@@ -159,6 +185,7 @@ describe("writeDaemonConfigPlans", () => {
     expect(await readDaemonConfig(paths)).toEqual({
       port: null,
       editor: null,
+      designTool: "claude-design",
       plans: { claude: "pro" },
       catalogCheck: true,
       specWriter: null,

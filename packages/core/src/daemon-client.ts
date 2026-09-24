@@ -13,6 +13,8 @@ import type {
   AttachResponse,
   CleanTaskRequest,
   CleanTaskResponse,
+  DesignOpenedResponse,
+  DesignOpenResponse,
   EditorsResponse,
   HandoffTaskRequest,
   HandoffTaskResponse,
@@ -80,6 +82,10 @@ export type DaemonClient = {
   editors(): Promise<EditorsResponse>;
   /** Where a task lives and what command opens it there; the caller runs the command. */
   openInfo(id: string, editor?: EditorId): Promise<OpenTaskResponse>;
+  /** The design tool a design task runs in, its folder, and the command that opens it. */
+  designOpenInfo(id: string): Promise<DesignOpenResponse>;
+  /** The same open, for a caller with no terminal: the daemon runs the command itself. */
+  openDesignTool(id: string): Promise<DesignOpenedResponse>;
   doctor(request?: DoctorRequest): Promise<DoctorResponse>;
   /** Installs the status hook for one harness, or for every harness the repo could run. */
   installHooks(repoId: string, body: HooksInstallRequest): Promise<HooksInstallResponse>;
@@ -184,6 +190,10 @@ export function createDaemonClient(opts: {
         "GET",
         `/tasks/${encodeURIComponent(id)}/open${editor === undefined ? "" : `?editor=${editor}`}`,
       ),
+    designOpenInfo: (id) =>
+      json<DesignOpenResponse>("GET", `/tasks/${encodeURIComponent(id)}/design`),
+    openDesignTool: (id) =>
+      json<DesignOpenedResponse>("POST", `/tasks/${encodeURIComponent(id)}/design/open`),
     doctor: (request) => json<DoctorResponse>("POST", "/doctor", request ?? {}),
     installHooks: (repoId, body) =>
       json<HooksInstallResponse>("POST", `/repos/${encodeURIComponent(repoId)}/hooks`, body),

@@ -11,6 +11,8 @@ export const TaskIntentSchema = z.enum([
   "review",
   "research",
   "ui",
+  // Not an agent class at all: a design task is a worktree and a design tool, with no agent in it.
+  "design",
   "general",
 ]);
 export type TaskIntent = z.infer<typeof TaskIntentSchema>;

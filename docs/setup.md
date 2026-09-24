@@ -144,6 +144,7 @@ agn open <task> --editor zed     # this once, in Zed
 |---|---|
 | `port` | The port the daemon listens on; 7431 by default. `--port` on `agn daemon start` or `restart` wins over it. |
 | `editor` | Which editor `agn open` uses, as one of the ids above. Absent means the first editor agn detects. |
+| `design_tool` | Which tool a design task opens, as `claude-design` or `figma`. Absent means `claude-design`. See [docs/design-tasks.md](design-tasks.md). |
 | `catalog_check` | Whether agnostic checks once a day for a newer benchmark catalog, which is its only outbound call. Absent means yes; `false` turns it off and leaves `agn catalog update` working. |
 | `spec_writer` | The profile that writes specs in the new-task dialog, as a full profile id. Absent means agn picks the cheapest model your subscription already covers. |
 | `budget` | `daily_usd` and `weekly_usd`, a ceiling in dollars over what agn priced in the calendar day and the Monday-based week: API-key and credits runs, and a run whose billing agn could not determine. Subscription and local runs never count. At 80% `agn run`, the new-task dialog and the usage bar warn; at 100% a run or handoff onto an API-key or credits profile is refused unless you pass `--ignore-budget`. Resume is never refused. |
@@ -151,6 +152,7 @@ agn open <task> --editor zed     # this once, in Zed
 ```yaml
 port: 7431
 editor: cursor
+design_tool: figma
 catalog_check: false
 spec_writer: claude-code:haiku:native
 budget:

@@ -166,5 +166,6 @@ function config(baseBranch: string) {
     branchPrefix: null,
     setupCommand: null,
     cleanAfterMerge: false,
+    designFolder: "design",
   };
 }

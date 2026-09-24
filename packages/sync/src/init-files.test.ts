@@ -32,6 +32,7 @@ describe("applyInitPlan", () => {
       branchPrefix: null,
       setupCommand: null,
       cleanAfterMerge: false,
+      designFolder: "design",
     });
     expect(await readPreferences(repo)).toEqual(defaultPreferences());
     expect(await readFile(paths.decisionsMd, "utf8")).toBe("");
