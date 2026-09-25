@@ -1,6 +1,6 @@
 import type { CompareTaskRow } from "@agnostic/core";
-import { Badge } from "../components/badge";
 import { Button } from "../components/button";
+import { ProfileChip } from "../profile/profile-chip";
 import { STATUS_DOT } from "../status/status-dot";
 import { StatusGlyph } from "../status/status-glyph";
 import { changesCell, costCell, testsCell, timeCell } from "./compare-lines";
@@ -21,9 +21,7 @@ export function CompareColumn({ row, picked, busy, now, onOpen, onPick }: Compar
   const changes = changesCell(row.changes);
   return (
     <section className="flex min-w-[220px] flex-col gap-3 rounded-md border border-border p-3">
-      <Badge variant="outline" className="max-w-full truncate" title={row.profileId}>
-        {row.profileId}
-      </Badge>
+      <ProfileChip profileId={row.profileId} billing={row.billing} variant="column" />
       <div className="flex items-center gap-2 text-sm">
         <StatusGlyph status={row.status} />
         {dot.label}

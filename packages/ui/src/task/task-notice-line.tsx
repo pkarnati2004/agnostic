@@ -1,5 +1,6 @@
 import type { Task } from "@agnostic/core";
 import { HintText } from "../hint-text";
+import { NoticeLine } from "../notice/notice-line";
 import { noticeLine, type TaskNotice } from "../store/task-notices";
 
 /** What the daemon said about one click, beside the button that raised it. It clears itself. */
@@ -11,13 +12,13 @@ export function TaskNoticeLine({
   task: Pick<Task, "title">;
 }) {
   return (
-    <div role="alert" className="min-w-0">
-      <p className="text-destructive text-sm">{noticeLine(notice, task)}</p>
+    <NoticeLine tone="error">
+      {noticeLine(notice, task)}
       {notice.error.hint !== null && (
-        <p className="mt-1 text-muted-foreground text-xs">
+        <span className="mt-0.5 block text-muted-foreground">
           <HintText hint={notice.error.hint} />
-        </p>
+        </span>
       )}
-    </div>
+    </NoticeLine>
   );
 }

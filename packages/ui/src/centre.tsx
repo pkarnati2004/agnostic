@@ -12,6 +12,7 @@ import type { WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
 import { CompareView } from "./compare/compare-view";
 import { Notice } from "./notice";
+import { activeRepos } from "./sidebar/group-tasks";
 import type { NoticeHost, TaskNotice, TaskNotices } from "./store/task-notices";
 import type { UsageStamp } from "./store/workspace-state";
 import type { ResumeNotice } from "./tabs/resume-notice";
@@ -36,6 +37,8 @@ type CentreProps = {
   budget: BudgetReport | null;
   /** What the tab in front has spent; the page holds the hook that reads it. */
   cost: ReactNode;
+  /** How many files the Changes panel found on its last read of the tab in front; null before one. */
+  files: number | null;
   /** The bootstrap failure, and only that: every other failure is in `notices`. */
   error: ApiError | null;
   /** What the last resume had to say, for the tab it belongs to; the rest of the page ignores it. */
@@ -58,6 +61,8 @@ type CentreProps = {
   /** The task whose handoff dialog the command palette opened, or null while none is open. */
   handoffFor: string | null;
   onHandoffFor: (taskId: string | null) => void;
+  /** The "+" at the end of the tab strip, which is the same New task the sidebar offers. */
+  onNewTask: () => void;
 };
 
 /** The tab strip, the header for the tab in front, and every open terminal under them. */
@@ -72,13 +77,17 @@ export function Centre(props: CentreProps) {
 
   return (
     <main className="flex min-w-[640px] flex-col overflow-hidden">
-      <TabStrip
-        tabs={items}
-        activeId={tabs.active}
-        repoNames={repoNames}
-        onActivate={(taskId) => dispatchTabs({ type: "activate", taskId })}
-        onClose={(taskId) => dispatchTabs({ type: "close", taskId })}
-      />
+      {/* With no repo yet there is nothing to start a task in, so the strip stays away entirely. */}
+      {(items.length > 0 || activeRepos(props.repos).length > 0) && (
+        <TabStrip
+          tabs={items}
+          activeId={tabs.active}
+          repoNames={repoNames}
+          onActivate={(taskId) => dispatchTabs({ type: "activate", taskId })}
+          onClose={(taskId) => dispatchTabs({ type: "close", taskId })}
+          onNewTask={props.onNewTask}
+        />
+      )}
       {active !== undefined && (
         <TaskHeader
           task={active}
@@ -86,6 +95,7 @@ export function Centre(props: CentreProps) {
           profiles={props.profiles}
           budget={props.budget}
           cost={props.cost}
+          files={props.files}
           notice={props.notices[active.id] ?? null}
           onStop={() => props.onStop(active.id).then(() => undefined)}
           onResume={() => props.onResume(active.id, "header")}

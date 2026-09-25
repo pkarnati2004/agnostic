@@ -4,7 +4,7 @@ import type {
   PickCompareResponse,
   TaskListRow,
 } from "@agnostic/core";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { FailedLine } from "../changes/panel-state";
 import { Button } from "../components/button";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent } from "../components/dialog";
 import type { TaskNotice } from "../store/task-notices";
 import type { UsageStamp } from "../store/workspace-state";
 import { TaskNoticeLine } from "../task/task-notice-line";
+import { useTick } from "../time/use-tick";
 import { CompareColumn } from "./compare-column";
 import { lastCompare } from "./compare-state";
 import { PickDialog } from "./pick-dialog";
@@ -134,14 +135,4 @@ function pickedAs(response: CompareResponse, row: CompareTaskRow): "kept" | "rem
     return null;
   }
   return row.id === response.pickedTaskId ? "kept" : "removed";
-}
-
-/** A render on a timer, not a fetch: nothing in the workspace polls the daemon (brief §5). */
-function useTick(ms: number): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), ms);
-    return () => clearInterval(timer);
-  }, [ms]);
-  return now;
 }

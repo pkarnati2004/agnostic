@@ -1,5 +1,6 @@
 // Copied from shadcn/ui `tooltip`, MIT (c) shadcn. shadcn wraps every Tooltip in its own Provider;
-// here the app mounts one Provider at the root, so its delay is the delay everywhere.
+// here the app mounts one Provider at the root, so its delay is the delay everywhere. The design
+// draws no arrow: the tooltip is a small floating card, not a speech bubble.
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type { ComponentProps } from "react";
 import { cn } from "../class-names";
@@ -20,14 +21,13 @@ export function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "z-50 w-fit rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-xs",
-          "shadow-floating",
+          "z-50 w-fit rounded-md border border-input bg-secondary px-2.5 py-1.5 text-foreground",
+          "type-meta shadow-floating",
           className,
         )}
         {...props}
       >
         {children}
-        <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-primary fill-primary" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );

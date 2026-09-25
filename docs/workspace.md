@@ -17,8 +17,8 @@ If you pull a newer agn while a daemon from an older version is running, run `ag
 once. A daemon that started before this version answers `/ui` with an authentication error rather
 than the page.
 
-- **Left:** your repos and their tasks. The glyph before a title says where the task is: a dot with a halo for "Waiting for you", a filled dot for "Running" and for "Failed", a turning ring for "Running tests", a hollow ring for "Done", a square for "Stopped". A task whose worktree agn has cleaned up draws a dashed ring. A closed repo and its tasks are not in the list; they are under "Closed" at the foot of the sidebar.
-- **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback.
+- **Left:** your repos and their tasks. The glyph before a title says where the task is: a dot with a halo for "Waiting for you", a filled dot for "Running" and for "Failed", a turning ring for "Running tests", a hollow ring for "Done", a square for "Stopped". A task whose worktree agn has cleaned up draws a dashed ring. The mark at the right of a row is the harness running it. The second line is the task's branch, "Running tests before launch" or "Starting" while it waits to launch, and `<branch> · <status>` once it is over; a task handed off from another sits indented under it and reads "From `<harness>`". A closed repo and its tasks are not in the list; they are under "Closed" at the foot of the sidebar.
+- **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback. The line above the terminal says the task's status, its profile, the repo, the branch and how long it has run.
 - **+ Task:** describe the work, see the recommendation, pick or accept, run.
 - **Right:** what the selected task has changed, with the patch of the file you click. "Changes" in the task header opens and closes it.
 - **Compare:** `agn compare` runs one prompt on several agents at once. The siblings are one row in the sidebar, and the row opens a Compare view with a column per agent.
@@ -63,7 +63,8 @@ same as `agn repo close`. Nothing is deleted: the repo keeps its rows, and `agn 
 `agn outcomes` keep counting its history. agn refuses to close a repo with a task still running or
 waiting, and says which task to stop first.
 
-Closed repos sit under "Closed (n)" at the foot of the sidebar, collapsed when the page loads.
+Closed repos sit under "Closed" at the foot of the sidebar, with the count at the right of the
+row, collapsed when the page loads.
 Open it and each row has Reopen, which puts the repo and its tasks back where they were. A closed
 row whose folder is gone reads `<path> (not found)`.
 
@@ -85,6 +86,10 @@ Remove on its row under "Closed".
 Clicking a task opens it in a tab in the centre. The tab holds the agent's own session: what you
 type goes to the agent, and tool approvals, plan mode and model switches work as they do in a
 terminal. Closing a tab leaves the task running; it only drops the view of it.
+
+The close button is on the tab in front only, so the strip holds still as the pointer crosses it.
+The "+" at the end starts a task. A tab whose task is waiting for an answer keeps an orange top
+edge whichever tab is in front; the tab in front has a blue one.
 
 A tab keeps 5000 lines of scrollback while it is hidden, and tmux keeps the session's whole
 history behind that. Open the same task in two tabs and both resize the one pane, so the output
@@ -249,10 +254,10 @@ worktree and branch, so they never touch each other's work. Name the agents with
 `--profiles a,b`; leave it out and agn compares its own recommendation against the alternative it
 names.
 
-The siblings are one row in the sidebar, wherever their tasks would have been. The row carries the
-compare icon and the title, and its second line counts what the agents are doing:
-`compare · 2 agents · 1 running, 1 stopped`. The chevron lists the siblings under the row, each
-one a task row that opens its own terminal tab. The row is open while an agent is still running
+The siblings are one row in the sidebar, wherever their tasks would have been. The row is one line:
+a dot per agent in its status colour, the title, and how many agents there are. The tooltip says
+what they are doing: `compare · 2 agents · 1 running, 1 stopped`. The chevron lists the siblings
+under the row, each one a task row that opens its own terminal tab. The row is open while an agent is still running
 and closed once none is. Which agent a pick kept is said in the Compare view, not in the sidebar.
 
 Clicking the title opens the Compare view in the centre. It is a tab like a terminal: it sits in
@@ -276,7 +281,7 @@ keeps one from there.
 ## History
 
 A finished task whose worktree is gone moves into a History section under its repo, below the
-repo's other tasks. The heading counts them: "History (3)". History is collapsed when the page
+repo's other tasks. The row counts them at its right. History is collapsed when the page
 loads; click the heading to list them, newest first. A row there opens in a tab like any other.
 The section holding the task you have open shows its rows without being clicked.
 
@@ -330,8 +335,8 @@ The token windows are calendar windows in your own time zone: today is today, an
 on Monday. The rate-limit windows are the vendor's own rolling ones, so the two sets of figures
 count different spans.
 
-The selected task's own tokens and cost sit in its header, beside Stop and Resume. A task billed to
-a subscription reads `included in plan` rather than a price.
+The selected task's own tokens and cost sit in its header, at the end of the line under the title.
+A task billed to a subscription reads `included in plan` rather than a price.
 
 If `~/.agnostic/config.yaml` sets a `budget`, a last cell shows what this machine has spent against
 it: `$4.10 / $5.00 today` and the week beside it. The cell turns amber at 80% of a ceiling and red

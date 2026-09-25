@@ -125,7 +125,7 @@ export function CommandPalette(props: CommandPaletteProps) {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent
         aria-describedby={undefined}
-        className="top-[12vh] max-w-xl translate-y-0 gap-0 p-0"
+        className="top-[12vh] max-w-xl translate-y-0"
         onOpenAutoFocus={focusInput(input)}
       >
         <DialogTitle className="sr-only">Commands</DialogTitle>

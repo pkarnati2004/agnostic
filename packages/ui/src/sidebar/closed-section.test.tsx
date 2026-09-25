@@ -52,10 +52,10 @@ function buttonSaying(container: HTMLElement, text: string): Element {
 describe("ClosedSection", () => {
   it("counts the closed repos and lists none until it is opened", () => {
     const page = section({ repos: [PETAL, KATHA], expanded: false });
-    expect(page.container.textContent).toContain("Closed (2)");
+    expect(buttonSaying(page.container, "Closed").textContent).toBe("Closed2");
     expect(page.container.textContent).not.toContain("/Users/dev/petal");
 
-    click(buttonSaying(page.container, "Closed (2)"));
+    click(buttonSaying(page.container, "Closed"));
     expect(page.onToggle).toHaveBeenCalledTimes(1);
     page.unmount();
   });

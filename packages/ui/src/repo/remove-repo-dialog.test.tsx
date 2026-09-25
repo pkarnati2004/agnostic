@@ -34,7 +34,7 @@ function button(label: string): HTMLButtonElement {
 
 async function clickRemove(): Promise<void> {
   await act(async () => {
-    button("Remove").click();
+    button("Remove petal").click();
   });
 }
 
@@ -45,6 +45,12 @@ const BUSY = new ApiError("repo petal has a task that is still running", {
 });
 
 describe("RemoveRepoDialog", () => {
+  it("draws its warning inside the dialog's body, between the header and the footer", () => {
+    const { unmount } = dialog(REPO);
+    expect(document.querySelector("[data-slot='dialog-body']")).not.toBeNull();
+    unmount();
+  });
+
   it("names the repo and its path, and says what goes and what stays", () => {
     const { unmount } = dialog(REPO);
     const text = document.body.textContent ?? "";
@@ -89,7 +95,7 @@ describe("RemoveRepoDialog", () => {
     expect(text).toContain("repo petal has a task that is still running");
     expect(text).toContain("Run agn stop task1 first.");
     expect(onOpenChange).not.toHaveBeenCalled();
-    expect(button("Remove").disabled).toBe(false);
+    expect(button("Remove petal").disabled).toBe(false);
     unmount();
   });
 
@@ -98,7 +104,7 @@ describe("RemoveRepoDialog", () => {
     const onRemove = vi.fn(() => new Promise<void>((resolve) => (settle = resolve)));
     const { unmount } = dialog(REPO, onRemove);
     await clickRemove();
-    expect(button("Remove").disabled).toBe(true);
+    expect(button("Remove petal").disabled).toBe(true);
     await act(async () => settle());
     unmount();
   });

@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Button } from "../components/button";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -96,14 +97,16 @@ function Confirm({ task, changes, notice, onSubmit, onClose }: ConfirmProps) {
           remote.
         </DialogDescription>
       </DialogHeader>
-      {opened === null ? (
-        <Fields task={task} changes={changes} title={title} onTitle={setTitle} />
-      ) : (
-        <Opening opened={opened} />
-      )}
-      {notice !== null && notice.host === "dialog" && (
-        <TaskNoticeLine notice={notice} task={task} />
-      )}
+      <DialogBody>
+        {opened === null ? (
+          <Fields task={task} changes={changes} title={title} onTitle={setTitle} />
+        ) : (
+          <Opening opened={opened} />
+        )}
+        {notice !== null && notice.host === "dialog" && (
+          <TaskNoticeLine notice={notice} task={task} />
+        )}
+      </DialogBody>
       <DialogFooter>
         {opened === null ? (
           <>

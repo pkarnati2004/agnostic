@@ -4,6 +4,7 @@ import { asApiError } from "../api/error";
 import { Button } from "../components/button";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -47,58 +48,54 @@ export function AddRepoDialog(props: AddRepoDialogProps) {
             Point agn at a repo or a folder already on this machine.
           </DialogDescription>
         </DialogHeader>
-        <label className="flex flex-col gap-2 text-sm" htmlFor="add-repo-path">
-          Path
-          <input
-            id="add-repo-path"
-            ref={field}
-            required
-            value={form.path}
-            placeholder="/Users/you/code/petal"
-            onChange={(change) => add.setForm({ ...form, path: change.target.value })}
-            onKeyDown={addsNow(add.submit)}
-            className={FIELD}
-          />
-        </label>
-        <label className="flex items-start gap-2 text-sm" htmlFor="add-repo-git-init">
-          <input
-            id="add-repo-git-init"
-            type="checkbox"
-            checked={form.gitInit}
-            onChange={(change) => add.setForm({ ...form, gitInit: change.target.checked })}
-            className="mt-1 size-4 accent-primary"
-          />
-          <span>
-            Run git init first
-            <span className="mt-1 block text-muted-foreground text-xs">
-              A folder with no .git is registered as a folder repo; tasks run in it in place.
+        <DialogBody>
+          <label className="flex flex-col gap-2 text-sm" htmlFor="add-repo-path">
+            Path
+            <input
+              id="add-repo-path"
+              ref={field}
+              required
+              value={form.path}
+              placeholder="/Users/you/code/petal"
+              onChange={(change) => add.setForm({ ...form, path: change.target.value })}
+              onKeyDown={addsNow(add.submit)}
+              className={FIELD}
+            />
+          </label>
+          <label className="flex items-start gap-2 text-sm" htmlFor="add-repo-git-init">
+            <input
+              id="add-repo-git-init"
+              type="checkbox"
+              checked={form.gitInit}
+              onChange={(change) => add.setForm({ ...form, gitInit: change.target.checked })}
+              className="mt-1 size-4 accent-primary"
+            />
+            <span>
+              Run git init first
+              <span className="mt-1 block text-muted-foreground text-xs">
+                A folder with no .git is registered as a folder repo; tasks run in it in place.
+              </span>
             </span>
-          </span>
-        </label>
-        {add.known !== null && (
-          <KnownRepo result={add.known} busy={add.busy} onReopen={add.reopen} />
-        )}
-        {add.failure !== null && (
-          <div role="alert" className="min-w-0">
-            <p className="text-destructive text-sm">{add.failure.message}</p>
-            {add.failure.hint !== null && (
-              <p className="mt-1 text-muted-foreground text-xs">
-                <HintText hint={add.failure.hint} />
-              </p>
-            )}
-          </div>
-        )}
+          </label>
+          {add.known !== null && (
+            <KnownRepo result={add.known} busy={add.busy} onReopen={add.reopen} />
+          )}
+          {add.failure !== null && (
+            <div role="alert" className="min-w-0">
+              <p className="text-destructive text-sm">{add.failure.message}</p>
+              {add.failure.hint !== null && (
+                <p className="mt-1 text-muted-foreground text-xs">
+                  <HintText hint={add.failure.hint} />
+                </p>
+              )}
+            </div>
+          )}
+        </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="ghost" size="sm">
-              Cancel
-            </Button>
+            <Button variant="ghost">Cancel</Button>
           </DialogClose>
-          <Button
-            size="sm"
-            onClick={add.submit}
-            disabled={registerRequest(form) === null || add.busy}
-          >
+          <Button onClick={add.submit} disabled={registerRequest(form) === null || add.busy}>
             Add
           </Button>
         </DialogFooter>
