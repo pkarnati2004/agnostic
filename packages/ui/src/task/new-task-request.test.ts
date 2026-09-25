@@ -7,6 +7,7 @@ import {
 import { describe, expect, it } from "vitest";
 import {
   followRecommendation,
+  intentLabel,
   type NewTaskForm,
   recommendRequest,
   runRequest,
@@ -158,5 +159,27 @@ describe("followRecommendation", () => {
       "claude-code:opus:native",
     );
     expect(followRecommendation(null, false, null, profiles)).toBeNull();
+  });
+});
+
+describe("intentLabel", () => {
+  const taskClass = {
+    intent: "ui" as const,
+    scope: "small" as const,
+    risk: [],
+    needsBrowser: false,
+    automaticIntent: null,
+  };
+
+  it("says only auto before the classifier has read anything", () => {
+    expect(intentLabel("automatic", null)).toBe("Intent: auto");
+  });
+
+  it("says what the prompt reads as while the intent is left on auto", () => {
+    expect(intentLabel("automatic", taskClass)).toBe("Intent: auto (reads as ui)");
+  });
+
+  it("says only what the user chose once they have chosen", () => {
+    expect(intentLabel("debug", taskClass)).toBe("Intent: debug");
   });
 });

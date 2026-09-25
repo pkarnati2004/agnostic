@@ -4,6 +4,7 @@ import type {
   RecommendRequest,
   RunTaskRequest,
   SpecRequest,
+  TaskClass,
 } from "@agnostic/core";
 import type { IntentOption } from "./intent-options";
 
@@ -13,7 +14,7 @@ export type NewTaskForm = {
   intent: IntentOption;
   /** What the Profile select shows: the pick until the user picks for themselves. */
   profileId: string | null;
-  /** The approved spec: empty until Write spec fills it in or the user writes one. */
+  /** The approved spec: empty until the spec step fills it in or the user writes one. */
   title: string;
   spec: string;
   acceptance: string;
@@ -49,7 +50,7 @@ export function specRequest(form: NewTaskForm): SpecRequest | null {
 }
 
 /**
- * The run the dialog would make. `profile` is always sent, even when it equals the pick, so the
+ * The run the tab would make. `profile` is always sent, even when it equals the pick, so the
  * task starts on what the user saw rather than on whatever the repo's default resolves to. The
  * prompt stays the one-liner whether or not a spec came with it (ADR 028).
  */
@@ -71,6 +72,17 @@ export function runRequest(form: NewTaskForm): RunTaskRequest | null {
     ...(acceptance === "" ? {} : { acceptance }),
     ...(form.ignoreBudget ? { ignoreBudget: true } : {}),
   };
+}
+
+/**
+ * What the intent chip reads. Left on "auto" it names what the classifier made of the prompt, so the
+ * reading is on the chip that would change it; set by hand it names only what the user chose.
+ */
+export function intentLabel(intent: IntentOption, taskClass: TaskClass | null): string {
+  if (intent !== "automatic") {
+    return `Intent: ${intent}`;
+  }
+  return taskClass === null ? "Intent: auto" : `Intent: auto (reads as ${taskClass.intent})`;
 }
 
 /** The select follows the pick until the user chooses for themselves, and then stops. */

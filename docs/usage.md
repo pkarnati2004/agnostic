@@ -138,7 +138,7 @@ The budget counts the runs you pay for by the token: API-key and credits runs, a
 billing agn could not determine, which is priced like a key so that a cost agn cannot rule out is
 still shown. Subscription and local runs are never counted.
 
-At 80% of a ceiling, `agn run`, the new-task dialog and the usage bar warn. `agn usage` prints a
+At 80% of a ceiling, `agn run`, the New task tab and the usage bar warn. `agn usage` prints a
 line per window under the tables:
 
 ```

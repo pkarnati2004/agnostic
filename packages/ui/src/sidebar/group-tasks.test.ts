@@ -267,7 +267,7 @@ describe("the repo a new task starts in", () => {
     expect(defaultRepoId({ repos: [PETAL, KATHA, EMPTY], tasks }, "running")).toBe(PETAL.id);
   });
 
-  // A tab outlives its repo's closing, and the new-task dialog lists the open repos only.
+  // A tab outlives its repo's closing, and the New task tab lists the open repos only.
   it("falls past the tab in front to the first open repo when that repo is closed", () => {
     expect(defaultRepoId({ repos: [CLOSED, KATHA, EMPTY], tasks }, "running")).toBe(KATHA.id);
   });

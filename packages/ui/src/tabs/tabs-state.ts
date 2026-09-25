@@ -16,6 +16,12 @@ export const TABS_KEY = "agn.tabs";
 /** A tab id that is not a task's: the Compare view of a group of siblings (ADR 036 Q7). */
 const COMPARE_TAB = "compare:";
 
+/**
+ * The other tab id that is not a task's: the composer a task is started from. There is one of it, so
+ * a second New task focuses the tab already open and keeps whatever is typed in it.
+ */
+export const NEW_TASK_TAB = "new-task";
+
 export function compareTabId(compareId: string): string {
   return `${COMPARE_TAB}${compareId}`;
 }
@@ -63,7 +69,8 @@ export function tabbableTasks(
     .map(([, task]) => task.compareId)
     .filter((compareId) => compareId !== null)
     .map(compareTabId);
-  return new Set([...ids, ...compares]);
+  // The composer belongs to no repo and no task, so nothing a prune reads can close it.
+  return new Set([NEW_TASK_TAB, ...ids, ...compares]);
 }
 
 /** Whatever goes, the tab to its right takes over, then the one to its left, then nothing. */

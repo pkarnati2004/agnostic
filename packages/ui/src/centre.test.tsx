@@ -1,13 +1,13 @@
 // @vitest-environment happy-dom
-import type { TaskListRow } from "@agnostic/core";
+import type { RepoListRow, TaskListRow } from "@agnostic/core";
 import { useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Centre } from "./centre";
 import { taskRow } from "./changes/changes-fixture";
 import { TooltipProvider } from "./components/tooltip";
 import type { TabsState } from "./tabs/tabs-state";
-import { stubClient } from "./task/new-task-dialog-fixture";
 import { render } from "./test/render";
+import { setValue, stubClient } from "./test/workspace-fixture";
 import { IDLE_USAGE } from "./usage/usage-state";
 
 // TerminalView owns a real xterm terminal and a tmux socket, neither of which happy-dom can run.
@@ -44,15 +44,15 @@ const TASKS: Record<string, TaskListRow> = {
   "sib-b": SIB_B,
 };
 
-function centre(tabs: TabsState) {
+function centre(tabs: TabsState, loaded = true, repos: RepoListRow[] = []) {
   return (
     <TooltipProvider>
       <Centre
         tabs={tabs}
         dispatchTabs={vi.fn()}
-        repos={[]}
+        repos={repos}
         tasks={TASKS}
-        loaded={true}
+        loaded={loaded}
         profiles={[]}
         token="tok"
         client={stubClient({ compare: () => new Promise(() => undefined) })}
@@ -73,6 +73,10 @@ function centre(tabs: TabsState) {
         handoffFor={null}
         onHandoffFor={vi.fn()}
         onNewTask={vi.fn()}
+        defaultRepoId={null}
+        seed={null}
+        onStarted={vi.fn()}
+        onAddRepo={vi.fn()}
         usageStamp={{ plans: 0, byTask: {} }}
         onPick={() => Promise.resolve(null)}
       />
@@ -86,6 +90,31 @@ function activeOf(container: HTMLElement, taskId: string): string | null {
     null
   );
 }
+
+describe("Centre with nothing in front", () => {
+  it("asks what to work on, rather than pointing at the sidebar", () => {
+    const { container, unmount } = render(centre({ open: [], active: null }));
+
+    expect(container.textContent).toContain("What should an agent work on?");
+    unmount();
+  });
+
+  it("says where the page got to while it is still loading", () => {
+    const { container, unmount } = render(centre({ open: [], active: null }, false));
+
+    expect(container.textContent).toContain("Loading the workspace…");
+    expect(container.textContent).not.toContain("What should an agent work on?");
+    unmount();
+  });
+
+  it("draws the composer in its own tab, under no heading", () => {
+    const { container, unmount } = render(centre({ open: ["new-task"], active: "new-task" }));
+
+    expect(container.textContent).not.toContain("What should an agent work on?");
+    expect(container.querySelector("#new-task-prompt")).not.toBeNull();
+    unmount();
+  });
+});
 
 describe("Centre and the Compare tab", () => {
   it("keeps every TerminalView mounted while the Compare tab is in front, and back again", () => {
@@ -105,6 +134,61 @@ describe("Centre and the Compare tab", () => {
     update(centre({ open, active: "task1" }));
     expect(mounted.ids.sort()).toEqual(["task1", "task2"]); // and none for the switch back
     expect(activeOf(container, "task1")).toBe("true");
+    unmount();
+  });
+});
+
+describe("Centre and the New task tab's draft", () => {
+  const repo: RepoListRow = {
+    id: "r1",
+    path: "/repo",
+    kind: "git",
+    name: "petal",
+    addedAt: "2026-09-14T10:00:00.000Z",
+    status: "active",
+    testCommand: null,
+    pathPresent: true,
+  };
+
+  function typedPrompt(): string {
+    return (document.getElementById("new-task-prompt") as HTMLTextAreaElement).value;
+  }
+
+  function type(container: HTMLElement, text: string): void {
+    setValue(container.querySelector("#new-task-prompt") as HTMLTextAreaElement, text);
+  }
+
+  it("keeps what was typed across a switch to a task tab and back", () => {
+    const open = ["new-task", "task1"];
+    const { container, update, unmount } = render(
+      centre({ open, active: "new-task" }, true, [repo]),
+    );
+    type(container, "port the parser");
+    expect(typedPrompt()).toBe("port the parser");
+
+    // The tab is still open, so it stays mounted and hidden rather than coming down.
+    update(centre({ open, active: "task1" }, true, [repo]));
+    const box = container.querySelector("#new-task-prompt") as HTMLTextAreaElement;
+    expect(box.closest("[hidden]")).not.toBeNull();
+    expect(box.value).toBe("port the parser");
+
+    update(centre({ open, active: "new-task" }, true, [repo]));
+    expect(typedPrompt()).toBe("port the parser");
+    unmount();
+  });
+
+  it("drops what was typed when the tab is closed", () => {
+    const { container, update, unmount } = render(
+      centre({ open: ["new-task", "task1"], active: "new-task" }, true, [repo]),
+    );
+    type(container, "port the parser");
+
+    // Closing the tab: it leaves `open` and the centre stops drawing NewTaskTab at all.
+    update(centre({ open: ["task1"], active: "task1" }, true, [repo]));
+    expect(container.querySelector("#new-task-prompt")).toBeNull();
+
+    update(centre({ open: ["new-task", "task1"], active: "new-task" }, true, [repo]));
+    expect(typedPrompt()).toBe("");
     unmount();
   });
 });

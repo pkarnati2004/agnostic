@@ -158,7 +158,7 @@ export function activeRepos(repos: RepoListRow[]): RepoListRow[] {
 
 /**
  * A new task starts in the repo the user is looking at, else in the first one on the left. A tab
- * can outlive its repo's closing, and the new-task dialog lists the open repos only.
+ * can outlive its repo's closing, and the New task tab lists the open repos only.
  */
 export function defaultRepoId(
   state: { repos: RepoListRow[]; tasks: Record<string, Task> },

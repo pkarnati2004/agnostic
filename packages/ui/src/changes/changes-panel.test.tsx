@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import type { WorkspaceClient } from "../api/client";
 import { ApiError } from "../api/error";
 import { TooltipProvider } from "../components/tooltip";
-import { stubClient } from "../task/new-task-dialog-fixture";
 import { click, render } from "../test/render";
+import { stubClient } from "../test/workspace-fixture";
 import { changesResponse, taskRow } from "./changes-fixture";
 import { ChangesPanel } from "./changes-panel";
 

@@ -8,13 +8,35 @@ import { cn } from "../class-names";
 
 export const Select = SelectPrimitive.Root;
 export const SelectValue = SelectPrimitive.Value;
+export const SelectGroup = SelectPrimitive.Group;
+
+/** The heading over a group of items, in the same small caps as a label on the page. */
+export function SelectLabel({ className, ...props }: ComponentProps<typeof SelectPrimitive.Label>) {
+  return (
+    <SelectPrimitive.Label
+      data-slot="select-label"
+      className={cn("px-2 py-1.5 text-muted-foreground type-label", className)}
+      {...props}
+    />
+  );
+}
+
+/** The design draws two: a field-width line of mono, and the composer's own filled 24 px chip. */
+export type SelectTriggerSize = "default" | "chip";
+
+const TRIGGER_SIZES: Record<SelectTriggerSize, string> = {
+  default: "h-[30px] w-full rounded-[7px] border border-input bg-transparent px-2.5",
+  chip: "h-6 rounded-md bg-accent px-2 text-accent-foreground type-meta",
+};
 
 export function SelectTrigger({
   className,
   children,
+  size = "default",
   mono = false,
   ...props
 }: ComponentProps<typeof SelectPrimitive.Trigger> & {
+  size?: SelectTriggerSize;
   /** The design sets a value in mono only where it is an id; prose values stay in the body face. */
   mono?: boolean;
 }) {
@@ -22,13 +44,13 @@ export function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "flex h-[30px] w-full items-center justify-between gap-2 whitespace-nowrap",
-        "rounded-[7px] border border-input bg-transparent px-2.5 outline-none",
-        mono ? "type-mono-lg" : "type-body",
+        "flex items-center justify-between gap-2 whitespace-nowrap outline-none",
+        size === "default" && (mono ? "type-mono-lg" : "type-body"),
         "data-[placeholder]:text-muted-foreground data-[state=open]:border-ring",
         "data-[state=open]:ring-[3px] data-[state=open]:ring-ring/15",
         "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/15",
         "disabled:cursor-not-allowed disabled:opacity-50",
+        TRIGGER_SIZES[size],
         className,
       )}
       {...props}

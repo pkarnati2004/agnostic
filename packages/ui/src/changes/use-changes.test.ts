@@ -3,8 +3,8 @@ import type { ChangesResponse, TaskListRow } from "@agnostic/core";
 import { act, createElement } from "react";
 import { describe, expect, it } from "vitest";
 import type { WorkspaceClient } from "../api/client";
-import { stubClient } from "../task/new-task-dialog-fixture";
 import { render } from "../test/render";
+import { stubClient } from "../test/workspace-fixture";
 import { changesResponse, taskRow } from "./changes-fixture";
 import { type Changes, useChanges } from "./use-changes";
 

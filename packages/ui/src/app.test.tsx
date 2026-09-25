@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import type { WorkspaceClient } from "./api/client";
 import { useRepoActions } from "./repo/use-repo-actions";
 import { useWorkspace } from "./store/use-workspace";
-import { NO_TABS, tabbableTasks, tabsReducer } from "./tabs/tabs-state";
+import { NEW_TASK_TAB, NO_TABS, tabbableTasks, tabsReducer } from "./tabs/tabs-state";
+import { useTaskActions } from "./task/use-task-actions";
 import { render } from "./test/render";
 
 /**
@@ -108,9 +109,10 @@ function stubClient(overrides: Partial<WorkspaceClient>, feed: ReturnType<typeof
  * hook `RemoveRepoDialog` calls.
  */
 function Harness({ client }: { client: WorkspaceClient }) {
-  const { state } = useWorkspace(client);
+  const { state, act: run, put } = useWorkspace(client);
   const [tabs, dispatchTabs] = useReducer(tabsReducer, NO_TABS);
   const repoActions = useRepoActions(client);
+  const { started } = useTaskActions(run, put, dispatchTabs);
   useEffect(() => {
     if (state.loaded) {
       dispatchTabs({ type: "prune", keep: tabbableTasks(state.repos, state.tasks) });
@@ -126,6 +128,12 @@ function Harness({ client }: { client: WorkspaceClient }) {
       <button type="button" onClick={() => void repoActions.remove(REPO.id)}>
         remove
       </button>
+      <button type="button" onClick={() => dispatchTabs({ type: "open", taskId: NEW_TASK_TAB })}>
+        new task
+      </button>
+      <button type="button" onClick={() => started(TASK)}>
+        start
+      </button>
     </div>
   );
 }
@@ -136,9 +144,9 @@ function openTab(container: HTMLElement): void {
   });
 }
 
-function clickRemove(container: HTMLElement): void {
+function clickButton(container: HTMLElement, label: string): void {
   const button = Array.from(container.querySelectorAll("button")).find(
-    (found) => found.textContent === "remove",
+    (found) => found.textContent === label,
   );
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -236,7 +244,7 @@ describe("Workspace tabs against a live repo removal", () => {
     // The dialog's onRemove call: the row leaves the sidebar through the `repo.updated` event the
     // call causes, not from the response, so the test pushes the event `removeRepo` implies (see
     // remove-repo-dialog.tsx: "The row leaves the sidebar through `repo.updated`, not from here.").
-    clickRemove(container);
+    clickButton(container, "remove");
     await flush();
     feed.push({
       id: 2,
@@ -249,6 +257,25 @@ describe("Workspace tabs against a live repo removal", () => {
 
     expect(open(container)).toBe("");
     expect(active(container)).toBe("");
+
+    unmount();
+  });
+});
+
+describe("Workspace tabs and the composer", () => {
+  it("opens the composer's tab once, and gives it up to the task it started", async () => {
+    const feed = pushableFeed();
+    const { container, unmount } = render(<Harness client={stubClient({}, feed)} />);
+    await flush();
+
+    clickButton(container, "new task");
+    clickButton(container, "new task");
+    expect(open(container)).toBe(NEW_TASK_TAB);
+    expect(active(container)).toBe(NEW_TASK_TAB);
+
+    clickButton(container, "start");
+    expect(open(container)).toBe(TASK.id);
+    expect(active(container)).toBe(TASK.id);
 
     unmount();
   });

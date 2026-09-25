@@ -1,6 +1,7 @@
 import type { BudgetReport, HandoffTaskRequest, Profile, Task } from "@agnostic/core";
 import { ArrowRight, ArrowRightLeft, GitFork } from "lucide-react";
 import { useState } from "react";
+import type { WorkspaceClient } from "../api/client";
 import { Button } from "../components/button";
 import {
   Dialog,
@@ -13,18 +14,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../components/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/select";
 import { ProfileChip } from "../profile/profile-chip";
 import { profileParts } from "../profile/profile-parts";
+import { ProfileSelect } from "../profile/profile-select";
 import type { TaskNotice } from "../store/task-notices";
 import { BudgetNote } from "./budget-note";
+import { followRecommendation } from "./new-task-request";
+import { RecommendationCard } from "./recommendation-card";
 import { TaskNoticeLine } from "./task-notice-line";
+import { useRecommendation } from "./use-recommendation";
 
 type HandoffDialogProps = {
   task: Task;
@@ -33,6 +31,8 @@ type HandoffDialogProps = {
   budget: BudgetReport | null;
   /** This task's latest failure, drawn in the dialog when that is where it was asked for. */
   notice: TaskNotice | null;
+  /** Asks agn who should take the task next, for the prompt the task already has. */
+  client: WorkspaceClient;
   /** False when the daemon refused: the dialog stays open where the profile can be changed. */
   onSubmit: (body: HandoffTaskRequest) => Promise<boolean>;
   /** Given when something other than the trigger opens the dialog, as the command palette does. */
@@ -49,11 +49,18 @@ export function HandoffDialog(props: HandoffDialogProps) {
     setOwn(next);
     props.onOpenChange?.(next);
   };
-  const [profileId, setProfileId] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [ignoreBudget, setIgnoreBudget] = useState(false);
   const [busy, setBusy] = useState(false);
   const available = profiles.filter((profile) => profile.available);
+  // The card is about this task's own prompt, so it is asked for once the dialog is open, and the
+  // call is a dry run: the handoff itself records the recommendation the child starts on.
+  const state = useRecommendation(
+    props.client,
+    open ? { repoId: task.repoId, prompt: task.prompt, dryRun: true } : null,
+  );
+  const profileId = followRecommendation(picked, picked !== null, state.recommendation, available);
 
   const submit = () => {
     if (profileId === null) {
@@ -71,7 +78,7 @@ export function HandoffDialog(props: HandoffDialogProps) {
         return;
       }
       setOpen(false);
-      setProfileId(null);
+      setPicked(null);
       setNote("");
       setIgnoreBudget(false);
     });
@@ -91,7 +98,24 @@ export function HandoffDialog(props: HandoffDialogProps) {
           <DialogDescription>{task.title}</DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <Profiles task={task} available={available} profileId={profileId} onPick={setProfileId} />
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-[30px] items-center rounded-[7px] border border-border px-2.5 text-muted-foreground">
+              <ProfileChip profileId={task.profileId} variant="option" dim />
+            </span>
+            <ArrowRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1">
+              <ProfileSelect
+                id="handoff-profile"
+                profiles={profiles}
+                value={profileId}
+                recommendedId={state.recommendation?.recommended.profileId ?? null}
+                unavailable={state.recommendation?.worthTrying ?? null}
+                onChange={setPicked}
+                placeholder="Pick a profile"
+              />
+            </span>
+          </div>
+          <RecommendationCard state={state} profiles={profiles} compact />
           <BudgetNote
             budget={budget}
             profile={available.find((profile) => profile.id === profileId) ?? null}
@@ -132,38 +156,6 @@ export function HandoffDialog(props: HandoffDialogProps) {
   );
 }
 
-type ProfilesProps = {
-  task: Task;
-  available: Profile[];
-  profileId: string | null;
-  onPick: (profileId: string) => void;
-};
-
-/** Which agent has the task now, and which one gets it. The recommendation for the task's prompt
- * lands between the two in a later pass. */
-function Profiles({ task, available, profileId, onPick }: ProfilesProps) {
-  return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <span className="flex h-[30px] items-center rounded-[7px] border border-border px-2.5 text-muted-foreground">
-        <ProfileChip profileId={task.profileId} variant="option" dim />
-      </span>
-      <ArrowRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-      <Select value={profileId ?? undefined} onValueChange={onPick}>
-        <SelectTrigger id="handoff-profile" aria-label="Profile" mono>
-          <SelectValue placeholder="Pick a profile" />
-        </SelectTrigger>
-        <SelectContent>
-          {available.map((profile) => (
-            <SelectItem key={profile.id} value={profile.id}>
-              <ProfileChip profileId={profile.id} billing={profile.billing} variant="option" />
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
 /** What the handoff leaves behind: a second task on the same branch, and this session stopped. */
 function ChildLine({ branch }: { branch: string | null }) {
   return (
@@ -171,7 +163,7 @@ function ChildLine({ branch }: { branch: string | null }) {
       <GitFork aria-hidden className="mt-0.5 size-3.5 shrink-0" />
       <span>
         {branch === null ? (
-          "Starts a child task in the same folder."
+          "Starts a child task in the repo checkout."
         ) : (
           <>
             Starts a child task in the same worktree, <span className="type-mono">{branch}</span>.

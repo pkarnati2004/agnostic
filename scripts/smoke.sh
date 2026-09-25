@@ -916,6 +916,8 @@ test -n "$(grep -l 'Type a command' packages/ui/dist/assets/*.js)"
 test "$(grep -l 'at API rates, not billed' packages/ui/dist/assets/*.js | wc -l | tr -d ' ')" = 1
 # And the Changes panel's commit ask, which is the only place its label is written.
 test -n "$(grep -l 'Ask the agent to commit' packages/ui/dist/assets/*.js)"
+# And the New task tab, which is what the centre draws with no task open.
+test -n "$(grep -l 'What should an agent work on' packages/ui/dist/assets/*.js)"
 # The queued glyph's animation is the design's one moving part, and it is in the built stylesheet.
 test -n "$(grep -l 'glyph-spin' packages/ui/dist/assets/*.css)"
 # The mono is whichever of the stack the machine has: the page asks no host for a font.

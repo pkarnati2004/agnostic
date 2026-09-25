@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   compareIdOf,
   compareTabId,
+  NEW_TASK_TAB,
   NO_TABS,
   readTabs,
   TABS_KEY,
@@ -110,7 +111,15 @@ describe("tabbableTasks", () => {
   });
 
   it("closes the tabs of a repo removed before the page loaded, which no list names", () => {
-    expect(tabbableTasks([repo("two", "active")], tasks)).toEqual(new Set(["c"]));
+    expect(tabbableTasks([repo("two", "active")], tasks)).toEqual(new Set([NEW_TASK_TAB, "c"]));
+  });
+
+  it("keeps the composer's tab, which belongs to no repo and no task", () => {
+    const keep = tabbableTasks([repo("one", "removed")], tasks);
+    expect(keep.has(NEW_TASK_TAB)).toBe(true);
+    expect(
+      tabsReducer({ open: [NEW_TASK_TAB, "a"], active: "a" }, { type: "prune", keep }),
+    ).toEqual({ open: [NEW_TASK_TAB], active: NEW_TASK_TAB });
   });
 
   it("keeps the compare tab of a group whose siblings it keeps, and drops it with them", () => {
@@ -120,9 +129,9 @@ describe("tabbableTasks", () => {
       c: { repoId: "two", compareId: null },
     };
     const both = tabbableTasks([repo("one", "active"), repo("two", "active")], siblings);
-    expect(both).toEqual(new Set(["a", "b", "c", "compare:cmp1"]));
+    expect(both).toEqual(new Set([NEW_TASK_TAB, "a", "b", "c", "compare:cmp1"]));
     const gone = tabbableTasks([repo("one", "removed"), repo("two", "active")], siblings);
-    expect(gone).toEqual(new Set(["c"]));
+    expect(gone).toEqual(new Set([NEW_TASK_TAB, "c"]));
   });
 
   it("keeps the compare tab while one sibling of the group is still kept", () => {
@@ -133,7 +142,7 @@ describe("tabbableTasks", () => {
       b: { repoId: "two", compareId: "cmp1" },
     };
     const oneLeft = tabbableTasks([repo("one", "active"), repo("two", "removed")], siblings);
-    expect(oneLeft).toEqual(new Set(["a", "compare:cmp1"]));
+    expect(oneLeft).toEqual(new Set([NEW_TASK_TAB, "a", "compare:cmp1"]));
   });
 
   it("drops the compare tab once every sibling of the group has left", () => {
@@ -142,7 +151,18 @@ describe("tabbableTasks", () => {
       b: { repoId: "two", compareId: "cmp1" },
     };
     const noneLeft = tabbableTasks([repo("one", "removed"), repo("two", "removed")], siblings);
-    expect(noneLeft).toEqual(new Set());
+    expect(noneLeft).toEqual(new Set([NEW_TASK_TAB]));
+  });
+});
+
+describe("the composer's tab", () => {
+  it("opens once and comes to the front on the second ask, keeping what is typed in it", () => {
+    const first = tabsReducer(NO_TABS, { type: "open", taskId: NEW_TASK_TAB });
+    const second = tabsReducer(tabsReducer(first, { type: "open", taskId: "a" }), {
+      type: "open",
+      taskId: NEW_TASK_TAB,
+    });
+    expect(second).toEqual({ open: [NEW_TASK_TAB, "a"], active: NEW_TASK_TAB });
   });
 });
 

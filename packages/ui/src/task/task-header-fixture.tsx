@@ -1,18 +1,7 @@
-import type { RepoListRow, TaskListRow } from "@agnostic/core";
+import type { TaskListRow } from "@agnostic/core";
 import { render } from "../test/render";
-import { PROFILE } from "./new-task-dialog-fixture";
+import { PROFILE, REPO, stubClient } from "../test/workspace-fixture";
 import { TaskHeader } from "./task-header";
-
-const HEADER_REPO: RepoListRow = {
-  id: "r1",
-  path: "/repo",
-  kind: "git",
-  name: "petal",
-  addedAt: "2026-09-14T10:00:00.000Z",
-  status: "active",
-  testCommand: null,
-  pathPresent: true,
-};
 
 export function headerTask(
   id: string,
@@ -21,7 +10,7 @@ export function headerTask(
 ): TaskListRow {
   return {
     id,
-    repoId: HEADER_REPO.id,
+    repoId: REPO.id,
     title,
     prompt: title,
     profileId: PROFILE.id,
@@ -43,10 +32,11 @@ export function renderHeader(task: TaskListRow, files: number | null = null) {
   return render(
     <TaskHeader
       task={task}
-      repo={HEADER_REPO}
+      repo={REPO}
       profiles={[PROFILE]}
       budget={null}
       cost={null}
+      client={stubClient()}
       files={files}
       notice={null}
       changesOpen={false}

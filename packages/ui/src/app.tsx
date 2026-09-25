@@ -13,15 +13,14 @@ import { WorkspacePalette } from "./palette/workspace-palette";
 import { AddRepoDialog } from "./repo/add-repo-dialog";
 import { RemoveRepoDialog } from "./repo/remove-repo-dialog";
 import { useRepoActions } from "./repo/use-repo-actions";
-import { activeRepos, defaultRepoId, groupTasks } from "./sidebar/group-tasks";
+import { defaultRepoId, groupTasks } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
 import type { NoticeHost } from "./store/task-notices";
 import { useProfiles } from "./store/use-profiles";
 import { useWorkspace } from "./store/use-workspace";
 import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
-import { compareTabId, readTabs, tabsReducer } from "./tabs/tabs-state";
+import { compareTabId, NEW_TASK_TAB, readTabs, tabsReducer } from "./tabs/tabs-state";
 import { useTabsStorage } from "./tabs/use-tabs-storage";
-import { NewTaskDialog } from "./task/new-task-dialog";
 import { useTaskActions } from "./task/use-task-actions";
 import { TaskCost } from "./usage/task-cost";
 import { lastResponse } from "./usage/usage-state";
@@ -48,9 +47,8 @@ function Workspace({ token }: { token: string }) {
   const { state, error, notices, act, put } = useWorkspace(client);
   const profiles = useProfiles(client);
   const [collapsed, setCollapsed] = useState(false);
-  const [newTask, setNewTask] = useState(false);
-  // What the palette's "Run: <prompt>" seeds the new-task dialog with, or null for a blank one.
-  const [prefill, setPrefill] = useState<{ prompt: string } | null>(null);
+  // What the palette's "Run: <prompt>" seeds the New task tab with; `at` re-seeds a tab already open.
+  const [seed, setSeed] = useState<{ prompt: string; at: number } | null>(null);
   const [addRepo, setAddRepo] = useState(false);
   // The task whose handoff dialog, and whose Create PR dialog, the palette has opened.
   const [handoffFor, setHandoffFor] = useState<string | null>(null);
@@ -93,10 +91,13 @@ function Workspace({ token }: { token: string }) {
   // Recommend and Sync rows act on.
   const repo = state.repos.find((row) => row.id === defaultRepoId(state, activeId)) ?? null;
   const showChanges = changesOpen && activeTask !== null;
-  // The sidebar's New task and the tab strip's "+" are the same click with no prompt behind it.
-  const newTaskFromScratch = () => {
-    setPrefill(null);
-    setNewTask(true);
+  // The sidebar's New task and the tab strip's "+" are the same click with no prompt behind it, so
+  // they leave whatever is typed in the tab alone; the palette's Run row replaces it.
+  const openNewTask = (prompt: string | null) => {
+    if (prompt !== null) {
+      setSeed({ prompt, at: Date.now() });
+    }
+    dispatchTabs({ type: "open", taskId: NEW_TASK_TAB });
   };
   const toggleChanges = () => {
     writePanelOpen(localStorage, !changesOpen);
@@ -141,7 +142,7 @@ function Workspace({ token }: { token: string }) {
         onOpenCompare={(compareId) =>
           dispatchTabs({ type: "open", taskId: compareTabId(compareId) })
         }
-        onNewTask={newTaskFromScratch}
+        onNewTask={() => openNewTask(null)}
         onAddRepo={() => setAddRepo(true)}
         onCloseRepo={repoActions.close}
         onReopenRepo={repoActions.reopen}
@@ -161,17 +162,6 @@ function Workspace({ token }: { token: string }) {
         repo={removing}
         onOpenChange={(open) => setRemoving(open ? removing : null)}
         onRemove={repoActions.remove}
-      />
-      <NewTaskDialog
-        open={newTask}
-        onOpenChange={setNewTask}
-        repos={activeRepos(state.repos)}
-        defaultRepoId={repo?.id ?? null}
-        profiles={profiles}
-        budget={budget}
-        prefill={prefill}
-        client={client}
-        onStarted={started}
       />
       <Centre
         tabs={tabs}
@@ -200,7 +190,11 @@ function Workspace({ token }: { token: string }) {
         flash={flash}
         usageStamp={state.usageStamp}
         onPick={pick}
-        onNewTask={newTaskFromScratch}
+        onNewTask={() => openNewTask(null)}
+        defaultRepoId={repo?.id ?? null}
+        seed={seed}
+        onStarted={started}
+        onAddRepo={() => setAddRepo(true)}
       />
       {showChanges && activeTask !== null && (
         <ChangesPanel
@@ -227,10 +221,7 @@ function Workspace({ token }: { token: string }) {
         context={{ activeTask, repo, uncommitted: ownRead?.uncommitted ?? null }}
         onStarted={started}
         handlers={{
-          newTask: (seed) => {
-            setPrefill(seed);
-            setNewTask(true);
-          },
+          newTask: (prefill) => openNewTask(prefill?.prompt ?? null),
           stop: (taskId) => void stop(taskId),
           resume: (taskId) => void resume(taskId, "header"),
           handoff: setHandoffFor,

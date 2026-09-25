@@ -4,11 +4,13 @@ import { cn } from "../class-names";
 import { Badge } from "../components/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
 import { StatusGlyph } from "../status/status-glyph";
+import type { NEW_TASK_TAB } from "./tabs-state";
 
-/** What a tab stands for: one task's terminal, or one compare's columns (ADR 036 Q7). */
+/** What a tab stands for: a task's terminal, a compare's columns (ADR 036 Q7), or the composer. */
 export type TabItem =
   | { kind: "task"; id: string; task: Task }
-  | { kind: "compare"; id: string; title: string; agents: number };
+  | { kind: "compare"; id: string; title: string; agents: number }
+  | { kind: "new"; id: typeof NEW_TASK_TAB };
 
 type TabStripProps = {
   tabs: TabItem[];
@@ -135,21 +137,35 @@ function edge(tab: TabItem, active: boolean): string | false {
   return active && EDGE.active;
 }
 
-/** The status dot for a terminal, the columns icon for the view over a group of them. */
+/** The status dot for a terminal, the columns icon for a compare, the "+" for the composer. */
 function Mark({ tab }: { tab: TabItem }) {
   if (tab.kind === "compare") {
     return <Columns4 className="size-3.5 shrink-0" />;
+  }
+  if (tab.kind === "new") {
+    return <Plus className="size-3.5 shrink-0" />;
   }
   return <StatusGlyph status={tab.task.status} size="tab" />;
 }
 
 function title(tab: TabItem): string {
-  return tab.kind === "task" ? tab.task.title : tab.title;
+  switch (tab.kind) {
+    case "task":
+      return tab.task.title;
+    case "compare":
+      return tab.title;
+    case "new":
+      return "New task";
+  }
 }
 
 function tooltip(tab: TabItem, repoNames: ReadonlyMap<string, string>): string {
-  if (tab.kind === "compare") {
-    return `${tab.title} · compare, ${tab.agents} agents`;
+  switch (tab.kind) {
+    case "compare":
+      return `${tab.title} · compare, ${tab.agents} agents`;
+    case "new":
+      return "New task";
+    case "task":
+      return `${tab.task.title} · ${repoNames.get(tab.task.repoId) ?? "unknown repo"}`;
   }
-  return `${tab.task.title} · ${repoNames.get(tab.task.repoId) ?? "unknown repo"}`;
 }
