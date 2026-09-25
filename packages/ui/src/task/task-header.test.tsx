@@ -133,6 +133,22 @@ function hasHandoff(container: HTMLElement): boolean {
   );
 }
 
+describe("TaskHeader question line", () => {
+  it("says the agent is waiting on an answer in the terminal below", () => {
+    const waiting = task("task1", "Port the parser", { status: "waiting" });
+    const { container, unmount } = header(waiting, null);
+    const line = container.querySelector('[data-tone="question"]');
+    expect(line?.textContent).toBe("The agent asked a question. Answer in the terminal below.");
+    unmount();
+  });
+
+  it("says nothing of the kind while the agent is working", () => {
+    const { container, unmount } = header(task("task1", "Port the parser"), null);
+    expect(container.querySelector('[data-tone="question"]')).toBeNull();
+    unmount();
+  });
+});
+
 describe("TaskHeader Hand off", () => {
   it("offers Hand off while the worktree agn made is there", () => {
     const { container, unmount } = header(task("task1", "Port the parser"), null);

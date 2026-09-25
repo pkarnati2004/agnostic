@@ -1,10 +1,12 @@
 // @vitest-environment happy-dom
 import type { RepoListRow, TaskListRow } from "@agnostic/core";
-import { useEffect } from "react";
+import { act, useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "./api/error";
 import { Centre } from "./centre";
 import { taskRow } from "./changes/changes-fixture";
 import { TooltipProvider } from "./components/tooltip";
+import type { ConnectionState } from "./store/workspace-state";
 import type { TabsState } from "./tabs/tabs-state";
 import { render } from "./test/render";
 import { setValue, stubClient } from "./test/workspace-fixture";
@@ -27,6 +29,8 @@ vi.mock("./terminal/terminal-view", () => ({
   },
 }));
 
+const NOW = Date.parse("2026-09-24T10:00:00.000Z");
+
 const TASK1 = taskRow({ id: "task1", title: "Add the retry budget" });
 const TASK2 = taskRow({ id: "task2", title: "Port the parser to zod" });
 const SIB_A = taskRow({ id: "sib-a", compareId: "cmp1", title: "Try two parsers" });
@@ -44,15 +48,23 @@ const TASKS: Record<string, TaskListRow> = {
   "sib-b": SIB_B,
 };
 
-function centre(tabs: TabsState, loaded = true, repos: RepoListRow[] = []) {
+type Extra = {
+  loaded?: boolean;
+  connection?: ConnectionState;
+  error?: ApiError | null;
+  onRetry?: () => void;
+  repos?: RepoListRow[];
+};
+
+function centre(tabs: TabsState, extra: Extra = {}) {
   return (
     <TooltipProvider>
       <Centre
         tabs={tabs}
         dispatchTabs={vi.fn()}
-        repos={repos}
+        repos={extra.repos ?? []}
         tasks={TASKS}
-        loaded={loaded}
+        loaded={extra.loaded ?? true}
         profiles={[]}
         token="tok"
         client={stubClient({ compare: () => new Promise(() => undefined) })}
@@ -60,12 +72,14 @@ function centre(tabs: TabsState, loaded = true, repos: RepoListRow[] = []) {
         budget={null}
         cost={null}
         files={null}
-        error={null}
+        error={extra.error ?? null}
+        connection={extra.connection ?? "live"}
+        onRetry={extra.onRetry ?? vi.fn()}
+        now={NOW}
         resumed={null}
         notices={{}}
         changesOpen={false}
         onToggleChanges={vi.fn()}
-        onDismiss={vi.fn()}
         onResume={() => Promise.resolve()}
         onStop={() => Promise.resolve()}
         onHandoff={() => Promise.resolve(true)}
@@ -100,7 +114,7 @@ describe("Centre with nothing in front", () => {
   });
 
   it("says where the page got to while it is still loading", () => {
-    const { container, unmount } = render(centre({ open: [], active: null }, false));
+    const { container, unmount } = render(centre({ open: [], active: null }, { loaded: false }));
 
     expect(container.textContent).toContain("Loading the workspace…");
     expect(container.textContent).not.toContain("What should an agent work on?");
@@ -161,34 +175,89 @@ describe("Centre and the New task tab's draft", () => {
   it("keeps what was typed across a switch to a task tab and back", () => {
     const open = ["new-task", "task1"];
     const { container, update, unmount } = render(
-      centre({ open, active: "new-task" }, true, [repo]),
+      centre({ open, active: "new-task" }, { repos: [repo] }),
     );
     type(container, "port the parser");
     expect(typedPrompt()).toBe("port the parser");
 
     // The tab is still open, so it stays mounted and hidden rather than coming down.
-    update(centre({ open, active: "task1" }, true, [repo]));
+    update(centre({ open, active: "task1" }, { repos: [repo] }));
     const box = container.querySelector("#new-task-prompt") as HTMLTextAreaElement;
     expect(box.closest("[hidden]")).not.toBeNull();
     expect(box.value).toBe("port the parser");
 
-    update(centre({ open, active: "new-task" }, true, [repo]));
+    update(centre({ open, active: "new-task" }, { repos: [repo] }));
     expect(typedPrompt()).toBe("port the parser");
     unmount();
   });
 
   it("drops what was typed when the tab is closed", () => {
     const { container, update, unmount } = render(
-      centre({ open: ["new-task", "task1"], active: "new-task" }, true, [repo]),
+      centre({ open: ["new-task", "task1"], active: "new-task" }, { repos: [repo] }),
     );
     type(container, "port the parser");
 
     // Closing the tab: it leaves `open` and the centre stops drawing NewTaskTab at all.
-    update(centre({ open: ["task1"], active: "task1" }, true, [repo]));
+    update(centre({ open: ["task1"], active: "task1" }, { repos: [repo] }));
     expect(container.querySelector("#new-task-prompt")).toBeNull();
 
-    update(centre({ open: ["new-task", "task1"], active: "new-task" }, true, [repo]));
+    update(centre({ open: ["new-task", "task1"], active: "new-task" }, { repos: [repo] }));
     expect(typedPrompt()).toBe("");
+    unmount();
+  });
+});
+
+describe("Centre and a daemon that stopped answering", () => {
+  // A restart that comes back inside the feed's own retry is not worth a banner (handoff pick 1).
+  it("waits three seconds of reconnecting before it says the daemon is down", () => {
+    vi.useFakeTimers();
+    try {
+      const open = ["task1"];
+      const live = render(centre({ open, active: "task1" }));
+      expect(live.container.textContent).not.toContain("agnd is not running");
+
+      live.update(centre({ open, active: "task1" }, { connection: "reconnecting" }));
+      expect(live.container.textContent).not.toContain("agnd is not running");
+
+      act(() => {
+        vi.advanceTimersByTime(3_000);
+      });
+      expect(live.container.textContent).toContain("agnd is not running");
+
+      live.update(centre({ open, active: "task1" }, { connection: "live" }));
+      expect(live.container.textContent).not.toContain("agnd is not running");
+      live.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says so at once when the page never loaded at all", () => {
+    const error = new ApiError("the agn daemon is not answering on this page", {
+      code: "daemon-unreachable",
+      hint: "Run `agn daemon start`.",
+      status: null,
+    });
+    const { container, unmount } = render(
+      centre({ open: [], active: null }, { loaded: false, error, connection: "connecting" }),
+    );
+    expect(container.textContent).toContain("agnd is not running");
+    // One line about it, not two: the banner already names the command and offers Retry.
+    expect(container.textContent).not.toContain("not answering on this page");
+    unmount();
+  });
+
+  it("shows a bootstrap failure the daemon did answer as a notice, not as the banner", () => {
+    const error = new ApiError("the token in this page's address is not the daemon's", {
+      code: "unauthorized",
+      hint: "Open the workspace with `agn ui`.",
+      status: 401,
+    });
+    const { container, unmount } = render(
+      centre({ open: [], active: null }, { loaded: false, error }),
+    );
+    expect(container.textContent).toContain("the token in this page's address is not the daemon's");
+    expect(container.textContent).not.toContain("agnd is not running");
     unmount();
   });
 });

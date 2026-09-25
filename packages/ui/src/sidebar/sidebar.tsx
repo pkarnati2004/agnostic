@@ -1,14 +1,16 @@
-import type { RepoListRow, TaskListRow } from "@agnostic/core";
-import { FolderPlus, PanelLeft, Plus } from "lucide-react";
+import type { RepoListRow } from "@agnostic/core";
+import { FolderPlus, Plus } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../components/button";
 import type { RepoNotices } from "../repo/repo-notices";
 import { ClosedSection } from "./closed-section";
+import { DaemonFooter, type DaemonState } from "./daemon-footer";
 import { closedRepos, type SidebarGroups } from "./group-tasks";
 import { IconAction } from "./icon-action";
+import { NeedsYou } from "./needs-you";
+import { Rail } from "./rail";
 import { RepoSection } from "./repo-section";
-import { Section } from "./section";
-import { TaskRow } from "./task-row";
+import { SectionHeading } from "./section";
+import { SidebarHeader } from "./sidebar-header";
 
 type SidebarProps = {
   groups: SidebarGroups;
@@ -16,10 +18,16 @@ type SidebarProps = {
   repos: RepoListRow[];
   selectedId: string | null;
   collapsed: boolean;
+  /** Whether agnd is answering, and which version: the footer and the rail's dot. */
+  daemon: DaemonState;
+  /** The page's 30 s tick, which is what keeps the Needs you times honest. */
+  now: number;
   onSelect: (id: string) => void;
   /** Opens the group's Compare view in the centre, which is a tab of its own (ADR 036 Q7). */
   onOpenCompare: (compareId: string) => void;
   onNewTask: () => void;
+  /** Opens the command palette: searching and running a command are the same box. */
+  onSearch: () => void;
   onAddRepo: () => void;
   /** Rejects when the daemon refused; by then the failure is already in `repoNotices`. */
   onCloseRepo: (repoId: string) => Promise<void>;
@@ -40,28 +48,60 @@ export function Sidebar(props: SidebarProps) {
   const [openClosed, setOpenClosed] = useState(false);
   if (props.collapsed) {
     return (
-      <aside className="flex flex-col items-center border-sidebar-border border-r bg-sidebar py-3">
-        <CollapseButton collapsed onToggle={props.onToggle} />
-      </aside>
+      <Rail
+        groups={groups}
+        daemon={props.daemon}
+        onToggle={props.onToggle}
+        onNewTask={props.onNewTask}
+        onSearch={props.onSearch}
+        onSelect={onSelect}
+      />
     );
   }
+  const repoNames = new Map(groups.repos.map((group) => [group.repo.id, group.repo.name]));
   return (
     <aside className="flex min-h-0 flex-col border-sidebar-border border-r bg-sidebar">
-      <header className="flex items-center gap-2 px-3 py-3">
-        <span className="font-semibold text-sidebar-foreground text-sm">agn</span>
-        <div className="ml-auto flex items-center gap-1">
-          <Button variant="outline" size="sm" onClick={props.onNewTask}>
-            <Plus />
-            Task
-          </Button>
-          <IconAction label="Add a repo" tooltip="Add a repo" onClick={props.onAddRepo}>
-            <FolderPlus />
-          </IconAction>
-          <CollapseButton collapsed={false} onToggle={props.onToggle} />
-        </div>
-      </header>
+      <SidebarHeader
+        onNewTask={props.onNewTask}
+        onSearch={props.onSearch}
+        onToggle={props.onToggle}
+      />
       <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-        <NeedsYou groups={groups} selectedId={selectedId} onSelect={onSelect} />
+        <NeedsYou
+          tasks={groups.needsYou}
+          repoNames={repoNames}
+          selectedId={selectedId}
+          now={props.now}
+          onSelect={onSelect}
+        />
+        {/* No heading with nothing under it: the centre is what offers the first repo. */}
+        {groups.repos.length > 0 && (
+          <div className="px-2 pt-4">
+            <SectionHeading
+              title="Repos"
+              actions={
+                <>
+                  <IconAction
+                    label="New task"
+                    tooltip="New task"
+                    onClick={props.onNewTask}
+                    className="size-6"
+                  >
+                    <Plus />
+                  </IconAction>
+                  <IconAction
+                    label="Add a repo"
+                    tooltip="Add a repo"
+                    onClick={props.onAddRepo}
+                    className="size-6"
+                  >
+                    <FolderPlus />
+                  </IconAction>
+                </>
+              }
+            />
+          </div>
+        )}
         {groups.repos.map((group) => (
           <RepoSection
             key={group.repo.id}
@@ -89,43 +129,8 @@ export function Sidebar(props: SidebarProps) {
           notices={props.repoNotices}
         />
       </div>
+      <DaemonFooter {...props.daemon} />
     </aside>
-  );
-}
-
-type NeedsYouProps = {
-  groups: SidebarGroups;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-};
-
-/** The tasks asking a question, oldest first. */
-function NeedsYou({ groups, selectedId, onSelect }: NeedsYouProps) {
-  if (groups.needsYou.length === 0) {
-    return null;
-  }
-  const repos = new Map(groups.repos.map((group) => [group.repo.id, group.repo]));
-  return (
-    <Section title="Needs you" count={groups.needsYou.length} tone="waiting">
-      {groups.needsYou.map((task: TaskListRow) => (
-        <TaskRow
-          key={task.id}
-          task={task}
-          repo={repos.get(task.repoId) ?? null}
-          selected={task.id === selectedId}
-          onSelect={onSelect}
-        />
-      ))}
-    </Section>
-  );
-}
-
-function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
-  const label = collapsed ? "Show the sidebar" : "Hide the sidebar";
-  return (
-    <IconAction label={label} tooltip={label} onClick={onToggle}>
-      <PanelLeft />
-    </IconAction>
   );
 }
 

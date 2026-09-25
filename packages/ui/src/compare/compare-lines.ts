@@ -31,20 +31,34 @@ function count(tasks: SummaryTask[], status: TaskStatus): number {
   return tasks.filter((task) => task.status === status).length;
 }
 
-/** Null is git declining to count, which the column says with a dash rather than a zero. */
-export function changesCell(changes: CompareChanges | null): { files: string; lines: string } {
+/**
+ * The figures the column draws. Null is git declining to count, which reads as a dash rather than a
+ * zero; the two line counts come apart because the column colours them separately.
+ */
+export function changesCell(changes: CompareChanges | null): {
+  files: string;
+  added: string | null;
+  removed: string | null;
+} {
   if (changes === null) {
-    return { files: "-", lines: "-" };
+    return { files: "-", added: null, removed: null };
   }
-  return { files: String(changes.files), lines: `+${changes.additions} -${changes.deletions}` };
+  return {
+    files: String(changes.files),
+    added: `+${changes.additions}`,
+    removed: `−${changes.deletions}`,
+  };
 }
 
-/** The tests the close work recorded; a sibling stopped a moment ago has none for a few seconds. */
-export function testsCell(outcome: Outcome | null): string {
-  if (outcome === null || outcome.testsAfter === null) {
-    return "-";
+/**
+ * The tests the close work recorded. A sibling that has finished with nothing recorded ran no tests,
+ * and the column says so; one still working has nothing to say yet.
+ */
+export function testsCell(outcome: Outcome | null, status: TaskStatus): string {
+  if (outcome !== null && outcome.testsAfter !== null) {
+    return outcome.testsAfter ? "pass" : "fail";
   }
-  return outcome.testsAfter ? "pass" : "fail";
+  return TERMINAL.includes(status) ? "did not run" : "-";
 }
 
 /** Nothing priced on a plan agn knows is spend the plan absorbed, not spend of zero. */

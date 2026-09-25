@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { cn } from "../class-names";
 import {
   type DiffHunk,
   type DiffLine,
@@ -8,22 +7,15 @@ import {
 } from "./parse-unified-diff";
 
 const ROW: Record<DiffLineKind, string> = {
-  context: "",
-  add: "bg-[var(--diff-add-bg)]",
-  del: "bg-[var(--diff-del-bg)]",
+  context: "text-muted-foreground",
+  add: "bg-[var(--diff-add-bg)] text-[var(--diff-add-fg)]",
+  del: "bg-[var(--diff-del-bg)] text-[var(--diff-del-fg)]",
   meta: "text-muted-foreground",
 };
 
 const MARKER: Record<DiffLineKind, string> = { context: " ", add: "+", del: "-", meta: " " };
 
-const MARKER_COLOUR: Record<DiffLineKind, string> = {
-  context: "",
-  add: "text-[var(--diff-add-fg)]",
-  del: "text-[var(--diff-del-fg)]",
-  meta: "",
-};
-
-const GUTTER = "w-10 select-none px-2 text-right align-top text-muted-foreground tabular-nums";
+const GUTTER = "w-10 select-none px-2 text-right align-top text-[var(--input)] tabular-nums";
 
 /** One file's patch, unified, as git wrote it: no highlighting, no side-by-side, no word diff. */
 export function DiffView({ patch, path }: { patch: string; path: string }) {
@@ -41,7 +33,7 @@ export function DiffView({ patch, path }: { patch: string; path: string }) {
         <table key={hunk.key} className="w-full border-collapse font-mono text-xs leading-5">
           <tbody>
             <tr className="text-muted-foreground">
-              <td colSpan={3} className="bg-muted px-2 py-0.5 whitespace-pre">
+              <td colSpan={3} className="bg-sidebar px-2 py-0.5 whitespace-pre">
                 {hunk.header}
               </td>
             </tr>
@@ -61,7 +53,7 @@ function Row({ line }: { line: DiffLine }) {
       <td className={GUTTER}>{line.oldNo}</td>
       <td className={GUTTER}>{line.newNo}</td>
       <td className="w-full whitespace-pre px-2">
-        <span className={cn("select-none", MARKER_COLOUR[line.kind])}>{MARKER[line.kind]}</span>
+        <span className="select-none">{MARKER[line.kind]}</span>
         {line.text}
       </td>
     </tr>

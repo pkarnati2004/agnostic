@@ -1,5 +1,7 @@
 import type {
   AskCommitResponse,
+  CatalogResponse,
+  CatalogUpdateResponse,
   ChangesResponse,
   CompareResponse,
   CreatePrRequest,
@@ -9,6 +11,7 @@ import type {
   Event,
   HandoffTaskRequest,
   HandoffTaskResponse,
+  HealthResponse,
   OpenedTaskResponse,
   OpenTaskQuery,
   PickCompareRequest,
@@ -34,7 +37,7 @@ import type {
   UsageResponse,
 } from "@agnostic/core";
 import { apiError, isAbortError, unreachable } from "./error";
-import { streamEvents } from "./event-stream";
+import { type FeedState, streamEvents } from "./event-stream";
 
 /** The part of the daemon's API the shell uses. Chunks 05-08 add their own calls here. */
 export type WorkspaceClient = {
@@ -80,8 +83,21 @@ export type WorkspaceClient = {
   openTask(id: string, body: OpenTaskQuery): Promise<OpenedTaskResponse>;
   /** Writes the repo's generated files; the palette's Sync row asks for a real write. */
   syncRepo(id: string, body: SyncRequest): Promise<SyncResponse>;
-  /** Ends when `signal` aborts; resumes from the last id seen while it does not. */
-  events(after: number, signal: AbortSignal): AsyncIterable<Event>;
+  /** The daemon's own version, for the sidebar footer. The one route with no bearer check. */
+  health(): Promise<HealthResponse>;
+  /** Which catalog is loaded and when it was last checked; reads a file, never the network. */
+  catalog(): Promise<CatalogResponse>;
+  /** The daily check's own call, asked for by hand: the page's one outbound request (ADR 024). */
+  updateCatalog(): Promise<CatalogUpdateResponse>;
+  /**
+   * Ends when `signal` aborts; resumes from the last id seen while it does not. `onState` hears
+   * every connection and every drop after the first one.
+   */
+  events(
+    after: number,
+    signal: AbortSignal,
+    onState?: (state: FeedState) => void,
+  ): AsyncIterable<Event>;
 };
 
 /** `baseUrl` defaults to the page's own origin: Vite's proxy in dev, the daemon in a build. */
@@ -166,7 +182,17 @@ export function createClient(opts: {
       json<OpenedTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/open`, body),
     syncRepo: (id, body) =>
       json<SyncResponse>("POST", `/repos/${encodeURIComponent(id)}/sync`, body),
-    events: (after, signal) =>
-      streamEvents({ fetch: doFetch, baseUrl: base, token: opts.token, after, signal }),
+    health: () => json<HealthResponse>("GET", "/health"),
+    catalog: () => json<CatalogResponse>("GET", "/catalog"),
+    updateCatalog: () => json<CatalogUpdateResponse>("POST", "/catalog/update"),
+    events: (after, signal, onState) =>
+      streamEvents({
+        fetch: doFetch,
+        baseUrl: base,
+        token: opts.token,
+        after,
+        signal,
+        ...(onState === undefined ? {} : { onState }),
+      }),
   };
 }

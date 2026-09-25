@@ -10,6 +10,10 @@ import { click, find, render } from "../test/render";
 import { groupTasks } from "./group-tasks";
 import { Sidebar } from "./sidebar";
 
+/** The footer's state: a live feed and a version, which no test here is about. */
+const DAEMON = { version: "1.2.0", connection: "live" } as const;
+const NOW = Date.parse("2026-09-14T10:04:00.000Z");
+
 const PETAL: RepoListRow = {
   id: "r1",
   name: "petal",
@@ -64,6 +68,9 @@ function sidebar(state: WorkspaceState) {
         repos={state.repos}
         selectedId={null}
         collapsed={false}
+        onSearch={vi.fn()}
+        daemon={DAEMON}
+        now={NOW}
         onSelect={vi.fn()}
         onOpenCompare={vi.fn()}
         onNewTask={vi.fn()}

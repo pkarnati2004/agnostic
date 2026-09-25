@@ -6,6 +6,7 @@ import type {
   EditorsResponse,
   TaskListRow,
 } from "@agnostic/core";
+import { GitMerge } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "../components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
@@ -17,22 +18,17 @@ import { updateTooltip } from "./update-tooltip";
 
 type ActionRowProps = {
   task: TaskListRow;
-  /** Null when the read failed: only Refresh is drawn, so there is nothing to act on. */
-  changes: ChangesResponse | null;
+  changes: ChangesResponse;
   notice: TaskNotice | null;
   editors: EditorsResponse | null;
   /** Which action the panel is waiting on, so its controls do not take a second click. */
   busy: TaskAction | null;
   /** The worktree was cleaned: what needs it is disabled until a resume rebuilds it (ADR 031). */
   cleaned: boolean;
-  /** A failed read leaves nothing to act on, so only Refresh is drawn. */
-  refreshOnly: boolean;
-  loading: boolean;
   onOpen: (editor: EditorId | null) => void;
   onCreatePr: (body: CreatePrRequest) => Promise<CreatePrResponse | null>;
   onAskCommit: () => void;
   onUpdate: () => void;
-  onRefresh: () => void;
   /** Given when the command palette opened the Create PR dialog rather than its button. */
   prOpen?: boolean;
   onPrOpenChange?: (open: boolean) => void;
@@ -47,68 +43,52 @@ const NO_COMMIT_BRANCH =
   "This task works in the checkout itself, so agn has no branch to commit on.";
 const NO_AGENT = "There is no agent to ask yet.";
 
-/** Everything the panel can do to a task. */
+/** Everything the panel can do to a task. Refresh is in the header, over the count it refreshes. */
 export function ActionRow(props: ActionRowProps) {
-  const { cleaned, busy, refreshOnly, changes } = props;
+  const { cleaned, busy, changes, task } = props;
+  const behind = changes.behind ?? 0;
   return (
-    <div className="flex flex-wrap items-center gap-2 border-border border-b px-4 py-2">
-      {!refreshOnly && (
-        <>
-          <Held tip={cleaned ? RESUME_FIRST : null}>
-            <OpenInEditor
-              editors={props.editors}
-              disabled={cleaned || busy !== null}
-              onOpen={props.onOpen}
-            />
-          </Held>
-          {changes !== null && (
-            <Held tip={prBlocker(changes)}>
-              <CreatePrDialog
-                task={props.task}
-                changes={changes}
-                notice={props.notice}
-                disabled={prBlocker(changes) !== null || busy !== null}
-                onSubmit={props.onCreatePr}
-                open={props.prOpen}
-                onOpenChange={props.onPrOpenChange}
-              />
-            </Held>
-          )}
-          {changes !== null && (
-            <Held tip={commitTip(props.task, changes, cleaned)}>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!canAskCommit(props.task, changes.uncommitted) || busy !== null}
-                onClick={props.onAskCommit}
-              >
-                Ask the agent to commit
-              </Button>
-            </Held>
-          )}
-          {changes !== null && (
-            <Held tip={updateTip(props.task, changes, cleaned)}>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={updateBlocked(props.task, cleaned) || busy !== null}
-                onClick={props.onUpdate}
-              >
-                Bring up to date
-              </Button>
-            </Held>
-          )}
-        </>
-      )}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="ml-auto"
-        disabled={props.loading}
-        onClick={props.onRefresh}
-      >
-        Refresh
-      </Button>
+    <div className="flex flex-wrap items-center gap-1.5 border-border border-b px-3.5 pb-2.5">
+      <Held tip={cleaned ? RESUME_FIRST : null}>
+        <OpenInEditor
+          editors={props.editors}
+          disabled={cleaned || busy !== null}
+          onOpen={props.onOpen}
+        />
+      </Held>
+      <Held tip={prBlocker(changes)}>
+        <CreatePrDialog
+          task={task}
+          changes={changes}
+          notice={props.notice}
+          disabled={prBlocker(changes) !== null || busy !== null}
+          onSubmit={props.onCreatePr}
+          open={props.prOpen}
+          onOpenChange={props.onPrOpenChange}
+        />
+      </Held>
+      <Held tip={commitTip(task, changes, cleaned)}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!canAskCommit(task, changes.uncommitted) || busy !== null}
+          onClick={props.onAskCommit}
+        >
+          Ask the agent to commit
+        </Button>
+      </Held>
+      <Held tip={updateTip(task, changes, cleaned)}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto"
+          disabled={updateBlocked(task, cleaned) || busy !== null}
+          onClick={props.onUpdate}
+        >
+          <GitMerge style={behind > 0 ? { color: "var(--warning)" } : undefined} />
+          Bring up to date
+        </Button>
+      </Held>
     </div>
   );
 }

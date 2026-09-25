@@ -7,6 +7,10 @@ import type { SidebarGroups, SidebarRow } from "./group-tasks";
 import { HistorySection } from "./history-section";
 import { Sidebar } from "./sidebar";
 
+/** The footer's state: a live feed and a version, which no test here is about. */
+const DAEMON = { version: "1.2.0", connection: "live" } as const;
+const NOW = Date.parse("2026-09-14T10:04:00.000Z");
+
 const REPO: RepoListRow = {
   id: "r1",
   name: "petal",
@@ -59,6 +63,9 @@ function sidebar(onSelect: (id: string) => void = vi.fn()) {
         repos={[REPO]}
         selectedId={null}
         collapsed={false}
+        onSearch={vi.fn()}
+        daemon={DAEMON}
+        now={NOW}
         onSelect={onSelect}
         onOpenCompare={vi.fn()}
         onNewTask={vi.fn()}
@@ -156,6 +163,9 @@ describe("HistorySection", () => {
           repoNotices={{}}
           selectedId={null}
           collapsed={false}
+          onSearch={vi.fn()}
+          daemon={DAEMON}
+          now={NOW}
           onSelect={vi.fn()}
           onOpenCompare={vi.fn()}
           onNewTask={vi.fn()}
@@ -190,6 +200,9 @@ describe("HistorySection", () => {
           repos={[REPO]}
           selectedId={null}
           collapsed={false}
+          onSearch={vi.fn()}
+          daemon={DAEMON}
+          now={NOW}
           onSelect={vi.fn()}
           onOpenCompare={vi.fn()}
           onNewTask={vi.fn()}
@@ -224,6 +237,9 @@ describe("HistorySection", () => {
           repoNotices={{}}
           selectedId="old-two"
           collapsed={false}
+          onSearch={vi.fn()}
+          daemon={DAEMON}
+          now={NOW}
           onSelect={vi.fn()}
           onOpenCompare={vi.fn()}
           onNewTask={vi.fn()}

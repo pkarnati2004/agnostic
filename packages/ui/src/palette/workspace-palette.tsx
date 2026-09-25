@@ -1,5 +1,5 @@
 import type { RunTaskRequest, Task } from "@agnostic/core";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { CommandPalette } from "./command-palette";
 import type { PaletteContext, PaletteHandlers } from "./palette-commands";
@@ -10,12 +10,15 @@ type WorkspacePaletteProps = {
   context: Omit<PaletteContext, "query">;
   handlers: Omit<PaletteHandlers, "recommend">;
   onStarted: (task: Task) => void;
+  /** The page owns the state, because the sidebar's Search row opens the palette too. */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 };
 
 /** The palette as the page wires it: the shortcut that opens it and the two calls it makes. */
 export function WorkspacePalette({ client, onStarted, ...props }: WorkspacePaletteProps) {
-  const [open, setOpen] = useState(false);
-  usePaletteShortcut(useCallback(() => setOpen((was) => !was), []));
+  const { open, onOpenChange } = props;
+  usePaletteShortcut(useCallback(() => onOpenChange(!open), [open, onOpenChange]));
 
   // No signal to abort with: the palette asks once, on Enter, rather than on every keystroke.
   const recommend = useCallback(
@@ -39,7 +42,7 @@ export function WorkspacePalette({ client, onStarted, ...props }: WorkspacePalet
   return (
     <CommandPalette
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={onOpenChange}
       context={props.context}
       handlers={props.handlers}
       recommend={recommend}

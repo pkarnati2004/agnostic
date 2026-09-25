@@ -50,7 +50,7 @@ export function CreatePrDialog({ disabled, ...props }: CreatePrDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled}>
+        <Button size="sm" disabled={disabled}>
           Create PR
         </Button>
       </DialogTrigger>

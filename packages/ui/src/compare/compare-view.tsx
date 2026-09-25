@@ -4,11 +4,12 @@ import type {
   PickCompareResponse,
   TaskListRow,
 } from "@agnostic/core";
+import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { FailedLine } from "../changes/panel-state";
-import { Button } from "../components/button";
 import { Dialog, DialogContent } from "../components/dialog";
+import { IconAction } from "../sidebar/icon-action";
 import type { TaskNotice } from "../store/task-notices";
 import type { UsageStamp } from "../store/workspace-state";
 import { TaskNoticeLine } from "../task/task-notice-line";
@@ -75,7 +76,7 @@ export function CompareView(props: CompareViewProps) {
         </div>
       )}
       {compare.state.kind === "error" && <FailedLine error={compare.state.error} />}
-      <div className="flex min-h-0 flex-1 gap-3 overflow-auto p-4">
+      <div className="flex min-h-0 flex-1 overflow-x-auto">
         {response.tasks.map((row) => (
           <CompareColumn
             key={row.id}
@@ -114,17 +115,23 @@ function Header({
 }) {
   const agents = `${response.tasks.length} agent${response.tasks.length === 1 ? "" : "s"}`;
   return (
-    <div className="flex min-w-0 items-start gap-3 border-border border-b px-4 py-3">
-      <div className="min-w-0 flex-1">
-        <h2 className="truncate font-medium text-sm">{response.title}</h2>
-        <p className="truncate text-muted-foreground text-xs" title={response.prompt}>
-          {response.prompt}
+    <div className="flex min-w-0 items-center gap-3 border-border border-b px-4 py-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <h2 className="truncate type-heading" title={response.prompt}>
+          {response.title}
+        </h2>
+        <p className="truncate text-muted-foreground type-meta">
+          {`${agents}, same prompt, separate worktrees. Pick one to keep; the others close.`}
         </p>
       </div>
-      <span className="shrink-0 text-muted-foreground text-xs">{agents}</span>
-      <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
-        Refresh
-      </Button>
+      <IconAction
+        label="Refresh the compare"
+        tooltip="Refresh"
+        disabled={loading}
+        onClick={onRefresh}
+      >
+        <RefreshCw />
+      </IconAction>
     </div>
   );
 }

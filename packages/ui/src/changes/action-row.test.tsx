@@ -6,6 +6,7 @@ import type { WorkspaceClient } from "../api/client";
 import { TooltipProvider } from "../components/tooltip";
 import { click, render } from "../test/render";
 import { stubClient } from "../test/workspace-fixture";
+import { ActionRow } from "./action-row";
 import { changesResponse, FILES, taskRow } from "./changes-fixture";
 import { ChangesPanel } from "./changes-panel";
 
@@ -38,6 +39,7 @@ async function panel(opts: {
         onCreatePr={() => Promise.resolve(null)}
         onUpdate={() => Promise.resolve(null)}
         onAskCommit={opts.onAskCommit ?? (() => Promise.resolve(null))}
+        onClose={vi.fn()}
         onLoaded={() => undefined}
       />
     </TooltipProvider>,
@@ -137,5 +139,38 @@ describe("Ask the agent to commit", () => {
     });
     expect(container.textContent).toContain("Asked the agent to commit in its session.");
     unmount();
+  });
+});
+
+function actionRow(behind: number) {
+  return render(
+    <TooltipProvider delayDuration={0}>
+      <ActionRow
+        task={taskRow()}
+        changes={changesResponse({ behind })}
+        notice={null}
+        editors={null}
+        busy={null}
+        cleaned={false}
+        onOpen={() => undefined}
+        onCreatePr={() => Promise.resolve(null)}
+        onAskCommit={() => undefined}
+        onUpdate={() => undefined}
+      />
+    </TooltipProvider>,
+  );
+}
+
+describe("Bring up to date's warning tone", () => {
+  it("colours the icon only once the branch has fallen behind", () => {
+    const behind = actionRow(4);
+    const icon = button(behind.container, "Bring up to date").querySelector("svg");
+    expect(icon?.getAttribute("style")).toContain("--warning");
+    behind.unmount();
+
+    const upToDate = actionRow(0);
+    const plainIcon = button(upToDate.container, "Bring up to date").querySelector("svg");
+    expect(plainIcon?.getAttribute("style")).toBeFalsy();
+    upToDate.unmount();
   });
 });

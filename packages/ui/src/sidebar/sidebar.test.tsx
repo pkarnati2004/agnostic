@@ -10,6 +10,10 @@ import { click, find, render } from "../test/render";
 import { groupTasks } from "./group-tasks";
 import { Sidebar } from "./sidebar";
 
+/** The footer's state: a live feed and a version, which no test here is about. */
+const DAEMON = { version: "1.2.0", connection: "live" } as const;
+const NOW = Date.parse("2026-09-14T10:04:00.000Z");
+
 const PETAL: RepoListRow = {
   id: "r1",
   name: "petal",
@@ -77,6 +81,9 @@ function sidebar(state: WorkspaceState, handlers: Handlers = {}) {
         repos={state.repos}
         selectedId={null}
         collapsed={false}
+        onSearch={vi.fn()}
+        daemon={DAEMON}
+        now={NOW}
         onSelect={vi.fn()}
         onOpenCompare={vi.fn()}
         onNewTask={vi.fn()}
@@ -112,14 +119,14 @@ function headings(container: HTMLElement): string[] {
 describe("the sidebar and a closed repo", () => {
   it("drops the repo and its waiting task when the feed says it was closed", () => {
     const page = render(sidebar(loaded()));
-    expect(headings(page.container)).toEqual(["Needs you", "katha", "petal"]);
+    expect(headings(page.container)).toEqual(["Needs you", "Repos", "katha", "petal"]);
 
     const closed = workspaceReducer(loaded(), {
       type: "event",
       event: statusEvent(13, "archived"),
     });
     page.update(sidebar(closed));
-    expect(headings(page.container)).toEqual(["katha"]);
+    expect(headings(page.container)).toEqual(["Repos", "katha"]);
     expect(page.container.textContent).not.toContain("Fix the parser");
     page.unmount();
   });
@@ -131,7 +138,7 @@ describe("the sidebar and a closed repo", () => {
     });
     const opened = workspaceReducer(closed, { type: "event", event: statusEvent(14, "active") });
     const page = render(sidebar(opened));
-    expect(headings(page.container)).toEqual(["Needs you", "katha", "petal"]);
+    expect(headings(page.container)).toEqual(["Needs you", "Repos", "katha", "petal"]);
     expect(page.container.textContent).toContain("Fix the parser");
     page.unmount();
   });
@@ -187,7 +194,7 @@ describe("managing repos from the sidebar", () => {
     });
     const onReopenRepo = vi.fn(() => Promise.resolve());
     const page = render(sidebar(closed, { onReopenRepo }));
-    expect(headings(page.container)).toEqual(["katha"]);
+    expect(headings(page.container)).toEqual(["Repos", "katha"]);
     expect(buttonSaying(page.container, "Closed").textContent).toBe("Closed1");
     expect(page.container.textContent).not.toContain("Fix the parser");
 
@@ -244,7 +251,7 @@ describe("managing repos from the sidebar", () => {
     // moving it back to active must carry the same, still-unexpired notice with it.
     const opened = workspaceReducer(closed, { type: "event", event: statusEvent(14, "active") });
     page.update(sidebar(opened, { repoNotices }));
-    expect(headings(page.container)).toEqual(["Needs you", "katha", "petal"]);
+    expect(headings(page.container)).toEqual(["Needs you", "Repos", "katha", "petal"]);
     expect(page.container.textContent).toContain("Reopen failed for petal: no repo matches r1");
     page.unmount();
   });

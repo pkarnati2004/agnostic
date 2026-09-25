@@ -1,4 +1,5 @@
 import type { ChangesResponse } from "@agnostic/core";
+import { Folder } from "lucide-react";
 import type { ApiError } from "../api/error";
 import { HintText } from "../hint-text";
 import { NoticeLine } from "../notice/notice-line";
@@ -36,8 +37,9 @@ export function LoadingPatch() {
 /** A folder workspace has no git to read; the daemon's hint says how to give it one. */
 export function FolderLine({ error }: { error: ApiError }) {
   return (
-    <div className="px-4 py-3">
-      <p className="text-sm">git init to enable</p>
+    <div className="flex flex-1 flex-col items-center justify-center gap-2.5 p-6 text-center">
+      <Folder className="size-[18px] text-muted-foreground" />
+      <p className="text-[13px]">This folder is not a git repo.</p>
       <Hint hint={error.hint} />
     </div>
   );

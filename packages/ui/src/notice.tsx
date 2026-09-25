@@ -1,22 +1,18 @@
 import type { ApiError } from "./api/error";
-import { Button } from "./components/button";
 import { HintText } from "./hint-text";
 import { NoticeLine } from "./notice/notice-line";
 
-/** One line under the task header, in the daemon's own words: what failed, then what to do. */
-export function Notice({ error, onDismiss }: { error: ApiError | null; onDismiss: () => void }) {
+/**
+ * The bootstrap failure, in the daemon's own words: what failed, then what to do. It stays until the
+ * page loads, because a page that never loaded has nothing else to show (the banner's Retry is what
+ * clears it).
+ */
+export function Notice({ error }: { error: ApiError | null }) {
   if (error === null) {
     return null;
   }
   return (
-    <NoticeLine
-      tone="error"
-      action={
-        <Button variant="ghost" size="sm" onClick={onDismiss}>
-          Dismiss
-        </Button>
-      }
-    >
+    <NoticeLine tone="error">
       {error.message}
       {error.hint !== null && (
         <span className="mt-0.5 block text-muted-foreground">

@@ -8,7 +8,14 @@ import { useNotices } from "./notice-store";
 import type { TaskNotice } from "./task-notices";
 
 const TTL_MS = 5000;
-const TASK = { id: "task1", title: "Port the parser" };
+const TASK = {
+  id: "task1",
+  title: "Port the parser",
+  profileId: "claude-code:opus:native",
+  branch: "agn/port-the-parser",
+  worktreePath: "/tmp/petal-wt",
+  worktreePresent: true,
+};
 
 const REFUSED = new ApiError("the worktree /tmp/petal-wt is gone", {
   code: "worktree-missing",
@@ -32,6 +39,7 @@ function Pane({ resume }: { resume: () => Promise<void> }) {
       notice={null}
       failure={notices[TASK.id] ?? null}
       onResume={onResume}
+      onHandoff={() => undefined}
     />
   );
 }

@@ -46,6 +46,10 @@ record is more than a day old, and once every 24 hours while it runs. It records
 keeps working. `AGNOSTIC_CATALOG_URL` replaces the base both files are read from, for a mirror or
 an offline copy.
 
+The workspace reads the last check once per page load. If it is more than seven days old or it
+failed, the page says so and offers "Update now", which runs the same check. With `catalog_check:
+false` it says nothing. See [Catalog](workspace.md#catalog).
+
 ## What the publisher produces
 
 The catalog lives in its own repo, and a weekly Action writes two files at its root, which is the

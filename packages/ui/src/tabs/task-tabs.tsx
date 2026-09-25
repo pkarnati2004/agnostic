@@ -1,4 +1,4 @@
-import type { Task } from "@agnostic/core";
+import type { TaskListRow } from "@agnostic/core";
 import type { WorkspaceClient } from "../api/client";
 import type { TaskNotices } from "../store/task-notices";
 import { TerminalView } from "../terminal/terminal-view";
@@ -8,7 +8,7 @@ type TaskTabsProps = {
   /** The tab in front, or null while a tab that is not a terminal is: the Compare view. */
   activeId: string | null;
   /** Every open tab's task, in tab order. */
-  tasks: Task[];
+  tasks: TaskListRow[];
   token: string;
   client: WorkspaceClient;
   /** The last resume's answer, for whichever tab it was; only that tab shows it. */
@@ -16,6 +16,8 @@ type TaskTabsProps = {
   /** Keyed by task: every tab is mounted, so each one draws only its own failure. */
   notices: TaskNotices;
   onResume: (taskId: string) => Promise<void>;
+  /** The overlay's Hand off: the page opens the header's dialog for that task. */
+  onHandoff: (taskId: string) => void;
 };
 
 /** Every open tab stays mounted: a hidden one keeps its scrollback and its tmux client. */
@@ -36,6 +38,7 @@ export function TaskTabs(props: TaskTabsProps) {
           resumeNotice={resumed?.taskId === task.id ? resumed.notice : null}
           failure={notices[task.id] ?? null}
           onResume={() => onResume(task.id)}
+          onHandoff={() => props.onHandoff(task.id)}
         />
       ))}
     </>

@@ -895,6 +895,10 @@ echo "smoke: the workspace is built and served at /ui"
 pnpm --filter @agnostic/ui build
 agx daemon start > /dev/null
 UI_PORT="$("$NODE" -e "process.stdout.write(String(require('$AGNOSTIC_HOME/daemon.json').port))")"
+# The summary the workspace reads once a page load to decide whether to call the catalog stale.
+curl -fsS -H "Authorization: Bearer $(cat "$AGNOSTIC_HOME/auth-token")" \
+  "http://127.0.0.1:$UI_PORT/catalog" | grep -q '"checkEnabled"'
+test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$UI_PORT/catalog")" = 401
 # No Authorization header on any of these: the page is served to the browser before it has a token.
 curl -fsS -D "$WORK/ui.h" "http://127.0.0.1:$UI_PORT/ui" > "$WORK/ui.html"
 grep -qi "^content-type: text/html" "$WORK/ui.h"
@@ -918,6 +922,8 @@ test "$(grep -l 'at API rates, not billed' packages/ui/dist/assets/*.js | wc -l 
 test -n "$(grep -l 'Ask the agent to commit' packages/ui/dist/assets/*.js)"
 # And the New task tab, which is what the centre draws with no task open.
 test -n "$(grep -l 'What should an agent work on' packages/ui/dist/assets/*.js)"
+# And the Needs you strip, which is the one place a waiting task is named across repos.
+test -n "$(grep -l 'Needs you' packages/ui/dist/assets/*.js)"
 # The queued glyph's animation is the design's one moving part, and it is in the built stylesheet.
 test -n "$(grep -l 'glyph-spin' packages/ui/dist/assets/*.css)"
 # The mono is whichever of the stack the machine has: the page asks no host for a font.

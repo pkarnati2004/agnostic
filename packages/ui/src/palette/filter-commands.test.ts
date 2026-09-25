@@ -3,7 +3,16 @@ import { filterCommands, moveSelection } from "./filter-commands";
 import type { PaletteCommand } from "./palette-command";
 
 function command(id: string, label: string, fromQuery = false): PaletteCommand {
-  return { id, label, hint: null, fromQuery, run: () => undefined };
+  return {
+    id,
+    label,
+    hint: null,
+    fromQuery,
+    group: fromQuery ? "query" : "commands",
+    icon: null,
+    profileId: null,
+    run: () => undefined,
+  };
 }
 
 const COMMANDS: PaletteCommand[] = [

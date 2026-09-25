@@ -31,11 +31,15 @@ describe("recommendRows", () => {
       back: vi.fn(),
     });
     expect(rows.map((row) => row.label)).toEqual([
-      "Run on claude-code:opus:native",
-      "Run on codex:gpt-5:native",
+      "Run on claude-code · opus",
+      "Run on codex · gpt-5",
       "Back",
     ]);
     expect(rows[0]?.hint).toBe("strongest on refactors in this repo");
+    // The card the answer draws needs the profile, and the group it is drawn in.
+    expect(rows[0]?.group).toBe("answer");
+    expect(rows[0]?.profileId).toBe("claude-code:opus:native");
+    expect(rows[2]?.profileId).toBeNull();
   });
 
   it("offers one profile when agn had no second pick", () => {

@@ -35,17 +35,20 @@ export function NoticeLine({
   children,
   action,
   role,
+  icon,
   className,
 }: {
   tone: NoticeTone;
   children: ReactNode;
-  /** Right-aligned: Dismiss, Retry, Update now. */
+  /** Right-aligned: Retry, Update now. */
   action?: ReactNode;
   role?: "alert" | "status";
+  /** Named when the line is about one thing in particular, as the daemon banner's plug is. */
+  icon?: ComponentType<IconProps>;
   /** The sidebar's rows are narrower than a pane: the padding and the hairline give way there. */
   className?: string;
 }) {
-  const Icon = ICONS[tone];
+  const Icon = icon ?? ICONS[tone];
   const colour = `var(${TOKENS[tone]})`;
   const tint = TINT[tone];
   return (

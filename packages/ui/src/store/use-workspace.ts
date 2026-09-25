@@ -6,6 +6,7 @@ import { asApiError } from "../api/error";
 import { useNotices } from "./notice-store";
 import type { NoticeHost, TaskAction, TaskNotice, TaskNotices } from "./task-notices";
 import {
+  type ConnectionState,
   EMPTY_WORKSPACE,
   REFETCH_KINDS,
   type WorkspaceAction,
@@ -29,14 +30,19 @@ export type Workspace = {
   ): Promise<Task | undefined>;
   /** A row that already arrived whole (the run the composer made); nothing here can fail. */
   put(task: Task): void;
+  /** Drops the feed and opens it again, with the snapshot read first: the banner's Retry. */
+  retry(): void;
 };
 
 /** The page's one connection to the daemon: a snapshot, then the feed, for as long as it is open. */
 export function useWorkspace(client: WorkspaceClient): Workspace {
   const [state, dispatch] = useReducer(workspaceReducer, EMPTY_WORKSPACE);
   const [error, setError] = useState<ApiError | null>(null);
+  // Counts the Retries: a new value is what makes the effect drop the feed and open another one.
+  const [attempt, setAttempt] = useState(0);
   const { notices, failed, cleared } = useNotices<Omit<TaskNotice, "at">>();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` is why the effect re-runs.
   useEffect(() => {
     const abort = new AbortController();
     followWorkspace(client, dispatch, abort.signal).catch((cause: unknown) => {
@@ -45,7 +51,7 @@ export function useWorkspace(client: WorkspaceClient): Workspace {
       }
     });
     return () => abort.abort();
-  }, [client]);
+  }, [client, attempt]);
 
   const act = useCallback(
     async (scope: ActionScope, run: (client: WorkspaceClient) => Promise<Task | undefined>) => {
@@ -66,7 +72,13 @@ export function useWorkspace(client: WorkspaceClient): Workspace {
 
   const put = useCallback((task: Task) => dispatch({ type: "task", task }), []);
 
-  return { state, error, notices, act, put };
+  const retry = useCallback(() => {
+    setError(null);
+    dispatch({ type: "connection", state: "connecting" });
+    setAttempt((count) => count + 1);
+  }, []);
+
+  return { state, error, notices, act, put, retry };
 }
 
 /** The bootstrap and the feed behind the hook: both snapshots, then every event after the cursor. */
@@ -81,7 +93,9 @@ export async function followWorkspace(
   const cursor = Math.min(repos.cursor, tasks.cursor);
   dispatch({ type: "loaded", repos: repos.repos, tasks: tasks.tasks, cursor });
   const known = new Set(tasks.tasks.map((task) => task.id));
-  for await (const event of client.events(cursor, signal)) {
+  const onState = (connection: ConnectionState) =>
+    dispatch({ type: "connection", state: connection });
+  for await (const event of client.events(cursor, signal, onState)) {
     dispatch({ type: "event", event });
     const id = event.taskId;
     if (id === undefined) {

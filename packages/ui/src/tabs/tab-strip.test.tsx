@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
-import type { Task, TaskStatus } from "@agnostic/core";
+import type { TaskListRow, TaskStatus } from "@agnostic/core";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "../components/tooltip";
 import { click, find, render } from "../test/render";
 import { type TabItem, TabStrip } from "./tab-strip";
 import { NEW_TASK_TAB } from "./tabs-state";
 
-function task(id: string, title: string, status: TaskStatus = "running"): Task {
+function task(id: string, title: string, status: TaskStatus = "running"): TaskListRow {
   return {
     id,
     repoId: "r1",
@@ -21,6 +21,7 @@ function task(id: string, title: string, status: TaskStatus = "running"): Task {
     compareId: null,
     createdAt: "2026-09-14T10:00:00.000Z",
     updatedAt: "2026-09-14T10:00:00.000Z",
+    worktreePresent: true,
   };
 }
 

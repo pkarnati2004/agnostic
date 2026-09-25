@@ -21,7 +21,7 @@ describe("headerLine", () => {
   });
 
   it("says how far behind the base the branch is", () => {
-    expect(headerLine(changesResponse({ behind: 4 })).behind).toBe("behind 4");
+    expect(headerLine(changesResponse({ behind: 4 })).behind).toBe("4 behind");
   });
 });
 

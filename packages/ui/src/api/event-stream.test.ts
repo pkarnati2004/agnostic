@@ -188,6 +188,50 @@ describe("streamEvents", () => {
     expect(listeners).toBe(0);
   });
 
+  it("says when the feed is live, and when it has dropped", async () => {
+    const states: string[] = [];
+    let connections = 0;
+    const abort = new AbortController();
+    const stream = streamEvents({
+      fetch: () => {
+        connections += 1;
+        // The second connection is the last: the loop ends before a third wait.
+        if (connections === 2) {
+          abort.abort();
+        }
+        return Promise.resolve(sseResponse([frame(statusEvent(connections))]));
+      },
+      baseUrl: "",
+      token: "tok",
+      after: 0,
+      signal: abort.signal,
+      reconnectMs: 0,
+      onState: (state) => states.push(state),
+    });
+    const seen: number[] = [];
+    for await (const event of stream) {
+      seen.push(event.id);
+    }
+    expect(seen).toEqual([1, 2]);
+    expect(states).toEqual(["live", "reconnecting", "live"]);
+  });
+
+  it("says nothing at all before the first connection", async () => {
+    const states: string[] = [];
+    await streamEvents({
+      fetch: () => Promise.reject(new TypeError("Failed to fetch")),
+      baseUrl: "http://127.0.0.1:1",
+      token: "tok",
+      after: 0,
+      signal: new AbortController().signal,
+      reconnectMs: 0,
+      onState: (state) => states.push(state),
+    })
+      .next()
+      .catch(() => undefined);
+    expect(states).toEqual([]);
+  });
+
   it("reports a daemon that never answered", async () => {
     const failure = await streamEvents({
       fetch: () => Promise.reject(new TypeError("Failed to fetch")),

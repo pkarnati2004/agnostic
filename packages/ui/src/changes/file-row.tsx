@@ -1,6 +1,5 @@
 import type { ChangedFile } from "@agnostic/core";
 import { cn } from "../class-names";
-import { Badge } from "../components/badge";
 
 const LETTER: Record<ChangedFile["status"], string> = {
   added: "A",
@@ -10,6 +9,15 @@ const LETTER: Record<ChangedFile["status"], string> = {
   untracked: "?",
 };
 
+/** The letter carries the status, so the row needs no word for it (design §2). */
+const LETTER_TOKEN: Record<ChangedFile["status"], string> = {
+  added: "--status-running",
+  modified: "--warning",
+  deleted: "--destructive",
+  renamed: "--muted-foreground",
+  untracked: "--muted-foreground",
+};
+
 type FileRowProps = {
   file: ChangedFile;
   selected: boolean;
@@ -17,10 +25,11 @@ type FileRowProps = {
 };
 
 /**
- * One changed file. The path is truncated from the left, because the end of it is the file name,
- * and the whole path is the row's title for the cases where that is not enough.
+ * One changed file: the status letter, the directory behind the file name, and what it gained and
+ * lost. The whole path is the row's title, for the cases where the name alone is not enough.
  */
 export function FileRow({ file, selected, onSelect }: FileRowProps) {
+  const cut = file.path.lastIndexOf("/");
   return (
     <button
       type="button"
@@ -29,28 +38,42 @@ export function FileRow({ file, selected, onSelect }: FileRowProps) {
       title={file.path}
       onClick={() => onSelect(file.path)}
       className={cn(
-        "flex w-full items-center gap-2 px-4 py-1 text-left text-xs hover:bg-accent",
+        "flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-left type-meta",
+        "hover:bg-accent",
         selected && "bg-accent",
       )}
     >
-      <span dir="rtl" className="min-w-0 flex-1 truncate text-left font-mono">
-        {file.path}
-      </span>
-      <Badge variant="outline" className="px-1 py-0 font-mono">
+      <span
+        className="w-[10px] shrink-0 type-mono"
+        style={{ color: `var(${LETTER_TOKEN[file.status]})` }}
+      >
         {LETTER[file.status]}
-      </Badge>
-      <span className="shrink-0 text-muted-foreground tabular-nums">{fileCounts(file)}</span>
+      </span>
+      <span className="min-w-0 flex-1 truncate">
+        {cut >= 0 && <span className="text-muted-foreground">{file.path.slice(0, cut + 1)}</span>}
+        <span className="text-sidebar-foreground">{file.path.slice(cut + 1)}</span>
+      </span>
+      <Counts file={file} />
     </button>
   );
 }
 
 /** The same three forms `agn changes` prints, so the page and the CLI read alike. */
-function fileCounts(file: ChangedFile): string {
+function Counts({ file }: { file: ChangedFile }) {
   if (file.status === "untracked") {
-    return "untracked";
+    return <span className="shrink-0 text-muted-foreground">untracked</span>;
   }
   if (file.additions === null || file.deletions === null) {
-    return "binary";
+    return <span className="shrink-0 text-muted-foreground">binary</span>;
   }
-  return `+${file.additions} -${file.deletions}`;
+  return (
+    <>
+      <span className="shrink-0 type-mono" style={{ color: "var(--diff-add-fg)" }}>
+        {`+${file.additions}`}
+      </span>
+      <span className="shrink-0 type-mono" style={{ color: "var(--diff-del-fg)" }}>
+        {`−${file.deletions}`}
+      </span>
+    </>
+  );
 }

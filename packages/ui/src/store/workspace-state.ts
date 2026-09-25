@@ -14,6 +14,12 @@ import type {
  */
 export type UsageStamp = { plans: number; byTask: Record<string, number> };
 
+/**
+ * Where the page stands with the daemon: opening the feed, reading it, or waiting to get back onto
+ * it. Only the feed writes this; the footer and the daemon-down banner read it.
+ */
+export type ConnectionState = "connecting" | "live" | "reconnecting";
+
 /** Everything the shell draws. The ledger is the truth; this is the page's copy of it. */
 export type WorkspaceState = {
   repos: RepoListRow[];
@@ -22,12 +28,14 @@ export type WorkspaceState = {
   cursor: number;
   loaded: boolean;
   usageStamp: UsageStamp;
+  connection: ConnectionState;
 };
 
 export type WorkspaceAction =
   | { type: "loaded"; repos: RepoListRow[]; tasks: TaskListRow[]; cursor: number }
   | { type: "task"; task: Task }
-  | { type: "event"; event: Event };
+  | { type: "event"; event: Event }
+  | { type: "connection"; state: ConnectionState };
 
 export const EMPTY_WORKSPACE: WorkspaceState = {
   repos: [],
@@ -35,6 +43,7 @@ export const EMPTY_WORKSPACE: WorkspaceState = {
   cursor: 0,
   loaded: false,
   usageStamp: { plans: 0, byTask: {} },
+  connection: "connecting",
 };
 
 /** Kinds whose effect on a task is more than the event carries, so the page re-reads the row. */
@@ -53,12 +62,15 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         cursor: action.cursor,
         loaded: true,
         usageStamp: { plans: 0, byTask: {} },
+        connection: state.connection,
       };
     case "task":
       return { ...state, tasks: { ...state.tasks, [action.task.id]: listed(state, action.task) } };
     case "event":
       // Replay is idempotent, so the cursor advances whether or not the event changed anything.
       return { ...applied(state, action.event), cursor: action.event.id };
+    case "connection":
+      return { ...state, connection: action.state };
   }
 }
 

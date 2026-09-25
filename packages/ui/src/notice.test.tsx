@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ApiError } from "./api/error";
 import { Notice } from "./notice";
-import { click, find, render } from "./test/render";
+import { render } from "./test/render";
 
 const BOOTSTRAP = new ApiError("the agn daemon is not answering on this page", {
   code: "daemon-unreachable",
@@ -12,7 +12,7 @@ const BOOTSTRAP = new ApiError("the agn daemon is not answering on this page", {
 
 describe("Notice", () => {
   it("renders the bootstrap failure the page could not start from", () => {
-    const { container, unmount } = render(<Notice error={BOOTSTRAP} onDismiss={vi.fn()} />);
+    const { container, unmount } = render(<Notice error={BOOTSTRAP} />);
     expect(container.querySelector('[role="alert"]')).not.toBeNull();
     expect(container.textContent).toContain("the agn daemon is not answering on this page");
     expect(container.textContent).toContain("Run agn daemon start.");
@@ -20,18 +20,16 @@ describe("Notice", () => {
   });
 
   it("renders nothing once there is no bootstrap error to show", () => {
-    const { container, unmount } = render(<Notice error={null} onDismiss={vi.fn()} />);
+    const { container, unmount } = render(<Notice error={null} />);
     expect(container.textContent).toBe("");
     unmount();
   });
 
-  it("dismisses only what it was given: an action failure is never routed through here", () => {
-    // app.tsx passes only the bootstrap error to this prop; every action failure travels through
-    // `notices` and TaskNoticeLine instead, so this component has no way to receive one at all.
-    const onDismiss = vi.fn();
-    const { container, unmount } = render(<Notice error={BOOTSTRAP} onDismiss={onDismiss} />);
-    click(find(container, "button"));
-    expect(onDismiss).toHaveBeenCalledOnce();
+  // The line stays until the page loads: the banner's Retry is what takes it away, so there is no
+  // Dismiss to leave the page saying nothing about a daemon it cannot reach.
+  it("offers nothing to dismiss", () => {
+    const { container, unmount } = render(<Notice error={BOOTSTRAP} />);
+    expect(container.querySelector("button")).toBeNull();
     unmount();
   });
 });
