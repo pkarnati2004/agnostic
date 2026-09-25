@@ -73,6 +73,16 @@ describe("createClient", () => {
     expect(calls.every((call) => call.token === "Bearer tok")).toBe(true);
   });
 
+  it("posts a plan the usage bar was told, and the empty body that only re-detects", async () => {
+    const { client, calls } = stubClient(() => ok({}));
+    await client.doctor({});
+    await client.doctor({ plans: { claude: "max20" } });
+    expect(calls.map((call) => `${call.method} ${call.url} ${call.body}`)).toEqual([
+      "POST /doctor {}",
+      'POST /doctor {"plans":{"claude":"max20"}}',
+    ]);
+  });
+
   it("maps a refused open to the daemon's own message and hint", async () => {
     const { client } = stubClient(() =>
       Response.json(

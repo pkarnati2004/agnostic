@@ -1,19 +1,34 @@
-import type { PlanLimit, PlanUsage, PlanVendor } from "@agnostic/core";
+import type { Plan, PlanLimit, PlanOption, PlanUsage, PlanVendor } from "@agnostic/core";
 import { formatAgo, formatTokens3 } from "@agnostic/core/browser";
+import type { ComponentProps } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
+import { NoticeLine } from "../notice/notice-line";
 import { VendorMark } from "../profile/harness-mark";
-import { formatCount, formatMoney, formatShare } from "./format-usage";
+import { formatMoney, formatShare } from "./format-usage";
 import { hasFigure, LimitFigures } from "./limit-figures";
+import { PlanQuestion } from "./plan-question";
+import { TokenFigures } from "./token-figures";
 import { UsageRows, usageRows } from "./usage-rows";
+
+/** What the cell asks with when nothing said which plan this vendor bills the user on. */
+export type PlanCellQuestion = {
+  options: PlanOption[] | null;
+  busy: boolean;
+  /** Why the last pick did not stick, drawn in the cell itself; null while nothing has failed. */
+  error: string | null;
+  onPick: (planId: string) => void;
+};
 
 export type PlanCellProps = {
   label: string;
   vendor: PlanVendor | null;
+  plan: Plan | null;
   /** What the harness last said about this plan's own meter; null where nothing on this machine says. */
   limit: PlanLimit | null;
   day: PlanUsage | null;
   week: PlanUsage | null;
   now: number;
+  question: PlanCellQuestion | null;
 };
 
 /** Under five minutes, "as of just now" tells the reader nothing they did not assume. */
@@ -26,11 +41,30 @@ const AGE_WORTH_SAYING_MS = 5 * 60_000;
 const PANEL_WIDTH_PX = 320;
 
 /**
- * One plan's figures: the percent of its rate limit where a file on this machine reports one, and
- * the tokens and cost where none does. The week token pair drops out below `xl` and the cost
- * figures below `lg`; everything hidden is in the tooltip.
+ * One plan: the percent of its rate limit where a file on this machine reports one, the tokens and
+ * cost where none does, and the question in place of either while agn cannot tell which plan it is.
+ * The tooltip is a compact copy of the vendor's own usage panel.
  */
-export function PlanCell({ label, vendor, limit, day, week, now }: PlanCellProps) {
+export function PlanCell(props: PlanCellProps) {
+  const { label, vendor, limit, day, week, now, question } = props;
+  if (props.plan === null && vendor !== null && question !== null) {
+    return (
+      <Cell state="unknown" vendor={vendor}>
+        <VendorMark vendor={vendor} />
+        <PlanQuestion
+          vendor={vendor}
+          options={question.options}
+          busy={question.busy}
+          onPick={question.onPick}
+        />
+        {question.error !== null && (
+          <NoticeLine tone="error" className="border-b-0 px-0 py-0 type-meta">
+            {question.error}
+          </NoticeLine>
+        )}
+      </Cell>
+    );
+  }
   const figures = limit !== null && hasFigure(limit, now);
   // The cell falls back to tokens once every window is stale, but the panel still owes the reader
   // the windows and their age: a panel of tokens alone reads as a panel that failed to load.
@@ -40,23 +74,19 @@ export function PlanCell({ label, vendor, limit, day, week, now }: PlanCellProps
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+        <Cell state={figures ? "percent" : "tokens"} vendor={vendor}>
           <VendorMark vendor={vendor} />
-          <span className="min-w-12 truncate font-medium text-foreground">{label}</span>
+          <span className="text-foreground">{label}</span>
           {figures && limit !== null ? (
             <LimitFigures limit={limit} now={now} />
           ) : (
-            <>
-              <Figures when="today" row={day} />
-              <span className="hidden xl:contents">
-                <Figures when="week" row={week} />
-              </span>
-            </>
+            <TokenFigures day={day} week={week} vendor={vendor} />
           )}
-        </div>
+        </Cell>
       </TooltipTrigger>
       <TooltipContent className="whitespace-normal" style={{ width: PANEL_WIDTH_PX }}>
         <div className="flex flex-col gap-1.5">
+          <span className="font-medium">{label}</span>
           {rows.length > 0 && (
             <div data-line="rows">
               <UsageRows rows={rows} now={now} />
@@ -76,6 +106,28 @@ export function PlanCell({ label, vendor, limit, day, week, now }: PlanCellProps
         </div>
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+/** The design's hairline-separated cell: 28 px tall, one line, never wrapped. */
+function Cell({
+  state,
+  vendor,
+  children,
+  ...rest
+}: ComponentProps<"div"> & { state: "percent" | "tokens" | "unknown"; vendor: PlanVendor | null }) {
+  return (
+    // `rest` first: the tooltip trigger passes a `data-state` of its own, and this cell's state is
+    // the one the page and its tests read.
+    <div
+      {...rest}
+      data-cell="plan"
+      data-state={state}
+      data-vendor={vendor ?? undefined}
+      className="flex h-7 shrink-0 items-center gap-2 whitespace-nowrap border-border border-r px-3"
+    >
+      {children}
+    </div>
   );
 }
 
@@ -140,16 +192,4 @@ function costLine(
     parts.push(`${formatMoney(day.usage.costUsd)} today`);
   }
   return parts.length === 0 ? null : parts.join(" · ");
-}
-
-function Figures({ when, row }: { when: string; row: PlanUsage | null }) {
-  return (
-    <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
-      <span>{when}</span>
-      <span className="text-foreground tabular-nums">{formatCount(row?.usage.tokens ?? null)}</span>
-      <span className="hidden tabular-nums lg:inline">
-        {formatMoney(row?.usage.costUsd ?? null)}
-      </span>
-    </span>
-  );
 }

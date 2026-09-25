@@ -924,6 +924,8 @@ test -n "$(grep -l 'Ask the agent to commit' packages/ui/dist/assets/*.js)"
 test -n "$(grep -l 'What should an agent work on' packages/ui/dist/assets/*.js)"
 # And the Needs you strip, which is the one place a waiting task is named across repos.
 test -n "$(grep -l 'Needs you' packages/ui/dist/assets/*.js)"
+# And the usage bar's plan question, which is the only place the page asks for a plan.
+test -n "$(grep -l 'plan are you on' packages/ui/dist/assets/*.js)"
 # The queued glyph's animation is the design's one moving part, and it is in the built stylesheet.
 test -n "$(grep -l 'glyph-spin' packages/ui/dist/assets/*.css)"
 # The mono is whichever of the stack the machine has: the page asks no host for a font.

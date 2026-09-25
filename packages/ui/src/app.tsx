@@ -22,7 +22,6 @@ import { compareTabId, NEW_TASK_TAB, readTabs, tabsReducer } from "./tabs/tabs-s
 import { useTabsStorage } from "./tabs/use-tabs-storage";
 import { useTaskActions } from "./task/use-task-actions";
 import { useTick } from "./time/use-tick";
-import { TaskCost } from "./usage/task-cost";
 import { lastResponse } from "./usage/usage-state";
 import { useTaskUsage } from "./usage/use-task-usage";
 import { useUsage } from "./usage/use-usage";
@@ -77,7 +76,7 @@ function Workspace({ token }: { token: string }) {
     () => groupTasks(state.repos, Object.values(state.tasks)),
     [state.repos, state.tasks],
   );
-  const usage = useUsage(client, state.usageStamp.plans);
+  const { state: usage, refresh: refreshUsage } = useUsage(client, state.usageStamp.plans);
   const version = useDaemonVersion(client);
   // One clock for the waiting times the sidebar strip and the catalog line read.
   const now = useTick(TICK_MS);
@@ -183,7 +182,8 @@ function Workspace({ token }: { token: string }) {
         client={client}
         usage={usage}
         budget={budget}
-        cost={<TaskCost usage={taskUsage} />}
+        taskUsage={taskUsage}
+        refreshUsage={refreshUsage}
         files={ownRead?.files ?? null}
         error={error}
         connection={state.connection}

@@ -1,37 +1,51 @@
-import type { BudgetReport, BudgetWindow } from "@agnostic/core";
-import { cn } from "../class-names";
+import type { BudgetReport, BudgetState, BudgetWindow } from "@agnostic/core";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
-import { budgetLine, budgetPercent, budgetTone } from "./budget-line";
+import { budgetLine, budgetNotice, budgetPercent, budgetTone } from "./budget-line";
+
+/** How much of the tone's colour the cell takes: enough to catch the eye and no more. */
+const TINT: Record<BudgetState, number> = { ok: 0, warn: 7, exceeded: 8 };
+
+const TOKEN: Record<BudgetState, string> = {
+  ok: "--muted-foreground",
+  warn: "--warning",
+  exceeded: "--destructive",
+};
 
 /**
- * The machine's spend against the ceilings in config.yaml, drawn after the plan cells when there
- * is a ceiling to draw. The week line drops out below `xl`, as the plan cells' week figures do,
- * and the tooltip says what the percentage means for the next run.
+ * The machine's spend against the ceilings in config.yaml, drawn after the plan cells when there is
+ * a ceiling to draw. It is its own cell and never a plan's, because a subscription plan's spend is
+ * not counted against a budget at all (ADR 036 Q8). The week line drops out below `xl`.
  */
 export function BudgetCell({ budget }: { budget: BudgetReport }) {
   if (budget.day === null && budget.week === null) {
     return null;
   }
   const tone = budgetTone(budget);
+  const colour = `var(${TOKEN[tone]})`;
+  const notice = budgetNotice(tone);
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          className={cn(
-            "flex min-w-0 items-center gap-2 whitespace-nowrap",
-            tone === "exceeded" && "text-destructive",
-          )}
-          style={tone === "warn" ? { color: "var(--warning)" } : undefined}
+          data-cell="budget"
+          data-tone={tone}
+          className="flex h-7 shrink-0 items-center gap-2 whitespace-nowrap border-border border-r px-3"
+          style={
+            TINT[tone] === 0
+              ? undefined
+              : { backgroundColor: `color-mix(in srgb, ${colour} ${TINT[tone]}%, transparent)` }
+          }
         >
-          <span className="shrink-0 font-medium">budget</span>
+          <span>budget</span>
           {budget.day !== null && (
-            <span className="shrink-0 tabular-nums">{budgetLine(budget.day, "today")}</span>
+            <span className="type-mono tabular-nums">{budgetLine(budget.day, "today")}</span>
           )}
           {budget.week !== null && (
-            <span className="hidden shrink-0 tabular-nums xl:inline">
-              {budgetLine(budget.week, "wk")}
+            <span className="hidden type-mono tabular-nums xl:inline">
+              {budgetLine(budget.week, "week")}
             </span>
           )}
+          {notice !== null && <span style={{ color: colour }}>{notice}</span>}
         </div>
       </TooltipTrigger>
       <TooltipContent>

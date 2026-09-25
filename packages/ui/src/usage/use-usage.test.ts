@@ -49,6 +49,7 @@ function mount(client: WorkspaceClient, initialStamp = 0) {
   const rendered = render(createElement(Host, { stamp: initialStamp }));
   return {
     latest: () => latest.current,
+    state: () => (latest.current as ReturnType<typeof useUsage>).state,
     setStamp: (stamp: number) => act(() => rendered.update(createElement(Host, { stamp }))),
     unmount: rendered.unmount,
   };
@@ -66,7 +67,27 @@ describe("useUsage", () => {
     await tick(0);
 
     expect(calls).toBe(1);
-    expect(lastResponse(host.latest() as never)).toEqual(RESPONSE);
+    expect(lastResponse(host.state())).toEqual(RESPONSE);
+    host.unmount();
+  });
+
+  it("reads again at once when the bar asks, without waiting out a debounce", async () => {
+    let calls = 0;
+    const host = mount(
+      stubClient(() => {
+        calls += 1;
+        return Promise.resolve(RESPONSE);
+      }),
+    );
+    await tick(0);
+    expect(calls).toBe(1);
+
+    await act(async () => {
+      host.latest()?.refresh();
+    });
+    await flush();
+
+    expect(calls).toBe(2);
     host.unmount();
   });
 

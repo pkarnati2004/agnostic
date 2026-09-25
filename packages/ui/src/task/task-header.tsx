@@ -8,7 +8,7 @@ import type {
   TaskStatus,
 } from "@agnostic/core";
 import { GitBranch, PanelRight, Play, Square } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { Button } from "../components/button";
 import { NoticeLine } from "../notice/notice-line";
@@ -35,8 +35,6 @@ export type TaskHeaderProps = {
   profiles: Profile[];
   /** Passed to the handoff dialog, which refuses a counted profile the daemon would refuse. */
   budget: BudgetReport | null;
-  /** What this task has spent, filled by the page that knows how to read it. */
-  cost: ReactNode;
   /** Passed to the handoff dialog, whose card asks agn who should take the task next. */
   client: WorkspaceClient;
   /** How many files the Changes panel found on its last read of this task; null before one. */
@@ -135,7 +133,7 @@ function Actions({
 }
 
 /** What the task is: its status, who is running it, where, and for how long. */
-function Facts({ task, repo, profiles, cost, now }: TaskHeaderProps & { now: number }) {
+function Facts({ task, repo, profiles, now }: TaskHeaderProps & { now: number }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2.5 text-muted-foreground type-meta">
       <StatusPill
@@ -154,7 +152,6 @@ function Facts({ task, repo, profiles, cost, now }: TaskHeaderProps & { now: num
       {sessionTarget(task) === "attach" && (
         <span className="whitespace-nowrap">Wheel scrolls · {selectModifier()}+drag selects</span>
       )}
-      {cost}
     </div>
   );
 }

@@ -1,11 +1,19 @@
 import type { TaskUsageResponse } from "@agnostic/core";
-import { formatCount, formatTaskCost } from "./format-usage";
+import { formatCompact, formatTaskCost } from "./format-usage";
 
-/** What this task has spent, in the header where Stop and Resume are: one place per task. */
+/** What the task in front has spent, at the bar's right end: one place on the page for a figure. */
 export function TaskCost({ usage }: { usage: TaskUsageResponse | null }) {
-  const text =
+  const spent =
     usage === null || usage.usage.tokens === 0
-      ? "no usage yet"
-      : `${formatCount(usage.usage.tokens)} tokens · ${formatTaskCost(usage.usage.costUsd, usage.billing)}`;
-  return <span className="whitespace-nowrap text-muted-foreground text-xs">{text}</span>;
+      ? null
+      : `${formatCompact(usage.usage.tokens)} tok · ${formatTaskCost(usage.usage.costUsd, usage.billing)}`;
+  return (
+    <div
+      data-cell="task"
+      className="flex h-7 shrink-0 items-center gap-2 whitespace-nowrap border-border border-l px-3"
+    >
+      <span>This task</span>
+      <span className="text-foreground">{spent ?? "no usage yet"}</span>
+    </div>
+  );
 }

@@ -31,6 +31,19 @@ function figures(limit: PlanLimit): Drawn {
   };
 }
 
+/** A five-hour window at `usedPercent`, with a reset still ahead of the fixture's scan time. */
+function fiveHourAt(usedPercent: number): Drawn {
+  return figures(
+    claudeLimit({
+      fiveHour: {
+        usedPercent,
+        resetsAt: new Date("2026-09-11T17:05:00").toISOString(),
+        freshness: "current",
+      },
+    }),
+  );
+}
+
 /** `observedAt` as a number of minutes before the fixture's scan time. */
 function observed(minutes: number): string {
   return new Date(NOW - minutes * 60_000).toISOString();
@@ -40,9 +53,9 @@ describe("LimitFigures", () => {
   it("fills the bar to the five-hour percent and names both windows", () => {
     const drawn = figures(claudeLimit());
 
-    expect(drawn.text).toContain("58% 5h · 41% wk");
+    expect(drawn.text).toBe("5h58%week41%");
     expect(drawn.bar.style.width).toBe("58%");
-    expect(drawn.bar.style.backgroundColor).toBe("var(--foreground)");
+    expect(drawn.bar.style.backgroundColor).toBe("var(--muted-foreground)");
     expect(drawn.figure("five-hour").dataset.freshness).toBe("current");
     drawn.unmount();
   });
@@ -50,7 +63,7 @@ describe("LimitFigures", () => {
   it("marks a figure two hours old with a tilde, dimmed, and dims the bar with it", () => {
     const drawn = figures(claudeLimit({ observedAt: observed(3 * 60) }));
 
-    expect(drawn.text).toContain("~58% 5h · ~41% wk");
+    expect(drawn.text).toBe("5h~58%week~41%");
     expect(drawn.figure("week").dataset.freshness).toBe("approximate");
     expect(drawn.figure("week").className).toContain("text-muted-foreground");
     expect(drawn.bar.style.opacity).toBe("0.5");
@@ -64,33 +77,65 @@ describe("LimitFigures", () => {
 
     const drawn = figures(stale);
 
-    expect(drawn.text).toContain("58% 5h · – wk");
+    expect(drawn.text).toBe("5h58%week–");
     expect(drawn.figure("week").dataset.freshness).toBe("stale");
     drawn.unmount();
   });
 
-  it("warns before the window is spent, in the colour a budget warning uses", () => {
-    const warm = claudeLimit({
-      fiveHour: { usedPercent: 85, resetsAt: new Date("2026-09-11T17:05:00").toISOString() },
-    });
-    const { container, unmount } = render(<LimitFigures limit={warm} now={NOW} />);
+  it("draws a dash for a stale five-hour window beside a week that is still live", () => {
+    const drawn = figures(
+      claudeLimit({
+        fiveHour: { usedPercent: 58, resetsAt: "2026-09-10T09:00:00.000Z", freshness: "stale" },
+      }),
+    );
 
-    const bar = container.querySelector<HTMLElement>('[data-testid="five-hour-bar"]');
-
-    expect(bar?.style.backgroundColor).toBe("var(--warning)");
-    unmount();
+    expect(drawn.text).toBe("5h–week41%");
+    drawn.unmount();
   });
 
-  it("colours the bar once the window is nearly spent", () => {
-    const hot = claudeLimit({
-      fiveHour: {
-        usedPercent: 96,
-        resetsAt: new Date("2026-09-11T17:05:00").toISOString(),
-        freshness: "current",
-      },
-    });
+  // Core's freshness cases (packages/core/src/usage.test.ts), through the import: the bar and
+  // `agn usage` drop a stale window by the same rule.
+  it("keeps a window with no reset time for an hour after it was observed", () => {
+    const window = { usedPercent: 12, resetsAt: null, freshness: "current" } as const;
 
-    const drawn = figures(hot);
+    const drawn = figures(claudeLimit({ fiveHour: window, week: null, observedAt: observed(59) }));
+
+    expect(drawn.text).toContain("12%");
+    drawn.unmount();
+  });
+
+  it("drops a window with no reset time once the hour is up", () => {
+    const window = { usedPercent: 12, resetsAt: null, freshness: "stale" } as const;
+
+    const drawn = figures(claudeLimit({ fiveHour: window, week: null, observedAt: observed(61) }));
+
+    expect(drawn.text).toBe("5h–week–");
+    drawn.unmount();
+  });
+
+  it("stays the plain colour one point under the warning line", () => {
+    const drawn = fiveHourAt(79);
+
+    expect(drawn.bar.style.backgroundColor).toBe("var(--muted-foreground)");
+    drawn.unmount();
+  });
+
+  it("turns the warning colour right at the warning line", () => {
+    const drawn = fiveHourAt(80);
+
+    expect(drawn.bar.style.backgroundColor).toBe("var(--warning)");
+    drawn.unmount();
+  });
+
+  it("stays the warning colour one point under the over line", () => {
+    const drawn = fiveHourAt(94);
+
+    expect(drawn.bar.style.backgroundColor).toBe("var(--warning)");
+    drawn.unmount();
+  });
+
+  it("turns the destructive colour right at the over line", () => {
+    const drawn = fiveHourAt(95);
 
     expect(drawn.bar.style.backgroundColor).toBe("var(--destructive)");
     drawn.unmount();
