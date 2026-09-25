@@ -69,6 +69,22 @@ describe("withCodexTables", () => {
     expect(() => withCodexTables(theirs, REPO, tables())).toThrow(/already a Codex MCP server/);
   });
 
+  it("keeps a server `codex mcp add` appended inside the block and drops one agn no longer names", () => {
+    const first = withCodexTables("", REPO, tables());
+    const end = `# <<< agn mcp for ${REPO} <<<`;
+    // `codex mcp add` appends its table after the last `mcp_servers` table, which is in agn's block.
+    const added = '[mcp_servers.extra]\ncommand = "extra-mcp"\n';
+    const appended = first.replace(end, `${added}${end}`);
+    // A sync after `docs` left `.ag/mcp.yaml`: the block holds `db` alone.
+    const db = tables().filter((table) => table.server === "db");
+    const written = withCodexTables(appended, REPO, db);
+    expect(written).toContain(added);
+    expect(written.indexOf(added)).toBeGreaterThan(written.indexOf(end));
+    expect(written).not.toContain("[mcp_servers.docs]");
+    // The next sync finds it outside the block and leaves it where it is.
+    expect(withCodexTables(written, REPO, db)).toBe(written);
+  });
+
   it("removes the block and the blank line it brought", () => {
     const config = 'model = "gpt-5"\n';
     expect(withCodexTables(withCodexTables(config, REPO, tables()), REPO, [])).toBe(config);

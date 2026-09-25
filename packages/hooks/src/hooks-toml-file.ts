@@ -1,4 +1,9 @@
-import { type MarkedBlock, withMarkedBlock, withoutMarkedBlock } from "@agnostic/core";
+import {
+  AGN_TABLE_MARKER,
+  type MarkedBlock,
+  withMarkedBlock,
+  withoutMarkedBlock,
+} from "@agnostic/core";
 import { HooksError } from "./error.js";
 
 /**
@@ -30,6 +35,8 @@ export function withoutHooksBlock(text: string): string {
 function table(entry: HooksTomlEntry): string {
   return [
     "[[hooks]]",
+    // agn's own entries carry the marker, so a `[[hooks]]` table a user added in the block survives.
+    AGN_TABLE_MARKER,
     `event = "${entry.event}"`,
     `command = ${basicString(entry.command)}`,
     `timeout = ${entry.timeout}`,

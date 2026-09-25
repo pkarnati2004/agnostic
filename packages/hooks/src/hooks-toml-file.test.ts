@@ -20,6 +20,8 @@ describe("the Kimi hooks block", () => {
   it("writes one [[hooks]] table per event on an empty file", () => {
     const text = withHooksBlock("", ENTRIES);
     expect(text.match(/\[\[hooks]]/g)).toHaveLength(2);
+    // Each entry carries agn's marker, so a `[[hooks]]` a user adds in the block is not agn's.
+    expect(text).toContain("[[hooks]]\n# agn\n");
     expect(text).toContain('event = "Stop"');
     expect(text).toContain(`command = "sh '/home/u/.agnostic/hooks/post.sh' kimi"`);
     expect(text).toContain("timeout = 5");
