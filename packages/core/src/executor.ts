@@ -1,4 +1,4 @@
-import type { HarnessId } from "./profile.js";
+import type { HarnessId } from "./profile-id.js";
 import type { Repo } from "./repo.js";
 import type { Task } from "./task.js";
 

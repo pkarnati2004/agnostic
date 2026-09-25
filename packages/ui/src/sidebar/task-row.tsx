@@ -1,7 +1,8 @@
 import type { Task } from "@agnostic/core";
 import { cn } from "../class-names";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
-import { STATUS_DOT } from "./status-dot";
+import { STATUS_DOT } from "../status/status-dot";
+import { StatusGlyph } from "../status/status-glyph";
 
 export function TaskRow({
   task,
@@ -30,10 +31,7 @@ export function TaskRow({
       <span className="flex min-w-0 items-center gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
-            <span
-              className="size-2 shrink-0 rounded-full"
-              style={{ backgroundColor: `var(${dot.token})` }}
-            />
+            <StatusGlyph status={task.status} />
           </TooltipTrigger>
           <TooltipContent>{dot.label}</TooltipContent>
         </Tooltip>

@@ -1,23 +1,11 @@
 import { z } from "zod";
-import { CoreError } from "./error.js";
+import { formatProfileId, isHarnessId, parseProfileId, ROUTES } from "./profile-id.js";
 
-// Every harness agn has a registry row for has a bare id, whatever its tier (ADR 035); `other:`
-// means only "an executable agn knows nothing else about", which is why it is the one two-segment
-// harness a profile id can carry.
-export const HarnessIdSchema = z.union([
-  z.string().regex(/^[a-z][a-z0-9-]*$/),
-  z.templateLiteral(["other:", z.string().min(1)]),
-]);
-export type HarnessId = z.infer<typeof HarnessIdSchema>;
+export const HarnessIdSchema = z
+  .string()
+  .refine(isHarnessId, { error: "expected a harness id like codex, or other:<binary>" });
 
-export const RouteSchema = z.enum([
-  "native",
-  "anthropic-gateway",
-  "openai-compatible",
-  "openrouter",
-  "local",
-]);
-export type Route = z.infer<typeof RouteSchema>;
+export const RouteSchema = z.enum(ROUTES);
 
 // `credits` is a model that runs on the user's login but is metered on their plan (ADR 016).
 export const BillingSchema = z.enum(["subscription", "credits", "api-key", "local", "unknown"]);
@@ -26,41 +14,6 @@ export type Billing = z.infer<typeof BillingSchema>;
 // `unknown-plan` is "the harness is here and logged in, but agn does not know what the plan includes".
 export const EvidenceSchema = z.enum(["hook", "env", "binary", "port", "unknown-plan"]);
 export type Evidence = z.infer<typeof EvidenceSchema>;
-
-const DEFAULT_MODEL_SEGMENT = "default";
-
-export function formatProfileId(harness: HarnessId, model: string | null, route: Route): string {
-  return `${harness}:${model ?? DEFAULT_MODEL_SEGMENT}:${route}`;
-}
-
-export function parseProfileId(id: string): {
-  harness: HarnessId;
-  model: string | null;
-  route: Route;
-} {
-  // The first colon ends the harness, the last starts the route, everything between is the model
-  // verbatim, so "codex:qwen3:8b:local" is legal.
-  const segments = id.split(":");
-  const harnessLength = segments[0] === "other" ? 2 : 1;
-  const harness = segments.slice(0, harnessLength).join(":");
-  const model = segments.slice(harnessLength, -1).join(":");
-  const route = segments.length > harnessLength ? segments[segments.length - 1] : undefined;
-  const parsed = z
-    .object({ harness: HarnessIdSchema, model: z.string().min(1), route: RouteSchema })
-    .safeParse({ harness, model, route });
-  if (!parsed.success) {
-    throw new CoreError(`"${id}" is not a profile id`, {
-      code: "invalid-profile-id",
-      hint: "A profile id looks like claude-code:sonnet-4.5:native.",
-      cause: parsed.error,
-    });
-  }
-  return {
-    harness: parsed.data.harness,
-    model: parsed.data.model === DEFAULT_MODEL_SEGMENT ? null : parsed.data.model,
-    route: parsed.data.route,
-  };
-}
 
 // `.ag/` files store profile ids as plain strings; parseProfileId stays the one definition of the shape.
 export const ProfileIdSchema = z.string().refine(

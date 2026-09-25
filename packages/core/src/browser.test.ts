@@ -5,10 +5,12 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * Specifiers that would put Node in the page's bundle. A type-only import is erased before the
- * bundler sees it, so the walk below skips those and checks value imports and re-exports only.
+ * Specifiers that would put Node, or a dependency the page has no use for, in its bundle. A
+ * type-only import is erased before the bundler sees it, so the walk below skips those and checks
+ * value imports and re-exports only. zod is here because the page needs no parsing: it reads the
+ * daemon's answers, and one schema import pulls the whole library into the index chunk.
  */
-const FORBIDDEN = [/^node:/, /^execa$/, /^fs$/, /^path$/, /process\.js$/];
+const FORBIDDEN = [/^node:/, /^execa$/, /^fs$/, /^path$/, /^zod$/, /process\.js$/];
 
 /** `export * from "./x.js"`, `import { a } from "b"`; group 1 is set for a type-only statement. */
 const CLAUSE = /\b(?:import|export)\s+(type\s)?[^;]*?from\s+"([^"]+)"/g;
@@ -19,10 +21,10 @@ const BARE = [/\bimport\s+"([^"]+)"/g, /\bimport\s*\(\s*"([^"]+)"/g];
 const SRC = new URL("./", import.meta.url);
 
 describe("@agnostic/core/browser", () => {
-  it("imports nothing that needs Node at runtime", () => {
+  it("imports nothing that needs Node, and no dependency, at runtime", () => {
     const offenders: string[] = [];
     for (const [module, specifiers] of graph()) {
-      offenders.push(...nodeImports(specifiers).map((s) => `${module} imports ${s}`));
+      offenders.push(...forbiddenImports(specifiers).map((s) => `${module} imports ${s}`));
     }
 
     expect(offenders).toEqual([]);
@@ -30,7 +32,13 @@ describe("@agnostic/core/browser", () => {
 
   // Guards the guard: a regex that matched nothing would make the assertion above vacuous.
   it("walks every module the subpath re-exports", () => {
-    expect([...graph().keys()].sort()).toEqual(["./browser.js", "./usage-format.js", "./usage.js"]);
+    expect([...graph().keys()].sort()).toEqual([
+      "./browser.js",
+      "./error.js",
+      "./profile-id.js",
+      "./usage-format.js",
+      "./usage.js",
+    ]);
   });
 });
 
@@ -50,7 +58,7 @@ describe("the import walk", () => {
         "./nested/deep.js",
         "./nested/inner.js",
       ]);
-      expect(nodeImports(walked.get("./nested/inner.js") ?? [])).toEqual(["node:fs", "execa"]);
+      expect(forbiddenImports(walked.get("./nested/inner.js") ?? [])).toEqual(["node:fs", "execa"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -101,7 +109,7 @@ function valueImports(source: string): string[] {
   return specifiers;
 }
 
-function nodeImports(specifiers: string[]): string[] {
+function forbiddenImports(specifiers: string[]): string[] {
   return specifiers.filter((s) => FORBIDDEN.some((pattern) => pattern.test(s)));
 }
 

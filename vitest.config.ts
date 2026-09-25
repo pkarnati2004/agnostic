@@ -130,6 +130,10 @@ export default defineConfig({
           // The dev proxy's Origin rewrite is tested where it is written, beside the config.
           // A .test.tsx file renders a component and asks for happy-dom in its own first line.
           include: ["src/**/*.test.ts", "src/**/*.test.tsx", "vite.config.test.ts"],
+          // Vitest hands back an empty string for every .css import it does not process, `?raw`
+          // included, so the tests that read a stylesheet's text would pass on nothing. Processing
+          // the `?raw` ids alone keeps a component's `import "./index.css"` stubbed as before.
+          css: { include: [/\.css\?raw(?:&|$)/] },
         },
         resolve: {
           // The page itself imports only types from core; a test that checks a request body

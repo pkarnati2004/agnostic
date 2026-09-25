@@ -1,10 +1,10 @@
 import type { PlanLimit, PlanUsage, PlanVendor } from "@agnostic/core";
 import { formatAgo, formatTokens3 } from "@agnostic/core/browser";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
+import { VendorMark } from "../profile/harness-mark";
 import { formatCount, formatMoney, formatShare } from "./format-usage";
 import { hasFigure, LimitFigures } from "./limit-figures";
 import { UsageRows, usageRows } from "./usage-rows";
-import { VendorMark } from "./vendor-mark";
 
 export type PlanCellProps = {
   label: string;

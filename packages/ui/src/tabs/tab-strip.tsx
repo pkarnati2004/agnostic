@@ -2,7 +2,7 @@ import type { Task } from "@agnostic/core";
 import { GitCompare, X } from "lucide-react";
 import { cn } from "../class-names";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
-import { STATUS_DOT } from "../sidebar/status-dot";
+import { StatusGlyph } from "../status/status-glyph";
 
 // A tab is a place to click, not a place to read: the tooltip carries the whole title.
 const TITLE_CHARS = 24;
@@ -67,12 +67,7 @@ function Mark({ tab }: { tab: TabItem }) {
   if (tab.kind === "compare") {
     return <GitCompare className="size-3 shrink-0" />;
   }
-  return (
-    <span
-      className="size-2 shrink-0 rounded-full"
-      style={{ backgroundColor: `var(${STATUS_DOT[tab.task.status].token})` }}
-    />
-  );
+  return <StatusGlyph status={tab.task.status} size="tab" />;
 }
 
 function title(tab: TabItem): string {

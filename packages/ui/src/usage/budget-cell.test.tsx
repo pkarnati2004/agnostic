@@ -60,7 +60,7 @@ describe("BudgetCell", () => {
       week: null,
     });
     const drawn = container.querySelector("div");
-    expect(drawn?.getAttribute("style")).toContain("--status-waiting");
+    expect(drawn?.getAttribute("style")).toContain("--warning");
     expect(drawn?.className).not.toContain("text-destructive");
     unmount();
   });

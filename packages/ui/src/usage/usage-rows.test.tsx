@@ -130,7 +130,7 @@ describe("UsageRows", () => {
   it("colours the bar by how much of the window is spent", () => {
     for (const [percent, colour] of [
       [38, "var(--primary-foreground)"],
-      [84, "var(--status-waiting)"],
+      [84, "var(--warning)"],
       [96, "var(--destructive)"],
     ] as const) {
       const limit = claudeLimit({

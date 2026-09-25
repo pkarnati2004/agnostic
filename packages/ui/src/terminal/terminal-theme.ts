@@ -4,12 +4,12 @@ import type { ITheme } from "@xterm/xterm";
 const SELECTION_ALPHA = "66";
 
 /**
- * The pane's colours from `tokens.css`, read once at mount: the terminal sits inside the page and
- * must not carry its own background. The sixteen ANSI colours stay xterm's, which the tokens have
- * no palette for. `read` is `getComputedStyle(…).getPropertyValue` in the page, a stub in tests.
+ * The pane's colours from `tokens.css`, read once at mount. `--terminal` is the canvas the pane sits
+ * on, which the page owns; everything drawn on it is the agent's, so the sixteen ANSI colours stay
+ * xterm's. `read` is `getComputedStyle(…).getPropertyValue` in the page, a stub in tests.
  */
 export function xtermTheme(read: (token: string) => string): ITheme {
-  const background = read("--background").trim();
+  const background = read("--terminal").trim();
   const foreground = read("--foreground").trim();
   return {
     background,

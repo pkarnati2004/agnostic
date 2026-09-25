@@ -98,7 +98,7 @@ describe("CompareView", () => {
     expect(columns).toHaveLength(2);
     const first = columns[0]?.textContent ?? "";
     expect(first).toContain("claude-code:sonnet-4.5:native");
-    expect(first).toContain("running");
+    expect(first).toContain("Running");
     expect(first).toContain("3");
     expect(first).toContain("+42 -7");
     expect(container.querySelectorAll("dd")).toHaveLength(10);

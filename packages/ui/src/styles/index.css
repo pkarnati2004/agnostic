@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@xterm/xterm/css/xterm.css";
 @import "./tokens.css";
+@import "./type.css";
 
 html,
 body,
@@ -9,6 +10,7 @@ body,
 }
 
 body {
+  @apply type-body;
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);

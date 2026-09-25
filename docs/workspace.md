@@ -17,7 +17,7 @@ If you pull a newer agn while a daemon from an older version is running, run `ag
 once. A daemon that started before this version answers `/ui` with an authentication error rather
 than the page.
 
-- **Left:** your repos and their tasks. Dot = status: running, waiting for you, queued, done. A closed repo and its tasks are not in the list; they are under "Closed" at the foot of the sidebar.
+- **Left:** your repos and their tasks. The glyph before a title says where the task is: a dot with a halo for "Waiting for you", a filled dot for "Running" and for "Failed", a turning ring for "Running tests", a hollow ring for "Done", a square for "Stopped". A task whose worktree agn has cleaned up draws a dashed ring. A closed repo and its tasks are not in the list; they are under "Closed" at the foot of the sidebar.
 - **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback.
 - **+ Task:** describe the work, see the recommendation, pick or accept, run.
 - **Right:** what the selected task has changed, with the patch of the file you click. "Changes" in the task header opens and closes it.
@@ -298,8 +298,10 @@ is the one for a workspace that could not load.
 
 ## The usage bar
 
-Along the bottom there is one cell per plan. Each cell starts with a mark for the vendor the plan
-is billed to: C for Claude, O for OpenAI, G for Google, X for xAI, M for Moonshot, Cu for Cursor.
+Along the bottom there is one cell per plan. Each cell starts with the mark of the harness the plan
+is billed through: C for claude-code, X for codex, O for opencode, π for pi, G for gemini, and the
+first two letters of the name for any other harness (Gr for grok, Ki for kimi, Cu for cursor-agent).
+A plan agn has no vendor for reads `?`.
 
 Where a file on this machine says how much of the plan's rate limit is spent, the cell shows a bar
 for the 5-hour window and the two percentages: `58% 5h · 41% wk`. The bar turns amber at 80% and

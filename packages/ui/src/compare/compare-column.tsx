@@ -1,7 +1,8 @@
 import type { CompareTaskRow } from "@agnostic/core";
 import { Badge } from "../components/badge";
 import { Button } from "../components/button";
-import { STATUS_DOT } from "../sidebar/status-dot";
+import { STATUS_DOT } from "../status/status-dot";
+import { StatusGlyph } from "../status/status-glyph";
 import { changesCell, costCell, testsCell, timeCell } from "./compare-lines";
 
 type CompareColumnProps = {
@@ -24,10 +25,7 @@ export function CompareColumn({ row, picked, busy, now, onOpen, onPick }: Compar
         {row.profileId}
       </Badge>
       <div className="flex items-center gap-2 text-sm">
-        <span
-          className="size-2 shrink-0 rounded-full"
-          style={{ backgroundColor: `var(${dot.token})` }}
-        />
+        <StatusGlyph status={row.status} />
         {dot.label}
       </div>
       <dl className="flex flex-col gap-1 text-sm">

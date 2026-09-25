@@ -9,7 +9,7 @@ import type {
 import { type ReactNode, useState } from "react";
 import { Badge } from "../components/badge";
 import { Button } from "../components/button";
-import { STATUS_DOT } from "../sidebar/status-dot";
+import { StatusPill } from "../status/status-pill";
 import type { TaskNotice } from "../store/task-notices";
 import { selectModifier } from "../terminal/select-modifier";
 import { sessionTarget } from "../terminal/terminal-phase";
@@ -57,12 +57,8 @@ export function TaskHeader(props: TaskHeaderProps) {
     <header className="flex items-start justify-between gap-6 border-border border-b px-6 py-4">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span
-            className="size-2 shrink-0 rounded-full"
-            style={{ backgroundColor: `var(${STATUS_DOT[task.status].token})` }}
-          />
           <h1 className="truncate font-semibold text-base">{task.title}</h1>
-          <Badge variant="secondary">{STATUS_DOT[task.status].label}</Badge>
+          <StatusPill status={task.status} />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
           <span>{repo?.name ?? "unknown repo"}</span>

@@ -916,6 +916,10 @@ test -n "$(grep -l 'Type a command' packages/ui/dist/assets/*.js)"
 test "$(grep -l 'at API rates, not billed' packages/ui/dist/assets/*.js | wc -l | tr -d ' ')" = 1
 # And the Changes panel's commit ask, which is the only place its label is written.
 test -n "$(grep -l 'Ask the agent to commit' packages/ui/dist/assets/*.js)"
+# The queued glyph's animation is the design's one moving part, and it is in the built stylesheet.
+test -n "$(grep -l 'glyph-spin' packages/ui/dist/assets/*.css)"
+# The mono is whichever of the stack the machine has: the page asks no host for a font.
+! grep -q "fonts.googleapis" packages/ui/dist/index.html
 # And nothing of the daemon's own runtime is: the page imports types from core and never its code.
 test "$(grep -L execa packages/ui/dist/assets/*.js | wc -l)" = "$(ls packages/ui/dist/assets/*.js | wc -l)"
 test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$UI_PORT/ui/nope.js")" = 404
