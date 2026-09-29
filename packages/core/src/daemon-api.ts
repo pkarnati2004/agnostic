@@ -256,25 +256,3 @@ export type OutcomeResponse = { task: Task; outcome: Outcome | null };
 
 /** One task's tokens. `billing` comes from the task's profile; null when it cannot be resolved. */
 export type TaskUsageResponse = { task: Task; usage: UsageSum; billing: Billing | null };
-
-/** The files `agn sync` generates from `.ag/instructions.md`, relative to the repo root. */
-export type SyncTarget = "CLAUDE.md" | "AGENTS.md";
-
-export type SyncAction = "create" | "update" | "unchanged" | "conflict";
-
-/** `content` is what sync would write, whatever the action; `reason` is set for some of them. */
-export type SyncWrite = {
-  file: SyncTarget;
-  action: SyncAction;
-  content: string;
-  reason: string | null;
-};
-
-export const SyncRequestSchema = z.strictObject({
-  dryRun: z.boolean().optional(),
-  force: z.boolean().optional(),
-});
-export type SyncRequest = z.infer<typeof SyncRequestSchema>;
-
-/** `applied` is false after a dry run: the plan is the same, nothing on disk changed. */
-export type SyncResponse = { writes: SyncWrite[]; applied: boolean };

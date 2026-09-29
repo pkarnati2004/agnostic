@@ -212,7 +212,7 @@ async function launch(
   recordTestsBefore(ctx, task, await testsBefore(ctx, repo, task, prepared, opts));
   // The worktree exists now: its own `.ag/instructions.md` is what the generated files there are
   // made from, and it is the directory the harness reads its hooks from.
-  await ensureSynced(ctx, prepared.cwd);
+  await ensureSynced(ctx, repo, prepared.cwd);
   await ensureHooks(ctx, opts.profile.harness, prepared.cwd);
   const command = await freshLaunchCommand(
     ctx,

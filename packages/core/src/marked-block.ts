@@ -1,4 +1,4 @@
-import type { HooksError } from "./error.js";
+import type { CoreError } from "./error.js";
 
 /**
  * A block agn owns inside a file the user owns. Two marker lines bound it, every byte outside them
@@ -8,7 +8,7 @@ import type { HooksError } from "./error.js";
 export type MarkedBlock = {
   begin: string;
   end: string;
-  refuse: (why: string) => HooksError;
+  refuse: (why: string) => CoreError;
 };
 
 /** The block with `body` between its markers; an empty body removes the block and its markers. */

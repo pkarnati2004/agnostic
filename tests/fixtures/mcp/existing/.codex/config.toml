@@ -1,0 +1,7 @@
+model = "gpt-5"
+
+[mcp_servers.other]
+command = "other-mcp"
+
+[hooks.state."/Users/me/.agnostic/hooks/agn-status.sh"]
+trusted_hash = "3f1c"

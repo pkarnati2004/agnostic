@@ -2,16 +2,25 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { type Repo, run, type Task, type TaskResponse, worktreePath } from "@agnostic/core";
 import { GENERATED_HEADER } from "@agnostic/sync";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
 import { seedTranscript } from "./test-transcript.js";
 
 const PROFILE = "claude-code:default:native";
 const INSTRUCTIONS = "# app\n\nRun `pnpm test` before you finish.\n";
 
+const MCP = `servers:
+  db:
+    command: npx
+    env:
+      DATABASE_URL: $DATABASE_URL
+`;
+
 let daemon: TestDaemon;
 
 beforeEach(async () => {
+  // A sync that writes the user's Codex config says so on stderr; the test does not need to see it.
+  vi.spyOn(process.stderr, "write").mockReturnValue(true);
   daemon = await createTestDaemon({ tmux: true });
 });
 
@@ -92,6 +101,22 @@ describe("a task's worktree is synced before the agent starts", () => {
     expect(await daemon.readLog()).toContain("code=sync-conflict");
   });
 
+  it("writes the MCP servers the worktree's own commit declares", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    await commit(repo.path, {
+      ".ag/instructions.md": INSTRUCTIONS,
+      "CLAUDE.md": INSTRUCTIONS,
+      ".ag/mcp.yaml": MCP,
+    });
+    const cwd = await started(await runTask(repo));
+
+    expect(await readFile(join(cwd, ".mcp.json"), "utf8")).toContain(
+      `"DATABASE_URL": "\${DATABASE_URL}"`,
+    );
+    const codex = await readFile(join(daemon.home, ".codex", "config.toml"), "utf8");
+    expect(codex).toContain(`# >>> agn mcp for ${repo.id}: managed block`);
+  });
+
   it("syncs again before a fresh resume relaunches the agent", async () => {
     const repo = await daemon.addRepo({ defaultProfile: PROFILE });
     await commit(repo.path, { ".ag/instructions.md": INSTRUCTIONS, "CLAUDE.md": INSTRUCTIONS });
@@ -132,6 +157,17 @@ describe("a task's worktree is synced before the agent starts", () => {
     expect(await readFile(join(cwd, "AGENTS.md"), "utf8")).toBe(
       `${GENERATED_HEADER}\n\n${INSTRUCTIONS}`,
     );
+  });
+
+  it("syncs a repo whose only .ag/ file is mcp.yaml, with no instructions.md", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    await commit(repo.path, { ".ag/mcp.yaml": MCP });
+    const cwd = await started(await runTask(repo));
+
+    expect(await readFile(join(cwd, ".mcp.json"), "utf8")).toContain('"db"');
+    // Nothing to generate the instruction files from, and that is not a refusal.
+    await expect(readFile(join(cwd, "AGENTS.md"), "utf8")).rejects.toThrow();
+    expect(await daemon.readLog()).not.toContain("sync skipped");
   });
 });
 

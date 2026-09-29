@@ -1,5 +1,5 @@
+import { type MarkedBlock, withMarkedBlock, withoutMarkedBlock } from "@agnostic/core";
 import { HooksError } from "../error.js";
-import { type MarkedBlock, withMarkedBlock, withoutMarkedBlock } from "../marked-block.js";
 
 /**
  * Codex's trust entries go in the user's own `config.toml`, so agn writes them in a marked block
