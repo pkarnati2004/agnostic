@@ -9,6 +9,7 @@ describe("agPaths", () => {
       preferencesYaml: "/repos/app/.ag/preferences.yaml",
       instructionsMd: "/repos/app/.ag/instructions.md",
       decisionsMd: "/repos/app/.ag/decisions.md",
+      mcpYaml: "/repos/app/.ag/mcp.yaml",
       tasksDir: "/repos/app/.ag/tasks",
       workflowsDir: "/repos/app/.ag/workflows",
     });

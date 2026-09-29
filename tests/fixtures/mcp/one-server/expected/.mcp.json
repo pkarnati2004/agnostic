@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "db": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@acme/db-mcp"
+      ],
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}",
+        "LOG_LEVEL": "info"
+      }
+    },
+    "docs": {
+      "type": "http",
+      "url": "https://mcp.example.com/docs",
+      "headers": {
+        "Authorization": "${MCP_AUTH}"
+      }
+    }
+  }
+}

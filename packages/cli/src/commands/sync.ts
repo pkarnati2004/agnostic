@@ -1,4 +1,4 @@
-import type { RoleResolution, SyncWrite } from "@agnostic/core";
+import type { McpSyncRow, McpTarget, RoleResolution, SyncWrite } from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
 import { resolveRepo } from "../resolve-repo.js";
@@ -9,7 +9,9 @@ const INDENT = "  ";
 
 export function syncCommand(ctx: CliContext): Command {
   return new Command("sync")
-    .description("generate CLAUDE.md, AGENTS.md and Claude Code's agents and commands from .ag/")
+    .description(
+      "generate CLAUDE.md, AGENTS.md, Claude Code's agents and commands, and MCP servers from .ag/",
+    )
     .option("--repo <repo>", "repo id, prefix or path; defaults to the one you are in")
     .option("--dry-run", "print what would be written, and write nothing")
     .option("--force", "overwrite a generated file that was written by hand")
@@ -27,7 +29,7 @@ export function syncCommand(ctx: CliContext): Command {
       const lines = response.applied
         ? response.writes.map(applied)
         : response.writes.flatMap(planned);
-      for (const line of [...lines, ...response.roles.map(role)]) {
+      for (const line of [...lines, ...response.roles.map(role), ...mcpLines(response.mcp)]) {
         ctx.io.out(line);
       }
     });
@@ -72,6 +74,37 @@ function why(resolution: RoleResolution): string {
   return resolution.via === "recommended"
     ? recommended
     : `pin ${resolution.pinned} replaced: ${resolution.reason}; ${recommended}`;
+}
+
+/** Where each server went. The Codex file is outside the repo, so it is named, not counted. */
+const MCP_FILES: Record<McpTarget, string> = {
+  "claude-code": ".mcp.json",
+  opencode: "opencode.json",
+  codex: "~/.codex/config.toml",
+};
+
+function mcpLines(rows: McpSyncRow[]): string[] {
+  const servers = [...new Set(rows.map((row) => row.server))];
+  return servers.map((server) =>
+    mcpLine(
+      server,
+      rows.filter((row) => row.server === server),
+    ),
+  );
+}
+
+function mcpLine(server: string, rows: McpSyncRow[]): string {
+  // Every target skipped is one reason - a value that looks like a secret - so it is said once.
+  if (rows.every((row) => row.action === "skipped")) {
+    return `mcp ${server}: skipped (${rows[0]?.reason ?? "no reason given"})`;
+  }
+  return `mcp ${server}: ${rows.map(mcpTarget).join(", ")}`;
+}
+
+function mcpTarget(row: McpSyncRow): string {
+  return row.action === "skipped"
+    ? `${row.target} skipped (${row.reason ?? "no reason given"})`
+    : MCP_FILES[row.target];
 }
 
 function reason(write: SyncWrite): string {

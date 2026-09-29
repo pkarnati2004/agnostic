@@ -29,7 +29,7 @@ export async function applySyncPlan(repoPath: string, writes: SyncWrite[]): Prom
   }
   for (const write of writes) {
     if (write.action === "create" || write.action === "update") {
-      await writeTarget(join(repoPath, write.file), write.content);
+      await writeTextFile(join(repoPath, write.file), write.content);
     }
   }
 }
@@ -44,9 +44,9 @@ function conflictError(conflicts: SyncWrite[]): SyncError {
 }
 
 /** Temp file and rename, so an agent reading the file never sees half of it. */
-async function writeTarget(file: string, content: string): Promise<void> {
-  // `.claude/agents/` and `.claude/commands/` are agn's to create; the instruction targets sit at
-  // the repo root, which is always there.
+export async function writeTextFile(file: string, content: string): Promise<void> {
+  // `.claude/agents/` and `.claude/commands/` are agn's to create, as is `~/.codex/`; the
+  // instruction targets sit at the repo root, which is always there.
   await mkdir(dirname(file), { recursive: true });
   const mode = await stat(file).then(
     (stats) => stats.mode,

@@ -1,4 +1,10 @@
-import type { RoleResolution, SyncRequest, SyncResponse, SyncWrite } from "@agnostic/core";
+import type {
+  McpSyncRow,
+  RoleResolution,
+  SyncRequest,
+  SyncResponse,
+  SyncWrite,
+} from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { createTestContext } from "../test-context.js";
 import { syncCommand } from "./sync.js";
@@ -9,10 +15,10 @@ const HEADER =
 const CLAUDE_MD = `${HEADER}\n\n@AGENTS.md\n`;
 
 function cli(
-  answer: Omit<SyncResponse, "roles"> & { roles?: RoleResolution[] },
+  answer: Omit<SyncResponse, "roles" | "mcp"> & { roles?: RoleResolution[]; mcp?: McpSyncRow[] },
   cwd = "/work/app",
 ) {
-  const response: SyncResponse = { roles: [], ...answer };
+  const response: SyncResponse = { roles: [], mcp: [], ...answer };
   const asked: { repoId: string; body: SyncRequest }[] = [];
   const test = createTestContext({
     client: {
@@ -56,6 +62,10 @@ function resolution(over: Partial<RoleResolution> = {}): RoleResolution {
     reason: null,
     ...over,
   };
+}
+
+function mcp(over: Partial<McpSyncRow> = {}): McpSyncRow {
+  return { server: "db", target: "claude-code", action: "written", reason: null, ...over };
 }
 
 describe("agn sync", () => {
@@ -122,7 +132,7 @@ describe("agn sync", () => {
   });
 
   it("prints the daemon's answer verbatim with --json", async () => {
-    const response = { applied: true, writes: [write()], roles: [resolution()] };
+    const response = { applied: true, writes: [write()], roles: [resolution()], mcp: [mcp()] };
     const test = cli(response);
     test.ctx.json = true;
     await syncCommand(test.ctx).parseAsync(["--repo", REPO.id], { from: "user" });
@@ -175,5 +185,53 @@ describe("agn sync", () => {
       "unchanged CLAUDE.md",
       "tiered/architect: claude-code:fable:native (recommended for research)",
     ]);
+  });
+
+  it("names the three files each MCP server was written to", async () => {
+    const test = cli({
+      applied: true,
+      writes: [write({ file: ".mcp.json" })],
+      mcp: [mcp(), mcp({ target: "opencode" }), mcp({ target: "codex", action: "unchanged" })],
+    });
+    await syncCommand(test.ctx).parseAsync(["--repo", REPO.id], { from: "user" });
+    expect(test.out).toEqual([
+      "wrote .mcp.json",
+      "mcp db: .mcp.json, opencode.json, ~/.codex/config.toml",
+    ]);
+  });
+
+  it("says which target was skipped and why, in the server's own line", async () => {
+    const test = cli({
+      applied: false,
+      writes: [],
+      mcp: [
+        mcp(),
+        mcp({ target: "opencode" }),
+        mcp({
+          target: "codex",
+          action: "skipped",
+          reason: "Codex forwards a variable only under its own name",
+        }),
+      ],
+    });
+    await syncCommand(test.ctx).parseAsync(["--repo", REPO.id, "--dry-run"], { from: "user" });
+    expect(test.out).toEqual([
+      "mcp db: .mcp.json, opencode.json, codex skipped (Codex forwards a variable only under its own name)",
+    ]);
+  });
+
+  it("says a server skipped everywhere once", async () => {
+    const reason = "GITHUB_TOKEN looks like a secret; write $NAME and set NAME in your shell";
+    const test = cli({
+      applied: true,
+      writes: [],
+      mcp: [
+        mcp({ server: "issues", action: "skipped", reason }),
+        mcp({ server: "issues", target: "opencode", action: "skipped", reason }),
+        mcp({ server: "issues", target: "codex", action: "skipped", reason }),
+      ],
+    });
+    await syncCommand(test.ctx).parseAsync(["--repo", REPO.id], { from: "user" });
+    expect(test.out).toEqual([`mcp issues: skipped (${reason})`]);
   });
 });

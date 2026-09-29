@@ -373,6 +373,29 @@ grep -q "developer.md" "$WORK/sync-err.txt"
 agx sync --force --repo "$WORK/wfrepo" |
   grep -q "^updated .claude/agents/developer.md (overwritten with --force)$"
 
+echo "smoke: agn sync writes .ag/mcp.yaml into each agent's own MCP config"
+MCP_YAML="$WORK/wfrepo/.ag/mcp.yaml"
+CODEX_TOML="$USAGE_HOME/.codex/config.toml"
+printf 'servers:\n  db:\n    command: npx\n    args: ["-y", "@acme/db-mcp"]\n    env:\n      DATABASE_URL: $DATABASE_URL\n      LOG_LEVEL: info\n' > "$MCP_YAML"
+agx sync --repo "$WORK/wfrepo" > "$WORK/mcp-sync.txt"
+grep -q "^wrote .mcp.json$" "$WORK/mcp-sync.txt"
+grep -q "^mcp db: .mcp.json, opencode.json, ~/.codex/config.toml$" "$WORK/mcp-sync.txt"
+grep -q '"DATABASE_URL": "${DATABASE_URL}"' "$WORK/wfrepo/.mcp.json"
+grep -q '"{env:DATABASE_URL}"' "$WORK/wfrepo/opencode.json"
+# Codex keeps one config for the machine, so agn owns a block in it per repo.
+grep -q '^\[mcp_servers.db\]' "$CODEX_TOML"
+grep -q 'env_vars = \["DATABASE_URL"\]' "$CODEX_TOML"
+agx sync --repo "$WORK/wfrepo" | grep -q "^unchanged .mcp.json$"
+
+# A literal that looks like a secret is never written, and the other servers still go out.
+printf '  issues:\n    command: gh-mcp\n    env:\n      GITHUB_TOKEN: ghp_0BcDeFgHiJkLmNoPqRsTuVwXyZ0123456789\n' >> "$MCP_YAML"
+agx sync --repo "$WORK/wfrepo" > "$WORK/mcp-sync2.txt"
+grep -q "looks like a secret" "$WORK/mcp-sync2.txt"
+! grep -rq 'ghp_' "$WORK/wfrepo/.mcp.json" "$WORK/wfrepo/opencode.json" "$CODEX_TOML"
+# The repo is committed below, and a committed secret is not what the launch step is testing.
+printf 'servers:\n  db:\n    command: npx\n    args: ["-y", "@acme/db-mcp"]\n    env:\n      DATABASE_URL: $DATABASE_URL\n      LOG_LEVEL: info\n' > "$MCP_YAML"
+agx sync --repo "$WORK/wfrepo" > /dev/null
+
 echo "smoke: a launch compiles the workflow files the worktree's commit carries"
 git -C "$WORK/wfrepo" add -A
 git -C "$WORK/wfrepo" -c user.email=t@agn.test -c user.name=agn commit -q -m "project context"
@@ -381,6 +404,7 @@ WF_TASK="$("$NODE" -e "process.stdout.write(JSON.parse(require('node:fs').readFi
 WF_TREE="$("$NODE" -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('$WORK/wf-run.json', 'utf8')).task.worktreePath)")"
 test -f "$WF_TREE/.claude/commands/tiered.md"
 test -f "$WF_TREE/.claude/agents/architect.md"
+test -f "$WF_TREE/.mcp.json"
 agx stop "$WF_TASK" | grep -q "^stopped $WF_TASK"
 agx clean "$WF_TASK" | grep -q "^cleaned $WF_TASK"
 

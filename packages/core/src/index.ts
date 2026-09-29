@@ -18,6 +18,8 @@ export * from "./id.js";
 export { isDirectory } from "./is-directory.js";
 export * from "./launch-detached.js";
 export * from "./launch-prompt.js";
+export * from "./marked-block.js";
+export * from "./mcp-config.js";
 export * from "./outcome.js";
 export * from "./paths.js";
 export * from "./plans.js";
