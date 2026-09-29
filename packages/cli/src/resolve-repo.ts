@@ -52,6 +52,14 @@ export async function worktreeTask(paths: AgnosticPaths, cwd: string): Promise<R
   return repoId === undefined || taskId === undefined ? null : { repoId, taskId };
 }
 
+/** The task the argument names, or the task of the worktree the cwd is in; null when neither does. */
+export async function worktreeTaskId(
+  ctx: CliContext,
+  argument: string | undefined,
+): Promise<string | null> {
+  return argument ?? (await worktreeTask(ctx.paths, await realpathOrSelf(ctx.cwd)))?.taskId ?? null;
+}
+
 /**
  * The task a task-scoped command works on: the argument, or the worktree the shell is in. Missing
  * both is the command line being incomplete, which exits 2 like any other usage error.
@@ -61,8 +69,7 @@ export async function requireTaskId(
   command: Command,
   argument: string | undefined,
 ): Promise<string> {
-  const taskId =
-    argument ?? (await worktreeTask(ctx.paths, await realpathOrSelf(ctx.cwd)))?.taskId ?? null;
+  const taskId = await worktreeTaskId(ctx, argument);
   if (taskId !== null) {
     return taskId;
   }

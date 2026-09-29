@@ -67,6 +67,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn compare pick <id> <task>` | Keep one; the others are stopped and their worktrees removed, branches kept |
 | `agn open [<task>]` | Open the task's directory in your editor. `--editor <id>` |
 | `agn catalog show <profile>` / `agn catalog update` | Print the benchmark rows behind a recommendation, or fetch the latest catalog |
+| `agn mcp` | Serve agn's commands to an agent over MCP on stdin and stdout; see [docs/mcp.md](docs/mcp.md) |
 | `agn ui` | Open the workspace in your browser. `--no-open` prints the address instead |
 
 Every command prints plain text: one aligned table for a list, `key: value` lines for a single
@@ -95,6 +96,7 @@ Model overrides (Kimi in Claude Code, a local model in Codex, anything via OpenR
 - [Usage and cost: what agn counts](docs/usage.md)
 - [Catalog: what it holds, how it updates](docs/catalog.md)
 - [Workspace UI](docs/workspace.md)
+- [MCP: agn's commands as tools for an agent](docs/mcp.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Writing guide for docs and site](docs/WRITING.md)
 

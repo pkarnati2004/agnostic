@@ -16,6 +16,7 @@
   "dependencies": {
     "@agnostic/core": "workspace:*",
     "@agnostic/daemon": "workspace:*",
-    "commander": "14.0.3"
+    "commander": "14.0.3",
+    "zod": "4.6.1"
   }
 }
