@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { agnosticPaths, type RepoListRow } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CliError } from "./error.js";
-import { resolveRepo, worktreeTask } from "./resolve-repo.js";
+import { resolveRepo, resolveRepoPath, worktreeTask } from "./resolve-repo.js";
 import { createTestContext } from "./test-context.js";
 
 let root: string;
@@ -118,5 +118,43 @@ describe("worktreeTask", () => {
     const paths = agnosticPaths(join(root, "home"));
     expect(await worktreeTask(paths, root)).toBeNull();
     expect(await worktreeTask(paths, paths.worktrees)).toBeNull();
+  });
+});
+
+describe("resolveRepoPath", () => {
+  it("answers the registered checkout, not the worktree the shell is in", async () => {
+    const path = join(root, "web");
+    const worktree = join(root, "home", "worktrees", "r7k2m4pqrs", "t3n9v2wxyz");
+    await mkdir(path);
+    await mkdir(worktree, { recursive: true });
+    const { ctx } = context(worktree, [repo("r7k2m4pqrs", path)]);
+    expect(await resolveRepoPath(ctx, undefined)).toEqual({ repoId: "r7k2m4pqrs", path });
+  });
+
+  it("resolves an id prefix the way the daemon does", async () => {
+    const path = join(root, "web");
+    await mkdir(path);
+    const { ctx } = context(root, [repo("r7k2m4pqrs", path)]);
+    expect(await resolveRepoPath(ctx, "r7k")).toEqual({ repoId: "r7k2m4pqrs", path });
+  });
+
+  it("refuses a prefix that matches two repos", async () => {
+    const { ctx } = context(root, [repo("r7k2m4pqrs", "/a"), repo("r7k9x1abcd", "/b")]);
+    await expect(resolveRepoPath(ctx, "r7k")).rejects.toMatchObject({ code: "ambiguous-id" });
+  });
+
+  it("refuses an id no repo carries", async () => {
+    const { ctx } = context(root, [repo("r7k2m4pqrs", "/a")]);
+    await expect(resolveRepoPath(ctx, "zzz")).rejects.toMatchObject({ code: "repo-not-found" });
+  });
+
+  it("answers a closed repo's path too, the way `agn workflow` needs to read its .ag/", async () => {
+    const { ctx } = context(root, [{ ...repo("r7k2m4pqrs", "/a"), status: "archived" }]);
+    expect(await resolveRepoPath(ctx, "r7k2m4pqrs")).toEqual({ repoId: "r7k2m4pqrs", path: "/a" });
+  });
+
+  it("answers the registered path even when the row says it is not on disk right now", async () => {
+    const { ctx } = context(root, [{ ...repo("r7k2m4pqrs", "/a"), pathPresent: false }]);
+    expect(await resolveRepoPath(ctx, "r7k2m4pqrs")).toEqual({ repoId: "r7k2m4pqrs", path: "/a" });
   });
 });

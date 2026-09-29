@@ -34,8 +34,6 @@ import type {
   ResumeTaskResponse,
   RunTaskRequest,
   SessionsResponse,
-  SyncRequest,
-  SyncResponse,
   TaskListQuery,
   TaskListResponse,
   TaskResponse,
@@ -48,6 +46,7 @@ import type { EditorId } from "./editor.js";
 import type { Event } from "./event.js";
 import { streamEvents } from "./event-stream.js";
 import type { SpecRequest, SpecResponse } from "./spec-api.js";
+import type { SyncRequest, SyncResponse } from "./sync-api.js";
 
 export type DaemonClient = {
   health(): Promise<HealthResponse>;

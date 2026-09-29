@@ -1,5 +1,5 @@
+import { type MarkedBlock, withMarkedBlock, withoutMarkedBlock } from "@agnostic/core";
 import { HooksError } from "./error.js";
-import { type MarkedBlock, withMarkedBlock, withoutMarkedBlock } from "./marked-block.js";
 
 /**
  * Kimi Code keeps every preference in one TOML file and reads its hooks from `[[hooks]]` tables.

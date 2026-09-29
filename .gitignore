@@ -3,7 +3,9 @@ dist/
 CLAUDE.local.md
 NOTES.md
 .env
-.claude
+# The repo root only: agn generates `.claude/agents/` and `.claude/commands/`, and a fixture
+# carries the expected text of both.
+/.claude
 *.tsbuildinfo
 coverage/
 .DS_Store

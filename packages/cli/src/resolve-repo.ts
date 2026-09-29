@@ -1,13 +1,16 @@
 import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { type AgnosticPaths, isDirectory } from "@agnostic/core";
+import { type AgnosticPaths, isDirectory, type RepoListRow } from "@agnostic/core";
 import type { Command } from "commander";
 import type { CliContext } from "./context.js";
 import { CliError } from "./error.js";
 
 /** A repo, and the task the current directory belongs to when it is one of agn's worktrees. */
 type Resolved = { repoId: string; taskId: string | null };
+
+/** Short enough to type, long enough that two ids rarely collide in one workspace (ADR 004). */
+const MIN_PREFIX = 3;
 
 /**
  * ADR 012: `--repo` first, as a path when it looks like one and as an id or prefix otherwise; then
@@ -27,6 +30,44 @@ export async function resolveRepo(ctx: CliContext, flag: string | undefined): Pr
     return worktree;
   }
   return { repoId: await repoContaining(ctx, ctx.cwd), taskId: null };
+}
+
+/**
+ * `resolveRepo` plus the registered row's path, which is where `.ag/` lives. A command that reads
+ * or writes `.ag/` itself needs the checkout, not the worktree the shell happens to be in.
+ */
+export async function resolveRepoPath(
+  ctx: CliContext,
+  flag: string | undefined,
+): Promise<{ repoId: string; path: string }> {
+  const { repoId } = await resolveRepo(ctx, flag);
+  const { repos } = await (await ctx.client()).listRepos({ all: true });
+  const row = rowFor(repos, repoId);
+  return { repoId: row.id, path: row.path };
+}
+
+/** The rule the daemon applies to `--repo <id>`: the exact id, else exactly one prefix match. */
+function rowFor(repos: RepoListRow[], idOrPrefix: string): RepoListRow {
+  const exact = repos.find((repo) => repo.id === idOrPrefix);
+  if (exact !== undefined) {
+    return exact;
+  }
+  const matches =
+    idOrPrefix.length < MIN_PREFIX ? [] : repos.filter((repo) => repo.id.startsWith(idOrPrefix));
+  if (matches.length > 1) {
+    throw new CliError(`"${idOrPrefix}" matches ${matches.length} repos`, {
+      code: "ambiguous-id",
+      hint: `Type more of the id: ${matches.map((repo) => repo.id).join(", ")}`,
+    });
+  }
+  const only = matches[0];
+  if (only === undefined) {
+    throw new CliError(`no repo matches "${idOrPrefix}"`, {
+      code: "repo-not-found",
+      hint: "Ids are ten characters and three are enough to pick one. Run `agn repos` to see them.",
+    });
+  }
+  return only;
 }
 
 /** The registered repo a path belongs to; nested checkouts mean the longest match wins. */

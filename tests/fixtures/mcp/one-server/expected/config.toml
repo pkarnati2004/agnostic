@@ -1,0 +1,11 @@
+# >>> agn mcp for r7k2m4pqrs: managed block, edits here are replaced >>>
+[mcp_servers.db]
+command = "npx"
+args = ["-y", "@acme/db-mcp"]
+env = { "LOG_LEVEL" = "info" }
+env_vars = ["DATABASE_URL"]
+
+[mcp_servers.docs]
+url = "https://mcp.example.com/docs"
+env_http_headers = { "Authorization" = "MCP_AUTH" }
+# <<< agn mcp for r7k2m4pqrs <<<

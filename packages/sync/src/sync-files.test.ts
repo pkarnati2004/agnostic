@@ -90,6 +90,19 @@ describe("applySyncPlan", () => {
     expect((await stat(join(repo, "AGENTS.md"))).mode & 0o777).toBe(0o640);
   });
 
+  it("creates a target's directory before writing into it", async () => {
+    const repo = await copyFixture("stale");
+    await applySyncPlan(repo, [
+      {
+        file: ".claude/agents/developer.md",
+        action: "create",
+        content: "agent\n",
+        reason: null,
+      },
+    ]);
+    expect(await readFile(join(repo, ".claude/agents/developer.md"), "utf8")).toBe("agent\n");
+  });
+
   it("overwrites a hand-written target with force", async () => {
     const repo = await copyFixture("hand-edited");
     await sync(repo, true);

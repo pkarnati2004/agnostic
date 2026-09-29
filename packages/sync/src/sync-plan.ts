@@ -11,31 +11,58 @@ const SYNC_TARGETS: SyncTarget[] = ["CLAUDE.md", "AGENTS.md"];
 
 export type SyncInputs = { instructions: string; existing: Record<SyncTarget, string | null> };
 
-/** One write per target, in table order. Nothing here touches a file; the caller applies it. */
-export function planSync(inputs: SyncInputs, opts: { force: boolean }): SyncWrite[] {
-  return SYNC_TARGETS.map((target) => planTarget(target, inputs, opts));
+/**
+ * One file sync would write, and the one case where a file without the header may still be taken
+ * over: `adoptable` answers "this is what sync would have written anyway".
+ */
+export type PlannedTarget = {
+  file: string;
+  content: string;
+  adoptable?: (existing: string) => boolean;
+};
+
+/** ADR 017's decision for every target. Nothing here touches a file; the caller applies it. */
+export function planWrites(
+  targets: PlannedTarget[],
+  existing: Record<string, string | null>,
+  opts: { force: boolean },
+): SyncWrite[] {
+  return targets.map((target) => planTarget(target, existing[target.file] ?? null, opts));
 }
 
-function planTarget(target: SyncTarget, inputs: SyncInputs, opts: { force: boolean }): SyncWrite {
-  const content = renderTarget(target, inputs.instructions);
-  const existing = inputs.existing[target];
+/** One write per instruction target, in table order. */
+export function planSync(inputs: SyncInputs, opts: { force: boolean }): SyncWrite[] {
+  const targets = SYNC_TARGETS.map((target) => ({
+    file: target,
+    content: renderTarget(target, inputs.instructions),
+    adoptable: (existing: string) => isUnheadered(target, existing, inputs.instructions),
+  }));
+  return planWrites(targets, inputs.existing, opts);
+}
+
+function planTarget(
+  target: PlannedTarget,
+  existing: string | null,
+  opts: { force: boolean },
+): SyncWrite {
+  const write = { file: target.file, content: target.content };
   if (existing === null) {
-    return { file: target, action: "create", content, reason: null };
+    return { ...write, action: "create", reason: null };
   }
-  if (existing === content) {
-    return { file: target, action: "unchanged", content, reason: null };
+  if (existing === target.content) {
+    return { ...write, action: "unchanged", reason: null };
   }
   // The header is the only record of what the last sync wrote: a file carrying it is agn's.
   if (isGenerated(existing)) {
-    return { file: target, action: "update", content, reason: null };
+    return { ...write, action: "update", reason: null };
   }
-  if (isUnheadered(target, existing, inputs.instructions)) {
-    return { file: target, action: "update", content, reason: "no header, same content" };
+  if (target.adoptable?.(existing) === true) {
+    return { ...write, action: "update", reason: "no header, same content" };
   }
   if (opts.force) {
-    return { file: target, action: "update", content, reason: "overwritten with --force" };
+    return { ...write, action: "update", reason: "overwritten with --force" };
   }
-  return { file: target, action: "conflict", content, reason: "no header, hand-edited" };
+  return { ...write, action: "conflict", reason: "no header, hand-edited" };
 }
 
 /**
