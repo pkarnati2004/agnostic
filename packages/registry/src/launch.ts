@@ -16,6 +16,8 @@ export type LaunchOptions = {
   prompt?: string;
   env: Record<string, string>;
   servers?: LocalServer[];
+  /** The worktree agn made for this task, when it has one; null for a task running in the checkout. */
+  worktreePath?: string | null;
 };
 
 /** The local provider agn writes into Codex's `-c` overrides; the name is ours, not the server's. */
@@ -28,7 +30,11 @@ export function launchSpec(
   opts: LaunchOptions,
 ): LaunchSpec & { promptAfterStart: string | null } {
   const def = supportedDefinition(profile);
-  const args = [...def.launch, ...routeArgs(def, profile, opts.servers ?? [])];
+  const args = [
+    ...def.launch,
+    ...directoryTrustArgs(def, opts.worktreePath ?? null),
+    ...routeArgs(def, profile, opts.servers ?? []),
+  ];
   const prompt = opts.prompt && opts.prompt.length > 0 ? opts.prompt : null;
   let promptAfterStart: string | null = null;
   if (prompt !== null) {
@@ -74,6 +80,8 @@ export function resumeSpec(
   profile: Profile,
   sessionId: string,
   env: Record<string, string>,
+  /** A resume relaunches the harness, so a worktree needs the same trust override a fresh start gets. */
+  worktreePath: string | null = null,
 ): LaunchSpec {
   const def = supportedDefinition(profile);
   if (!def.resume) {
@@ -92,9 +100,36 @@ export function resumeSpec(
   }
   return {
     command: def.binary,
-    args: def.resume.args(sessionIdOrThrow(sessionId)),
+    // Before the subcommand: `-c` belongs to `codex` itself, not to `codex resume`.
+    args: [
+      ...directoryTrustArgs(def, worktreePath),
+      ...def.resume.args(sessionIdOrThrow(sessionId)),
+    ],
     env: routeEnv(def, profile, env),
   };
+}
+
+/**
+ * ADR 035, amended 2026-09-28 (ruling a): Codex reads directory trust from the nearest `.git`, so a
+ * linked worktree is never covered by the repo's `[projects."…"]` entry and every launch there stops
+ * on "Do you trust the contents of this directory?". agn trusts the worktree it made itself, for
+ * this launch only: nothing is written to the user's config.toml, and no approval or sandbox setting
+ * is relaxed. A path that cannot be written as a TOML key is left alone rather than mangled.
+ */
+function directoryTrustArgs(def: HarnessDefinition, worktreePath: string | null): string[] {
+  if (def.id !== "codex" || worktreePath === null || !tomlKeyable(worktreePath)) {
+    return [];
+  }
+  return ["-c", `projects."${worktreePath}".trust_level="trusted"`];
+}
+
+function tomlKeyable(path: string): boolean {
+  return (
+    path.startsWith("/") &&
+    !path.includes('"') &&
+    !path.includes("\\") &&
+    ![...path].some((char) => char.charCodeAt(0) <= 0x1f || char.charCodeAt(0) === 0x7f)
+  );
 }
 
 function supportedDefinition(profile: Profile): HarnessDefinition {

@@ -1,6 +1,7 @@
 import { readdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { type LaunchRequest, newId, type SessionHandle } from "@agnostic/core";
+import { waitForComposer } from "./composer-wait.js";
 import { ExecutorError } from "./error.js";
 import { exitFileName, isExitFileFor } from "./exit-file.js";
 import {
@@ -18,13 +19,15 @@ import {
 // keeps drawing 80 columns into a wider pane forever.
 const WINDOW_COLS = 200;
 const WINDOW_ROWS = 50;
-// Long enough for a harness to draw its composer before the prompt is pasted into it.
-const PROMPT_DELAY_MS = 1_000;
+
+/** Where the launch reports what it noticed; the daemon passes its log's debug line. */
+export type LaunchDebug = (msg: string, fields?: Record<string, string | number>) => void;
 
 export async function launchSession(
   client: TmuxClient,
   sessionsDir: string,
   req: LaunchRequest,
+  debug: LaunchDebug = () => {},
 ): Promise<SessionHandle> {
   const name = sessionName(req.taskId);
   await assertDirectory(req.cwd);
@@ -40,7 +43,23 @@ export async function launchSession(
   await runMutation(client, ["set-hook", "-t", name, "pane-died", paneDiedHook(exitFile)]);
   const prompt = req.command.promptAfterStart;
   if (prompt !== null) {
-    await new Promise((resolve) => setTimeout(resolve, PROMPT_DELAY_MS));
+    // A launch must not hang: a pane that never settles, or that is waiting on a screen only the
+    // user can answer, is pasted into anyway and the reason goes in the log.
+    const wait = await waitForComposer(client, name);
+    // The harness can exit while the wait is polling - a bad flag, a missing credential. Null is no
+    // such session and true is a pane whose process has exited: neither can be pasted into.
+    if ((await paneDead(client, name)) !== false) {
+      throw new ExecutorError(`task ${req.taskId} has no running session to type into`, {
+        code: "session-not-running",
+        hint: "The harness exited as it started; run `agn logs` or attach to the task to see why.",
+      });
+    }
+    if (!wait.ready) {
+      debug("pasting the first prompt into a pane that is not ready", {
+        session: name,
+        gate: wait.gate ?? "none",
+      });
+    }
     await pasteText(client, name, prompt.replace(/\r\n/g, "\n").replace(/\r/g, "\n"));
   }
   return {

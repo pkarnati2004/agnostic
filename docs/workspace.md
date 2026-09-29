@@ -275,6 +275,10 @@ Two tasks cannot be asked this way. A task whose worktree was cleaned needs Resu
 rebuilds the worktree. A session agn adopted that is not running under tmux has no pane agn can
 type into, so agn hands you the message to paste into that terminal yourself.
 
+An agent that is showing a screen of its own - a trust question, a hooks review - takes no message
+either: agn refuses with `agent-not-ready` rather than answer the screen for you, so answer it in
+the task's terminal and try again. The same holds for Ask the agent to commit and for a resume turn.
+
 `agn update [<task>]` does the same from a terminal. It prints where the message went, which mode
 the branch got and why, and the `agn attach` line for watching the work; it never takes the
 terminal over.

@@ -5,7 +5,7 @@ import { newId, type Repo, run, type Task, type UpdateTaskResponse } from "@agno
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon, waitFor } from "./test-daemon.js";
 import { type GitRecorder, recordGit } from "./test-git-recorder.js";
-import { gitIn, repoWithConfig, startTask } from "./test-task-run.js";
+import { gitIn, repoWithConfig, startTask, typeToAgent } from "./test-task-run.js";
 import { seedTranscript } from "./test-transcript.js";
 
 let daemon: TestDaemon;
@@ -161,6 +161,19 @@ describe("POST /tasks/:id/update", () => {
     const log = await agentLog("--resume sess-42");
     expect(log.indexOf("ready")).toBeGreaterThanOrEqual(0);
     expect(log.indexOf(body.prompt)).toBeGreaterThan(log.indexOf("ready"));
+  });
+
+  it("refuses while the agent's pane shows a screen only the user can answer", async () => {
+    const repo = await repoWithConfig(daemon);
+    const task = await startTask(daemon, repo);
+    // The fake agent echoes each line it reads, so the pane holds a trust screen's own wording.
+    await typeToAgent(daemon, task, "Do you trust the contents of this directory?");
+    await agentLog("Do you trust the contents of this directory");
+
+    const error = await refused(await update(task.id), 409);
+
+    expect(error.code).toBe("agent-not-ready");
+    expect(error.hint).toBe("Answer the screen in the task's terminal, then try again.");
   });
 
   it("refuses a folder workspace", async () => {
