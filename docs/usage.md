@@ -50,3 +50,46 @@ A number is `-` when agn will not guess:
   stays empty for it.
 
 Usage that no task owns is never priced: agn does not know which key or plan paid for it.
+
+## Budgets
+
+A budget is a ceiling in dollars over what agn priced in a window. Set one in
+`~/.agnostic/config.yaml`:
+
+```yaml
+budget:
+  daily_usd: 5
+  weekly_usd: 20
+```
+
+Either key on its own is enough. The windows are the ones above: the calendar day and the
+Monday-based week, in your own time zone.
+
+The budget counts the runs you pay for by the token: API-key and credits runs, and a run whose
+billing agn could not determine, which is priced like a key so that a cost agn cannot rule out is
+still shown. Subscription and local runs are never counted.
+
+At 80% of a ceiling, `agn run`, the new-task dialog and the usage bar warn. `agn usage` prints a
+line per window under the tables:
+
+```
+budget today $4.10 of $5.00 (82%, warn)
+budget this week $18.40 of $20.00 (92%, warn)
+```
+
+At 100%, a run or a handoff onto an API-key or credits profile is refused:
+
+```
+agn: today's priced spend is $5.12, over the $5.00 daily budget
+  hint: Pass --ignore-budget to run this task anyway, or raise budget.daily_usd in ~/.agnostic/config.yaml.
+```
+
+The warning is advisory: `agn run` prints it from the same figures `agn usage` shows, and it prints
+nothing if it cannot read them. The refusal at 100% is the daemon's, and it happens whether or not
+the warning was printed.
+
+`agn run --ignore-budget` and `agn handoff --ignore-budget` start the task anyway, for that one
+task. In the workspace, the note under the Profile select carries the same override as a checkbox.
+
+Resume is never refused: work that has already started always continues. A subscription task is
+unaffected at any spend.

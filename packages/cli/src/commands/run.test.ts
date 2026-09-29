@@ -1,4 +1,10 @@
-import { DaemonApiError, type RunTaskRequest, type Task } from "@agnostic/core";
+import {
+  type BudgetReport,
+  DaemonApiError,
+  type RunTaskRequest,
+  type Task,
+  type UsageResponse,
+} from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { runMain } from "../program.js";
 import { createTestContext } from "../test-context.js";
@@ -47,19 +53,41 @@ function task(over: Partial<Task> = {}): Task {
 /** The daemon reads `.ag/agnostic.yaml`; the CLI only ever sees the command on the repo row. */
 const REPO_WITH_TESTS = { ...REPO, testCommand: "pnpm test" };
 
-function cli(over: Partial<Task> = {}, repo = REPO) {
+const NO_BUDGET: BudgetReport = { day: null, week: null };
+
+/** Only the budget is read from this body: the run's warning line is all it is fetched for. */
+function usage(budget: BudgetReport): UsageResponse {
+  const window = (kind: "day" | "week") => ({
+    kind,
+    since: "2026-09-11T00:00:00.000Z",
+    until: "2026-09-11T15:00:00.000Z",
+  });
+  return {
+    day: { window: window("day"), plans: [] },
+    week: { window: window("week"), plans: [] },
+    budget,
+    scannedAt: "2026-09-11T15:00:00.000Z",
+  };
+}
+
+function cli(over: Partial<Task> = {}, repo = REPO, budget: BudgetReport = NO_BUDGET) {
   const sent: { repoId: string; body: RunTaskRequest }[] = [];
+  let usageCalls = 0;
   const test = createTestContext({
     cwd: repo.path,
     client: {
       listRepos: () => Promise.resolve({ repos: [repo], cursor: 0 }),
+      usage: () => {
+        usageCalls += 1;
+        return Promise.resolve(usage(budget));
+      },
       runTask: (repoId, body) => {
         sent.push({ repoId, body });
         return Promise.resolve({ task: task(over) });
       },
     },
   });
-  return { ...test, sent };
+  return { ...test, sent, usageCalls: () => usageCalls };
 }
 
 function parse(command: ReturnType<typeof runCommand>, args: string[]): Promise<unknown> {
@@ -137,6 +165,78 @@ describe("agn run", () => {
     );
   });
 
+  it("warns before it starts when a budget window is near its ceiling", async () => {
+    const test = cli({}, REPO, { day: { limitUsd: 5, spentUsd: 4.1, state: "warn" }, week: null });
+    await parse(runCommand(test.ctx), ["add a --verbose flag"]);
+    expect(test.out[0]).toBe("budget: today $4.10 of $5.00 (82%)");
+  });
+
+  it("warns for each window that is spent, and says nothing when both are fine", async () => {
+    const both = cli({}, REPO, {
+      day: { limitUsd: 5, spentUsd: 5.2, state: "exceeded" },
+      week: { limitUsd: 20, spentUsd: 18.4, state: "warn" },
+    });
+    await parse(runCommand(both.ctx), ["add a --verbose flag"]);
+    expect(both.out.slice(0, 2)).toEqual([
+      "budget: today $5.20 of $5.00 (104%)",
+      "budget: this week $18.40 of $20.00 (92%)",
+    ]);
+
+    const fine = cli({}, REPO, { day: { limitUsd: 5, spentUsd: 1, state: "ok" }, week: null });
+    await parse(runCommand(fine.ctx), ["add a --verbose flag"]);
+    expect(fine.out[0]).toBe("started t3n9v2wxyz add a --verbose flag");
+  });
+
+  it("says nothing about the budget under --json", async () => {
+    const test = cli({}, REPO, {
+      day: { limitUsd: 5, spentUsd: 5.2, state: "exceeded" },
+      week: null,
+    });
+    test.ctx.json = true;
+    await parse(runCommand(test.ctx), ["add a --verbose flag"]);
+    expect(test.out.join("")).not.toContain("budget");
+  });
+
+  it("never reads GET /usage under --json, so --json never waits on a scan for it", async () => {
+    const test = cli({}, REPO, {
+      day: { limitUsd: 5, spentUsd: 5.2, state: "exceeded" },
+      week: null,
+    });
+    test.ctx.json = true;
+    await parse(runCommand(test.ctx), ["add a --verbose flag"]);
+    expect(test.usageCalls()).toBe(0);
+  });
+
+  it("still starts the task when GET /usage rejects, with no warning line", async () => {
+    const test = createTestContext({
+      cwd: REPO.path,
+      client: {
+        listRepos: () => Promise.resolve({ repos: [REPO], cursor: 0 }),
+        usage: () =>
+          Promise.reject(
+            new DaemonApiError("config.yaml has an unknown key: bogus", {
+              code: "ag-file-invalid",
+              status: 500,
+              hint: "Fix the file, or delete it to use the defaults.",
+            }),
+          ),
+        runTask: () => Promise.resolve({ task: task() }),
+      },
+    });
+
+    const code = await runMain(["node", "agn", "run", "add a --verbose flag"], test.ctx);
+
+    expect(code).toBe(0);
+    expect(test.out[0]).toBe("started t3n9v2wxyz add a --verbose flag");
+    expect(test.out.join("\n")).not.toContain("budget");
+  });
+
+  it("asks the daemon to run past the budget with --ignore-budget", async () => {
+    const test = cli();
+    await parse(runCommand(test.ctx), ["add a --verbose flag", "--ignore-budget"]);
+    expect(test.sent[0]?.body.ignoreBudget).toBe(true);
+  });
+
   it("refuses --profile and --harness together", async () => {
     const test = cli();
     const code = await runMain(
@@ -152,6 +252,7 @@ describe("agn run", () => {
       cwd: REPO.path,
       client: {
         listRepos: () => Promise.resolve({ repos: [REPO], cursor: 0 }),
+        usage: () => Promise.resolve(usage(NO_BUDGET)),
         runTask: () =>
           Promise.reject(
             new DaemonApiError("repo api is closed", {

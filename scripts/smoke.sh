@@ -87,8 +87,13 @@ echo "smoke: agn round trip, from no daemon to two registered repos"
 NODE="$(command -v node)"
 EMPTY="$AGNOSTIC_HOME/empty-bin"
 mkdir -p "$EMPTY"
+# A home of its own from the first call: the daemon reads transcript directories under HOME when a
+# task closes and when usage is asked for - which `agn run` now does for its budget line - and a
+# smoke run must never read the author's, nor record it in this run's ledger.
+EARLY_HOME="$WORK/early-home"
+mkdir -p "$EARLY_HOME"
 agn() {
-  PATH="$EMPTY" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
+  HOME="$EARLY_HOME" PATH="$EMPTY" "$NODE" --import tsx --conditions development packages/cli/src/main.ts "$@"
 }
 # A port nothing is listening on, so a daemon the author is already running keeps its own. The
 # CLI never reads this file: it learns the port from the daemon.json that agnd writes.
@@ -655,6 +660,24 @@ grep -q "^unknown plan  claude-code " "$WORK/usage.txt"
 grep -q "1,700" "$WORK/usage.txt"
 agx usage --json > "$WORK/usage.json"
 grep -q '"unattributedTokens": 1700' "$WORK/usage.json"
+
+echo "smoke: a budget in config.yaml, warned about and overridden"
+# The smoke's transcripts belong to no task, so nothing is priced and the window reads $0.00.
+printf 'port: %s\nbudget:\n  daily_usd: 0.01\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+agx usage > "$WORK/budget-usage.txt"
+grep -q '^budget today \$0.00 of \$0.01 (0%, ok)$' "$WORK/budget-usage.txt"
+agx usage --json | grep -q '"limitUsd": 0.01'
+# The flag parses, and a run agn cannot bill by the token is never refused.
+agx run "budget flag" --profile claude-code --repo "$WORK/runrepo" --ignore-budget > "$WORK/budget-run.txt"
+grep -q "^started " "$WORK/budget-run.txt"
+BUDGET_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/budget-run.txt")"
+agx stop "$BUDGET_TASK" | grep -q "^stopped $BUDGET_TASK"
+agx clean "$BUDGET_TASK" | grep -q "^cleaned $BUDGET_TASK"
+# A key under `budget` that agn does not know is an error, not a silent default.
+printf 'port: %s\nbudget:\n  daily_usd: 0.01\n  bogus: 1\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+! agx usage 2> "$WORK/budget-err.txt"
+grep -q "bogus\|unrecognized" "$WORK/budget-err.txt"
+printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
 
 # Pi writes a message-graph transcript of its own, under its own home directory.
 mkdir -p "$USAGE_HOME/.pi/agent/sessions"

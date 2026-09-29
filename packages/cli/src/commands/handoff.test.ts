@@ -77,6 +77,12 @@ describe("agn handoff", () => {
     ]);
   });
 
+  it("asks the daemon to hand off past the budget with --ignore-budget", async () => {
+    const test = cli();
+    await parse(test.ctx, [PARENT, "--to", "codex", "--ignore-budget"]);
+    expect(test.sent[0]?.body).toEqual({ profile: "codex", ignoreBudget: true });
+  });
+
   it("takes the task from the worktree it is run in", async () => {
     const test = cli({ cwd: `/home/.agnostic/worktrees/r7k2m4pqrs/${PARENT}` });
     await parse(test.ctx, ["--to", "codex:default:native"]);

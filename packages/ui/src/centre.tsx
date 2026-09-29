@@ -1,4 +1,5 @@
 import type {
+  BudgetReport,
   HandoffTaskRequest,
   PickCompareResponse,
   Profile,
@@ -31,6 +32,8 @@ type CentreProps = {
   token: string;
   client: WorkspaceClient;
   usage: UsageState;
+  /** The ceilings from config.yaml, read with the usage the bar draws; null until one arrives. */
+  budget: BudgetReport | null;
   /** What the tab in front has spent; the page holds the hook that reads it. */
   cost: ReactNode;
   /** The bootstrap failure, and only that: every other failure is in `notices`. */
@@ -76,6 +79,7 @@ export function Centre(props: CentreProps) {
           task={active}
           repo={props.repos.find((repo) => repo.id === active.repoId) ?? null}
           profiles={props.profiles}
+          budget={props.budget}
           cost={props.cost}
           notice={props.notices[active.id] ?? null}
           onStop={() => props.onStop(active.id).then(() => undefined)}

@@ -15,6 +15,7 @@ import {
 import type { DaemonContext } from "./app.js";
 import { fileChanges } from "./branch-changes.js";
 import { branchExists } from "./branch-verdict.js";
+import { assertWithinBudget } from "./budget-guard.js";
 import { DaemonError } from "./error.js";
 import { assertFolderFree } from "./folder-guard.js";
 import { initialTaskNote } from "./initial-task-note.js";
@@ -41,6 +42,7 @@ export async function handoffTask(
   const repo = resolveRepoId(ctx.ledger, parent.repoId);
   await assertRepoUsable(repo);
   const profile = await resolveProfile(ctx, repo, { profile: req.profile });
+  await assertWithinBudget(ctx, profile, req.ignoreBudget === true);
   const config = await readRepoConfig(repo.path);
   const base = await handoffBase(repo, parent);
   const from = await stopParent(ctx, repo, parent);

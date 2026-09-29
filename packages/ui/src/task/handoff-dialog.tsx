@@ -1,4 +1,4 @@
-import type { HandoffTaskRequest, Profile, Task } from "@agnostic/core";
+import type { BudgetReport, HandoffTaskRequest, Profile, Task } from "@agnostic/core";
 import { useState } from "react";
 import { Button } from "../components/button";
 import {
@@ -19,11 +19,14 @@ import {
   SelectValue,
 } from "../components/select";
 import type { TaskNotice } from "../store/task-notices";
+import { BudgetNote } from "./budget-note";
 import { TaskNoticeLine } from "./task-notice-line";
 
 type HandoffDialogProps = {
   task: Task;
   profiles: Profile[];
+  /** The machine's spend against config.yaml's ceilings, null until the usage bar has read one. */
+  budget: BudgetReport | null;
   /** This task's latest failure, drawn in the dialog when that is where it was asked for. */
   notice: TaskNotice | null;
   /** False when the daemon refused: the dialog stays open where the profile can be changed. */
@@ -31,10 +34,11 @@ type HandoffDialogProps = {
 };
 
 /** Hands the task to another profile. The child starts from the note; the parent is stopped. */
-export function HandoffDialog({ task, profiles, notice, onSubmit }: HandoffDialogProps) {
+export function HandoffDialog({ task, profiles, budget, notice, onSubmit }: HandoffDialogProps) {
   const [open, setOpen] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [ignoreBudget, setIgnoreBudget] = useState(false);
   const [busy, setBusy] = useState(false);
   const available = profiles.filter((profile) => profile.available);
 
@@ -44,17 +48,20 @@ export function HandoffDialog({ task, profiles, notice, onSubmit }: HandoffDialo
     }
     const trimmed = note.trim();
     setBusy(true);
-    void onSubmit({ profile: profileId, ...(trimmed === "" ? {} : { note: trimmed }) }).then(
-      (sent) => {
-        setBusy(false);
-        if (!sent) {
-          return;
-        }
-        setOpen(false);
-        setProfileId(null);
-        setNote("");
-      },
-    );
+    void onSubmit({
+      profile: profileId,
+      ...(trimmed === "" ? {} : { note: trimmed }),
+      ...(ignoreBudget ? { ignoreBudget: true } : {}),
+    }).then((sent) => {
+      setBusy(false);
+      if (!sent) {
+        return;
+      }
+      setOpen(false);
+      setProfileId(null);
+      setNote("");
+      setIgnoreBudget(false);
+    });
   };
 
   return (
@@ -86,6 +93,12 @@ export function HandoffDialog({ task, profiles, notice, onSubmit }: HandoffDialo
             </SelectContent>
           </Select>
         </label>
+        <BudgetNote
+          budget={budget}
+          profile={available.find((profile) => profile.id === profileId) ?? null}
+          ignore={ignoreBudget}
+          onIgnore={setIgnoreBudget}
+        />
         {available.length === 0 && (
           <p className="text-muted-foreground text-xs">
             No profile is available. Run `agn doctor` to see what this machine has.

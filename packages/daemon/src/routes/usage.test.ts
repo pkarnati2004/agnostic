@@ -1,9 +1,10 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { newId, type Task, type TaskUsageResponse, type UsageResponse } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
+import { fixtureDetection, fixtureProfile } from "../test-detection.js";
 import { writeClaudeTranscript, writeCodexRollout } from "../test-transcripts.js";
 
 let daemon: TestDaemon;
@@ -67,11 +68,6 @@ function seedTask(profileId = "claude-code:default:native", sessionId = "s-aaaa"
       lastSeenAt: now,
     },
   });
-}
-
-/** A second back, so a fixture turn cannot share a millisecond with the request that reads it. */
-function aMomentAgo(): string {
-  return new Date(Date.now() - 1_000).toISOString();
 }
 
 async function usage(path = "/usage"): Promise<UsageResponse> {
@@ -168,6 +164,86 @@ describe("GET /usage", () => {
         usage: expect.objectContaining({ tokens: 1_500 }),
       }),
     ]);
+  });
+});
+
+describe("GET /usage and the budget", () => {
+  /** A machine whose default profile runs on a key, so the scan prices every turn it attributes. */
+  async function keyedDaemon(): Promise<void> {
+    await daemon.close();
+    daemon = await createTestDaemon({
+      userHome: home,
+      detect: () =>
+        Promise.resolve({
+          ...fixtureDetection(),
+          profiles: [fixtureProfile(null, { billing: "api-key" }), fixtureProfile("sonnet-4.5")],
+        }),
+    });
+    repoId = newId();
+    daemon.ledger.repos.insert({
+      id: repoId,
+      path: "/tmp/alpha",
+      kind: "git",
+      name: "alpha",
+      addedAt: new Date().toISOString(),
+      status: "active",
+    });
+  }
+
+  it("answers with no window when config.yaml sets no ceiling", async () => {
+    expect((await usage()).budget).toEqual({ day: null, week: null });
+  });
+
+  it("counts what a run on a key cost today against the daily ceiling", async () => {
+    await keyedDaemon();
+    await writeFile(daemon.paths.config, "budget:\n  daily_usd: 5\n");
+    seedTask();
+    // 1M input tokens at the fixture catalog's $10 per million, then a tenth of that again.
+    await writeClaudeTranscript(home, [
+      { session: "s-aaaa", cwd: WORKTREE, ts: aMomentAgo(), input: 400_000, output: 0 },
+      {
+        session: "s-aaaa",
+        cwd: WORKTREE,
+        ts: aMomentAgo(),
+        message: "b",
+        input: 10_000,
+        output: 0,
+      },
+    ]);
+
+    const { budget } = await usage();
+
+    expect(budget.week).toBeNull();
+    expect(budget.day).toMatchObject({ limitUsd: 5, state: "warn" });
+    expect(budget.day?.spentUsd).toBeCloseTo(4.1, 6);
+  });
+
+  it("counts nothing a subscription plan paid for", async () => {
+    await keyedDaemon();
+    await writeFile(daemon.paths.config, "budget:\n  weekly_usd: 20\n");
+    seedTask("claude-code:sonnet-4.5:native", "s-bbbb");
+    await writeClaudeTranscript(home, [
+      { session: "s-bbbb", cwd: WORKTREE, ts: aMomentAgo(), input: 1_000_000, output: 0 },
+    ]);
+
+    const { budget } = await usage();
+
+    expect(budget).toEqual({ day: null, week: { limitUsd: 20, spentUsd: 0, state: "ok" } });
+  });
+
+  it("leaves a turn from last week out of both windows", async () => {
+    await keyedDaemon();
+    await writeFile(daemon.paths.config, "budget:\n  daily_usd: 5\n  weekly_usd: 20\n");
+    seedTask();
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1_000).toISOString();
+    await writeClaudeTranscript(home, [
+      { session: "s-aaaa", cwd: WORKTREE, ts: eightDaysAgo, input: 1_000_000, output: 0 },
+    ]);
+
+    const { budget } = await usage();
+
+    expect(budget.day?.spentUsd).toBe(0);
+    expect(budget.week?.spentUsd).toBe(0);
   });
 });
 

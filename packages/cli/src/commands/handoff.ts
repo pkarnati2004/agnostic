@@ -7,7 +7,7 @@ import { CliError } from "../error.js";
 import { requireTaskId } from "../resolve-repo.js";
 import { started } from "./run.js";
 
-type HandoffFlags = { to?: string; note?: string; noteFile?: string };
+type HandoffFlags = { to?: string; note?: string; noteFile?: string; ignoreBudget?: boolean };
 
 export function handoffCommand(ctx: CliContext): Command {
   return new Command("handoff")
@@ -16,6 +16,7 @@ export function handoffCommand(ctx: CliContext): Command {
     .option("--to <id|harness>", "a profile id, or a harness id for its defaults")
     .option("--note <text>", "what the next agent should know; `-` reads it from stdin")
     .option("--note-file <path>", "read the note from a file")
+    .option("--ignore-budget", "hand off even though the budget in config.yaml is spent")
     .action(async (task: string | undefined, flags: HandoffFlags, command: Command) => {
       if (flags.note !== undefined && flags.noteFile !== undefined) {
         command.error("error: pass --note or --note-file, not both", {
@@ -50,7 +51,11 @@ async function request(
   flags: HandoffFlags,
 ): Promise<HandoffTaskRequest> {
   const note = await noteText(ctx, flags);
-  return { profile, ...(note === undefined ? {} : { note }) };
+  return {
+    profile,
+    ...(note === undefined ? {} : { note }),
+    ...(flags.ignoreBudget === true ? { ignoreBudget: true } : {}),
+  };
 }
 
 /** Three ways to say the same thing: the flag, a file, or whatever was piped in. */

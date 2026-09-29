@@ -41,6 +41,11 @@ Enter writes a newline; Cmd+Enter (Ctrl+Enter) runs, as does the Run button. If 
 `test_command`, agn runs it before the agent starts and the dialog says so while it waits. The
 task opens in a tab as soon as it starts.
 
+If you have set a `budget` and the selected profile is billed by the token, a note under the
+Profile select says what has been spent. Past the ceiling the note says the run would be refused
+and offers a checkbox, "Ignore the budget for this task", which runs it anyway this once. The
+handoff dialog carries the same note. See [Budgets](usage.md#budgets).
+
 ## Repos
 
 The folder icon in the sidebar header adds a repo. Type the full path to a folder on this machine,
@@ -238,6 +243,11 @@ windows, so these numbers and the ones your harness reports will differ.
 
 The selected task's own tokens and cost sit in its header, beside Stop and Resume. A task billed to
 a subscription reads `included in plan` rather than a price.
+
+If `~/.agnostic/config.yaml` sets a `budget`, a last cell shows what this machine has spent against
+it: `$4.10 / $5.00 today` and the week beside it. The cell turns amber at 80% of a ceiling and red
+at 100%. Hover it for the percentage and for what is counted - API-key and credits runs, never
+subscription runs. See [Budgets](usage.md#budgets).
 
 ## Write spec
 

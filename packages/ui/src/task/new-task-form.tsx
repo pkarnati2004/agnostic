@@ -1,4 +1,4 @@
-import type { Profile, RepoListRow } from "@agnostic/core";
+import type { BudgetReport, Profile, RepoListRow } from "@agnostic/core";
 import type { KeyboardEvent, ReactNode, RefObject } from "react";
 import {
   Select,
@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/select";
+import { BudgetNote } from "./budget-note";
 import { INTENT_OPTIONS } from "./intent-options";
 import type { NewTaskForm } from "./new-task-request";
 import { RecommendationCard } from "./recommendation-card";
@@ -15,6 +16,8 @@ import type { RecommendationState } from "./use-recommendation";
 type NewTaskFieldsProps = {
   repos: RepoListRow[];
   profiles: Profile[];
+  /** Null until the usage bar has read one; the note under the select draws itself from it. */
+  budget: BudgetReport | null;
   form: NewTaskForm;
   onChange: (form: NewTaskForm) => void;
   /** Null until a profile is picked or the recommendation supplies one. */
@@ -69,6 +72,12 @@ export function NewTaskFields(props: NewTaskFieldsProps) {
           onChange={props.onPickProfile}
         />
         <p className="text-muted-foreground text-xs">{pickNote(state, props.profileId)}</p>
+        <BudgetNote
+          budget={props.budget}
+          profile={profiles.find((profile) => profile.id === props.profileId) ?? null}
+          ignore={form.ignoreBudget}
+          onIgnore={(ignoreBudget) => onChange({ ...form, ignoreBudget })}
+        />
       </Field>
     </>
   );

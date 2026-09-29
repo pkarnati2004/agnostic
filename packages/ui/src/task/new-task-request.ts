@@ -17,6 +17,8 @@ export type NewTaskForm = {
   title: string;
   spec: string;
   acceptance: string;
+  /** This run's `--ignore-budget`: ticked in the note under the select, and gone with the form. */
+  ignoreBudget: boolean;
 };
 
 /**
@@ -67,6 +69,7 @@ export function runRequest(form: NewTaskForm): RunTaskRequest | null {
     ...(title === "" ? {} : { title }),
     ...(spec === "" ? {} : { spec }),
     ...(acceptance === "" ? {} : { acceptance }),
+    ...(form.ignoreBudget ? { ignoreBudget: true } : {}),
   };
 }
 

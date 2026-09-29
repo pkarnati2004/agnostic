@@ -1,4 +1,4 @@
-import type { Profile, RepoListRow, RunTaskRequest, Task } from "@agnostic/core";
+import type { BudgetReport, Profile, RepoListRow, RunTaskRequest, Task } from "@agnostic/core";
 import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { type ApiError, asApiError } from "../api/error";
@@ -29,6 +29,8 @@ type NewTaskDialogProps = {
   /** The repo of the tab in front, else the first one in the sidebar. */
   defaultRepoId: string | null;
   profiles: Profile[];
+  /** The machine's spend against config.yaml's ceilings, null until the usage bar has read one. */
+  budget: BudgetReport | null;
   client: WorkspaceClient;
   onStarted: (task: Task) => void;
 };
@@ -73,6 +75,7 @@ export function NewTaskDialog(props: NewTaskDialogProps) {
           <NewTaskFields
             repos={props.repos}
             profiles={profiles}
+            budget={props.budget}
             form={form}
             onChange={setForm}
             profileId={profileId}
@@ -177,5 +180,6 @@ function blank(repoId: string | null): NewTaskForm {
     title: "",
     spec: "",
     acceptance: "",
+    ignoreBudget: false,
   };
 }
