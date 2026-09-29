@@ -110,6 +110,7 @@ export function seedAdopted(daemon: TestDaemon, repo: Repo, pid: number, cwd: st
     status: "running",
     origin: "adopted",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
   });

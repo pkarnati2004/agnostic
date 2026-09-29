@@ -176,6 +176,7 @@ describe("POST /tasks/:id/resume", () => {
       status: "queued",
       origin: "agn",
       baseCommit: null,
+      compareId: null,
       createdAt: now,
       updatedAt: now,
     });

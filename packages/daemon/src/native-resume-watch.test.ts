@@ -36,6 +36,7 @@ beforeEach(() => {
     status: "queued",
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
   });
@@ -167,6 +168,7 @@ describe("the belt behind a native resume", () => {
       status: "queued",
       origin: "agn",
       baseCommit: null,
+      compareId: null,
       createdAt: now,
       updatedAt: now,
     });

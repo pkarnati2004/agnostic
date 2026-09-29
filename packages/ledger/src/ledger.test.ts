@@ -26,6 +26,7 @@ const task: Task = {
   status: "queued",
   origin: "agn",
   baseCommit: null,
+  compareId: null,
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:00:00.000Z",
 };
@@ -66,6 +67,7 @@ describe("openLedger", () => {
       { version: 3, name: "repo-status" },
       { version: 4, name: "repo-status-removed" },
       { version: 5, name: "harness-ids" },
+      { version: 6, name: "task-compare-id" },
     ]);
     db.close();
   });

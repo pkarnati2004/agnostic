@@ -32,6 +32,16 @@ import { launchedSession } from "./task-session.js";
 import { titleFromPrompt } from "./task-title.js";
 import { runTestCommand } from "./test-command.js";
 
+/** What `agn compare` adds to a run: the group its siblings share, stamped on the queued row. */
+export type StartOptions = { compareId?: string };
+
+type QueuedRow = {
+  profileId: string;
+  recommendation: Recommendation | null;
+  /** Null for every run but a compare's; `task.created` carries it, so the page learns the group. */
+  compareId: string | null;
+};
+
 /**
  * One run, from the queued row to the live session. The row and its note exist before the worktree
  * does, so a daemon that dies during a long `setup_command` leaves a row that explains itself; the
@@ -42,6 +52,7 @@ export async function startTask(
   ctx: DaemonContext,
   registered: Repo,
   req: RunTaskRequest,
+  opts: StartOptions = {},
 ): Promise<Task> {
   // Before the kind is re-detected: detecting the kind of a path that is not there is meaningless.
   await assertRepoUsable(registered);
@@ -60,7 +71,11 @@ export async function startTask(
     recommendation?.recommended.profileId ?? null,
   );
   const config = await readRepoConfig(repo.path);
-  const task = insertQueued(ctx, repo, req, profile.id, recommendation);
+  const task = insertQueued(ctx, repo, req, {
+    profileId: profile.id,
+    recommendation,
+    compareId: opts.compareId ?? null,
+  });
   return await launchQueued(ctx, repo, task, {
     profile,
     config,
@@ -101,7 +116,7 @@ async function recommendFor(
 }
 
 /** `git init` in a folder workspace takes effect on the next run, so the kind is read again here. */
-async function withCurrentKind(ctx: DaemonContext, repo: Repo): Promise<Repo> {
+export async function withCurrentKind(ctx: DaemonContext, repo: Repo): Promise<Repo> {
   const kind = await detectRepoKind(repo.path);
   return kind === repo.kind ? repo : ctx.ledger.repos.update(repo.id, { kind });
 }
@@ -110,13 +125,8 @@ async function withCurrentKind(ctx: DaemonContext, repo: Repo): Promise<Repo> {
  * The folder guard and the row it protects are one SQLite transaction, which better-sqlite3 runs
  * synchronously: two runs arriving on the same folder at once cannot both see an empty list.
  */
-function insertQueued(
-  ctx: DaemonContext,
-  repo: Repo,
-  req: RunTaskRequest,
-  profileId: string,
-  recommendation: Recommendation | null,
-): Task {
+function insertQueued(ctx: DaemonContext, repo: Repo, req: RunTaskRequest, of: QueuedRow): Task {
+  const { profileId, recommendation } = of;
   const id = newId();
   const now = new Date().toISOString();
   return ctx.ledger.transaction(() => {
@@ -132,6 +142,7 @@ function insertQueued(
       status: "queued",
       origin: "agn",
       baseCommit: null,
+      compareId: of.compareId,
       createdAt: now,
       updatedAt: now,
       ...(recommendation === null ? {} : { recommendation }),

@@ -3,6 +3,7 @@ import type {
   CreatePrResponse,
   EditorId,
   HandoffTaskRequest,
+  PickCompareResponse,
   RepoListRow,
   Task,
   UpdateTaskResponse,
@@ -27,6 +28,7 @@ import { useWorkspace, type Workspace as WorkspaceStore } from "./store/use-work
 import type { WorkspaceState } from "./store/workspace-state";
 import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
 import {
+  compareTabId,
   readTabs,
   type TabsAction,
   type TabsState,
@@ -119,6 +121,16 @@ function Workspace({ token }: { token: string }) {
     return asked;
   };
 
+  // The view holds the response: it says what was cleaned, which no row of the store carries.
+  const pick = async (compareId: string, taskId: string): Promise<PickCompareResponse | null> => {
+    let picked: PickCompareResponse | null = null;
+    await act({ taskId, action: "pick", host: "compare" }, async (api) => {
+      picked = await api.pickCompare(compareId, { taskId });
+      return picked.kept;
+    });
+    return picked;
+  };
+
   const { handoff, started } = useTaskActions(act, put, dispatchTabs);
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
   // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
@@ -138,6 +150,9 @@ function Workspace({ token }: { token: string }) {
         selectedId={tabs.active}
         collapsed={collapsed}
         onSelect={(taskId) => dispatchTabs({ type: "open", taskId })}
+        onOpenCompare={(compareId) =>
+          dispatchTabs({ type: "open", taskId: compareTabId(compareId) })
+        }
         onNewTask={() => setNewTask(true)}
         onAddRepo={() => setAddRepo(true)}
         onCloseRepo={repoActions.close}
@@ -193,6 +208,8 @@ function Workspace({ token }: { token: string }) {
         changesOpen={changesOpen}
         onToggleChanges={toggleChanges}
         onHandoff={handoff}
+        usageStamp={state.usageStamp}
+        onPick={pick}
       />
       {showChanges && activeTask !== null && (
         <ChangesPanel

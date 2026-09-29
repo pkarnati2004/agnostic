@@ -50,6 +50,8 @@ export const TaskSchema = z.object({
   // The commit the branch started from. Null for a folder task, an adopted one, and rows written
   // before agn recorded it; everything derived from the diff is null with it.
   baseCommit: z.string().nullable().default(null),
+  // Shared by the siblings of one `agn compare`; null for every other task.
+  compareId: IdSchema.nullable().default(null),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   recommendation: RecommendationSchema.optional(),

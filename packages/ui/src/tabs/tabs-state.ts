@@ -4,6 +4,7 @@ import type { RepoListRow, Task } from "@agnostic/core";
 export type TabsState = { open: string[]; active: string | null };
 
 export type TabsAction =
+  /** `taskId` is a task id or a `compare:<id>`: both are tabs and neither knows about the other. */
   | { type: "open"; taskId: string }
   | { type: "close"; taskId: string }
   | { type: "activate"; taskId: string }
@@ -11,6 +12,21 @@ export type TabsAction =
   | { type: "prune"; keep: ReadonlySet<string> };
 
 export const TABS_KEY = "agn.tabs";
+
+/** A tab id that is not a task's: the Compare view of a group of siblings (ADR 036 Q7). */
+const COMPARE_TAB = "compare:";
+
+export function compareTabId(compareId: string): string {
+  return `${COMPARE_TAB}${compareId}`;
+}
+
+export function compareIdOf(tabId: string | null): string | null {
+  if (tabId === null || !tabId.startsWith(COMPARE_TAB)) {
+    return null;
+  }
+  const compareId = tabId.slice(COMPARE_TAB.length);
+  return compareId === "" ? null : compareId;
+}
 
 export const NO_TABS: TabsState = { open: [], active: null };
 
@@ -30,20 +46,24 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
 }
 
 /**
- * The tasks a tab may stay open for: one the daemon still has, under a repo the page draws. Removing
- * a repo deletes its tasks' worktrees (ADR 034), so their tabs have nothing left to show; closing a
- * repo deletes nothing, so its tabs stay. A repo the page was never given was removed before it
- * loaded, since `GET /repos?all=1` lists the closed ones.
+ * The tabs that may stay open: a task the daemon still has, under a repo the page draws, and the
+ * Compare view of any group those tasks still name. Removing a repo deletes its tasks' worktrees
+ * (ADR 034), so their tabs have nothing left to show; closing a repo deletes nothing, so its tabs
+ * stay. A repo the page was never given was removed before it loaded, since `GET /repos?all=1`
+ * lists the closed ones.
  */
 export function tabbableTasks(
   repos: RepoListRow[],
-  tasks: Record<string, Pick<Task, "repoId">>,
+  tasks: Record<string, Pick<Task, "repoId" | "compareId">>,
 ): ReadonlySet<string> {
   const drawn = new Set(repos.filter((repo) => repo.status !== "removed").map((repo) => repo.id));
-  const ids = Object.entries(tasks)
-    .filter(([, task]) => drawn.has(task.repoId))
-    .map(([id]) => id);
-  return new Set(ids);
+  const kept = Object.entries(tasks).filter(([, task]) => drawn.has(task.repoId));
+  const ids = kept.map(([id]) => id);
+  const compares = kept
+    .map(([, task]) => task.compareId)
+    .filter((compareId) => compareId !== null)
+    .map(compareTabId);
+  return new Set([...ids, ...compares]);
 }
 
 /** Whatever goes, the tab to its right takes over, then the one to its left, then nothing. */

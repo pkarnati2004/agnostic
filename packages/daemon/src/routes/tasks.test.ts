@@ -42,6 +42,7 @@ function seedTask(id: string, status: TaskStatus, worktreePath: string | null = 
     status,
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
   });

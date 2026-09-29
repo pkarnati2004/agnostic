@@ -3,6 +3,7 @@ export * from "./ag-text.js";
 export * from "./branch-api.js";
 export * from "./catalog-api.js";
 export * from "./changes-api.js";
+export * from "./compare-api.js";
 export * from "./daemon-api.js";
 export * from "./daemon-client.js";
 export * from "./daemon-probe.js";

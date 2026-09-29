@@ -7,7 +7,13 @@ import {
   groupTasks,
   inHistory,
   inSidebarOrder,
+  type SidebarRow,
 } from "./group-tasks";
+
+/** The ids the sidebar draws in order: a task by its own id, a compare by its group's. */
+function ids(rows: SidebarRow[] | undefined): string[] {
+  return (rows ?? []).map((row) => (row.kind === "task" ? row.task.id : row.group.compareId));
+}
 
 function repo(id: string, name: string): RepoListRow {
   return {
@@ -35,6 +41,7 @@ function task(id: string, repoId: string, status: TaskStatus, minute: number): T
     status,
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: "2026-09-14T09:00:00.000Z",
     updatedAt: at,
     worktreePresent: true,
@@ -77,7 +84,7 @@ describe("groupTasks", () => {
   });
 
   it("puts a repo's open tasks first, each newest first", () => {
-    expect(groups.repos[1]?.tasks.map((one) => one.id)).toEqual([
+    expect(ids(groups.repos[1]?.rows)).toEqual([
       "running",
       "waiting-old",
       "queued",
@@ -89,11 +96,11 @@ describe("groupTasks", () => {
 
   it("keeps a waiting task under its repo as well", () => {
     expect(groups.needsYou[0]?.id).toBe("waiting-old");
-    expect(groups.repos[1]?.tasks.map((one) => one.id)).toContain("waiting-old");
+    expect(ids(groups.repos[1]?.rows)).toContain("waiting-old");
   });
 
   it("lists a repo with no tasks", () => {
-    expect(groups.repos[2]).toEqual({ repo: EMPTY, tasks: [], history: [] });
+    expect(groups.repos[2]).toEqual({ repo: EMPTY, rows: [], history: [] });
   });
 
   // A new task defaults to the first repo on the left, which is this order's first, not the store's.
@@ -165,7 +172,7 @@ describe("a repo whose folder is gone", () => {
 
   it("keeps its section and its tasks", () => {
     expect(groups.repos.map((group) => group.repo.name)).toEqual(["katha", "Petal"]);
-    expect(groups.repos[1]?.tasks.map((one) => one.id)).toContain("running");
+    expect(ids(groups.repos[1]?.rows)).toContain("running");
     expect(groups.needsYou.map((one) => one.id)).toEqual(["waiting-old", "waiting-new"]);
   });
 });
@@ -181,15 +188,13 @@ describe("a repo missing from the list", () => {
 
   it("puts its tasks under no repo, having no repo to put them under", () => {
     expect(groups.repos.map((group) => group.repo.id)).toEqual(["r1"]);
-    expect(groups.repos.flatMap((group) => group.tasks.map((one) => one.id))).toEqual([
-      "waiting-new",
-    ]);
+    expect(groups.repos.flatMap((group) => ids(group.rows))).toEqual(["waiting-new"]);
   });
 
   it("leaves the tasks of a listed, open repo where they were", () => {
     const listed = groupTasks([KATHA, PETAL], TASKS);
     expect(listed.needsYou.map((one) => one.id)).toEqual(["waiting-old", "waiting-new"]);
-    expect(listed.repos[1]?.tasks.map((one) => one.id)).toEqual([
+    expect(ids(listed.repos[1]?.rows)).toEqual([
       "running",
       "waiting-old",
       "queued",
@@ -212,29 +217,29 @@ describe("History", () => {
   const group = groupTasks([PETAL], cleaned).repos[0];
 
   it("moves a finished task whose worktree is gone out of the list", () => {
-    expect(group?.history.map((one) => one.id)).toContain("done-gone");
-    expect(group?.tasks.map((one) => one.id)).not.toContain("done-gone");
+    expect(ids(group?.history)).toContain("done-gone");
+    expect(ids(group?.rows)).not.toContain("done-gone");
   });
 
   it("orders history newest first", () => {
-    expect(group?.history.map((one) => one.id)).toEqual(["done-gone", "done-gone-older"]);
+    expect(ids(group?.history)).toEqual(["done-gone", "done-gone-older"]);
   });
 
   it("leaves a live task in the list until the daemon settles it", () => {
-    expect(group?.tasks.map((one) => one.id)).toContain("running-gone");
+    expect(ids(group?.rows)).toContain("running-gone");
     expect(inHistory(cleaned[2] as TaskListRow)).toBe(false);
   });
 
   it("never files a task that is waiting for an answer", () => {
-    expect(group?.tasks.map((one) => one.id)).toContain("waiting-gone");
+    expect(ids(group?.rows)).toContain("waiting-gone");
   });
 
   it("keeps a folder task under its repo: it had no worktree to lose", () => {
-    expect(group?.tasks.map((one) => one.id)).toContain("folder-stopped");
+    expect(ids(group?.rows)).toContain("folder-stopped");
   });
 
   it("leaves a finished task whose worktree is still there where it was", () => {
-    expect(group?.tasks.map((one) => one.id)).toContain("done");
+    expect(ids(group?.rows)).toContain("done");
   });
 
   it("leaves History once a resumed task is running again, worktree flag notwithstanding", () => {

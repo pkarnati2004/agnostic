@@ -58,6 +58,7 @@ function task(over: Partial<Task> = {}): Task {
     status: "done",
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: NOW,
     updatedAt: NOW,
     ...over,

@@ -13,6 +13,7 @@ const task: Task = {
   status: "running",
   origin: "agn",
   baseCommit: null,
+  compareId: null,
   createdAt: "2026-09-10T12:30:00.000Z",
   updatedAt: "2026-09-10T12:30:00.000Z",
 };

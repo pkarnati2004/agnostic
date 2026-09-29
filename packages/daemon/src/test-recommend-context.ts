@@ -153,6 +153,7 @@ export function fixtureTask(over: Partial<Task> & Pick<Task, "repoId">): Task {
     status: "done",
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
     ...over,

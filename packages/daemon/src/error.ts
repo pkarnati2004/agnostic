@@ -28,6 +28,8 @@ const statusByCode: Record<string, number> = {
   "hook-unsupported": 404,
   "hook-task-unknown": 404,
   "task-not-found": 404,
+  // No task carries this compare id, so there is no group to read or pick from.
+  "compare-not-found": 404,
   // Nothing was built to serve: the route exists, the files do not.
   "ui-not-built": 404,
   "repo-exists": 409,
@@ -100,6 +102,10 @@ const statusByCode: Record<string, number> = {
   // Nothing on this machine may run the task: preferences or a missing install, both the user's.
   "no-eligible-profile": 400,
   "harness-not-installed": 400,
+  // Two of a compare's agents are the same profile, so one of them would prove nothing.
+  "compare-profiles-duplicate": 400,
+  // The task to keep has to be one of the compare's own; any other id is the caller's slip.
+  "compare-not-sibling": 400,
   "hook-payload-invalid": 400,
   // A hook config agn will not read over or write into is the file's state, not a fault in agn.
   "hook-config-unreadable": 400,

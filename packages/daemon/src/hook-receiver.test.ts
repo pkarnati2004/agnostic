@@ -19,9 +19,8 @@ let cwd = "";
 
 /** Grok's payloads come from Orca's listener test; Copilot's are inferred from its field readers. */
 function payloadFile(harness: string, event: string): string {
-  return fileURLToPath(
-    new URL(`../../../tests/fixtures/hooks/payloads/${harness}/${event}.json`, import.meta.url),
-  );
+  const path = `../../../tests/fixtures/hooks/payloads/${harness}/${event}.json`;
+  return fileURLToPath(new URL(path, import.meta.url));
 }
 
 beforeEach(async () => {
@@ -56,6 +55,7 @@ function seed(opts: SeedOptions = {}): Task {
     status: "queued",
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
   });

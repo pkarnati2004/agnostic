@@ -34,6 +34,7 @@ const ASKING: TaskListRow = {
   status: "waiting",
   origin: "agn",
   baseCommit: null,
+  compareId: null,
   createdAt: "2026-09-14T09:00:00.000Z",
   updatedAt: "2026-09-14T10:00:00.000Z",
   worktreePresent: true,
@@ -77,6 +78,7 @@ function sidebar(state: WorkspaceState, handlers: Handlers = {}) {
         selectedId={null}
         collapsed={false}
         onSelect={vi.fn()}
+        onOpenCompare={vi.fn()}
         onNewTask={vi.fn()}
         onAddRepo={handlers.onAddRepo ?? vi.fn()}
         onCloseRepo={handlers.onCloseRepo ?? (() => Promise.resolve())}

@@ -3,14 +3,15 @@ import { Archive, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { RepoNoticeLine } from "../repo/repo-notice-line";
 import type { RepoNotice } from "../repo/repo-notices";
-import type { RepoGroup } from "./group-tasks";
+import { compareTabId } from "../tabs/tabs-state";
+import type { RepoGroup, SidebarRow } from "./group-tasks";
 import { HistorySection } from "./history-section";
 import { IconAction } from "./icon-action";
 import { removeTooltip } from "./remove-tooltip";
 import { Section } from "./section";
-import { TaskRow } from "./task-row";
+import { type CompareRowsProps, SidebarRows } from "./sidebar-rows";
 
-type RepoSectionProps = {
+type RepoSectionProps = CompareRowsProps & {
   group: RepoGroup;
   selectedId: string | null;
   expanded: boolean;
@@ -26,9 +27,9 @@ type RepoSectionProps = {
 /** One repo: its live tasks, then whatever it has already finished and cleaned up after. */
 export function RepoSection({ group, selectedId, expanded, notice, ...on }: RepoSectionProps) {
   const repo = group.repo;
-  const empty = group.tasks.length === 0 && group.history.length === 0;
+  const empty = group.rows.length === 0 && group.history.length === 0;
   // A section nobody opened still shows its rows while the task in front is one of them.
-  const showing = expanded || group.history.some((task) => task.id === selectedId);
+  const showing = expanded || group.history.some((row) => holds(row, selectedId));
   return (
     <Section
       title={repo.name}
@@ -56,24 +57,37 @@ export function RepoSection({ group, selectedId, expanded, notice, ...on }: Repo
       )}
       {notice !== null && <RepoNoticeLine notice={notice} repo={repo} />}
       {empty && <p className="px-2 py-1.5 text-muted-foreground text-xs">No tasks yet.</p>}
-      {group.tasks.map((task) => (
-        <TaskRow
-          key={task.id}
-          task={task}
-          repoName={null}
-          selected={task.id === selectedId}
-          onSelect={on.onSelect}
-        />
-      ))}
+      <SidebarRows
+        rows={group.rows}
+        selectedId={selectedId}
+        onSelect={on.onSelect}
+        openCompares={on.openCompares}
+        onToggleCompare={on.onToggleCompare}
+        onOpenCompare={on.onOpenCompare}
+      />
       <HistorySection
         repoId={repo.id}
-        tasks={group.history}
+        rows={group.history}
         selectedId={selectedId}
         expanded={showing}
         onToggle={on.onToggle}
         onSelect={on.onSelect}
+        openCompares={on.openCompares}
+        onToggleCompare={on.onToggleCompare}
+        onOpenCompare={on.onOpenCompare}
       />
     </Section>
+  );
+}
+
+/** Whether a row is the one in front: a compare row answers for its siblings as well as itself. */
+function holds(row: SidebarRow, selectedId: string | null): boolean {
+  if (row.kind === "task") {
+    return row.task.id === selectedId;
+  }
+  return (
+    selectedId === compareTabId(row.group.compareId) ||
+    row.group.tasks.some((task) => task.id === selectedId)
   );
 }
 

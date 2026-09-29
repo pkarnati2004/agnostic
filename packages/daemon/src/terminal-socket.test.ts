@@ -140,6 +140,7 @@ function seededTask(id: string): string {
     status: "queued",
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
   });
@@ -161,6 +162,7 @@ function adoptedTask(): string {
     status: "queued",
     origin: "adopted",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
   });

@@ -1,12 +1,21 @@
-import type { HandoffTaskRequest, Profile, RepoListRow, Task } from "@agnostic/core";
+import type {
+  HandoffTaskRequest,
+  PickCompareResponse,
+  Profile,
+  RepoListRow,
+  Task,
+  TaskListRow,
+} from "@agnostic/core";
 import type { ReactNode } from "react";
 import type { WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
+import { CompareView } from "./compare/compare-view";
 import { Notice } from "./notice";
-import type { NoticeHost, TaskNotices } from "./store/task-notices";
+import type { NoticeHost, TaskNotice, TaskNotices } from "./store/task-notices";
+import type { UsageStamp } from "./store/workspace-state";
 import type { ResumeNotice } from "./tabs/resume-notice";
-import { TabStrip } from "./tabs/tab-strip";
-import type { TabsAction, TabsState } from "./tabs/tabs-state";
+import { type TabItem, TabStrip } from "./tabs/tab-strip";
+import { compareIdOf, type TabsAction, type TabsState } from "./tabs/tabs-state";
 import { TaskTabs } from "./tabs/task-tabs";
 import { TaskHeader } from "./task/task-header";
 import { UsageBar } from "./usage/usage-bar";
@@ -16,7 +25,7 @@ type CentreProps = {
   tabs: TabsState;
   dispatchTabs: (action: TabsAction) => void;
   repos: RepoListRow[];
-  tasks: Record<string, Task>;
+  tasks: Record<string, TaskListRow>;
   loaded: boolean;
   profiles: Profile[];
   token: string;
@@ -37,19 +46,26 @@ type CentreProps = {
   onResume: (taskId: string, host: NoticeHost) => Promise<void>;
   onStop: (taskId: string) => Promise<unknown>;
   onHandoff: (task: Task, body: HandoffTaskRequest) => Promise<boolean>;
+  /** How many usage rows have landed per task, which is what makes a compare's read stale. */
+  usageStamp: UsageStamp;
+  /** Null when the daemon refused; the notice under the Compare view's header says why. */
+  onPick: (compareId: string, taskId: string) => Promise<PickCompareResponse | null>;
 };
 
 /** The tab strip, the header for the tab in front, and every open terminal under them. */
 export function Centre(props: CentreProps) {
   const { tabs, dispatchTabs, tasks, loaded, client, token } = props;
-  const open = tabs.open.map((id) => tasks[id]).filter((task) => task !== undefined);
-  const active = tabs.active === null ? undefined : tasks[tabs.active];
+  const items = tabItems(tabs.open, tasks);
+  const open = items.filter((item) => item.kind === "task").map((item) => item.task);
+  const compareId = compareIdOf(tabs.active);
+  // The Compare view is in front, so no terminal is: every one of them stays mounted and hidden.
+  const active = compareId !== null || tabs.active === null ? undefined : tasks[tabs.active];
   const repoNames = new Map(props.repos.map((repo) => [repo.id, repo.name]));
 
   return (
     <main className="flex min-w-[640px] flex-col overflow-hidden">
       <TabStrip
-        tabs={open}
+        tabs={items}
         activeId={tabs.active}
         repoNames={repoNames}
         onActivate={(taskId) => dispatchTabs({ type: "activate", taskId })}
@@ -71,22 +87,78 @@ export function Centre(props: CentreProps) {
       )}
       {/* The one failure with no task to sit on: the page never loaded. */}
       <Notice error={props.error} onDismiss={props.onDismiss} />
-      {open.length === 0 ? (
-        <Centred>{emptyCentre(loaded, props.error !== null)}</Centred>
-      ) : (
-        <TaskTabs
-          state={tabs}
-          tasks={open}
-          token={token}
+      {compareId !== null && (
+        <CompareView
+          compareId={compareId}
+          siblings={siblingsOf(tasks, compareId)}
           client={client}
-          resumed={props.resumed}
-          notices={props.notices}
-          onResume={(taskId) => props.onResume(taskId, "overlay")}
+          notice={compareNotice(props.notices, tasks, compareId)}
+          usageStamp={props.usageStamp}
+          onOpenTask={(taskId) => dispatchTabs({ type: "open", taskId })}
+          onPick={props.onPick}
         />
       )}
+      {items.length === 0 && compareId === null && (
+        <Centred>{emptyCentre(loaded, props.error !== null)}</Centred>
+      )}
+      <TaskTabs
+        activeId={compareId === null ? tabs.active : null}
+        tasks={open}
+        token={token}
+        client={client}
+        resumed={props.resumed}
+        notices={props.notices}
+        onResume={(taskId) => props.onResume(taskId, "overlay")}
+      />
       <UsageBar state={props.usage} />
     </main>
   );
+}
+
+/** The open tabs in order, each one resolved to what it draws; an id with nothing behind it is
+ * dropped until the next prune closes it. */
+function tabItems(open: string[], tasks: Record<string, TaskListRow>): TabItem[] {
+  const items: TabItem[] = [];
+  for (const id of open) {
+    const compareId = compareIdOf(id);
+    if (compareId === null) {
+      const task = tasks[id];
+      if (task !== undefined) {
+        items.push({ kind: "task", id, task });
+      }
+      continue;
+    }
+    const siblings = siblingsOf(tasks, compareId);
+    const first = siblings[0];
+    if (first !== undefined) {
+      items.push({ kind: "compare", id, title: first.title, agents: siblings.length });
+    }
+  }
+  return items;
+}
+
+/** The group's tasks, oldest first, which is the order the profiles were given in. */
+function siblingsOf(tasks: Record<string, TaskListRow>, compareId: string): TaskListRow[] {
+  return Object.values(tasks)
+    .filter((task) => task.compareId === compareId)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+/** A pick fails against one sibling, and the Compare view is where the click was. */
+function compareNotice(
+  notices: TaskNotices,
+  tasks: Record<string, TaskListRow>,
+  compareId: string,
+): TaskNotice | null {
+  const own: TaskNotice[] = [];
+  for (const task of siblingsOf(tasks, compareId)) {
+    const notice = notices[task.id];
+    if (notice !== undefined && notice.host === "compare") {
+      own.push(notice);
+    }
+  }
+  // The newest, because an older failure is no longer what the daemon said about this group.
+  return own.sort((a, b) => b.at - a.at)[0] ?? null;
 }
 
 /** With no tab open the centre says where the page got to; the notice above it says why. */

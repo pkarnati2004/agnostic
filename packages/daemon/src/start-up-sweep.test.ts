@@ -39,6 +39,7 @@ describe("start-up sweep of queued tasks", () => {
           status: "queued",
           origin: "agn",
           baseCommit: null,
+          compareId: null,
           createdAt: now,
           updatedAt: now,
         });
@@ -95,6 +96,7 @@ describe("start-up reconcile", () => {
           status: "running",
           origin: "agn",
           baseCommit: null,
+          compareId: null,
           createdAt: now,
           updatedAt: now,
         });

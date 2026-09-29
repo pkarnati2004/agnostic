@@ -53,6 +53,7 @@ function seed(opts: { worktreePath?: string; cwd?: string } = {}): Task {
     worktreePath: opts.worktreePath ?? null,
     branch: opts.worktreePath === undefined ? null : "agn/task",
     baseCommit: null,
+    compareId: null,
     status: "stopped",
     origin: "agn",
     createdAt: now,

@@ -2,7 +2,7 @@ import type { Repo, Task } from "@agnostic/core";
 import { type Ledger, openLedger } from "@agnostic/ledger";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DaemonError } from "./error.js";
-import { resolveRepoId, resolveTaskId } from "./resolve-id.js";
+import { resolveCompareId, resolveRepoId, resolveTaskId } from "./resolve-id.js";
 
 let ledger: Ledger;
 
@@ -25,7 +25,7 @@ function addRepo(id: string): Repo {
   });
 }
 
-function addTask(id: string, repoId: string): Task {
+function addTask(id: string, repoId: string, compareId: string | null = null): Task {
   const now = new Date().toISOString();
   return ledger.tasks.insert({
     id,
@@ -38,6 +38,7 @@ function addTask(id: string, repoId: string): Task {
     status: "queued",
     origin: "agn",
     baseCommit: null,
+    compareId,
     createdAt: now,
     updatedAt: now,
   });
@@ -106,5 +107,38 @@ describe("resolveTaskId", () => {
     const error = thrown(() => resolveTaskId(ledger, "qqqqqqqqqq"));
     expect(error.code).toBe("task-not-found");
     expect(error.hint).toContain("agn status");
+  });
+});
+
+describe("resolveCompareId", () => {
+  it("finds a compare by a unique prefix, from the ids its own tasks carry", () => {
+    const repo = addRepo("abcdefghjk");
+    addTask("mnpqrstuvw", repo.id, "cmp2nnnnnn");
+    addTask("mnpzyxwvut", repo.id, "cmp2nnnnnn");
+    expect(resolveCompareId(ledger, "cmp2")).toBe("cmp2nnnnnn");
+  });
+
+  it("calls two compares sharing a prefix ambiguous and lists both", () => {
+    const repo = addRepo("abcdefghjk");
+    addTask("mnpqrstuvw", repo.id, "cmp2aaaaaa");
+    addTask("mnpzyxwvut", repo.id, "cmp2bbbbbb");
+    const error = thrown(() => resolveCompareId(ledger, "cmp2"));
+    expect(error).toBeInstanceOf(DaemonError);
+    expect(error.code).toBe("ambiguous-id");
+    expect(error.message).toContain("2 compares");
+    expect(error.hint).toContain("cmp2aaaaaa");
+    expect(error.hint).toContain("cmp2bbbbbb");
+  });
+
+  it("reports an id no task carries as not found, with the command that lists compares", () => {
+    const error = thrown(() => resolveCompareId(ledger, "zzzzzzzzzz"));
+    expect(error.code).toBe("compare-not-found");
+    expect(error.hint).toContain("agn compare show");
+  });
+
+  it("will not prefix-match a compare on fewer than three characters", () => {
+    const repo = addRepo("abcdefghjk");
+    addTask("mnpqrstuvw", repo.id, "cmp2nnnnnn");
+    expect(thrown(() => resolveCompareId(ledger, "cm")).code).toBe("compare-not-found");
   });
 });

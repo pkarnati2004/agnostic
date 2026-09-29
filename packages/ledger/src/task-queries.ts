@@ -9,6 +9,8 @@ export type TaskFilter = {
   status?: TaskStatus | TaskStatus[];
   /** The ADR 004 prefix a user types instead of a whole id. */
   idPrefix?: string;
+  /** Exact: the siblings of one compare. */
+  compareId?: string;
   limit?: number;
 };
 
@@ -30,6 +32,8 @@ export type TaskQueries = {
   clean(id: string, deletedBranch: boolean): Task;
   get(id: string): Task | null;
   list(filter?: TaskFilter): Task[];
+  /** Distinct compare ids starting with `prefix`, for the daemon's prefix resolution (ADR 004). */
+  compareIds(prefix: string): string[];
 };
 
 export function createTaskQueries(db: Database, events: EventQueries): TaskQueries {
@@ -48,6 +52,10 @@ export function createTaskQueries(db: Database, events: EventQueries): TaskQueri
     return task;
   };
 
+  const selectCompareIds = db.prepare(
+    "SELECT DISTINCT compare_id FROM tasks WHERE compare_id LIKE ? ORDER BY compare_id",
+  );
+
   return {
     insert: insertTask(db, events, get),
     setStatus: setTaskStatus(db, events, requireTask),
@@ -64,6 +72,11 @@ export function createTaskQueries(db: Database, events: EventQueries): TaskQueri
       const sql = `SELECT * FROM tasks${where} ORDER BY created_at DESC, id DESC${limit}`;
       return (db.prepare(sql).all(...values) as TaskRow[]).map(toTask);
     },
+    compareIds(prefix: string): string[] {
+      // The id alphabet has no LIKE wildcards, so a prefix needs no escaping.
+      const rows = selectCompareIds.all(`${prefix}%`) as { compare_id: string }[];
+      return rows.map((row) => row.compare_id);
+    },
   };
 }
 
@@ -73,7 +86,7 @@ function insertTask(
   get: (id: string) => Task | null,
 ): TaskQueries["insert"] {
   const insertRow = db.prepare(
-    `INSERT INTO tasks (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   return db.transaction((task: Task): Task => {
     // Checked here so a missing parent is not reported as a missing repo: both are the same
@@ -93,6 +106,7 @@ function insertTask(
         task.status,
         task.origin,
         task.baseCommit,
+        task.compareId,
         task.session === undefined ? null : JSON.stringify(task.session),
         task.recommendation === undefined ? null : JSON.stringify(task.recommendation),
         task.parentTaskId ?? null,

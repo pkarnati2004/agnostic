@@ -561,6 +561,52 @@ grep -q "no longer exists" "$WORK/resume-error.txt"
 
 agx clean | grep -q "^cleaned $CHILD"
 
+echo "smoke: agn compare runs one prompt on two agents and keeps the one that is picked"
+# The fake `claude` folds `--model opus` into its prompt text, so both siblings launch.
+agx compare "compare smoke" --profiles claude-code,claude-code:opus:native --repo "$WORK/runrepo" \
+  > "$WORK/compare.txt"
+grep -q "^compare " "$WORK/compare.txt"
+grep -q "^show: agn compare show " "$WORK/compare.txt"
+CID="$(awk 'NR == 1 { print $2 }' "$WORK/compare.txt")"
+T1="$(awk 'NR == 2 { print $1 }' "$WORK/compare.txt")"
+T2="$(awk 'NR == 3 { print $1 }' "$WORK/compare.txt")"
+read -r T2_DIR T2_BRANCH <<EOF
+$(agx status "$T2" --json | "$NODE" -e "
+const { task } = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+process.stdout.write([task.worktreePath, task.branch].join(' '));
+")
+EOF
+agx status "$T1" | grep -q "^compare: *$CID"
+test "$(agx compare show "$CID" | grep -c " running ")" = 2
+agx compare pick "$CID" "$T1" | grep -q "^kept $T1"
+agx compare show "$CID" | grep -q "^picked: $T1"
+agx status "$T2" | grep -q stopped
+test ! -d "$T2_DIR"
+# The branch the losing agent worked on stays: a pick throws away the worktree, never the commits.
+git -C "$WORK/runrepo" rev-parse --verify "refs/heads/$T2_BRANCH" > /dev/null
+# The close work writes the outcome row a moment after the pick stopped the loser.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  agx outcomes "$T2" | grep -q "^verdict: *reverted" && break
+  sleep 1
+done
+agx outcomes "$T2" | grep -q "^verdict: *reverted"
+# Two profiles at least: one agent is a run, not a compare. --json, because the daemon's refusal
+# carries the range in zod's wording and the code is what agn promises.
+! agx compare "one agent" --profiles claude-code --repo "$WORK/runrepo" --json \
+  2> "$WORK/compare-err.txt"
+grep -q '"code":"request-invalid"' "$WORK/compare-err.txt"
+# The same name twice is refused in the CLI, before a worktree is made for either agent.
+! agx compare "same twice" --profiles claude-code,claude-code --repo "$WORK/runrepo" \
+  2> "$WORK/compare-dup.txt"
+grep -q "names claude-code twice" "$WORK/compare-dup.txt"
+agx stop "$T1" | grep -q "^stopped $T1"
+agx clean "$T1" --force | grep -q "^cleaned $T1"
+
+# A folder workspace has one working tree, so it has nowhere to run a second agent.
+! agx compare "compare smoke" --profiles claude-code,codex --repo "$WORK/runfolder" \
+  2> "$WORK/compare-folder.txt"
+grep -q "folder workspace" "$WORK/compare-folder.txt"
+
 agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"
 grep -q "^in place: " "$WORK/folder.txt"
 FOLDER_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/folder.txt")"
@@ -678,6 +724,8 @@ test -n "$(grep -l '/terminal' packages/ui/dist/assets/*.js)"
 test -n "$(grep -l 'agn-token\.' packages/ui/dist/assets/*.js)"
 # So is the Changes column: the endpoint it reads and a line only its diff renderer prints.
 test -n "$(grep -l '/changes' packages/ui/dist/assets/*.js)"
+# And the Compare view, which is the one part of the page that reads a compare.
+test -n "$(grep -l '/compares/' packages/ui/dist/assets/*.js)"
 test -n "$(grep -l 'binary file, no diff' packages/ui/dist/assets/*.js)"
 # And nothing of the daemon's own runtime is: the page imports types from core and never its code.
 test "$(grep -L execa packages/ui/dist/assets/*.js | wc -l)" = "$(ls packages/ui/dist/assets/*.js | wc -l)"

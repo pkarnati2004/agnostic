@@ -75,6 +75,7 @@ function seedDone(repoId: string, title: string): Task {
     status: "done",
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: now,
     updatedAt: now,
   });

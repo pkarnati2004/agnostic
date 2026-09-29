@@ -3,7 +3,7 @@ import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "../components/tooltip";
 import { click, render } from "../test/render";
-import type { SidebarGroups } from "./group-tasks";
+import type { SidebarGroups, SidebarRow } from "./group-tasks";
 import { HistorySection } from "./history-section";
 import { Sidebar } from "./sidebar";
 
@@ -30,6 +30,7 @@ function task(id: string, status: TaskStatus): TaskListRow {
     status,
     origin: "agn",
     baseCommit: null,
+    compareId: null,
     createdAt: "2026-09-14T09:00:00.000Z",
     updatedAt: "2026-09-14T10:00:00.000Z",
     worktreePresent: status === "running",
@@ -41,8 +42,11 @@ const GROUPS: SidebarGroups = {
   repos: [
     {
       repo: REPO,
-      tasks: [task("live", "running")],
-      history: [task("old-one", "done"), task("old-two", "stopped")],
+      rows: [{ kind: "task", task: task("live", "running") }],
+      history: [
+        { kind: "task", task: task("old-one", "done") },
+        { kind: "task", task: task("old-two", "stopped") },
+      ],
     },
   ],
 };
@@ -56,6 +60,7 @@ function sidebar(onSelect: (id: string) => void = vi.fn()) {
         selectedId={null}
         collapsed={false}
         onSelect={onSelect}
+        onOpenCompare={vi.fn()}
         onNewTask={vi.fn()}
         onAddRepo={vi.fn()}
         onCloseRepo={() => Promise.resolve()}
@@ -117,11 +122,14 @@ describe("HistorySection", () => {
     const { container, unmount } = render(
       <HistorySection
         repoId={REPO.id}
-        tasks={[]}
+        rows={[]}
         selectedId={null}
         expanded={false}
         onToggle={vi.fn()}
         onSelect={vi.fn()}
+        openCompares={new Map()}
+        onToggleCompare={vi.fn()}
+        onOpenCompare={vi.fn()}
       />,
     );
     expect(container.textContent).toBe("");
@@ -148,12 +156,57 @@ describe("HistorySection", () => {
           selectedId={null}
           collapsed={false}
           onSelect={vi.fn()}
+          onOpenCompare={vi.fn()}
           onNewTask={vi.fn()}
           onToggle={vi.fn()}
         />
       </TooltipProvider>,
     );
     expect(rowTitles(container)).toHaveLength(3);
+    unmount();
+  });
+
+  it("folds a compare whose siblings are all in History into one row there", () => {
+    const compareRow: SidebarRow = {
+      kind: "compare",
+      group: {
+        compareId: "cmp1",
+        title: "Try two parsers",
+        tasks: [
+          { ...task("sib-a", "stopped"), compareId: "cmp1", title: "Try two parsers" },
+          { ...task("sib-b", "stopped"), compareId: "cmp1", title: "Try two parsers" },
+        ],
+      },
+    };
+    const groups: SidebarGroups = {
+      needsYou: [],
+      repos: [{ repo: REPO, rows: [], history: [compareRow] }],
+    };
+    const { container, unmount } = render(
+      <TooltipProvider>
+        <Sidebar
+          groups={groups}
+          repos={[REPO]}
+          selectedId={null}
+          collapsed={false}
+          onSelect={vi.fn()}
+          onOpenCompare={vi.fn()}
+          onNewTask={vi.fn()}
+          onAddRepo={vi.fn()}
+          onCloseRepo={() => Promise.resolve()}
+          onReopenRepo={() => Promise.resolve()}
+          onRemoveRepo={vi.fn()}
+          repoNotices={{}}
+          onToggle={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    // Two siblings, one row: the History count and the row both read as one.
+    expect(toggle(container).textContent).toBe("History (1)");
+    click(toggle(container));
+    expect(container.textContent).toContain("Try two parsers");
+    expect(container.textContent).not.toContain("sib-a");
+    expect(container.textContent).not.toContain("sib-b");
     unmount();
   });
 
@@ -171,6 +224,7 @@ describe("HistorySection", () => {
           selectedId="old-two"
           collapsed={false}
           onSelect={vi.fn()}
+          onOpenCompare={vi.fn()}
           onNewTask={vi.fn()}
           onToggle={vi.fn()}
         />

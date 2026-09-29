@@ -12,6 +12,7 @@ const task: Task = {
   status: "running",
   origin: "agn",
   baseCommit: null,
+  compareId: null,
   createdAt: "2026-09-10T12:00:00.000Z",
   updatedAt: "2026-09-10T12:31:00.000Z",
 };
@@ -56,6 +57,12 @@ describe("TaskSchema", () => {
     const { origin, ...withoutOrigin } = task;
     expect(origin).toBe("agn");
     expect(TaskSchema.parse(withoutOrigin).origin).toBe("agn");
+  });
+
+  it("defaults compareId to null so a row written before `agn compare` still parses", () => {
+    const { compareId, ...withoutCompareId } = task;
+    expect(compareId).toBeNull();
+    expect(TaskSchema.parse(withoutCompareId).compareId).toBeNull();
   });
 
   it("accepts an adopted task with a captured session", () => {
@@ -145,6 +152,7 @@ describe("TaskSchema", () => {
       recommendation: { recommended: {} },
       session: { harness: "claude-code" },
       parentTaskId: "nope",
+      compareId: "nope",
     };
     for (const [field, value] of Object.entries(wrong)) {
       expect(TaskSchema.safeParse({ ...task, [field]: value }).success).toBe(false);

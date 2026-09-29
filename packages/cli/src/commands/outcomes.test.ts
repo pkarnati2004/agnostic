@@ -17,6 +17,7 @@ const task: Task = {
   status: "done",
   origin: "agn",
   baseCommit: "9f1c0de",
+  compareId: null,
   createdAt: "2026-09-11T10:00:00.000Z",
   updatedAt: "2026-09-11T12:00:00.000Z",
 };

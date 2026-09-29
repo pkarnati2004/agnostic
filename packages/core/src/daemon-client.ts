@@ -1,50 +1,53 @@
 import type { CreatePrRequest, CreatePrResponse, UpdateTaskResponse } from "./branch-api.js";
 import type { CatalogRowsResponse, CatalogUpdateResponse } from "./catalog-api.js";
 import type { ChangesResponse, DiffResponse } from "./changes-api.js";
-import {
-  type AdoptRequest,
-  ApiErrorBodySchema,
-  type AttachResponse,
-  type CleanTaskRequest,
-  type CleanTaskResponse,
-  type EditorsResponse,
-  type HandoffTaskRequest,
-  type HandoffTaskResponse,
-  type HealthResponse,
-  type HooksInstallRequest,
-  type HooksInstallResponse,
-  type InitRequest,
-  type InitResponse,
-  type OpenTaskResponse,
-  type OutcomeResponse,
-  type ProfilesResponse,
-  type RecommendRequest,
-  type RecommendResponse,
-  type RegisterRepoRequest,
-  type RegisterRepoResponse,
-  type RemoveRepoResponse,
-  type RepoListResponse,
-  type RepoResponse,
-  type ResumeTaskResponse,
-  type RunTaskRequest,
-  type SessionsResponse,
-  type SyncRequest,
-  type SyncResponse,
-  type TaskListQuery,
-  type TaskListResponse,
-  type TaskResponse,
-  type TaskUsageResponse,
-  type UsageResponse,
+import type {
+  CompareResponse,
+  PickCompareRequest,
+  PickCompareResponse,
+  StartCompareRequest,
+  StartCompareResponse,
+} from "./compare-api.js";
+import type {
+  AdoptRequest,
+  AttachResponse,
+  CleanTaskRequest,
+  CleanTaskResponse,
+  EditorsResponse,
+  HandoffTaskRequest,
+  HandoffTaskResponse,
+  HealthResponse,
+  HooksInstallRequest,
+  HooksInstallResponse,
+  InitRequest,
+  InitResponse,
+  OpenTaskResponse,
+  OutcomeResponse,
+  ProfilesResponse,
+  RecommendRequest,
+  RecommendResponse,
+  RegisterRepoRequest,
+  RegisterRepoResponse,
+  RemoveRepoResponse,
+  RepoListResponse,
+  RepoResponse,
+  ResumeTaskResponse,
+  RunTaskRequest,
+  SessionsResponse,
+  SyncRequest,
+  SyncResponse,
+  TaskListQuery,
+  TaskListResponse,
+  TaskResponse,
+  TaskUsageResponse,
+  UsageResponse,
 } from "./daemon-api.js";
+import { apiError, unreachable } from "./daemon-errors.js";
 import type { DoctorRequest, DoctorResponse } from "./doctor-api.js";
 import type { EditorId } from "./editor.js";
-import { DaemonApiError } from "./error.js";
 import type { Event } from "./event.js";
-import { readFrames } from "./event-frames.js";
+import { streamEvents } from "./event-stream.js";
 import type { SpecRequest, SpecResponse } from "./spec-api.js";
-
-const RECONNECT_MS = 1_000;
-const START_HINT = "Run `agn daemon start`.";
 
 export type DaemonClient = {
   health(): Promise<HealthResponse>;
@@ -96,6 +99,12 @@ export type DaemonClient = {
   createPr(id: string, body: CreatePrRequest): Promise<CreatePrResponse>;
   /** Asks the agent itself to bring the branch up to date with its base (ADR 036 Q6). */
   updateTask(id: string): Promise<UpdateTaskResponse>;
+  /** Runs one prompt on two to four profiles, a worktree and a branch each (ADR 036 Q7). */
+  startCompare(repoId: string, body: StartCompareRequest): Promise<StartCompareResponse>;
+  /** The siblings of one compare side by side, with what each has spent and changed. */
+  getCompare(id: string): Promise<CompareResponse>;
+  /** Keeps one sibling and cleans the rest; their branches stay. */
+  pickCompare(id: string, body: PickCompareRequest): Promise<PickCompareResponse>;
   /** What the task cost and what became of its branch; the daemon rechecks the verdict first. */
   taskOutcome(id: string): Promise<OutcomeResponse>;
   /** The catalog rows behind a profile, marked where the last recommendation leaned on them. */
@@ -194,6 +203,11 @@ export function createDaemonClient(opts: {
     createPr: (id, body) =>
       json<CreatePrResponse>("POST", `/tasks/${encodeURIComponent(id)}/pr`, body),
     updateTask: (id) => json<UpdateTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/update`),
+    startCompare: (repoId, body) =>
+      json<StartCompareResponse>("POST", `/repos/${encodeURIComponent(repoId)}/compare`, body),
+    getCompare: (id) => json<CompareResponse>("GET", `/compares/${encodeURIComponent(id)}`),
+    pickCompare: (id, body) =>
+      json<PickCompareResponse>("POST", `/compares/${encodeURIComponent(id)}/pick`, body),
     taskOutcome: (id) => json<OutcomeResponse>("GET", `/tasks/${encodeURIComponent(id)}/outcome`),
     catalogRows: (profile) =>
       json<CatalogRowsResponse>("GET", `/catalog/rows?profile=${encodeURIComponent(profile)}`),
@@ -207,79 +221,4 @@ function search(query: TaskListQuery | undefined): string {
     return "";
   }
   return `?status=${query.status.join(",")}`;
-}
-
-async function* streamEvents(
-  doFetch: typeof fetch,
-  base: string,
-  headers: Record<string, string>,
-  after: number,
-  signal: AbortSignal,
-): AsyncGenerator<Event> {
-  let cursor = after;
-  let connected = false;
-  while (!signal.aborted) {
-    let response: Response;
-    try {
-      response = await doFetch(`${base}/events?after=${cursor}`, {
-        headers: connected ? { ...headers, "last-event-id": String(cursor) } : headers,
-        signal,
-      });
-    } catch (cause) {
-      if (signal.aborted) {
-        return;
-      }
-      // A drop mid-stream is the daemon restarting; the first connect failing is a real problem.
-      if (!connected) {
-        throw unreachable(base, cause);
-      }
-      await delay(RECONNECT_MS, signal);
-      continue;
-    }
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    connected = true;
-    for await (const event of readFrames(response)) {
-      cursor = event.id;
-      yield event;
-    }
-    await delay(RECONNECT_MS, signal);
-  }
-}
-
-function delay(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener("abort", () => {
-      clearTimeout(timer);
-      resolve();
-    });
-  });
-}
-
-async function apiError(response: Response): Promise<DaemonApiError> {
-  const parsed = ApiErrorBodySchema.safeParse(await response.json().catch(() => null));
-  if (!parsed.success) {
-    return new DaemonApiError(`the agn daemon answered ${response.status}`, {
-      code: "daemon-response-invalid",
-      hint: "Check ~/.agnostic/logs/agnd.log.",
-      status: response.status,
-    });
-  }
-  const { code, message, hint } = parsed.data.error;
-  return new DaemonApiError(message, {
-    code,
-    status: response.status,
-    ...(hint === undefined ? {} : { hint }),
-  });
-}
-
-function unreachable(base: string, cause: unknown): DaemonApiError {
-  return new DaemonApiError(`the agn daemon is not answering on ${base}`, {
-    code: "daemon-unreachable",
-    hint: START_HINT,
-    status: null,
-    cause,
-  });
 }
