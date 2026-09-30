@@ -3,10 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const FIXTURES = fileURLToPath(new URL("../../../tests/fixtures/sync/", import.meta.url));
+const FIXTURES = fileURLToPath(new URL("../../../tests/fixtures/", import.meta.url));
 
 export function fixtureRepo(name: string): string {
-  return join(FIXTURES, name);
+  return join(FIXTURES, "sync", name);
+}
+
+/** The `.ag/mcp.yaml` repos and the target files each of them compiles to. */
+export function mcpFixture(...parts: string[]): string {
+  return join(FIXTURES, "mcp", ...parts);
 }
 
 const copies: string[] = [];

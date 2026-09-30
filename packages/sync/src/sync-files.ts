@@ -1,5 +1,5 @@
-import { chmod, rename, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { chmod, mkdir, rename, stat, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { readAgText, readTextFile, type SyncWrite } from "@agnostic/core";
 import { SyncError } from "./error.js";
 import type { SyncInputs } from "./sync-plan.js";
@@ -29,7 +29,7 @@ export async function applySyncPlan(repoPath: string, writes: SyncWrite[]): Prom
   }
   for (const write of writes) {
     if (write.action === "create" || write.action === "update") {
-      await writeTarget(join(repoPath, write.file), write.content);
+      await writeTextFile(join(repoPath, write.file), write.content);
     }
   }
 }
@@ -44,7 +44,10 @@ function conflictError(conflicts: SyncWrite[]): SyncError {
 }
 
 /** Temp file and rename, so an agent reading the file never sees half of it. */
-async function writeTarget(file: string, content: string): Promise<void> {
+export async function writeTextFile(file: string, content: string): Promise<void> {
+  // `~/.codex/` is agn's to create; the instruction targets and the two MCP configs sit at the
+  // repo root, which is always there.
+  await mkdir(dirname(file), { recursive: true });
   const mode = await stat(file).then(
     (stats) => stats.mode,
     () => null,

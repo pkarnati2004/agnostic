@@ -13,6 +13,7 @@ The types every other package shares, and the two things they all need to do saf
   schemas, and the fetch client the CLI and tools use to talk to it, including the SSE reader and
   the readers for `auth-token` and `daemon.json`. `terminal-frames.ts` is the same for the one
   route that is not fetch: the frames and the token subprotocol of `WS /tasks/:id/terminal`.
-- The `.ag/` loader - `RepoConfig`, `Preferences`, the instructions and decisions text, and task notes - in the on-disk formats every other package parses.
+- The `.ag/` loader - `RepoConfig`, `Preferences`, `McpConfig`, the instructions and decisions text, and task notes - in the on-disk formats every other package parses.
+- `marked-block.ts`: the text rule for a block agn owns inside a file the user owns, used by the hook installers and by the Codex MCP block.
 
 It is not: storage, HTTP, the `CLAUDE.md` files `agn sync` generates, or anything that knows a specific harness. `core` imports no other package.

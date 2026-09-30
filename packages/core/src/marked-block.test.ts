@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { HooksError } from "./error.js";
+import { CoreError } from "./error.js";
 import { type MarkedBlock, withMarkedBlock, withoutMarkedBlock } from "./marked-block.js";
 
-/** One owner's markers; `codex/config-block.ts` and `hooks-toml-file.ts` each define their own. */
+/** One owner's markers; the hooks package defines one per file format it writes into. */
 function block(owner: string): MarkedBlock {
   return {
     begin: `# >>> ${owner} begin >>>`,
     end: `# <<< ${owner} end <<<`,
     refuse: (why) =>
-      new HooksError(`agn will not edit this file: ${why}`, {
-        code: "hook-config-unwritable",
+      new CoreError(`agn will not edit this file: ${why}`, {
+        code: "block-unwritable",
         hint: "test fixture",
       }),
   };
@@ -62,7 +62,7 @@ describe("withMarkedBlock", () => {
   it("refuses a block whose begin marker appears twice", () => {
     const doubled = `${withMarkedBlock("", AGN, "a\n")}${AGN.begin}\n`;
     expect(() => withMarkedBlock(doubled, AGN, "b\n")).toThrow(
-      expect.objectContaining({ code: "hook-config-unwritable" }),
+      expect.objectContaining({ code: "block-unwritable" }),
     );
   });
 });

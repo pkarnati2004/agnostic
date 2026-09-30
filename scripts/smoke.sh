@@ -297,6 +297,44 @@ grep -q "^Recommended: claude-code:" "$WORK/recommend.txt"
 grep -q "^Risk: touches auth" "$WORK/recommend.txt"
 agx recommend "fix the flaky auth test" --repo "$WORK/runrepo" --json | grep -q '"taskClass"'
 
+echo "smoke: agn sync writes .ag/mcp.yaml into each agent's own MCP config"
+mkdir -p "$WORK/mcprepo"
+git -C "$WORK/mcprepo" init -q
+git -C "$WORK/mcprepo" -c user.email=t@agn.test -c user.name=agn commit -q --allow-empty -m first
+agx add "$WORK/mcprepo" > /dev/null
+agx init --repo "$WORK/mcprepo" > /dev/null
+MCP_YAML="$WORK/mcprepo/.ag/mcp.yaml"
+CODEX_TOML="$USAGE_HOME/.codex/config.toml"
+printf 'servers:\n  db:\n    command: npx\n    args: ["-y", "@acme/db-mcp"]\n    env:\n      DATABASE_URL: $DATABASE_URL\n      LOG_LEVEL: info\n' > "$MCP_YAML"
+agx sync --repo "$WORK/mcprepo" > "$WORK/mcp-sync.txt"
+grep -q "^wrote .mcp.json$" "$WORK/mcp-sync.txt"
+grep -q "^mcp db: .mcp.json, opencode.json, ~/.codex/config.toml$" "$WORK/mcp-sync.txt"
+grep -q '"DATABASE_URL": "${DATABASE_URL}"' "$WORK/mcprepo/.mcp.json"
+grep -q '"{env:DATABASE_URL}"' "$WORK/mcprepo/opencode.json"
+# Codex keeps one config for the machine, so agn owns a block in it per repo.
+grep -q '^\[mcp_servers.db\]' "$CODEX_TOML"
+grep -q 'env_vars = \["DATABASE_URL"\]' "$CODEX_TOML"
+agx sync --repo "$WORK/mcprepo" | grep -q "^unchanged .mcp.json$"
+
+# A literal that looks like a secret is never written, and the other servers still go out.
+printf '  issues:\n    command: gh-mcp\n    env:\n      GITHUB_TOKEN: ghp_0BcDeFgHiJkLmNoPqRsTuVwXyZ0123456789\n' >> "$MCP_YAML"
+agx sync --repo "$WORK/mcprepo" > "$WORK/mcp-sync2.txt"
+grep -q "looks like a secret" "$WORK/mcp-sync2.txt"
+! grep -rq 'ghp_' "$WORK/mcprepo/.mcp.json" "$WORK/mcprepo/opencode.json" "$CODEX_TOML"
+# The repo is committed below, and a committed secret is not what the launch step is testing.
+printf 'servers:\n  db:\n    command: npx\n    args: ["-y", "@acme/db-mcp"]\n    env:\n      DATABASE_URL: $DATABASE_URL\n      LOG_LEVEL: info\n' > "$MCP_YAML"
+agx sync --repo "$WORK/mcprepo" > /dev/null
+
+echo "smoke: a launch writes the MCP config the worktree's commit declares"
+git -C "$WORK/mcprepo" add -A
+git -C "$WORK/mcprepo" -c user.email=t@agn.test -c user.name=agn commit -q -m "project context"
+agx run "say hi" --profile claude-code --repo "$WORK/mcprepo" --json > "$WORK/mcp-run.json"
+MCP_TASK="$("$NODE" -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('$WORK/mcp-run.json', 'utf8')).task.id)")"
+MCP_TREE="$("$NODE" -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('$WORK/mcp-run.json', 'utf8')).task.worktreePath)")"
+test -f "$MCP_TREE/.mcp.json"
+agx stop "$MCP_TASK" | grep -q "^stopped $MCP_TASK"
+agx clean "$MCP_TASK" | grep -q "^cleaned $MCP_TASK"
+
 echo "smoke: agn mcp answers the MCP handshake and a tool call on stdout"
 INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}'
 {

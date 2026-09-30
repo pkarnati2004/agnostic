@@ -55,6 +55,9 @@ const statusByCode: Record<string, number> = {
   // A generated file was written by hand, or two instructions files disagree: the user decides.
   "sync-conflict": 409,
   "init-ambiguous-source": 409,
+  // Two repos declare the same Codex MCP server, and two tables of one name is an unparsable file.
+  "mcp-codex-duplicate": 409,
+  "mcp-codex-unwritable": 409,
   "init-source-generated": 409,
   // The parent's branch was deleted, so there is nothing for the next agent to continue from.
   "branch-gone": 409,
@@ -112,6 +115,8 @@ const statusByCode: Record<string, number> = {
   // A hook config agn will not read over or write into is the file's state, not a fault in agn.
   "hook-config-unreadable": 400,
   "hook-config-unwritable": 400,
+  // An MCP target agn cannot merge into is that file's state, not a fault in the request.
+  "mcp-target-unreadable": 400,
   "hook-payload-too-large": 413,
   "base-invalid": 400,
   // An editor agn cannot see is the machine's state; the caller picks from the ones it can.

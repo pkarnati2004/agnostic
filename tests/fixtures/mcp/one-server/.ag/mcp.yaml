@@ -1,0 +1,12 @@
+# .ag/mcp.yaml - the MCP servers every agent on this repo gets; `agn sync` writes them out.
+servers:
+  db:
+    command: npx
+    args: ["-y", "@acme/db-mcp"]
+    env:
+      DATABASE_URL: $DATABASE_URL     # your shell's value, never the value itself
+      LOG_LEVEL: info
+  docs:
+    url: https://mcp.example.com/docs
+    headers:
+      Authorization: $MCP_AUTH        # the whole header value: MCP_AUTH="Bearer …"
