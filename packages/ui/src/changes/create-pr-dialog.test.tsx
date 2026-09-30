@@ -228,4 +228,40 @@ describe("CreatePrDialog", () => {
     expect(title()).not.toBeNull();
     unmount();
   });
+
+  it("stays closed with no click, as every caller but the palette leaves it", () => {
+    const { unmount } = render(
+      <CreatePrDialog
+        task={TASK}
+        changes={changesResponse()}
+        notice={null}
+        disabled={false}
+        onSubmit={() => Promise.resolve(null)}
+      />,
+    );
+
+    expect(document.body.textContent).not.toContain("Push and create PR");
+    unmount();
+  });
+
+  it("opens under the palette's control, with no click on its own trigger, and reports Cancel back", () => {
+    const onOpenChange = vi.fn();
+    const { unmount } = render(
+      <CreatePrDialog
+        task={TASK}
+        changes={changesResponse()}
+        notice={null}
+        disabled={false}
+        onSubmit={() => Promise.resolve(null)}
+        open
+        onOpenChange={onOpenChange}
+      />,
+    );
+
+    expect(title().value).toBe(TASK.title);
+    act(() => button("Cancel").click());
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    unmount();
+  });
 });

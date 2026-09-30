@@ -24,6 +24,8 @@ import type {
   RunTaskRequest,
   SpecRequest,
   SpecResponse,
+  SyncRequest,
+  SyncResponse,
   TaskListResponse,
   TaskResponse,
   TaskUsageResponse,
@@ -73,6 +75,8 @@ export type WorkspaceClient = {
   editors(): Promise<EditorsResponse>;
   /** The daemon spawns the editor itself: the page has no terminal to run one in (ADR 036 Q4). */
   openTask(id: string, body: OpenTaskQuery): Promise<OpenedTaskResponse>;
+  /** Writes the repo's generated files; the palette's Sync row asks for a real write. */
+  syncRepo(id: string, body: SyncRequest): Promise<SyncResponse>;
   /** Ends when `signal` aborts; resumes from the last id seen while it does not. */
   events(after: number, signal: AbortSignal): AsyncIterable<Event>;
 };
@@ -156,6 +160,8 @@ export function createClient(opts: {
     editors: () => json<EditorsResponse>("GET", "/editors"),
     openTask: (id, body) =>
       json<OpenedTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/open`, body),
+    syncRepo: (id, body) =>
+      json<SyncResponse>("POST", `/repos/${encodeURIComponent(id)}/sync`, body),
     events: (after, signal) =>
       streamEvents({ fetch: doFetch, baseUrl: base, token: opts.token, after, signal }),
   };

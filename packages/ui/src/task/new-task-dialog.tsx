@@ -31,13 +31,19 @@ type NewTaskDialogProps = {
   profiles: Profile[];
   /** The machine's spend against config.yaml's ceilings, null until the usage bar has read one. */
   budget: BudgetReport | null;
+  /** What the prompt starts as, from the palette's "Run: <prompt>"; null for a blank form. */
+  prefill?: { prompt: string } | null;
   client: WorkspaceClient;
   onStarted: (task: Task) => void;
 };
 
 /** Describe the work, see agn's pick, keep it or change it, run. */
 export function NewTaskDialog(props: NewTaskDialogProps) {
-  const { form, setForm, touched, setTouched } = useNewTaskForm(props.open, props.defaultRepoId);
+  const { form, setForm, touched, setTouched } = useNewTaskForm(
+    props.open,
+    props.defaultRepoId,
+    props.prefill ?? null,
+  );
   const prompt = useRef<HTMLTextAreaElement>(null);
   const state = useRecommendation(props.client, recommendRequest(form));
   const profiles = props.profiles.filter((profile) => profile.available);
@@ -158,23 +164,27 @@ function useRunTask(props: NewTaskDialogProps, repoId: string, body: RunTaskRequ
   return { run, busy, error };
 }
 
-/** Every open starts from nothing but the repo the user was last looking at. */
-function useNewTaskForm(open: boolean, defaultRepoId: string | null) {
-  const [form, setForm] = useState<NewTaskForm>(() => blank(defaultRepoId));
+/** Every open starts from nothing but the repo the user was last looking at, and the prefill. */
+function useNewTaskForm(
+  open: boolean,
+  defaultRepoId: string | null,
+  prefill: { prompt: string } | null,
+) {
+  const [form, setForm] = useState<NewTaskForm>(() => blank(defaultRepoId, prefill));
   const [touched, setTouched] = useState(false);
   useEffect(() => {
     if (open) {
-      setForm(blank(defaultRepoId));
+      setForm(blank(defaultRepoId, prefill));
       setTouched(false);
     }
-  }, [open, defaultRepoId]);
+  }, [open, defaultRepoId, prefill]);
   return { form, setForm, touched, setTouched };
 }
 
-function blank(repoId: string | null): NewTaskForm {
+function blank(repoId: string | null, prefill: { prompt: string } | null): NewTaskForm {
   return {
     repoId: repoId ?? "",
-    prompt: "",
+    prompt: prefill?.prompt ?? "",
     intent: "automatic",
     profileId: null,
     title: "",

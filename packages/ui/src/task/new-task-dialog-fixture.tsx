@@ -1,5 +1,5 @@
-import type { BudgetReport, Profile, RepoListRow } from "@agnostic/core";
-import { act } from "react";
+import type { BudgetReport, Profile, RepoListRow, Task } from "@agnostic/core";
+import { act, useState } from "react";
 import { vi } from "vitest";
 import type { WorkspaceClient } from "../api/client";
 import { render } from "../test/render";
@@ -57,6 +57,7 @@ export function stubClient(overrides: Partial<WorkspaceClient> = {}): WorkspaceC
     diff: () => Promise.reject(new Error("unused")),
     createPr: () => Promise.reject(new Error("unused")),
     updateTask: () => Promise.reject(new Error("unused")),
+    syncRepo: () => Promise.reject(new Error("unused")),
     compare: () => Promise.reject(new Error("unused")),
     pickCompare: () => Promise.reject(new Error("unused")),
     editors: () => Promise.reject(new Error("unused")),
@@ -98,7 +99,11 @@ export function runButton(): HTMLButtonElement {
 
 export function dialog(
   client: WorkspaceClient,
-  opts: { profiles?: Profile[]; budget?: BudgetReport | null } = {},
+  opts: {
+    profiles?: Profile[];
+    budget?: BudgetReport | null;
+    prefill?: { prompt: string } | null;
+  } = {},
 ) {
   return render(
     <NewTaskDialog
@@ -108,8 +113,49 @@ export function dialog(
       defaultRepoId="r1"
       profiles={opts.profiles ?? [PROFILE]}
       budget={opts.budget ?? null}
+      prefill={opts.prefill}
       client={client}
       onStarted={vi.fn()}
     />,
+  );
+}
+
+export type PrefillControls = {
+  /** What the palette's "Run: <prompt>" row does: seed the prompt, then open. */
+  openWith(prefill: { prompt: string } | null): void;
+  close(): void;
+};
+
+/** Holds `open` and `prefill` as the page does, so a test can open the dialog more than once. */
+export function PrefillHarness({
+  client,
+  onRender,
+  onStarted = vi.fn(),
+}: {
+  client: WorkspaceClient;
+  onRender: (controls: PrefillControls) => void;
+  onStarted?: (task: Task) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [prefill, setPrefill] = useState<{ prompt: string } | null>(null);
+  onRender({
+    openWith: (next) => {
+      setPrefill(next);
+      setOpen(true);
+    },
+    close: () => setOpen(false),
+  });
+  return (
+    <NewTaskDialog
+      open={open}
+      onOpenChange={setOpen}
+      repos={[REPO]}
+      defaultRepoId="r1"
+      profiles={[PROFILE]}
+      budget={null}
+      prefill={prefill}
+      client={client}
+      onStarted={onStarted}
+    />
   );
 }

@@ -41,6 +41,7 @@ describe("createClient", () => {
     await client.handoffTask("t1", { profile: "codex:gpt-5:native" });
     await client.usage();
     await client.taskUsage("abc");
+    await client.syncRepo("r1", {});
     expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
       "GET /repos?all=1",
       "GET /tasks",
@@ -51,6 +52,7 @@ describe("createClient", () => {
       "POST /tasks/t1/handoff",
       "GET /usage",
       "GET /tasks/abc/usage",
+      "POST /repos/r1/sync",
     ]);
     expect(calls.every((call) => call.token === "Bearer tok")).toBe(true);
   });

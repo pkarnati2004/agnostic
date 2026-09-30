@@ -11,10 +11,12 @@ export type RepoActions = {
   reopen(repoId: string): Promise<void>;
   /** The repo leaves every list for good; its rows, and so its history, stay (ADR 034). */
   remove(repoId: string): Promise<void>;
+  /** Writes the repo's generated files. Nothing is said when they were already current. */
+  sync(repoId: string): Promise<void>;
 };
 
 /**
- * Close, reopen and remove, with the answer kept per repo. No call writes to the store: the
+ * Close, reopen, remove and sync, with the answer kept per repo. No call writes to the store: the
  * `repo.updated` it makes arrives through the feed, which is how the sidebar moves the row. Each
  * rejects after recording the failure, so a caller with somewhere better to show it still can.
  */
@@ -44,6 +46,10 @@ export function useRepoActions(client: WorkspaceClient): RepoActions {
     ),
     remove: useCallback(
       (repoId: string) => act(repoId, "remove", () => client.removeRepo(repoId)),
+      [act, client],
+    ),
+    sync: useCallback(
+      (repoId: string) => act(repoId, "sync", () => client.syncRepo(repoId, {})),
       [act, client],
     ),
   };
