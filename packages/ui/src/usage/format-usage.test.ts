@@ -7,15 +7,10 @@ import {
   formatReset,
   formatShare,
   formatTaskCost,
+  formatTokens3,
   planLabel,
-  windowHeading,
 } from "./format-usage";
-import {
-  claudePlan,
-  meteredTaskUsage,
-  subscriptionTaskUsage,
-  usageResponse,
-} from "./usage-response.fixture";
+import { claudePlan, meteredTaskUsage, subscriptionTaskUsage } from "./usage-response.fixture";
 
 // The cases are `agn usage`'s own (packages/cli/src/commands/usage.test.ts): the bar and the table
 // print the same figures, so a change to one of them fails here.
@@ -82,16 +77,6 @@ describe("formatTaskCost", () => {
   });
 });
 
-describe("windowHeading", () => {
-  it("heads the day with the date the daemon computed it in", () => {
-    expect(windowHeading(usageResponse().day.window)).toBe("2026-09-11");
-  });
-
-  it("heads the week with the weekday it starts on", () => {
-    expect(windowHeading(usageResponse().week.window)).toBe("from Mon 2026-09-07");
-  });
-});
-
 describe("formatPercent", () => {
   it("rounds a 0..100 figure to whole percent", () => {
     expect(formatPercent(58)).toBe("58%");
@@ -121,5 +106,29 @@ describe("formatAgo", () => {
     expect(ago(3)).toBe("3 min ago");
     expect(ago(90)).toBe("1 h ago");
     expect(ago(60 * 30)).toBe("1 d ago");
+  });
+});
+
+// Core's `formatTokens3` cases (packages/core/src/usage-format.test.ts), against the page's copy.
+describe("formatTokens3", () => {
+  it("prints a count under a thousand as it is", () => {
+    expect(formatTokens3(999)).toBe("999");
+    expect(formatTokens3(0)).toBe("0");
+  });
+
+  it("rounds to three significant figures and drops the zeros", () => {
+    expect(formatTokens3(1_000)).toBe("1k");
+    expect(formatTokens3(1_234)).toBe("1.23k");
+    expect(formatTokens3(12_100_000)).toBe("12.1M");
+    expect(formatTokens3(273_900_000)).toBe("274M");
+  });
+
+  it("moves up a scale rather than printing a fourth figure", () => {
+    expect(formatTokens3(999_999)).toBe("1M");
+    expect(formatTokens3(1_200_000_000)).toBe("1.2B");
+  });
+
+  it("shows a bucket nothing reported as a dash", () => {
+    expect(formatTokens3(null)).toBe("-");
   });
 });

@@ -1,36 +1,46 @@
 import { describe, expect, it } from "vitest";
-import { limitIsCurrent } from "./usage.js";
+import { limitFreshness } from "./usage.js";
 
 const NOW = new Date("2026-09-24T12:00:00.000Z");
 
-describe("limitIsCurrent", () => {
-  it("holds while the window's reset is still ahead", () => {
-    const window = { usedPercent: 58, resetsAt: "2026-09-24T14:05:00.000Z" };
+/** `observedAt` as a number of minutes before `NOW`. */
+function observed(minutes: number): string {
+  return new Date(NOW.getTime() - minutes * 60_000).toISOString();
+}
 
-    expect(limitIsCurrent(window, "2026-09-24T09:00:00.000Z", NOW)).toBe(true);
+describe("limitFreshness", () => {
+  const ahead = { usedPercent: 58, resetsAt: "2026-09-24T14:05:00.000Z" };
+  const noReset = { usedPercent: 41, resetsAt: null };
+
+  it("calls a figure under two hours old current while its reset is ahead", () => {
+    expect(limitFreshness(ahead, observed(119), NOW)).toBe("current");
   });
 
-  it("drops the window once its reset has passed", () => {
-    const window = { usedPercent: 58, resetsAt: "2026-09-24T11:59:59.000Z" };
-
-    expect(limitIsCurrent(window, "2026-09-24T09:00:00.000Z", NOW)).toBe(false);
+  it("calls it approximate at two hours old", () => {
+    expect(limitFreshness(ahead, observed(120), NOW)).toBe("approximate");
   });
 
-  it("keeps a window with no reset time for an hour after it was observed", () => {
-    const window = { usedPercent: 41, resetsAt: null };
+  it("keeps a figure approximate while the window still has days to run", () => {
+    const week = { usedPercent: 17, resetsAt: "2026-09-29T12:00:00.000Z" };
 
-    expect(limitIsCurrent(window, "2026-09-24T11:30:00.000Z", NOW)).toBe(true);
+    expect(limitFreshness(week, observed(3 * 24 * 60), NOW)).toBe("approximate");
+  });
+
+  it("calls it stale once the reset has passed", () => {
+    expect(limitFreshness({ ...ahead, resetsAt: NOW.toISOString() }, observed(10), NOW)).toBe(
+      "stale",
+    );
+  });
+
+  it("keeps a window with no reset time current for an hour after it was observed", () => {
+    expect(limitFreshness(noReset, observed(59), NOW)).toBe("current");
   });
 
   it("drops a window with no reset time once the hour is up", () => {
-    const window = { usedPercent: 41, resetsAt: null };
-
-    expect(limitIsCurrent(window, "2026-09-24T10:30:00.000Z", NOW)).toBe(false);
+    expect(limitFreshness(noReset, observed(60), NOW)).toBe("stale");
   });
 
   it("drops a window whose observation time cannot be read", () => {
-    const window = { usedPercent: 41, resetsAt: null };
-
-    expect(limitIsCurrent(window, "not a time", NOW)).toBe(false);
+    expect(limitFreshness(ahead, "not a time", NOW)).toBe("stale");
   });
 });

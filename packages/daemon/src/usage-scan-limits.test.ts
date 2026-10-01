@@ -67,13 +67,19 @@ describe("the usage scanner's rate limits", () => {
   it("keeps the newest observation per harness across every scan of this process", async () => {
     await writeLimit({ at: "2026-09-23T10:00:00.000Z", percent: 11, day: "23" });
     expect(await limits()).toEqual([
-      expect.objectContaining({ harness: "codex", fiveHour: { usedPercent: 11, resetsAt: RESET } }),
+      expect.objectContaining({
+        harness: "codex",
+        fiveHour: expect.objectContaining({ usedPercent: 11, resetsAt: RESET }),
+      }),
     ]);
 
     await writeLimit({ at: "2026-09-24T10:00:00.000Z", percent: 23, day: "24" });
 
     expect(await limits()).toEqual([
-      expect.objectContaining({ harness: "codex", fiveHour: { usedPercent: 23, resetsAt: RESET } }),
+      expect.objectContaining({
+        harness: "codex",
+        fiveHour: expect.objectContaining({ usedPercent: 23, resetsAt: RESET }),
+      }),
     ]);
   });
 

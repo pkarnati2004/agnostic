@@ -51,6 +51,7 @@ export function plan(over: Partial<PlanUsage> = {}): PlanUsage {
     usage: sum(),
     unattributedTokens: 0,
     fableShare: 0.42,
+    apiRateUsd: 12.4,
     ...over,
   };
 }

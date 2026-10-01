@@ -755,6 +755,17 @@ process.stdout.write(JSON.stringify({
 printf '%s' "$PAYLOAD" | sh "$AGNOSTIC_HOME/hooks/statusline.sh" cat | grep -q rate_limits
 test "$(cat "$AGNOSTIC_HOME/rate-limits/claude-code.json")" = "$PAYLOAD"
 agx usage | grep -q "58% of the 5-hour window"
+agx usage --json | grep -q '"freshness": "current"'
+# The file's mtime is when the harness said it, so ageing the file ages the figure. Node's
+# utimesSync is the one portable way to set it on both macOS and Linux.
+"$NODE" -e "
+const { utimesSync } = require('node:fs');
+const when = new Date(Date.now() - 3 * 3600 * 1000);
+utimesSync(process.argv[1], when, when);
+" "$AGNOSTIC_HOME/rate-limits/claude-code.json"
+agx usage > "$WORK/usage-aged.txt"
+grep -q '~58% of the 5-hour window' "$WORK/usage-aged.txt"
+grep -q 'as of 3 h ago' "$WORK/usage-aged.txt"
 
 echo "smoke: a budget in config.yaml, warned about and overridden"
 # The smoke's transcripts belong to no task, so nothing is priced and the window reads $0.00.
@@ -847,6 +858,8 @@ test -n "$(grep -l '/compares/' packages/ui/dist/assets/*.js)"
 test -n "$(grep -l 'binary file, no diff' packages/ui/dist/assets/*.js)"
 # And the command palette, which is the only place that line is written.
 test -n "$(grep -l 'Type a command' packages/ui/dist/assets/*.js)"
+# And the plan cell's usage panel, whose API-rate line is written nowhere else.
+test "$(grep -l 'at API rates, not billed' packages/ui/dist/assets/*.js | wc -l | tr -d ' ')" = 1
 # And nothing of the daemon's own runtime is: the page imports types from core and never its code.
 test "$(grep -L execa packages/ui/dist/assets/*.js | wc -l)" = "$(ls packages/ui/dist/assets/*.js | wc -l)"
 test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$UI_PORT/ui/nope.js")" = 404

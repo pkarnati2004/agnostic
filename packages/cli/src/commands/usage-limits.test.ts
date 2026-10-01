@@ -15,37 +15,58 @@ describe("agn usage and the plan's own meter", () => {
     return body().finally(() => vi.useRealTimers());
   }
 
+  /** Minutes before whatever the fake clock says, so the age reads the same in any time zone. */
+  function observed(minutes: number): string {
+    return new Date(Date.now() - minutes * 60_000).toISOString();
+  }
+
   function limit(over: Partial<PlanLimit> = {}): PlanLimit {
     return {
       harness: "claude-code",
       vendor: "claude",
-      fiveHour: { usedPercent: 58, resetsAt: "2026-09-11T14:05:00" },
-      week: { usedPercent: 41, resetsAt: "2026-09-14T09:00:00" },
-      observedAt: "2026-09-11T12:00:00.000Z",
+      fiveHour: { usedPercent: 58, resetsAt: "2026-09-11T14:05:00", freshness: "current" },
+      week: { usedPercent: 41, resetsAt: "2026-09-14T09:00:00", freshness: "current" },
+      observedAt: observed(12),
       source: "claude-statusline",
       ...over,
     };
   }
 
-  it("prints one line per harness, under the tables and over the budget", async () => {
+  it("prints one line per harness, dated, under the tables and over the budget", async () => {
     await withClock("2026-09-11T13:00:00", async () => {
       const test = cli({ usage: response([plan()], NO_BUDGET, [limit()]) });
 
       await parse(test.ctx, []);
 
       expect(test.out.at(-1)).toBe(
-        "claude-code  58% of the 5-hour window (resets 14:05) · 41% of the week (resets Mon 09:00)",
+        "claude-code  58% of the 5-hour window (resets 14:05) · 41% of the week (resets Mon 09:00) · as of 12 min ago",
       );
     });
   });
 
-  it("leaves out a window whose reset has already passed", async () => {
+  it("marks every window of a figure the account has had two hours to move", async () => {
+    await withClock("2026-09-11T13:00:00", async () => {
+      const test = cli({
+        usage: response([plan()], NO_BUDGET, [limit({ observedAt: observed(3 * 60) })]),
+      });
+
+      await parse(test.ctx, []);
+
+      expect(test.out.at(-1)).toBe(
+        "claude-code  ~58% of the 5-hour window (resets 14:05) · ~41% of the week (resets Mon 09:00) · as of 3 h ago",
+      );
+    });
+  });
+
+  it("leaves out a window whose reset has already passed and keeps the other", async () => {
     await withClock("2026-09-11T15:00:00", async () => {
       const test = cli({ usage: response([plan()], NO_BUDGET, [limit()]) });
 
       await parse(test.ctx, []);
 
-      expect(test.out.at(-1)).toBe("claude-code  41% of the week (resets Mon 09:00)");
+      expect(test.out.at(-1)).toBe(
+        "claude-code  41% of the week (resets Mon 09:00) · as of 12 min ago",
+      );
     });
   });
 
@@ -58,15 +79,19 @@ describe("agn usage and the plan's own meter", () => {
       await parse(test.ctx, []);
 
       expect(test.out.join("\n")).not.toContain("% of");
+      expect(test.out.join("\n")).not.toContain("as of");
     });
   });
 
-  it("carries the limits through --json", async () => {
+  it("carries the limits and the API-rate figure through --json", async () => {
     const test = cli({ usage: response([plan()], NO_BUDGET, [limit()]) });
     test.ctx.json = true;
 
     await parse(test.ctx, []);
 
-    expect(JSON.parse(test.out.join("\n")).limits).toHaveLength(1);
+    const body = JSON.parse(test.out.join("\n"));
+    expect(body.limits).toHaveLength(1);
+    expect(body.limits[0].fiveHour.freshness).toBe("current");
+    expect(body.day.plans[0].apiRateUsd).toBe(12.4);
   });
 });

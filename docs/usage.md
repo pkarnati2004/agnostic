@@ -47,12 +47,21 @@ endpoint for this, and there is nothing to configure.
 | Gemini, Grok, Kimi, Cursor | Login and plan only. Tokens and cost. |
 | Pi, OpenCode | Billed per provider key, so there is no plan limit. Tokens and cost. |
 
-A figure is shown while it can still be true: until the window it names resets, or, when the agent
-reported no reset time, for an hour after agn read it. An older figure is dropped, and the plan
-falls back to its tokens and cost.
+A figure has one of three states, and both `agn usage` and the usage bar work them out from the
+time the agent reported it:
+
+| State | When | How it reads |
+| --- | --- | --- |
+| Current | The window has not reset and the figure is under two hours old. | `58%` |
+| Approximate | The window has not reset and the figure is two hours old or more. | `~58%`, dimmed in the bar |
+| Stale | The window has reset, or the agent reported no reset time and the figure is an hour old. | `–` in the bar, left out of `agn usage` |
 
 The percentages are your account's, not this machine's or this task's. A session you ran outside
-agn moves them, and agn sees the new figure the next time one of these files is written.
+agn moves them, and agn sees the new figure the next time one of these files is written. That is
+why a figure older than two hours is marked: your usage elsewhere has had time to move it.
+
+Nothing agn does acts on an approximate figure. Both `agn usage` and the bar say how old the
+figure is, so you can decide for yourself.
 
 ### How agn captures Claude Code's figures
 
@@ -73,9 +82,12 @@ checkout and each task worktree. The command writes the payload to
 Under the two tables, `agn usage` prints one line per agent whose figures still hold:
 
 ```
-claude-code  58% of the 5-hour window (resets 14:05) · 41% of the week (resets Mon 09:00)
-codex  1% of the 5-hour window (resets 15:00) · 17% of the week (resets Sun 02:00)
+claude-code  58% of the 5-hour window (resets 14:05) · 41% of the week (resets Mon 09:00) · as of 12 min ago
+codex  ~1% of the 5-hour window (resets 15:00) · ~17% of the week (resets Sun 02:00) · as of 3 h ago
 ```
+
+The tilde marks an approximate figure. `as of` is the age of the whole line: the agent reports both
+windows at once.
 
 ## Cost
 
@@ -93,6 +105,11 @@ A number is `-` when agn will not guess:
   stays empty for it.
 
 Usage that no task owns is never priced: agn does not know which key or plan paid for it.
+
+For a plan you pay a subscription for, the workspace also shows what the week's tokens would have
+cost at the catalog's API rates: `≈ $12.40 at API rates, not billed`. It is a comparison, not a
+bill. Nothing is charged, and the figure is missing when any model in the window has no pricing
+row. `agn usage --json` carries it per plan as `apiRateUsd`.
 
 ## Budgets
 

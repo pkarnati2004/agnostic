@@ -1,6 +1,7 @@
 import {
+  formatAgo,
   type LimitWindow,
-  limitIsCurrent,
+  limitFreshness,
   type PlanLimit,
   type PlanUsage,
   type TaskUsageResponse,
@@ -66,7 +67,8 @@ function print(
 
 /**
  * What each plan's own meter says, under the tables: one line per harness that reported a window
- * that still holds. A stale figure is left out rather than printed as if it were now.
+ * that still holds, dated with how old the figures are. A stale window is left out rather than
+ * printed as if it were now; one the account has had two hours to move takes a tilde.
  */
 function limitLines(limits: PlanLimit[], now: Date): string[] {
   const lines: string[] = [];
@@ -76,7 +78,8 @@ function limitLines(limits: PlanLimit[], now: Date): string[] {
       phrase(limit.week, limit.observedAt, "the week", now),
     ].filter((part) => part !== null);
     if (windows.length > 0) {
-      lines.push(`${limit.harness}  ${windows.join(" · ")}`);
+      const dated = [...windows, `as of ${formatAgo(limit.observedAt, now)}`].join(" · ");
+      lines.push(`${limit.harness}  ${dated}`);
     }
   }
   return lines.length === 0 ? lines : ["", ...lines];
@@ -88,11 +91,16 @@ function phrase(
   named: string,
   now: Date,
 ): string | null {
-  if (window === null || !limitIsCurrent(window, observedAt, now)) {
+  if (window === null) {
     return null;
   }
+  const freshness = limitFreshness(window, observedAt, now);
+  if (freshness === "stale") {
+    return null;
+  }
+  const about = freshness === "approximate" ? "~" : "";
   const resets = window.resetsAt === null ? "" : ` (resets ${reset(window.resetsAt, now)})`;
-  return `${Math.round(window.usedPercent)}% of ${named}${resets}`;
+  return `${about}${Math.round(window.usedPercent)}% of ${named}${resets}`;
 }
 
 /** The clock time on its own while the reset is today, and the weekday too once it is not. */

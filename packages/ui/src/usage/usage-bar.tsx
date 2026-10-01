@@ -36,7 +36,6 @@ export function UsageBar({ state, flash }: { state: UsageState; flash: number })
     );
   }
   const rows = planRows(response);
-  const windows = { day: response.day.window, week: response.week.window };
   // The scan's own clock, so every cell in one draw decides freshness against the same instant.
   const now = Date.parse(response.scannedAt);
   return (
@@ -52,7 +51,6 @@ export function UsageBar({ state, flash }: { state: UsageState; flash: number })
             limit={row.limit}
             day={row.day}
             week={row.week}
-            windows={windows}
             now={now}
           />
         ))

@@ -266,15 +266,26 @@ is billed to: C for Claude, O for OpenAI, G for Google, X for xAI, M for Moonsho
 
 Where a file on this machine says how much of the plan's rate limit is spent, the cell shows a bar
 for the 5-hour window and the two percentages: `58% 5h · 41% wk`. The bar turns amber at 80% and
-red at 95%. A window whose figure is too old to trust reads `–`. See
-[Limits](usage.md#limits) for which agents report this and how agn reads it.
+red at 95%. A figure older than two hours reads `~58%`, dimmed. A window past its reset reads `–`.
+See [Limits](usage.md#limits) for which agents report this and how agn reads it.
 
 Where nothing on this machine reports a limit, the cell shows tokens and cost for today and for
 this week, the figures `agn usage` prints from the same scan.
 
-Hover a cell for the token figures either way, for the week pair when the window is too narrow to
-show it, for tokens from sessions agn did not start - your plan's meter counts those and agn cannot
-price them - and, where there is a limit, for when each window resets and how old the figure is.
+Hover a cell for the plan's usage panel:
+
+- One row per window the agent reported, named as the agent names it: Claude Code's are **Current
+  session** and **This week**, every other vendor's are **5-hour window** and **This week**. Each
+  row has its reset time, a bar in the same colours as the cell, and `58% used`.
+- `as of 3 h ago` under the rows, once the figure is five minutes old or more. It dates the rows
+  only. The token counts below are rescanned every minute.
+- The tokens: `274M tokens this week, 12.1M by agn · 105M today, 3.2M by agn`, to three
+  significant figures. `by agn` leaves out the sessions agn did not start; your plan's meter counts
+  those and agn cannot price them. For a Claude plan the line ends with the share of those tokens
+  that went to a Fable model.
+- For a plan you pay a subscription for, `≈ $12.40 at API rates, not billed`. For a plan metered by
+  the token, the real cost: `$1.92 this week · $0.40 today`.
+
 The token windows are calendar windows in your own time zone: today is today, and the week starts
 on Monday. The rate-limit windows are the vendor's own rolling ones, so the two sets of figures
 count different spans.

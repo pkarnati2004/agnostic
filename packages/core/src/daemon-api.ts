@@ -250,7 +250,7 @@ export type UsageResponse = {
   budget: BudgetReport;
   /**
    * What the harnesses last said about their plans' own meters, one row per harness with a local
-   * source. Raw: a reader decides with `limitIsCurrent` whether a window still holds.
+   * source. Each window carries the `freshness` the figure had at `scannedAt`.
    */
   limits: PlanLimit[];
   scannedAt: string;

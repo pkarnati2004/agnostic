@@ -1,4 +1,4 @@
-import type { HarnessId, PlanLimit } from "@agnostic/core";
+import type { HarnessId, LimitWindow, PlanLimit } from "@agnostic/core";
 
 /** One priced unit of work as the harness recorded it: an assistant turn, or one API response. */
 export type TranscriptTurn = {
@@ -21,10 +21,17 @@ export type TranscriptTurn = {
 };
 
 /**
- * A rate limit as a parser read it. The vendor is not the parser's to know: the harness names
- * itself and the registry maps that to a plan vendor.
+ * A rate limit as a parser read it: the windows the harness reported and nothing else. The vendor
+ * is not the parser's to know, and the freshness is not the parser's to judge - `GET /usage`
+ * stamps that against its own scan time.
  */
-export type ObservedLimit = Omit<PlanLimit, "vendor">;
+export type ObservedLimit = {
+  harness: HarnessId;
+  fiveHour: LimitWindow | null;
+  week: LimitWindow | null;
+  observedAt: string;
+  source: PlanLimit["source"];
+};
 
 export type ParsedTranscript = {
   turns: TranscriptTurn[];
