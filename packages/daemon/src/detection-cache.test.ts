@@ -90,12 +90,39 @@ describe("createDetectionCache", () => {
         return Promise.resolve(fixtureDetection());
       },
       ledger,
-      () => Promise.resolve(stamp),
+      { authFiles: () => Promise.resolve(stamp) },
     );
     await cache.current();
     await cache.current();
     expect(calls).toBe(1);
     stamp = "after a re-login";
+    await cache.current();
+    expect(calls).toBe(2);
+  });
+
+  it("looks again when a harness binary has changed since the last run, and not before", async () => {
+    let calls = 0;
+    const mtimes = new Map<string, number>([["/opt/bin/claude", 1]]);
+    const cache = createDetectionCache(
+      () => {
+        calls += 1;
+        return Promise.resolve(fixtureDetection());
+      },
+      ledger,
+      {
+        // What the real stamp does, without a file: the paths the detection resolved, stat'd now.
+        binaries: (detection) =>
+          Promise.resolve(
+            detection.harnesses
+              .map((report) => `${report.harness}:${mtimes.get(report.path ?? "")}`)
+              .join("|"),
+          ),
+      },
+    );
+    await cache.current();
+    await cache.current();
+    expect(calls).toBe(1);
+    mtimes.set("/opt/bin/claude", 2);
     await cache.current();
     expect(calls).toBe(2);
   });
