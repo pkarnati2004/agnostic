@@ -1,4 +1,5 @@
-import type { HarnessId, Plan, Route } from "@agnostic/core";
+import type { LimitSource, McpTargetFile, Plan, Route } from "@agnostic/core";
+import type { HarnessIdentity } from "./harness-identity.js";
 
 export type Tier = 1 | 2;
 
@@ -35,8 +36,8 @@ export type SessionCapture = { source: "hook"; key: string; form: "id" | "file" 
 export type ResumeSpec = {
   args: (session: string) => string[];
   /**
-   * `transcript-name`: a file named after the id under `transcriptsDir`. `transcript-path`: the
-   * session is itself a path, which has to sit inside `transcriptsDir`. `unchecked`: agn cannot
+   * `transcript-name`: a file named after the id under the row's transcripts directory.
+   * `transcript-path`: the session is itself a path, which has to sit inside it. `unchecked`: agn cannot
    * tell, so a native resume is tried rather than refused.
    */
   evidence: "transcript-name" | "transcript-path" | "unchecked";
@@ -55,9 +56,27 @@ export type ModelProbe = {
  */
 export type PlanSource = { file: string; parse: (contents: unknown) => Plan | null };
 
-export type HarnessDefinition = {
-  id: HarnessId;
-  name: string;
+/**
+ * The one-launch arguments that tell a harness to trust a worktree agn made. An argument builder
+ * rather than a path template, because Codex needs the path quoted inside a TOML key and a harness
+ * that cannot express the path at all has to answer with nothing.
+ */
+export type WorktreeTrust = { args: (worktreePath: string) => string[] };
+
+/**
+ * Where a harness's token counts come from: a directory of transcripts under the user's home, or
+ * an event its hook reports. Null on a row agn cannot count tokens for at all.
+ */
+export type UsageSource = { kind: "transcripts"; dir: string } | { kind: "hook"; event: string };
+
+/** How agn recognises a one-shot read-only run of this harness in a command line. */
+export type HeadlessDetect =
+  /** `--print` and `--output-format=json` both count; `beforeSeparator` stops at a `--`. */
+  | { kind: "flag"; flags: string[]; beforeSeparator: boolean }
+  /** The first operand after the binary, as in `codex exec`. */
+  | { kind: "subcommand"; name: string };
+
+export type HarnessDefinition = HarnessIdentity & {
   binary: string;
   /** Other executable names that mean the same harness; any of them on PATH counts as installed. */
   aliases: string[];
@@ -79,7 +98,13 @@ export type HarnessDefinition = {
   /** Relative to home; `detect-login.ts` knows how to read each one. */
   authFile: string | null;
   planSource: PlanSource | null;
-  /** Relative to home; chunk 14 scans it for usage. */
-  transcriptsDir: string | null;
+  usageSource: UsageSource | null;
+  /** Where this harness reports its plan's own meter; null for one that reports none. */
+  limitSource: LimitSource | null;
+  /** Null for a harness that needs no extra argument to run in a worktree agn made. */
+  worktreeTrust: WorktreeTrust | null;
+  /** The file this harness reads MCP servers from; null for one that reads none. */
+  mcp: Omit<McpTargetFile, "harness"> | null;
+  headlessDetect: HeadlessDetect | null;
   tier: Tier;
 };

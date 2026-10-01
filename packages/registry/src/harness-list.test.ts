@@ -235,7 +235,7 @@ describe("the harness table", () => {
     // The daemon looks for the session file `--resume` reads before it hands one back, so a
     // harness checked against a tree it does not write would lose native resume without saying so.
     for (const def of harnesses.filter((row) => row.resume?.evidence !== "unchecked")) {
-      expect(def.resume === null || def.transcriptsDir !== null).toBe(true);
+      expect(def.resume === null || def.usageSource?.kind === "transcripts").toBe(true);
     }
   });
 

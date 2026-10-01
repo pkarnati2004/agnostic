@@ -99,7 +99,7 @@ A value is either a literal with no `$` in it, or exactly `$NAME` - the variable
 | OpenCode | `opencode.json` in the repo | `{env:NAME}` | an `opencode.jsonc` is there instead: agn does not edit JSONC |
 | Codex | a block in `~/.codex/config.toml` | `env_vars`, `env_http_headers` | an env key renames the variable: Codex forwards one only under its own name |
 
-A skipped server is named in the output with the reason. The rest of the sync goes on.
+The file an agent gets is the one its registry row names. A skipped server is named in the output with the reason. The rest of the sync goes on.
 
 The two files in the repo are merged by entry name: agn replaces the entries it declares, and every other entry, key and line stays where it was. Commit them, as you commit `CLAUDE.md` and `AGENTS.md`. Claude Code asks once, per project, before it uses a `.mcp.json` it has not seen.
 

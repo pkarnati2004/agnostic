@@ -4,19 +4,11 @@ import type { HarnessId, Plan, PlanVendor } from "@agnostic/core";
 import { z } from "zod";
 import { grokSession } from "./grok-auth-file.js";
 import type { HarnessDefinition } from "./harness-definition.js";
+import { harnessIdentity } from "./harness-identity.js";
 
-/** The vendors that bill a CLI by plan; everything else is billed per provider key (ADR 016). */
-const PLAN_VENDORS: Partial<Record<HarnessId, PlanVendor>> = {
-  "claude-code": "claude",
-  codex: "chatgpt",
-  gemini: "google",
-  grok: "xai",
-  kimi: "moonshot",
-  "cursor-agent": "cursor",
-};
-
+/** Which vendor bills a harness by plan, from its row; null is billed per provider key (ADR 016). */
 export function planVendor(harness: HarnessId): PlanVendor | null {
-  return PLAN_VENDORS[harness] ?? null;
+  return harnessIdentity(harness).vendor;
 }
 
 /**

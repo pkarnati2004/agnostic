@@ -1,4 +1,5 @@
 import type { HarnessDefinition, PromptDelivery } from "./harness-definition.js";
+import { harnessIdentity } from "./harness-identity.js";
 
 /**
  * The launch-and-attach rows, ported from Orca's agent table (`src/shared/tui-agent.ts`,
@@ -10,10 +11,12 @@ import type { HarnessDefinition, PromptDelivery } from "./harness-definition.js"
 const argvAfterSeparator: PromptDelivery = { kind: "argv", separator: "--" };
 const typeAfterStart: PromptDelivery = { kind: "type-after-start" };
 
-/** Tier 2 is launch and attach only: no model flag, no probe, no hooks, no resume. */
+/**
+ * Tier 2 is launch and attach only: no model flag, no probe, no hooks, no resume, and none of the
+ * fields a feature dispatches on. The name and the mark come from `harness-identity.ts`.
+ */
 export type Tier2Source = {
   id: string;
-  name: string;
   binary?: string;
   aliases?: string[];
   launch?: string[];
@@ -22,43 +25,42 @@ export type Tier2Source = {
 };
 
 export const tier2Sources: Tier2Source[] = [
-  { id: "autohand", name: "Autohand" },
-  { id: "antigravity", name: "Antigravity", binary: "agy", prompt: { kind: "flag", flag: "-i" } },
-  { id: "aider", name: "Aider" },
-  { id: "goose", name: "Goose" },
-  { id: "amp", name: "Amp" },
-  { id: "kilo", name: "Kilocode" },
+  { id: "autohand" },
+  { id: "antigravity", binary: "agy", prompt: { kind: "flag", flag: "-i" } },
+  { id: "aider" },
+  { id: "goose" },
+  { id: "amp" },
+  { id: "kilo" },
   // The Kiro installer ships `kiro-cli`, and its trust flags hang off the `chat` subcommand.
-  { id: "kiro", name: "Kiro", binary: "kiro-cli", launch: ["chat", "--tui"] },
-  { id: "crush", name: "Crush" },
-  { id: "aug", name: "Auggie", binary: "auggie" },
-  { id: "cline", name: "Cline" },
-  { id: "codebuff", name: "Codebuff" },
+  { id: "kiro", binary: "kiro-cli", launch: ["chat", "--tui"] },
+  { id: "crush" },
+  { id: "aug", binary: "auggie" },
+  { id: "cline" },
+  { id: "codebuff" },
   // Continue's binary is `cn`; `continue` is a shell keyword.
-  { id: "continue", name: "Continue", binary: "cn" },
-  { id: "mistral-vibe", name: "Mistral Vibe", binary: "vibe", aliases: ["mistral-vibe"] },
-  { id: "qwen-code", name: "Qwen Code", binary: "qwen" },
-  { id: "rovo", name: "Rovo Dev" },
+  { id: "continue", binary: "cn" },
+  { id: "mistral-vibe", binary: "vibe", aliases: ["mistral-vibe"] },
+  { id: "qwen-code", binary: "qwen" },
+  { id: "rovo" },
   // Bare `hermes` opens the old REPL; `--tui` starts the full-screen agent.
-  { id: "hermes", name: "Hermes", launch: ["--tui"] },
-  { id: "openclaw", name: "OpenClaw" },
+  { id: "hermes", launch: ["--tui"] },
+  { id: "openclaw" },
   // `ante --prompt` is headless.
-  { id: "ante", name: "Ante" },
+  { id: "ante" },
   // TRAE CN's CLI is `traecli`; the unrelated trae-agent installs `trae-cli`.
-  { id: "trae", name: "Trae CLI", binary: "traecli", prompt: argvAfterSeparator },
-  { id: "prime-agent", name: "Prime Agent", prompt: argvAfterSeparator },
+  { id: "trae", binary: "traecli", prompt: argvAfterSeparator },
+  { id: "prime-agent", prompt: argvAfterSeparator },
   // Mastra Code hooks at ~/.mastracode/hooks.json; it stays tier 2 until agn reads its events.
-  { id: "mastracode", name: "Mastra Code" },
-  { id: "fx", name: "fx" },
-  { id: "deepseek", name: "DeepSeek CLI", aliases: ["dsh"] },
+  { id: "mastracode" },
+  { id: "fx" },
+  { id: "deepseek", aliases: ["dsh"] },
 ];
 
 export function tier2Definition(source: Tier2Source): HarnessDefinition {
   const binary = source.binary ?? source.id;
   const aliases = source.aliases ?? [];
   return {
-    id: source.id,
-    name: source.name,
+    ...harnessIdentity(source.id),
     binary,
     aliases,
     processNames: source.processNames ?? [binary, ...aliases],
@@ -74,7 +76,11 @@ export function tier2Definition(source: Tier2Source): HarnessDefinition {
     hooks: null,
     authFile: null,
     planSource: null,
-    transcriptsDir: null,
+    usageSource: null,
+    limitSource: null,
+    worktreeTrust: null,
+    mcp: null,
+    headlessDetect: null,
     tier: 2,
   };
 }

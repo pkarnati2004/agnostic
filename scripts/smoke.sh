@@ -793,7 +793,7 @@ mkdir -p "$CODEX_SESSIONS"
   printf '{"timestamp":"%s","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":120,"cached_input_tokens":20,"output_tokens":30}},"rate_limits":{"primary":{"used_percent":1,"window_minutes":300,"resets_at":%s},"secondary":{"used_percent":17,"window_minutes":10080,"resets_at":%s}}}}\n' \
     "$NOW" "$RESET_5H" "$RESET_WEEK"
 } > "$CODEX_SESSIONS/rollout-2026-09-24T12-00-00-s-limits.jsonl"
-agx usage --json | grep -q '"source": "codex-rollout"'
+agx usage --json | grep -q '"source": "rollout"'
 agx usage | grep -q "17% of the week"
 # Claude Code reports its figures only to a statusLine command, so agn's script is the capture.
 # It writes the payload it was given and hands the same bytes to the command the user had.

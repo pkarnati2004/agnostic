@@ -9,6 +9,7 @@ import {
   type CatalogUpdate,
   CoreError,
 } from "@agnostic/core";
+import { planVendor } from "@agnostic/registry";
 import type { CatalogStore } from "./catalog-store.js";
 import type { Logger } from "./log.js";
 
@@ -95,6 +96,7 @@ async function check(deps: CheckerDeps, record: RecordCheck): Promise<CatalogUpd
       source: deps.source,
       localVersion,
       downloaded: deps.paths.catalog,
+      vendorOf: planVendor,
       ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }),
     });
     if (update.outcome === "updated") {

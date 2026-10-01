@@ -1,6 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { CATALOG_SCHEMA_VERSION, type Catalog, parseCatalog } from "./catalog-schema.js";
+import {
+  CATALOG_SCHEMA_VERSION,
+  type Catalog,
+  parseCatalog,
+  type VendorOf,
+} from "./catalog-schema.js";
 import { CatalogError } from "./error.js";
 
 export type CatalogOrigin = "downloaded" | "bundled" | "empty";
@@ -34,7 +39,10 @@ export function emptyCatalog(): Catalog {
 }
 
 /** null when the file is not there, which is the normal state of the downloaded one. */
-export async function readCatalogFile(path: string): Promise<Catalog | null> {
+export async function readCatalogFile(
+  path: string,
+  opts: { vendorOf: VendorOf },
+): Promise<Catalog | null> {
   let text: string;
   try {
     text = await readFile(path, "utf8");
@@ -58,7 +66,7 @@ export async function readCatalogFile(path: string): Promise<Catalog | null> {
       cause,
     });
   }
-  return parseCatalog(raw);
+  return parseCatalog(raw, opts);
 }
 
 /**
@@ -68,11 +76,12 @@ export async function readCatalogFile(path: string): Promise<Catalog | null> {
 export async function loadCatalog(opts: {
   downloaded: string;
   bundled?: string;
+  vendorOf: VendorOf;
 }): Promise<LoadedCatalog> {
   const bundledPath = opts.bundled ?? bundledCatalogPath();
   const problems: CatalogError[] = [];
-  const downloaded = await read(opts.downloaded, problems);
-  const bundled = await read(bundledPath, problems);
+  const downloaded = await read(opts.downloaded, opts, problems);
+  const bundled = await read(bundledPath, opts, problems);
   if (downloaded && (!bundled || downloaded.version >= bundled.version)) {
     return { catalog: downloaded, origin: "downloaded", path: opts.downloaded, problems };
   }
@@ -91,9 +100,13 @@ export async function loadCatalog(opts: {
   return { catalog: emptyCatalog(), origin: "empty", path: null, problems };
 }
 
-async function read(path: string, problems: CatalogError[]): Promise<Catalog | null> {
+async function read(
+  path: string,
+  opts: { vendorOf: VendorOf },
+  problems: CatalogError[],
+): Promise<Catalog | null> {
   try {
-    return await readCatalogFile(path);
+    return await readCatalogFile(path, opts);
   } catch (cause) {
     problems.push(
       cause instanceof CatalogError

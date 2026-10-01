@@ -9,7 +9,7 @@ import {
   type UsageResponse,
   type UsageWindow,
 } from "@agnostic/core";
-import { planVendor } from "@agnostic/registry";
+import { harnesses, planVendor } from "@agnostic/registry";
 import { type ObservedLimit, summarizePlans, usageWindow } from "@agnostic/usage";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
@@ -68,15 +68,17 @@ export function usageRoutes(ctx: DaemonContext): Hono {
 }
 
 /**
- * What the harnesses last said about their plans' own meters, from the two sources this machine
- * has: Codex's rollouts, which the scan above already read, and the file agn's status-line command
- * writes for Claude Code. One row per harness, the newer observation winning.
+ * What the harnesses last said about their plans' own meters, from the two sources a registry row
+ * can name: a rollout record, which the scan above already read, and the file agn's status-line
+ * script writes. One row per harness, the newer observation winning.
  */
 async function planLimits(ctx: DaemonContext, scannedAt: Date): Promise<PlanLimit[]> {
   const observed: ObservedLimit[] = [...ctx.usage.limits()];
-  const claude = await readRateLimitsFile(ctx.paths, "claude-code", ctx.log);
-  if (claude !== null) {
-    observed.push(claude);
+  for (const row of harnesses.filter((def) => def.limitSource === "statusline")) {
+    const limit = await readRateLimitsFile(ctx.paths, row.id, ctx.log);
+    if (limit !== null) {
+      observed.push(limit);
+    }
   }
   const newest = new Map<string, ObservedLimit>();
   for (const limit of observed) {

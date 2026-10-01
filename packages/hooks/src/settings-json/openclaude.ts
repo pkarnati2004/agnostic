@@ -16,7 +16,6 @@ const openClaudeMember: SettingsJsonMember = {
   ...claudeCodeMember,
   harness: "openclaude",
   // OpenClaude runs on a provider key, so its status line reports no plan limit to capture.
-  statusLine: false,
   // OpenClaude skips the normal Stop hook after a model error and emits StopFailure instead.
   events: [...claudeCodeMember.events, { event: "StopFailure" }],
 };

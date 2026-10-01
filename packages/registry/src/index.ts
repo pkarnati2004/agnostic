@@ -10,6 +10,7 @@ export { RegistryError } from "./error.js";
 export { type Gateway, gateways } from "./gateways.js";
 export type {
   HarnessDefinition,
+  HeadlessDetect,
   HookMechanism,
   LoginState,
   ModelProbe,
@@ -18,7 +19,15 @@ export type {
   ResumeSpec,
   SessionCapture,
   Tier,
+  UsageSource,
+  WorktreeTrust,
 } from "./harness-definition.js";
+export {
+  type HarnessIdentity,
+  harnessForVendor,
+  harnessIdentities,
+  harnessIdentity,
+} from "./harness-identity.js";
 export { harnessDefinition, harnesses } from "./harness-list.js";
 export { harnessSupport } from "./harness-support.js";
 export { isHeadlessInvocation } from "./headless.js";
@@ -31,6 +40,7 @@ export {
   launchSpec,
   resumeSpec,
 } from "./launch.js";
+export { mcpTargets } from "./mcp-targets.js";
 export {
   parseClaudeModelList,
   parseCodexModelList,

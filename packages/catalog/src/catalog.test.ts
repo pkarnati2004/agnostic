@@ -3,8 +3,11 @@ import { PlanVendorSchema } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { type Catalog, parseCatalog } from "./catalog-schema.js";
 import { bundledCatalogPath } from "./load-catalog.js";
+import { testVendorOf } from "./test-vendors.js";
 
-const catalog: Catalog = parseCatalog(JSON.parse(await readFile(bundledCatalogPath(), "utf8")));
+const catalog: Catalog = parseCatalog(JSON.parse(await readFile(bundledCatalogPath(), "utf8")), {
+  vendorOf: testVendorOf,
+});
 
 const duplicates = (keys: string[]): string[] =>
   keys.filter((key, index) => keys.indexOf(key) !== index);

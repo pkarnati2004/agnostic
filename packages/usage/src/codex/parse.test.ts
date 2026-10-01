@@ -168,7 +168,7 @@ describe("codexParser and the plan's rate limit", () => {
       week: { usedPercent: 17, resetsAt: "2026-09-28T09:00:00.000Z" },
       // The timestamp of the record that carried it, not of the file or the scan.
       observedAt: "2026-09-24T11:59:30.000Z",
-      source: "codex-rollout",
+      source: "rollout",
     });
   });
 

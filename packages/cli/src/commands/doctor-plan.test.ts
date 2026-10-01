@@ -18,6 +18,7 @@ function report(over: Partial<HarnessReport>): HarnessReport {
     models: [],
     modelSource: "none",
     planVendor: "claude",
+    limitSource: "statusline",
     plan: null,
     limitCapture: "none",
     ...over,

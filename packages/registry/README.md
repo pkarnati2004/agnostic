@@ -4,7 +4,11 @@ The table of coding agents `agn` knows how to start, the table of editors it can
 the detection that says which of them this machine actually has.
 
 - `harnesses` is data: binary and aliases, launch tokens, how a prompt is delivered, the model flag,
-  the routes each harness supports, resume argv, hook and transcript locations, tier.
+  the routes each harness supports, resume argv, hook location, tier, and the seven fields shared
+  code dispatches on instead of branching on an id - `vendor`, `worktreeTrust`, `mcp`,
+  `usageSource`, `limitSource`, `mark` and `headlessDetect`.
+- `harness-identity.ts` is the one file that writes a harness's name, mark and plan vendor, and the
+  only one a web page may import, through the `./browser` subpath.
 - `launchSpec` and `resumeSpec` turn a `Profile` into a command, args and the env that route adds -
   the one place that knows `--model` from `-m`, or which `-c` overrides point Codex at a local server.
 - `detectHarnesses` reads a given `PATH` and home: binary present, `--version`, login state and plan

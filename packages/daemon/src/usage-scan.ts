@@ -117,13 +117,11 @@ function transcriptRoots(home: string | undefined): TranscriptRoot[] {
   if (home === undefined) {
     return [];
   }
-  return harnesses
-    .filter((definition) => definition.tier === 1)
-    .flatMap((definition) =>
-      definition.transcriptsDir === null
-        ? []
-        : [{ harness: definition.id, dir: join(home, definition.transcriptsDir) }],
-    );
+  return harnesses.flatMap((definition) =>
+    definition.usageSource?.kind === "transcripts"
+      ? [{ harness: definition.id, dir: join(home, definition.usageSource.dir) }]
+      : [],
+  );
 }
 
 /**

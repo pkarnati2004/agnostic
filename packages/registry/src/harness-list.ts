@@ -1,7 +1,9 @@
 import type { HarnessId } from "@agnostic/core";
+import { codexWorktreeTrustArgs } from "./codex-worktree-trust.js";
 import { parseClaudePlan, parseCodexPlan } from "./detect-plan.js";
 import { RegistryError } from "./error.js";
 import type { HarnessDefinition, PromptDelivery } from "./harness-definition.js";
+import { harnessIdentity } from "./harness-identity.js";
 import { familyDefinition, familySources } from "./harness-list-families.js";
 import { tier2Definition, tier2Sources } from "./harness-list-tier2.js";
 import {
@@ -26,8 +28,7 @@ const argv: PromptDelivery = { kind: "argv" };
 /** The harnesses agn both hooks and reads transcripts for; the other tier-1 rows are the families. */
 const full: HarnessDefinition[] = [
   {
-    id: "claude-code",
-    name: "Claude Code",
+    ...harnessIdentity("claude-code"),
     binary: "claude",
     aliases: [],
     processNames: ["claude"],
@@ -47,12 +48,19 @@ const full: HarnessDefinition[] = [
     hooks: { container: "settings-json", file: ".claude/settings.local.json", scope: "repo" },
     authFile: ".claude.json",
     planSource: { file: ".claude.json", parse: parseClaudePlan },
-    transcriptsDir: ".claude/projects",
+    usageSource: { kind: "transcripts", dir: ".claude/projects" },
+    limitSource: "statusline",
+    worktreeTrust: null,
+    mcp: { file: ".mcp.json", scope: "repo", syntax: "mcp-json" },
+    headlessDetect: {
+      kind: "flag",
+      flags: ["-p", "--print", "--output-format"],
+      beforeSeparator: true,
+    },
     tier: 1,
   },
   {
-    id: "codex",
-    name: "Codex CLI",
+    ...harnessIdentity("codex"),
     binary: "codex",
     aliases: [],
     // node-pty reports Codex's packaged platform binary, e.g. `codex-aarch64-apple-darwin`.
@@ -69,12 +77,15 @@ const full: HarnessDefinition[] = [
     hooks: { container: "codex-hooks", file: ".codex/hooks.json" },
     authFile: ".codex/auth.json",
     planSource: { file: ".codex/auth.json", parse: parseCodexPlan },
-    transcriptsDir: ".codex/sessions",
+    usageSource: { kind: "transcripts", dir: ".codex/sessions" },
+    limitSource: "rollout",
+    worktreeTrust: { args: codexWorktreeTrustArgs },
+    mcp: { file: ".codex/config.toml", scope: "user", syntax: "codex-toml" },
+    headlessDetect: { kind: "subcommand", name: "exec" },
     tier: 1,
   },
   {
-    id: "pi",
-    name: "Pi",
+    ...harnessIdentity("pi"),
     binary: "pi",
     aliases: [],
     processNames: ["pi"],
@@ -92,12 +103,15 @@ const full: HarnessDefinition[] = [
     authFile: ".pi/agent/auth.json",
     // Pi and OpenCode are billed per provider key, so there is no plan to read.
     planSource: null,
-    transcriptsDir: ".pi/agent/sessions",
+    usageSource: { kind: "transcripts", dir: ".pi/agent/sessions" },
+    limitSource: null,
+    worktreeTrust: null,
+    mcp: null,
+    headlessDetect: { kind: "flag", flags: ["-p", "--print"], beforeSeparator: false },
     tier: 1,
   },
   {
-    id: "opencode",
-    name: "OpenCode",
+    ...harnessIdentity("opencode"),
     binary: "opencode",
     aliases: [],
     processNames: ["opencode"],
@@ -113,7 +127,11 @@ const full: HarnessDefinition[] = [
     hooks: { container: "opencode-plugin", dir: ".config/opencode/plugins" },
     authFile: ".local/share/opencode/auth.json",
     planSource: null,
-    transcriptsDir: ".local/share/opencode",
+    usageSource: { kind: "transcripts", dir: ".local/share/opencode" },
+    limitSource: null,
+    worktreeTrust: null,
+    mcp: { file: "opencode.json", scope: "repo", syntax: "opencode-json" },
+    headlessDetect: { kind: "subcommand", name: "run" },
     tier: 1,
   },
 ];
@@ -162,8 +180,7 @@ export function harnessDefinition(id: HarnessId): HarnessDefinition {
  */
 function openHarness(binary: string): HarnessDefinition {
   return {
-    id: `${OTHER_PREFIX}${binary}`,
-    name: binary,
+    ...harnessIdentity(`${OTHER_PREFIX}${binary}`),
     binary,
     aliases: [],
     processNames: [binary],
@@ -178,7 +195,11 @@ function openHarness(binary: string): HarnessDefinition {
     hooks: null,
     authFile: null,
     planSource: null,
-    transcriptsDir: null,
+    usageSource: null,
+    limitSource: null,
+    worktreeTrust: null,
+    mcp: null,
+    headlessDetect: null,
     tier: 2,
   };
 }

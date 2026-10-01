@@ -15,6 +15,7 @@ import {
 import { createTmuxExecutor, tmuxConfigStale } from "@agnostic/executor-tmux";
 import { writeHookScript } from "@agnostic/hooks";
 import { type Ledger, openLedger } from "@agnostic/ledger";
+import { planVendor } from "@agnostic/registry";
 import { type ServerType, serve } from "@hono/node-server";
 import type { Hono } from "hono";
 import { createApp, realDetect, realDetectEditors } from "./app.js";
@@ -66,7 +67,7 @@ export async function runDaemon(
   const home = homedir();
   // The store owns the reload, so a catalog downloaded while the daemon runs is served at once.
   const catalog = createCatalogStore({
-    loaded: await loadCatalog({ downloaded: paths.catalog }),
+    loaded: await loadCatalog({ downloaded: paths.catalog, vendorOf: planVendor }),
     downloaded: paths.catalog,
     log,
   });

@@ -74,14 +74,20 @@ export type LimitWindowReport = LimitWindow & { freshness: LimitFreshness };
  * What a harness said about the plan's own meter, read from a file this machine already has.
  * The figure is the account's, not the session's: a run outside agn moves it too.
  */
+/**
+ * Where a harness's own figure for its plan comes from: a record in the transcript it rolls out, or
+ * the payload its status line hands agn's script. A harness's registry row names which it has.
+ */
+export type LimitSource = "rollout" | "statusline";
+
 export type PlanLimit = {
   harness: HarnessId;
   vendor: PlanVendor | null;
   fiveHour: LimitWindowReport | null;
   week: LimitWindowReport | null;
-  /** When the harness reported it: the record's timestamp (Codex), the file's mtime (Claude Code). */
+  /** When the harness reported it: the record's timestamp, or the mtime of the file agn's hook wrote. */
   observedAt: string;
-  source: "codex-rollout" | "claude-statusline";
+  source: LimitSource;
 };
 
 /** Without a reset time, an observation is worth showing for this long and no longer. */

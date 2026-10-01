@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import { entitlement, knowsPlan, modelRows, plansForVendor } from "./catalog-queries.js";
 import { type Catalog, parseCatalog } from "./catalog-schema.js";
+import { testVendorOf } from "./test-vendors.js";
 
 let catalog: Catalog;
 
@@ -10,7 +11,7 @@ beforeAll(async () => {
   const file = fileURLToPath(
     new URL("../../../tests/fixtures/catalog/complete.json", import.meta.url),
   );
-  catalog = parseCatalog(JSON.parse(await readFile(file, "utf8")));
+  catalog = parseCatalog(JSON.parse(await readFile(file, "utf8")), { vendorOf: testVendorOf });
 });
 
 describe("modelRows", () => {

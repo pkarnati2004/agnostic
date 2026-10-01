@@ -45,7 +45,7 @@ export function parseStatusLinePayload(text: string, observedAt: string): Observ
     fiveHour,
     week,
     observedAt,
-    source: "claude-statusline",
+    source: "statusline",
   };
 }
 

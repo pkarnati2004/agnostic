@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { HarnessId } from "./profile-id.js";
 
 /** The two files `agn sync` generates from `.ag/instructions.md`, relative to the repo root. */
 export type SyncTarget = "CLAUDE.md" | "AGENTS.md";
@@ -17,16 +18,29 @@ export type SyncWrite = {
   reason: string | null;
 };
 
-/** The three files `.ag/mcp.yaml` is compiled into, one per harness that reads MCP servers. */
-export type McpTarget = "claude-code" | "opencode" | "codex";
+/** The config syntaxes agn writes MCP servers in; a harness's registry row names the one it reads. */
+export type McpSyntax = "mcp-json" | "opencode-json" | "codex-toml";
 
 /**
- * One server against one target. `written` covers create and update; `unchanged` is an entry
- * already there byte for byte; `reason` is set only for `skipped`.
+ * Where one harness reads its MCP servers. `file` is relative to the repo root, or to the user's
+ * home when the scope is `user`.
+ */
+export type McpTargetFile = {
+  harness: HarnessId;
+  file: string;
+  scope: "repo" | "user";
+  syntax: McpSyntax;
+};
+
+/**
+ * One server against one harness. `written` covers create and update; `unchanged` is an entry
+ * already there byte for byte; `reason` is set only for `skipped`. `file` is the path to print,
+ * with `~/` for a file under home, not a path anything opens.
  */
 export type McpSyncRow = {
   server: string;
-  target: McpTarget;
+  target: HarnessId;
+  file: string;
   action: "written" | "unchanged" | "skipped";
   reason: string | null;
 };
@@ -40,7 +54,7 @@ export type SyncRequest = z.infer<typeof SyncRequestSchema>;
 /** `applied` is false after a dry run: the plan is the same, nothing on disk changed. */
 export type SyncResponse = {
   writes: SyncWrite[];
-  /** Codex's config is outside the repo, so its result is reported here and not in `writes`. */
+  /** A user-scope config is outside the repo, so its result is reported here and not in `writes`. */
   mcp: McpSyncRow[];
   applied: boolean;
 };

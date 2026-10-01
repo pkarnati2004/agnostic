@@ -100,7 +100,7 @@ export function claudeLimit(over: Partial<PlanLimit> = {}): PlanLimit {
       freshness: "current",
     },
     observedAt: new Date("2026-09-11T14:50:00").toISOString(),
-    source: "claude-statusline",
+    source: "statusline",
     ...over,
   };
 }

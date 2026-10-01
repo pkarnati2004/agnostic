@@ -14,6 +14,7 @@ import {
   writeHookScript,
   writeStatusLineScript,
 } from "@agnostic/hooks";
+import { harnessDefinition } from "@agnostic/registry";
 import type { DaemonContext } from "./app.js";
 import { readDaemonConfig } from "./daemon-config.js";
 import { DaemonError } from "./error.js";
@@ -72,7 +73,7 @@ async function syncUserStatusLine(
   harness: HarnessId,
 ): Promise<StatusLineInstall | null> {
   const slot = hookInstaller(harness)?.userStatusLine;
-  if (slot === undefined) {
+  if (slot === undefined || !reportsToStatusLine(harness)) {
     return null;
   }
   const { hooks } = await readDaemonConfig(ctx.paths);
@@ -134,8 +135,11 @@ async function install(
   repoPath: string,
 ): Promise<HookInstallResult> {
   await writeHookScript(ctx.paths);
-  // Claude Code's install fills a statusLine slot with this script; it exists before it is named.
-  await writeStatusLineScript(ctx.paths);
+  // A harness that reports its limits to a status line gets that script filled in below, so the
+  // file has to exist before the install names it.
+  if (reportsToStatusLine(harness)) {
+    await writeStatusLineScript(ctx.paths);
+  }
   return requireInstaller(harness).install(inputFor(ctx, harness, repoPath));
 }
 
@@ -147,6 +151,10 @@ function inputFor(ctx: DaemonContext, harness: HarnessId, repoPath: string) {
     paths: ctx.paths,
     env: ctx.env,
   };
+}
+
+function reportsToStatusLine(harness: HarnessId): boolean {
+  return harnessDefinition(harness).limitSource === "statusline";
 }
 
 function scope(ctx: DaemonContext): UserScope {

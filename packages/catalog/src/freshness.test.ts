@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parseCatalog } from "./catalog-schema.js";
 import { freshBenchmarks, freshness } from "./freshness.js";
+import { testVendorOf } from "./test-vendors.js";
 
 const NOW = new Date("2026-09-11T00:00:00Z");
 
@@ -32,7 +33,9 @@ describe("freshness", () => {
     const file = fileURLToPath(
       new URL("../../../tests/fixtures/catalog/stale.json", import.meta.url),
     );
-    const catalog = parseCatalog(JSON.parse(await readFile(file, "utf8")));
+    const catalog = parseCatalog(JSON.parse(await readFile(file, "utf8")), {
+      vendorOf: testVendorOf,
+    });
     const fresh = freshBenchmarks(catalog, NOW);
     expect(fresh).toHaveLength(2);
     expect(fresh[0]?.weight).toBe(1);

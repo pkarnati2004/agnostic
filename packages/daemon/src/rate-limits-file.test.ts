@@ -47,7 +47,7 @@ describe("readRateLimitsFile", () => {
       fiveHour: { usedPercent: 58, resetsAt: "2026-09-24T14:05:00.000Z" },
       week: null,
       observedAt: mtime.toISOString(),
-      source: "claude-statusline",
+      source: "statusline",
     });
   });
 

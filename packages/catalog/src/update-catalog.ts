@@ -3,7 +3,12 @@ import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { CatalogUpdate } from "@agnostic/core";
 import { type CatalogManifest, CatalogManifestSchema } from "./catalog-manifest.js";
-import { CATALOG_SCHEMA_VERSION, type Catalog, parseCatalog } from "./catalog-schema.js";
+import {
+  CATALOG_SCHEMA_VERSION,
+  type Catalog,
+  parseCatalog,
+  type VendorOf,
+} from "./catalog-schema.js";
 import type { CatalogSource } from "./catalog-source.js";
 import { CatalogError } from "./error.js";
 
@@ -23,6 +28,7 @@ export async function updateCatalog(opts: {
   source: CatalogSource;
   localVersion: number;
   downloaded: string;
+  vendorOf: VendorOf;
   fetch?: typeof fetch;
   timeoutMs?: number;
 }): Promise<CatalogUpdate> {
@@ -43,13 +49,18 @@ export async function updateCatalog(opts: {
     return { ...found, outcome: "unsupported", benchmarkRows: null };
   }
   const body = await get(opts.source.fileUrl, CATALOG_MAX_BYTES);
-  const catalog = verify(body, manifest, opts.source.fileUrl);
+  const catalog = verify(body, manifest, opts.source.fileUrl, opts);
   await replace(opts.downloaded, body);
   return { ...found, outcome: "updated", benchmarkRows: catalog.benchmarks.length };
 }
 
 /** Checksum, then schema, then the version the manifest promised: cheapest rejection first. */
-function verify(body: string, manifest: CatalogManifest, url: string): Catalog {
+function verify(
+  body: string,
+  manifest: CatalogManifest,
+  url: string,
+  opts: { vendorOf: VendorOf },
+): Catalog {
   const digest = createHash("sha256").update(body).digest("hex");
   if (digest !== manifest.sha256) {
     throw new CatalogError(`${url} does not match the checksum in the manifest`, {
@@ -57,7 +68,7 @@ function verify(body: string, manifest: CatalogManifest, url: string): Catalog {
       hint: "Try again; if it persists, the published catalog and its manifest disagree.",
     });
   }
-  const catalog = parseCatalog(json(body, url));
+  const catalog = parseCatalog(json(body, url), opts);
   if (catalog.version !== manifest.version) {
     throw new CatalogError(
       `${url} is version ${catalog.version} and its manifest says ${manifest.version}`,

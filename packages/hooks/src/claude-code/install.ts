@@ -28,7 +28,6 @@ export const claudeCodeMember: SettingsJsonMember = {
   timeout: 5,
   reply: null,
   verify: null,
-  statusLine: true,
 };
 
 export const claudeCodeInstaller: HookInstaller = settingsJsonInstaller(claudeCodeMember);

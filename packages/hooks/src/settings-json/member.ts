@@ -39,11 +39,6 @@ export type SettingsJsonMember = {
   reply: string | Partial<Record<string, string>> | null;
   /** The one step of the install agn cannot do itself, or null when there is none. */
   verify: string | null;
-  /**
-   * Whether agn also owns this harness's status-line slot, which is where Claude Code reports the
-   * plan's rate limits. True for Claude Code only; no other member has such a slot.
-   */
-  statusLine: boolean;
 };
 
 /** A status line the user wrote is theirs; agn captures no rate limits for that file. */
@@ -55,12 +50,12 @@ export function settingsJsonInstaller(member: SettingsJsonMember): HookInstaller
   return {
     harness: member.harness,
     // The same slot in the user's own settings file, so every session of that harness reports.
-    ...(member.statusLine ? { userStatusLine: claudeUserStatusLine } : {}),
+    ...(ownsStatusLine(member.harness) ? { userStatusLine: claudeUserStatusLine } : {}),
 
     async install(input: HookInstallInput): Promise<HookInstallResult> {
       const mechanism = settingsJson(member.harness);
       const file = settingsFile(mechanism, input);
-      const status = member.statusLine ? await statusLineFor(input) : null;
+      const status = ownsStatusLine(member.harness) ? await statusLineFor(input) : null;
       let verify = member.verify;
       const changed = await updateHooksJson(file, (config) => {
         const withHooks = withManagedHooks(
@@ -96,11 +91,21 @@ export function settingsJsonInstaller(member: SettingsJsonMember): HookInstaller
       const file = settingsFile(settingsJson(member.harness), input);
       const changed = await updateHooksJson(file, (config) => {
         const swept = withoutManagedHooks(config, hookScriptMarker(input.paths));
-        return member.statusLine ? withoutManagedStatusLine(swept, statusLineMarker(input)) : swept;
+        return ownsStatusLine(member.harness)
+          ? withoutManagedStatusLine(swept, statusLineMarker(input))
+          : swept;
       });
       return { harness: member.harness, file, changed, verify: null };
     },
   };
+}
+
+/**
+ * agn owns this harness's status-line slot only when its row says that is where the harness
+ * reports its plan's own meter; for every other member the slot stays the user's.
+ */
+function ownsStatusLine(harness: HarnessId): boolean {
+  return harnessDefinition(harness).limitSource === "statusline";
 }
 
 /** agn's own status-line entries carry the script path, as its hook entries do. */

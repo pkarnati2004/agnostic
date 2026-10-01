@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bundledCatalogPath, loadCatalog } from "./load-catalog.js";
+import { testVendorOf } from "./test-vendors.js";
 
 const FIXTURES = fileURLToPath(new URL("../../../tests/fixtures/catalog", import.meta.url));
 
@@ -32,6 +33,7 @@ afterAll(async () => {
 describe("loadCatalog", () => {
   it("serves the bundled catalog when nothing was ever downloaded", async () => {
     const loaded = await loadCatalog({
+      vendorOf: testVendorOf,
       downloaded: await downloaded(null),
       bundled: bundled("complete"),
     });
@@ -42,6 +44,7 @@ describe("loadCatalog", () => {
 
   it("prefers a downloaded catalog once its version is at least the bundled one's", async () => {
     const loaded = await loadCatalog({
+      vendorOf: testVendorOf,
       downloaded: await downloaded("stale"),
       bundled: bundled("complete"),
     });
@@ -52,6 +55,7 @@ describe("loadCatalog", () => {
 
   it("ignores an older download without calling it a problem", async () => {
     const loaded = await loadCatalog({
+      vendorOf: testVendorOf,
       downloaded: await downloaded("empty"),
       bundled: bundled("complete"),
     });
@@ -67,6 +71,7 @@ describe("loadCatalog", () => {
       ["unsupported", "catalog-schema-unsupported"],
     ] as const) {
       const loaded = await loadCatalog({
+        vendorOf: testVendorOf,
         downloaded: await downloaded(name),
         bundled: bundled("complete"),
       });
@@ -77,6 +82,7 @@ describe("loadCatalog", () => {
 
   it("carries on with an empty catalog when there is nothing readable at all", async () => {
     const loaded = await loadCatalog({
+      vendorOf: testVendorOf,
       downloaded: await downloaded(null),
       bundled: join(dir, "not-shipped.json"),
     });
@@ -88,7 +94,10 @@ describe("loadCatalog", () => {
   });
 
   it("ships a catalog at the path the loader defaults to", async () => {
-    const loaded = await loadCatalog({ downloaded: join(dir, "none.json") });
+    const loaded = await loadCatalog({
+      vendorOf: testVendorOf,
+      downloaded: join(dir, "none.json"),
+    });
     expect(loaded.origin).toBe("bundled");
     expect(loaded.path).toBe(bundledCatalogPath());
     expect(loaded.catalog.models.length).toBeGreaterThan(0);

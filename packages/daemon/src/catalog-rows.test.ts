@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { type Catalog, readCatalogFile } from "@agnostic/catalog";
 import type { Event, EvidenceLevel, TaskIntent } from "@agnostic/core";
+import { planVendor } from "@agnostic/registry";
 import { beforeAll, describe, expect, it } from "vitest";
 import { catalogRowsFor } from "./catalog-rows.js";
 
@@ -14,7 +15,7 @@ beforeAll(async () => {
   const file = fileURLToPath(
     new URL("../../../tests/fixtures/catalog/remote/catalog.json", import.meta.url),
   );
-  const loaded = await readCatalogFile(file);
+  const loaded = await readCatalogFile(file, { vendorOf: planVendor });
   if (loaded === null) {
     throw new Error(`the remote catalog fixture is missing: ${file}`);
   }

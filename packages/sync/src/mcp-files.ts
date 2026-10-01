@@ -1,22 +1,29 @@
 import { join } from "node:path";
-import { readTextFile } from "@agnostic/core";
-import { MCP_JSON } from "./mcp-claude.js";
-import { OPENCODE_JSON, OPENCODE_JSONC } from "./mcp-opencode.js";
-import type { McpExisting } from "./mcp-plan.js";
+import type { HarnessId, McpTargetFile } from "@agnostic/core";
+import { type McpExistingTarget, mcpSyntaxes } from "./mcp-syntax.js";
 
-/** Codex's config is per user, not per repo, so it is read from the home the daemon runs under. */
-export function codexConfigPath(home: string): string {
-  return join(home, ".codex", "config.toml");
-}
+export type McpExisting = Map<HarnessId, McpExistingTarget>;
 
-export async function readMcpExisting(repoPath: string, home: string): Promise<McpExisting> {
-  const opencodeJson = await readTextFile(join(repoPath, OPENCODE_JSON));
-  return {
-    mcpJson: await readTextFile(join(repoPath, MCP_JSON)),
-    opencodeJson,
-    opencodeJsonc:
-      opencodeJson === null && (await readTextFile(join(repoPath, OPENCODE_JSONC))) !== null,
-    // A user with no Codex config yet gets one holding nothing but agn's block.
-    codexToml: (await readTextFile(codexConfigPath(home))) ?? "",
-  };
+/**
+ * Every MCP config the targets name, as it stands now. A repo-scope file sits in the repo; a
+ * user-scope one is read from the home the daemon runs under, because it is per user and not
+ * per repo.
+ */
+export async function readMcpExisting(
+  targets: McpTargetFile[],
+  repoPath: string,
+  home: string,
+): Promise<McpExisting> {
+  const existing: McpExisting = new Map();
+  for (const target of targets) {
+    const inRepo = target.scope === "repo";
+    const path = join(inRepo ? repoPath : home, target.file);
+    const read = await mcpSyntaxes[target.syntax].read(path);
+    existing.set(target.harness, {
+      ...read,
+      path,
+      file: inRepo ? target.file : `~/${target.file}`,
+    });
+  }
+  return existing;
 }

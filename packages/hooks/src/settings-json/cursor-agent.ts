@@ -38,7 +38,6 @@ const cursorAgentMember: SettingsJsonMember = {
   timeout: 5,
   reply: REPLIES,
   verify: null,
-  statusLine: false,
 };
 
 export const cursorAgentInstaller: HookInstaller = settingsJsonInstaller(cursorAgentMember);

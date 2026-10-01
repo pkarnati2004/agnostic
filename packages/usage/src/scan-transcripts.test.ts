@@ -111,9 +111,7 @@ describe("scanTranscripts", () => {
     const { limits } = await scanTranscripts({ roots, memo, modifiedSince: null });
 
     // Only the new file carries one: the other rollouts under the fixture root report none.
-    expect(limits).toEqual([
-      expect.objectContaining({ harness: "codex", source: "codex-rollout" }),
-    ]);
+    expect(limits).toEqual([expect.objectContaining({ harness: "codex", source: "rollout" })]);
   });
 
   it("counts the turns that reported a total and no buckets", async () => {

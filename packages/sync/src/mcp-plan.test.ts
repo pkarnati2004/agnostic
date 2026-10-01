@@ -1,19 +1,20 @@
 import { readFile } from "node:fs/promises";
-import { type McpConfig, readMcpConfig } from "@agnostic/core";
+import { type McpConfig, type McpTargetFile, readMcpConfig } from "@agnostic/core";
 import { beforeAll, describe, expect, it } from "vitest";
-import { withClaudeServers } from "./mcp-claude.js";
-import { withCodexTables } from "./mcp-codex.js";
-import { type McpExisting, planMcpSync } from "./mcp-plan.js";
-import { mcpFixture } from "./test-repo.js";
+import { codexSyntax } from "./mcp-codex.js";
+import type { McpExisting } from "./mcp-files.js";
+import { planMcpSync } from "./mcp-plan.js";
+import type { McpExistingTarget } from "./mcp-syntax.js";
+import { mcpFixture, textFor } from "./test-repo.js";
 
 const REPO = "r7k2m4pqrs";
 
-const EMPTY: McpExisting = {
-  mcpJson: null,
-  opencodeJson: null,
-  opencodeJsonc: false,
-  codexToml: "",
-};
+/** What the registry rows inject: two files in the repo and one under the user's home. */
+const TARGETS: McpTargetFile[] = [
+  { harness: "claude-code", file: ".mcp.json", scope: "repo", syntax: "mcp-json" },
+  { harness: "opencode", file: "opencode.json", scope: "repo", syntax: "opencode-json" },
+  { harness: "codex", file: ".codex/config.toml", scope: "user", syntax: "codex-toml" },
+];
 
 let config: McpConfig;
 let secret: McpConfig;
@@ -23,12 +24,28 @@ beforeAll(async () => {
   secret = (await readMcpConfig(mcpFixture("secret"))) as McpConfig;
 });
 
-function plan(over: Partial<McpExisting> = {}, from = (): McpConfig => config) {
-  return planMcpSync({ config: from(), repoId: REPO, existing: { ...EMPTY, ...over } });
+type Over = Partial<Record<string, Partial<McpExistingTarget>>>;
+
+function existing(over: Over = {}, targets = TARGETS): McpExisting {
+  const read: McpExisting = new Map();
+  for (const target of targets) {
+    read.set(target.harness, {
+      path: target.scope === "repo" ? `/repo/${target.file}` : `/home/${target.file}`,
+      file: target.scope === "repo" ? target.file : `~/${target.file}`,
+      text: null,
+      blocked: null,
+      ...over[target.harness],
+    });
+  }
+  return read;
 }
 
-function rowsFor(server: string, plan: ReturnType<typeof planMcpSync>): string[] {
-  return plan.rows
+function plan(over: Over = {}, from = (): McpConfig | null => config, targets = TARGETS) {
+  return planMcpSync({ config: from(), repoId: REPO, targets, existing: existing(over, targets) });
+}
+
+function rowsFor(server: string, planned: ReturnType<typeof planMcpSync>): string[] {
+  return planned.rows
     .filter((row) => row.server === server)
     .map((row) => `${row.target} ${row.action}`);
 }
@@ -46,7 +63,21 @@ describe("planMcpSync", () => {
       "opencode written",
       "codex written",
     ]);
-    expect(planned.codex?.text).toContain("[mcp_servers.db]");
+    expect(planned.userWrites).toHaveLength(1);
+    expect(planned.userWrites[0]).toMatchObject({
+      harness: "codex",
+      file: "/home/.codex/config.toml",
+    });
+    expect(planned.userWrites[0]?.text).toContain("[mcp_servers.db]");
+  });
+
+  it("names each target's file the way agn prints it, with `~/` outside the repo", () => {
+    const planned = plan();
+    expect([...new Set(planned.rows.map((row) => row.file))]).toEqual([
+      ".mcp.json",
+      "opencode.json",
+      "~/.codex/config.toml",
+    ]);
   });
 
   it("skips a server whose literal looks like a secret, and writes the others", () => {
@@ -64,12 +95,15 @@ describe("planMcpSync", () => {
       "opencode written",
       "codex written",
     ]);
-    const written = [...planned.writes.map((write) => write.content), planned.codex?.text ?? ""];
+    const written = [
+      ...planned.writes.map((write) => write.content),
+      ...planned.userWrites.map((write) => write.text),
+    ];
     expect(written.some((text) => text.includes("ghp_"))).toBe(false);
   });
 
   it("leaves a JSONC opencode config to the user and writes the other two targets", () => {
-    const planned = plan({ opencodeJsonc: true });
+    const planned = plan({ opencode: { blocked: "opencode.jsonc is JSONC" } });
     expect(planned.writes.map((write) => write.file)).toEqual([".mcp.json"]);
     expect(rowsFor("docs", planned)).toEqual([
       "claude-code written",
@@ -84,40 +118,58 @@ describe("planMcpSync", () => {
   it("reports every target unchanged when the files already hold this sync's entries", () => {
     const first = plan();
     const again = plan({
-      mcpJson: first.writes[0]?.content ?? null,
-      opencodeJson: first.writes[1]?.content ?? null,
-      codexToml: first.codex?.text ?? "",
+      "claude-code": { text: first.writes[0]?.content ?? null },
+      opencode: { text: first.writes[1]?.content ?? null },
+      codex: { text: first.userWrites[0]?.text ?? null },
     });
     expect(again.writes.map((write) => write.action)).toEqual(["unchanged", "unchanged"]);
+    expect(again.userWrites).toEqual([]);
     expect(again.rows.every((row) => row.action === "unchanged")).toBe(true);
   });
 
   it("updates a target that holds someone else's entries", async () => {
-    const existing = await readFile(mcpFixture("existing", ".mcp.json"), "utf8");
-    const planned = plan({ mcpJson: existing });
+    const text = await readFile(mcpFixture("existing", ".mcp.json"), "utf8");
+    const planned = plan({ "claude-code": { text } });
     expect(planned.writes[0]).toMatchObject({ file: ".mcp.json", action: "update" });
     expect(planned.writes[0]?.content).toContain("playwright");
   });
 
-  it("takes the block out of the Codex config for a repo that no longer declares servers", () => {
-    const codexToml = withCodexTables('model = "gpt-5"\n', REPO, [
-      { server: "db", text: "[mcp_servers.db]\n" },
+  it("gives a fourth target of a syntax it already knows its own write and its own row", () => {
+    const targets: McpTargetFile[] = [
+      ...TARGETS,
+      { harness: "other-agent", file: ".config/other/mcp.json", scope: "user", syntax: "mcp-json" },
+    ];
+    const planned = plan({}, () => config, targets);
+    expect(rowsFor("db", planned)).toEqual([
+      "claude-code written",
+      "opencode written",
+      "codex written",
+      "other-agent written",
     ]);
-    const planned = planMcpSync({ config: null, repoId: REPO, existing: { ...EMPTY, codexToml } });
+    expect(planned.userWrites.map((write) => write.harness)).toEqual(["codex", "other-agent"]);
+    expect(planned.writes.map((write) => write.file)).toEqual([".mcp.json", "opencode.json"]);
+  });
+
+  it("takes the block out of the Codex config for a repo that no longer declares servers", () => {
+    const text = textFor(codexSyntax, 'model = "gpt-5"\n', REPO, config.servers);
+    const planned = plan({ codex: { text } }, () => null);
     expect(planned.writes).toEqual([]);
     expect(planned.rows).toEqual([]);
-    expect(planned.codex).toEqual({ text: 'model = "gpt-5"\n' });
+    expect(planned.userWrites).toEqual([
+      { harness: "codex", file: "/home/.codex/config.toml", text: 'model = "gpt-5"\n' },
+    ]);
   });
 
   it("has nothing to do for a repo that never had a block", () => {
-    const planned = planMcpSync({ config: null, repoId: REPO, existing: EMPTY });
-    expect(planned.codex).toBeNull();
+    const planned = plan({}, () => null);
+    expect(planned.userWrites).toEqual([]);
+    expect(planned.writes).toEqual([]);
   });
 
-  it("removes this repo's Codex block when its one server skips Codex, though the JSON targets still get it", () => {
-    const priorCodex = withCodexTables("", REPO, [{ server: "db", text: "[mcp_servers.db]\n" }]);
+  it("clears this repo's Codex block when its one server skips Codex, and still writes the JSON", () => {
+    const prior = textFor(codexSyntax, "", REPO, config.servers);
     // DB_URL renames the variable DATABASE_URL is under, which Codex forwards only under its own
-    // name: codexTable skips it, so this sync's one server writes to no Codex table at all.
+    // name: the Codex adapter skips it, so this sync writes no Codex table at all.
     const renamed: McpConfig = {
       servers: [
         {
@@ -129,12 +181,8 @@ describe("planMcpSync", () => {
         },
       ],
     };
-    const planned = planMcpSync({
-      config: renamed,
-      repoId: REPO,
-      existing: { ...EMPTY, codexToml: priorCodex },
-    });
-    expect(planned.codex?.text).toBe("");
+    const planned = plan({ codex: { text: prior } }, () => renamed);
+    expect(planned.userWrites[0]?.text).toBe("");
     expect(rowsFor("db", planned)).toEqual([
       "claude-code written",
       "opencode written",
@@ -148,8 +196,9 @@ describe("planMcpSync", () => {
 
   it("leaves the two JSON files alone when every server was skipped", () => {
     const onlySecret: McpConfig = { servers: secret.servers.filter((s) => s.name === "issues") };
-    const planned = plan({ mcpJson: withClaudeServers(null, config.servers) }, () => onlySecret);
+    const text = textFor(codexSyntax, null, REPO, config.servers);
+    const planned = plan({ codex: { text } }, () => onlySecret);
     expect(planned.writes).toEqual([]);
-    expect(planned.codex?.text).toBe("");
+    expect(planned.userWrites[0]?.text).toBe("");
   });
 });

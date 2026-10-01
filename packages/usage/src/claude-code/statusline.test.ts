@@ -20,7 +20,7 @@ describe("parseStatusLinePayload", () => {
       fiveHour: { usedPercent: 58, resetsAt: "2026-09-24T14:05:00.000Z" },
       week: { usedPercent: 41, resetsAt: "2026-09-28T09:00:00.000Z" },
       observedAt: OBSERVED_AT,
-      source: "claude-statusline",
+      source: "statusline",
     });
   });
 

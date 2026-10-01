@@ -27,7 +27,7 @@ describe("agn usage and the plan's own meter", () => {
       fiveHour: { usedPercent: 58, resetsAt: "2026-09-11T14:05:00", freshness: "current" },
       week: { usedPercent: 41, resetsAt: "2026-09-14T09:00:00", freshness: "current" },
       observedAt: observed(12),
-      source: "claude-statusline",
+      source: "statusline",
       ...over,
     };
   }

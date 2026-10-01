@@ -32,7 +32,7 @@ export function launchSpec(
   const def = supportedDefinition(profile);
   const args = [
     ...def.launch,
-    ...directoryTrustArgs(def, opts.worktreePath ?? null),
+    ...trustArgs(def, opts.worktreePath ?? null),
     ...routeArgs(def, profile, opts.servers ?? []),
   ];
   const prompt = opts.prompt && opts.prompt.length > 0 ? opts.prompt : null;
@@ -100,36 +100,20 @@ export function resumeSpec(
   }
   return {
     command: def.binary,
-    // Before the subcommand: `-c` belongs to `codex` itself, not to `codex resume`.
-    args: [
-      ...directoryTrustArgs(def, worktreePath),
-      ...def.resume.args(sessionIdOrThrow(sessionId)),
-    ],
+    // Before the resume argv: a trust argument belongs to the binary, not to its subcommand.
+    args: [...trustArgs(def, worktreePath), ...def.resume.args(sessionIdOrThrow(sessionId))],
     env: routeEnv(def, profile, env),
   };
 }
 
 /**
- * ADR 035, amended 2026-09-28 (ruling a): Codex reads directory trust from the nearest `.git`, so a
- * linked worktree is never covered by the repo's `[projects."…"]` entry and every launch there stops
- * on "Do you trust the contents of this directory?". agn trusts the worktree it made itself, for
- * this launch only: nothing is written to the user's config.toml, and no approval or sandbox setting
- * is relaxed. A path that cannot be written as a TOML key is left alone rather than mangled.
+ * What this harness needs to run in a worktree agn made: a linked worktree is outside the trust the
+ * user granted the repo, and a harness that asks about it stops the launch dead (ADR 035, amended
+ * 2026-09-28). The row's builder answers for this launch only; nothing is written to the user's
+ * config, and no approval or sandbox setting is relaxed.
  */
-function directoryTrustArgs(def: HarnessDefinition, worktreePath: string | null): string[] {
-  if (def.id !== "codex" || worktreePath === null || !tomlKeyable(worktreePath)) {
-    return [];
-  }
-  return ["-c", `projects."${worktreePath}".trust_level="trusted"`];
-}
-
-function tomlKeyable(path: string): boolean {
-  return (
-    path.startsWith("/") &&
-    !path.includes('"') &&
-    !path.includes("\\") &&
-    ![...path].some((char) => char.charCodeAt(0) <= 0x1f || char.charCodeAt(0) === 0x7f)
-  );
+function trustArgs(def: HarnessDefinition, worktreePath: string | null): string[] {
+  return worktreePath === null ? [] : (def.worktreeTrust?.args(worktreePath) ?? []);
 }
 
 function supportedDefinition(profile: Profile): HarnessDefinition {

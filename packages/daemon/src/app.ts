@@ -241,6 +241,7 @@ function toReport(
     models: status.models?.models ?? [],
     modelSource: status.models?.origin ?? "none",
     planVendor: planVendor(status.harness),
+    limitSource: harnessDefinition(status.harness).limitSource,
     plan: planReport(status, plans, catalog),
   };
 }

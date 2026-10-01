@@ -90,14 +90,14 @@ describe("GET /usage and the plans' own meters", () => {
       expect.objectContaining({
         harness: "codex",
         vendor: "chatgpt",
-        source: "codex-rollout",
+        source: "rollout",
         fiveHour: { usedPercent: 1, resetsAt: iso(FIVE_HOUR), freshness: "current" },
         week: { usedPercent: 17, resetsAt: iso(WEEK), freshness: "current" },
       }),
       expect.objectContaining({
         harness: "claude-code",
         vendor: "claude",
-        source: "claude-statusline",
+        source: "statusline",
         fiveHour: { usedPercent: 58, resetsAt: iso(FIVE_HOUR), freshness: "current" },
       }),
     ]);

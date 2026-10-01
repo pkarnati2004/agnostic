@@ -1,6 +1,6 @@
 import type { HarnessId, LimitCapture } from "@agnostic/core";
 import { hookInstaller, type UserScope } from "@agnostic/hooks";
-import { transcriptParser } from "@agnostic/usage";
+import { harnessDefinition } from "@agnostic/registry";
 import type { HooksConfig } from "./daemon-config.js";
 
 /**
@@ -17,9 +17,13 @@ export async function limitCapture(
   if (!installed) {
     return "none";
   }
-  const statusLine = hookInstaller(harness)?.userStatusLine;
+  const source = harnessDefinition(harness).limitSource;
+  if (source === "rollout") {
+    return "all-sessions";
+  }
+  const statusLine = source === "statusline" ? hookInstaller(harness)?.userStatusLine : undefined;
   if (statusLine === undefined) {
-    return transcriptParser(harness)?.reportsLimits === true ? "all-sessions" : "none";
+    return "none";
   }
   if (opts.config.claudeStatusline === "repo") {
     return "agn-tasks";

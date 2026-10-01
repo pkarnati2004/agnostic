@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { catalogSource, type LoadedCatalog, readCatalogFile } from "@agnostic/catalog";
 import { type AgnosticPaths, agnosticPaths, type CatalogCheckState } from "@agnostic/core";
+import { planVendor } from "@agnostic/registry";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CatalogChecker, createCatalogChecker } from "./catalog-check.js";
 import type { CatalogStore } from "./catalog-store.js";
@@ -162,7 +163,7 @@ beforeEach(async () => {
     current: () => current,
     reload: async () => {
       reloads += 1;
-      const catalog = await readCatalogFile(paths.catalog);
+      const catalog = await readCatalogFile(paths.catalog, { vendorOf: planVendor });
       current = catalog === null ? current : { ...current, catalog, origin: "downloaded" };
       return current;
     },

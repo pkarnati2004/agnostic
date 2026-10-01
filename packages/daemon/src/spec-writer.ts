@@ -11,7 +11,7 @@ import {
   type SpecResponse,
 } from "@agnostic/core";
 import { AGN_TASK_ID } from "@agnostic/hooks";
-import { type HeadlessSpec, harnessDefinition, headlessSpec } from "@agnostic/registry";
+import { type HeadlessSpec, harnessDefinition, harnesses, headlessSpec } from "@agnostic/registry";
 import { pricingRow } from "@agnostic/usage";
 import type { DaemonContext } from "./app.js";
 import { readDaemonConfig } from "./daemon-config.js";
@@ -36,9 +36,6 @@ const INPUT_WEIGHT = 4;
 
 /** Beyond this the answer is not a spec, and holding it in memory to find that out is enough. */
 const ANSWER_MAX_CHARS = 256 * 1024;
-
-/** Claude Code first, then the rest in tier order, when two profiles cost the same. */
-const HARNESS_ORDER: HarnessId[] = ["claude-code", "codex", "pi", "opencode"];
 
 const WRITE_IT_YOURSELF =
   "Write the spec yourself in the dialog, or set spec_writer: <profile id> in ~/.agnostic/config.yaml.";
@@ -117,9 +114,10 @@ function writesSpecs(harness: HarnessId): boolean {
   return harnessDefinition(harness).headless !== null;
 }
 
+/** Registry order breaks a tie on price; a harness with no row of its own sorts last. */
 function rank(harness: HarnessId): number {
-  const index = HARNESS_ORDER.indexOf(harness);
-  return index === -1 ? HARNESS_ORDER.length : index;
+  const index = harnesses.findIndex((row) => row.id === harness);
+  return index === -1 ? harnesses.length : index;
 }
 
 /**

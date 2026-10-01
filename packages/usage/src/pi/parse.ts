@@ -42,7 +42,6 @@ type Session = { id: string; path: string; cwd: string | null; model: string | n
 export function piFamilyParser(harness: "pi" | "omp"): TranscriptParser {
   return {
     harness,
-    reportsLimits: false,
     isTranscript: (path) => path.endsWith(".jsonl"),
     parse: (path) => parseMessageGraph(harness, path),
   };

@@ -71,36 +71,20 @@ export const EntitlementAccessSchema = z.enum(["included", "credits", "unavailab
 export type EntitlementAccess = z.infer<typeof EntitlementAccessSchema>;
 
 /**
- * Which vendor's plans each harness is billed on. The registry has the same rows for its own use;
- * they are repeated here because the catalog cannot import the registry, and because a row that
- * pairs Codex with a Claude plan is a mistake in the data, not in the code that reads it.
+ * Which vendor bills a harness by plan. The registry's rows are the answer, and the daemon injects
+ * them: a row that pairs one vendor's harness with another vendor's plans is a mistake in the data,
+ * not in the code that reads it, and the catalog cannot import the registry to check it itself.
  */
-const ENTITLEMENT_VENDORS: Partial<Record<HarnessId, PlanVendor>> = {
-  "claude-code": "claude",
-  codex: "chatgpt",
-  gemini: "google",
-  grok: "xai",
-  kimi: "moonshot",
-  "cursor-agent": "cursor",
-};
-
-const VENDOR_PAIRS = Object.entries(ENTITLEMENT_VENDORS)
-  .map(([harness, vendor]) => `${harness} rows carry ${vendor} plans`)
-  .join(", ");
+export type VendorOf = (harness: HarnessId) => PlanVendor | null;
 
 /** Listed is not included (ADR 016): a plan may list a model and still meter it as credits. */
-export const EntitlementRowSchema = z
-  .strictObject({
-    harness: HarnessIdSchema,
-    model: NonEmpty,
-    vendor: PlanVendorSchema,
-    plan: PlanSchema,
-    access: EntitlementAccessSchema,
-  })
-  .refine((row) => ENTITLEMENT_VENDORS[row.harness] === row.vendor, {
-    error: `${VENDOR_PAIRS}; no other harness has a plan`,
-    path: ["vendor"],
-  });
+export const EntitlementRowSchema = z.strictObject({
+  harness: HarnessIdSchema,
+  model: NonEmpty,
+  vendor: PlanVendorSchema,
+  plan: PlanSchema,
+  access: EntitlementAccessSchema,
+});
 export type EntitlementRow = z.infer<typeof EntitlementRowSchema>;
 
 /** USD per million tokens, keyed by canonical id. `curated` is a hand-written override. */
@@ -134,7 +118,7 @@ const VersionProbeSchema = z.looseObject({ schemaVersion: z.number().int() });
  * The one way a catalog file becomes a `Catalog`. A file written for a newer schema is told apart
  * from a broken one, because the two need different things from the user.
  */
-export function parseCatalog(raw: unknown): Catalog {
+export function parseCatalog(raw: unknown, opts: { vendorOf: VendorOf }): Catalog {
   const probe = VersionProbeSchema.safeParse(raw);
   if (probe.success && probe.data.schemaVersion !== CATALOG_SCHEMA_VERSION) {
     throw new CatalogError(
@@ -149,9 +133,9 @@ export function parseCatalog(raw: unknown): Catalog {
   if (!parsed.success) {
     throw invalid(describeIssue(parsed.error), parsed.error);
   }
-  const missing = danglingReference(parsed.data);
-  if (missing) {
-    throw invalid(missing, undefined);
+  const inconsistent = danglingReference(parsed.data) ?? wrongVendor(parsed.data, opts.vendorOf);
+  if (inconsistent) {
+    throw invalid(inconsistent, undefined);
   }
   return parsed.data;
 }
@@ -181,6 +165,20 @@ function danglingReference(catalog: Catalog): string | null {
   for (const [index, row] of catalog.entitlements.entries()) {
     if (!plans.has(`${row.vendor}:${row.plan}`)) {
       return `entitlements[${index}].plan: no plan row "${row.vendor}/${row.plan}"`;
+    }
+  }
+  return null;
+}
+
+/** A harness is billed on one vendor's plans, so a row naming another vendor's plan prices nothing. */
+function wrongVendor(catalog: Catalog, vendorOf: VendorOf): string | null {
+  for (const [index, row] of catalog.entitlements.entries()) {
+    const vendor = vendorOf(row.harness);
+    if (vendor === null) {
+      return `entitlements[${index}].vendor: ${row.harness} has no plan`;
+    }
+    if (vendor !== row.vendor) {
+      return `entitlements[${index}].vendor: ${row.harness} rows carry ${vendor} plans, not ${row.vendor}`;
     }
   }
   return null;
