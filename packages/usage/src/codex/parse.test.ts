@@ -202,14 +202,29 @@ describe("codexParser and the plan's rate limit", () => {
   });
 
   it("reads the account's credit balance, plan and spend control", async () => {
-    const { limit } = await codexParser.parse(CREDITS);
+    // Codex writes the balance as a decimal string; a `token_count` record is lost whole if the
+    // credits fail to parse, tokens included, so the fixture carries the form Codex writes.
+    const { turns, limit } = await codexParser.parse(CREDITS);
 
+    expect(turns).toHaveLength(1);
     expect(limit?.detail).toEqual({
       ...NO_LIMIT_DETAIL,
       credits: 12.5,
       planType: "plus",
       spendControlReached: false,
     });
+  });
+
+  it("reads a numeric balance too, and no figure for one that is not a number", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-usage-balance-"));
+    const file = join(dir, `rollout-2026-09-24T12-00-00-${T1}.jsonl`);
+    const text = await readFile(CREDITS, "utf8");
+    await writeFile(file, text.replace('"balance":"12.5"', '"balance":12.5'), "utf8");
+    expect((await codexParser.parse(file)).limit?.detail.credits).toBe(12.5);
+
+    await writeFile(file, text.replace('"balance":"12.5"', '"balance":"lots"'), "utf8");
+    expect((await codexParser.parse(file)).limit?.detail.credits).toBeNull();
+    await rm(dir, { recursive: true, force: true });
   });
 
   it("says unlimited for a balance with no ceiling rather than a figure", async () => {

@@ -39,10 +39,11 @@ const RateLimitWindowSchema = z.object({
 
 /**
  * What the account carries beside the windows, in the same `rate_limits` object. `balance` is in
- * dollars of credit; `unlimited` says the balance has no ceiling, which is not a balance of zero.
+ * dollars of credit, which Codex writes as a decimal string (`"0"`, `"12.5"`); `unlimited` says
+ * the balance has no ceiling, which is not a balance of zero.
  */
 const CreditsSchema = z.object({
-  balance: z.number().nullish(),
+  balance: z.union([z.number(), z.string()]).nullish(),
   unlimited: z.boolean().nullish(),
 });
 
@@ -176,7 +177,11 @@ function credits(
   if (raw.unlimited === true) {
     return "unlimited";
   }
-  return typeof raw.balance === "number" && Number.isFinite(raw.balance) ? raw.balance : null;
+  if (raw.balance === null || raw.balance === undefined || raw.balance === "") {
+    return null;
+  }
+  const balance = Number(raw.balance);
+  return Number.isFinite(balance) ? balance : null;
 }
 
 function toWindow(
