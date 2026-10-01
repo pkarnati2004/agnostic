@@ -19,6 +19,7 @@ import type {
   HealthResponse,
   HooksInstallRequest,
   HooksInstallResponse,
+  HooksUninstallResponse,
   InitRequest,
   InitResponse,
   OpenTaskResponse,
@@ -83,6 +84,8 @@ export type DaemonClient = {
   doctor(request?: DoctorRequest): Promise<DoctorResponse>;
   /** Installs the status hook for one harness, or for every harness the repo could run. */
   installHooks(repoId: string, body: HooksInstallRequest): Promise<HooksInstallResponse>;
+  /** Removes what `installHooks` wrote, for the same harness or for all of them. */
+  uninstallHooks(repoId: string, body: HooksInstallRequest): Promise<HooksUninstallResponse>;
   /** Creates `.ag/`, seeding `instructions.md` from the repo's own instructions file. */
   initRepo(repoId: string, body: InitRequest): Promise<InitResponse>;
   /** Renders the generated instruction files; a dry run answers with the same plan unapplied. */
@@ -187,6 +190,8 @@ export function createDaemonClient(opts: {
     doctor: (request) => json<DoctorResponse>("POST", "/doctor", request ?? {}),
     installHooks: (repoId, body) =>
       json<HooksInstallResponse>("POST", `/repos/${encodeURIComponent(repoId)}/hooks`, body),
+    uninstallHooks: (repoId, body) =>
+      json<HooksUninstallResponse>("DELETE", `/repos/${encodeURIComponent(repoId)}/hooks`, body),
     initRepo: (repoId, body) =>
       json<InitResponse>("POST", `/repos/${encodeURIComponent(repoId)}/init`, body),
     syncRepo: (repoId, body) =>

@@ -66,16 +66,25 @@ figure is, so you can decide for yourself.
 ### How agn captures Claude Code's figures
 
 Claude Code sends the percentages to the `statusLine` command it runs every turn. agn installs a
-command of its own in the `.claude/settings.local.json` it already writes for hooks, in each
-checkout and each task worktree. The command writes the payload to
+command of its own in `~/.claude/settings.json`, the file Claude Code reads for every session, at
+every daemon start and on `agn hooks install`. The command writes the payload to
 `~/.agnostic/rate-limits/claude-code.json`, at most once every 15 seconds, and carries no token.
 
-- A status line of your own, from `~/.claude/settings.json`, keeps working: agn's command runs it
-  on the same payload and prints what it prints.
+- Every Claude Code session on this machine then reports, whether or not agn started it. One
+  session reporting is enough: the figures are the plan's, not the session's.
+- A status line you already had keeps drawing. agn's command runs it on the same payload and
+  prints what it prints, and your other `statusLine` keys stay as they are. The entry agn replaced
+  is kept in `~/.agnostic/hooks/claude-statusline-original.json`.
+- agn also keeps its entry in the `.claude/settings.local.json` it writes for hooks, in each
+  checkout and each task worktree. That entry wins inside an agn worktree, and it runs the same
+  command, so one of the two reports per session.
+- `hooks: {claude_statusline: repo}` in `~/.agnostic/config.yaml` keeps agn out of
+  `~/.claude/settings.json`. The next daemon start or `agn hooks install` puts your own entry back
+  and captures only the sessions agn starts.
 - A status line of your own in a repo's `.claude/settings.local.json` is left alone. agn captures
   no figures for that repo and `agn hooks install` says so under `verify`.
-- The figures appear after one Claude Code turn in an agn task, because that is when Claude Code
-  first sends them.
+- `agn doctor` prints `claude-code status-line capture:` with `all sessions`, `agn tasks only` or
+  `none yet`.
 
 ### `agn usage`
 

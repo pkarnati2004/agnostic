@@ -435,6 +435,31 @@ if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$WORK/runrepo/.claude/settings.
 RUN_TREE="$(agx status "$TASK" | awk '$1 == "worktree:" { print $2 }')"
 grep -q statusline.sh "$RUN_TREE/.claude/settings.local.json"
 if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$RUN_TREE/.claude/settings.local.json"; then echo "smoke: token written into the worktree's settings.local.json" >&2; exit 1; fi
+# The same command goes in the user's own settings file, where every Claude Code session reads it,
+# wrapping the status line already there so it keeps drawing.
+USER_SETTINGS="$USAGE_HOME/.claude/settings.json"
+SIDECAR="$AGNOSTIC_HOME/hooks/claude-statusline-original.json"
+mkdir -p "$USAGE_HOME/.claude"
+printf '{"statusLine":{"type":"command","command":"printf mine","padding":0}}' > "$USER_SETTINGS"
+agx hooks install --repo "$WORK/runrepo" --harness claude-code > "$WORK/claude-hooks.txt"
+grep -q statusline.sh "$USER_SETTINGS"
+grep -q "'printf mine'" "$USER_SETTINGS"
+grep -q '"padding": 0' "$USER_SETTINGS"
+test -f "$SIDECAR"
+grep -q "status-line capture: all sessions" "$WORK/claude-hooks.txt"
+agx doctor | grep -q "status-line capture: all sessions"
+if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$USER_SETTINGS"; then echo "smoke: token written into settings.json" >&2; exit 1; fi
+# The repo entry chains the user's own command, not agn's wrapper: one script path, one argument.
+grep -q "'printf mine'" "$WORK/runrepo/.claude/settings.local.json"
+test "$(grep -c statusline.sh "$WORK/runrepo/.claude/settings.local.json")" = 1
+# The opt-out puts their own entry back and leaves nothing of agn's behind.
+printf 'port: %s\nhooks:\n  claude_statusline: repo\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+agx hooks install --repo "$WORK/runrepo" --harness claude-code > "$WORK/claude-optout.txt"
+grep -q "status-line capture: agn tasks only" "$WORK/claude-optout.txt"
+test "$("$NODE" -e "process.stdout.write(require('$USER_SETTINGS').statusLine.command)")" = "printf mine"
+test ! -f "$SIDECAR"
+printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+
 # Every harness but Claude Code keeps its hooks per user: one file under HOME, never in the repo.
 agx hooks install --repo "$WORK/runrepo" --harness gemini > "$WORK/gemini-hooks.txt" 2>&1
 grep -q "^installed gemini hooks: $USAGE_HOME/.gemini/settings.json" "$WORK/gemini-hooks.txt"

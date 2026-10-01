@@ -1,9 +1,6 @@
 // The three slot states, and the rule that a status line the user wrote is never overwritten,
 // are ported from stablyai/orca `src/main/claude/hook-settings.ts` (MIT © Lovecast Inc.).
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { AgnosticPaths } from "@agnostic/core";
-import { z } from "zod";
 import { quoted, statusLineScriptPath } from "../hook-script.js";
 import type { HooksJson } from "../hooks-json-file.js";
 
@@ -42,35 +39,4 @@ export function withoutManagedStatusLine(config: HooksJson, marker: string): Hoo
   }
   const { statusLine: _ours, ...rest } = config;
   return rest;
-}
-
-const UserSettingsSchema = z.looseObject({
-  statusLine: z.looseObject({ command: z.string().optional() }).nullish(),
-});
-
-/**
- * The status line the user set up for themselves, from the settings file Claude Code reads for
- * every session. agn's script runs it on the same payload, so their status line keeps drawing.
- */
-export async function readUserStatusLine(
-  home: string,
-  env: Record<string, string>,
-): Promise<string | null> {
-  const file = join(env.CLAUDE_CONFIG_DIR ?? join(home, ".claude"), "settings.json");
-  const text = await readFile(file, "utf8").catch(() => null);
-  if (text === null) {
-    return null;
-  }
-  const parsed = UserSettingsSchema.safeParse(json(text));
-  const command = parsed.success ? parsed.data.statusLine?.command : undefined;
-  return command === undefined || command === "" ? null : command;
-}
-
-/** A settings file Claude Code itself would refuse says nothing about the user's status line. */
-function json(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }

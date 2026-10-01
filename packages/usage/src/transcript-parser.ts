@@ -46,6 +46,11 @@ export type ParsedTranscript = {
 
 export interface TranscriptParser {
   harness: HarnessId;
+  /**
+   * Whether this harness writes its plan's rate limit into the transcripts themselves, so every
+   * session it runs feeds agn's figure without agn installing anything.
+   */
+  reportsLimits: boolean;
   isTranscript(path: string): boolean;
   parse(path: string): Promise<ParsedTranscript>;
 }

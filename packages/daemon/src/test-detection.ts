@@ -46,6 +46,7 @@ function fixtureReport(models: string[], harness: HarnessId): HarnessReport {
     models,
     modelSource: "probe",
     planVendor: harness === "claude-code" ? "claude" : null,
+    limitCapture: "none",
     plan:
       harness === "claude-code"
         ? { value: "max20", source: "detected", known: true, confirmed: true, overridden: null }
@@ -109,6 +110,7 @@ export function launchDetection(binDir: string, servers: LocalServer[]): Detecti
     modelSource: "none",
     planVendor: null,
     plan: null,
+    limitCapture: "none",
   });
   return {
     harnesses: [

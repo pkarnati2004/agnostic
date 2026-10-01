@@ -30,6 +30,7 @@ type MessageData = z.infer<typeof MessageDataSchema>;
 /** A live OpenCode writes to `opencode.db`; a sibling `opencode-*.db` is a copy of older turns. */
 export const opencodeParser: TranscriptParser = {
   harness: "opencode",
+  reportsLimits: false,
   isTranscript: (path) => basename(path) === "opencode.db",
   parse: parseOpenCodeDatabase,
 };

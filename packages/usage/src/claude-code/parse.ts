@@ -38,6 +38,8 @@ type AssistantRecord = z.infer<typeof AssistantRecordSchema>;
 
 export const claudeCodeParser: TranscriptParser = {
   harness: "claude-code",
+  // Claude Code reports its limits to the status line, not into the transcript.
+  reportsLimits: false,
   isTranscript: (path) => path.endsWith(".jsonl"),
   parse: parseClaudeCodeTranscript,
 };

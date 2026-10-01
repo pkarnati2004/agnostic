@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { agnosticPaths } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { claudeCodeInstaller } from "./install.js";
-import { readUserStatusLine, statusLineCommand, statusLineSlot } from "./statusline.js";
+import { statusLineCommand, statusLineSlot } from "./statusline.js";
+import { installUserStatusLine } from "./user-statusline.js";
 
 let repoPath = "";
 let home = "";
@@ -93,20 +94,25 @@ describe("the Claude Code status line", () => {
     expect(command).toBe(`sh '${script()}' 'printf '\\''hi'\\'''`);
   });
 
-  it("reads the user's own command from the directory CLAUDE_CONFIG_DIR names", async () => {
+  it("chains the user's own command, not agn's wrapper, once agn owns the user slot", async () => {
+    await writeUserSettings(join(home, ".claude"), "my-status");
+    await installUserStatusLine({ home, paths: paths(), env: {} });
+
+    await claudeCodeInstaller.install(input());
+
+    const command = (await readSettings()).statusLine?.command ?? "";
+    expect(command).toBe(`sh '${script()}' 'my-status'`);
+    expect(command.split(script()).length - 1).toBe(1);
+  });
+
+  it("chains the command from the directory CLAUDE_CONFIG_DIR names", async () => {
     const elsewhere = join(home, "other-claude");
     await writeUserSettings(join(home, ".claude"), "the default one");
     await writeUserSettings(elsewhere, "the relocated one");
 
-    const found = await readUserStatusLine(home, { CLAUDE_CONFIG_DIR: elsewhere });
-
-    expect(found).toBe("the relocated one");
     await claudeCodeInstaller.install(input({ CLAUDE_CONFIG_DIR: elsewhere }));
-    expect((await readSettings()).statusLine?.command).toContain("'the relocated one'");
-  });
 
-  it("reads no command when the user has no settings file of their own", async () => {
-    expect(await readUserStatusLine(home, {})).toBeNull();
+    expect((await readSettings()).statusLine?.command).toContain("'the relocated one'");
   });
 });
 

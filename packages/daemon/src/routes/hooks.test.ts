@@ -1,7 +1,12 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type HooksInstallResponse, newId, type Repo } from "@agnostic/core";
+import {
+  type HooksInstallResponse,
+  type HooksUninstallResponse,
+  newId,
+  type Repo,
+} from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
 import { fixtureDetection } from "../test-detection.js";
@@ -29,6 +34,21 @@ function install(body: Record<string, string> = {}): Promise<Response> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+function uninstall(body: Record<string, string> = {}): Promise<Response> {
+  return daemon.request(`/repos/${repo.id}/hooks`, {
+    method: "DELETE",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+const userSettings = () => join(daemon.home, ".claude", "settings.json");
+
+async function readUserCommand(): Promise<string | undefined> {
+  const text = await readFile(userSettings(), "utf8");
+  return (JSON.parse(text) as { statusLine?: { command?: string } }).statusLine?.command;
 }
 
 describe("POST /repos/:id/hooks", () => {
@@ -82,6 +102,32 @@ describe("POST /repos/:id/hooks", () => {
     expect(response.status).toBe(400);
   });
 
+  it("installs Claude Code's status line for the user, and says what it captures", async () => {
+    const { statusLine } = (await (
+      await install({ harness: "claude-code" })
+    ).json()) as HooksInstallResponse;
+    expect(statusLine).toEqual({
+      file: userSettings(),
+      changed: true,
+      capture: "all-sessions",
+    });
+    expect(await readUserCommand()).toContain(join(daemon.paths.hooks, "statusline.sh"));
+  });
+
+  it("answers with no status line for a harness that has no such slot", async () => {
+    const response = (await (await install({ harness: "gemini" })).json()) as HooksInstallResponse;
+    expect(response.statusLine).toBeNull();
+  });
+
+  it("leaves the user's settings file alone when the config opts out", async () => {
+    await writeFile(daemon.paths.config, "hooks:\n  claude_statusline: repo\n");
+    const { statusLine } = (await (
+      await install({ harness: "claude-code" })
+    ).json()) as HooksInstallResponse;
+    expect(statusLine).toMatchObject({ changed: false, capture: "agn-tasks" });
+    await expect(readFile(userSettings(), "utf8")).rejects.toThrow();
+  });
+
   it("installs into the checkout and a live task's worktree, one result per file", async () => {
     const worktree = await mkdtemp(join(tmpdir(), "agn-worktree-"));
     try {
@@ -133,5 +179,58 @@ describe("POST /repos/:id/hooks", () => {
     } finally {
       await rm(worktree, { recursive: true, force: true });
     }
+  });
+});
+
+describe("DELETE /repos/:id/hooks", () => {
+  it("removes agn's entries and the status line it installed for the user", async () => {
+    await install({ harness: "claude-code" });
+
+    const response = await uninstall({ harness: "claude-code" });
+
+    expect(response.status).toBe(200);
+    const { uninstalls, statusLine } = (await response.json()) as HooksUninstallResponse;
+    expect(uninstalls).toEqual([
+      {
+        harness: "claude-code",
+        file: join(repo.path, ".claude", "settings.local.json"),
+        changed: true,
+        verify: null,
+      },
+    ]);
+    expect(statusLine).toEqual({ file: userSettings(), changed: true, capture: "none" });
+    expect(await readUserCommand()).toBeUndefined();
+    expect(await readFile(uninstalls[0]?.file ?? "", "utf8")).not.toContain("post.sh");
+  });
+
+  it("puts a status line of the user's own back as they wrote it", async () => {
+    await mkdir(join(daemon.home, ".claude"), { recursive: true });
+    await writeFile(
+      userSettings(),
+      JSON.stringify({ statusLine: { type: "command", command: "mine", padding: 0 } }),
+      "utf8",
+    );
+    await install({ harness: "claude-code" });
+    expect(await readUserCommand()).toContain("'mine'");
+
+    await uninstall({ harness: "claude-code" });
+
+    const text = await readFile(userSettings(), "utf8");
+    expect(JSON.parse(text)).toEqual({
+      statusLine: { type: "command", command: "mine", padding: 0 },
+    });
+  });
+
+  it("answers with no status line for a harness that has no such slot", async () => {
+    const response = (await (
+      await uninstall({ harness: "gemini" })
+    ).json()) as HooksUninstallResponse;
+    expect(response.statusLine).toBeNull();
+    expect(response.uninstalls).toHaveLength(1);
+  });
+
+  it("refuses a harness that has no installer", async () => {
+    const response = await uninstall({ harness: "other:mytool" });
+    expect(response.status).toBe(404);
   });
 });

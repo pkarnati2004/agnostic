@@ -63,6 +63,8 @@ const SESSION_ID_IN_NAME = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 
 export const codexParser: TranscriptParser = {
   harness: "codex",
+  // A `token_count` event carries the rollout's rate limits, in every session Codex writes.
+  reportsLimits: true,
   isTranscript: (path) => path.endsWith(".jsonl"),
   parse: parseCodexRollout,
 };

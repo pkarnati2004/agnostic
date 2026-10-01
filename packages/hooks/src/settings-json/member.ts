@@ -2,12 +2,12 @@ import { join } from "node:path";
 import type { HarnessId, HookInstallResult } from "@agnostic/core";
 import { type HookMechanism, harnessDefinition } from "@agnostic/registry";
 import {
-  readUserStatusLine,
   statusLineCommand,
   statusLineSlot,
   withManagedStatusLine,
   withoutManagedStatusLine,
 } from "../claude-code/statusline.js";
+import { claudeUserStatusLine, readUserStatusLine } from "../claude-code/user-statusline.js";
 import { HooksError } from "../error.js";
 import type { HookInstaller, HookInstallInput } from "../hook-installer.js";
 import { hookCommand, hookScriptMarker, quoted, statusLineScriptPath } from "../hook-script.js";
@@ -54,6 +54,8 @@ function userStatusLineVerify(file: string): string {
 export function settingsJsonInstaller(member: SettingsJsonMember): HookInstaller {
   return {
     harness: member.harness,
+    // The same slot in the user's own settings file, so every session of that harness reports.
+    ...(member.statusLine ? { userStatusLine: claudeUserStatusLine } : {}),
 
     async install(input: HookInstallInput): Promise<HookInstallResult> {
       const mechanism = settingsJson(member.harness);
@@ -108,7 +110,7 @@ function statusLineMarker(input: HookInstallInput): string {
 
 /** The command to install: agn's script, chaining whatever status line the user set up. */
 async function statusLineFor(input: HookInstallInput): Promise<string> {
-  return statusLineCommand(input.paths, await readUserStatusLine(input.home, input.env));
+  return statusLineCommand(input.paths, await readUserStatusLine(input));
 }
 
 /** The command for one event: the shared script, plus the answer a gating harness waits for. */

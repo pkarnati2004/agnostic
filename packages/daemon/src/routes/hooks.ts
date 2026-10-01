@@ -1,16 +1,20 @@
 import {
+  type HarnessId,
   HarnessIdSchema,
   type HookInstallResult,
   type HookResponse,
   HooksInstallRequestSchema,
   type HooksInstallResponse,
+  type HooksUninstallResponse,
+  type Repo,
+  type StatusLineInstall,
 } from "@agnostic/core";
 import { hookInstaller } from "@agnostic/hooks";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { DaemonError, requestInvalid } from "../error.js";
 import { receiveHook } from "../hook-receiver.js";
-import { installHooks } from "../hooks-install.js";
+import { type HooksInstall, installHooks, uninstallHooks } from "../hooks-install.js";
 import { resolveRepoId } from "../resolve-id.js";
 
 /** A hook payload is a harness's own JSON; a megabyte is more transcript than any of them send. */
@@ -37,18 +41,53 @@ export function hookRoutes(ctx: DaemonContext): Hono {
       return c.json(body);
     })
     .post("/repos/:id/hooks", async (c) => {
-      const repo = resolveRepoId(ctx.ledger, c.req.param("id"));
-      const parsed = HooksInstallRequestSchema.safeParse(await c.req.json().catch(() => ({})));
-      if (!parsed.success) {
-        throw requestInvalid(parsed.error);
-      }
-      const installs: HookInstallResult[] = [];
-      for (const harness of await wanted(ctx, parsed.data.harness)) {
-        installs.push(...(await installHooks(ctx, repo, harness)));
-      }
-      const body: HooksInstallResponse = { installs };
+      const body: HooksInstallResponse = await perHarness(
+        ctx,
+        c.req.param("id"),
+        await sent(c.req),
+        installHooks,
+      );
+      return c.json(body);
+    })
+    .delete("/repos/:id/hooks", async (c) => {
+      const { installs, statusLine } = await perHarness(
+        ctx,
+        c.req.param("id"),
+        await sent(c.req),
+        uninstallHooks,
+      );
+      const body: HooksUninstallResponse = { uninstalls: installs, statusLine };
       return c.json(body);
     });
+}
+
+type HooksStep = (ctx: DaemonContext, repo: Repo, harness: HarnessId) => Promise<HooksInstall>;
+
+/** Install and uninstall take the same optional harness and answer for every one agn touched. */
+async function perHarness(
+  ctx: DaemonContext,
+  id: string,
+  body: unknown,
+  step: HooksStep,
+): Promise<HooksInstall> {
+  const repo = resolveRepoId(ctx.ledger, id);
+  const parsed = HooksInstallRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    throw requestInvalid(parsed.error);
+  }
+  const installs: HookInstallResult[] = [];
+  let statusLine: StatusLineInstall | null = null;
+  for (const harness of await wanted(ctx, parsed.data.harness)) {
+    const done = await step(ctx, repo, harness);
+    installs.push(...done.installs);
+    statusLine = done.statusLine ?? statusLine;
+  }
+  return { installs, statusLine };
+}
+
+/** An empty body is legal on both: no harness named means every one agn can install. */
+async function sent(request: { json(): Promise<unknown> }): Promise<unknown> {
+  return await request.json().catch(() => ({}));
 }
 
 /** The harness the caller named, or every installed harness that has a hook to install. */

@@ -5,6 +5,12 @@ import type { Billing, HarnessId, Profile } from "./profile.js";
 export type ModelSource = "probe" | "seed" | "none";
 
 /**
+ * Which of a harness's sessions feed the plan's limit figure. `all-sessions` is every session on
+ * the machine, `agn-tasks` only the ones agn started, and `none` no source at all.
+ */
+export type LimitCapture = "all-sessions" | "agn-tasks" | "none";
+
+/**
  * What agn can do with a harness. `full` is hooks and a usage parser; `status` is hooks alone, so
  * the task's status is live but its tokens are not counted; `basic` is launch and attach.
  */
@@ -46,6 +52,8 @@ export type HarnessReport = {
   planVendor: PlanVendor | null;
   /** null when nothing said which plan: not logged in, no plan source, no config entry. */
   plan: PlanReport | null;
+  /** `none` for every harness that reports no rate limit agn can read on this machine. */
+  limitCapture: LimitCapture;
 };
 
 /** A tool that is not a harness but that agn reports on: `gh` is the only one in v0. */
