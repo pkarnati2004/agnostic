@@ -19,13 +19,19 @@ export type PlanCellProps = {
 const AGE_WORTH_SAYING_MS = 5 * 60_000;
 
 /**
+ * One width for every plan's panel, wide enough for a window row and for the tokens line to wrap
+ * in, so hovering two plans in turn does not resize the panel under the pointer.
+ */
+const PANEL_WIDTH_PX = 320;
+
+/**
  * One plan's figures: the percent of its rate limit where a file on this machine reports one, and
  * the tokens and cost where none does. The week token pair drops out below `xl` and the cost
  * figures below `lg`; everything hidden is in the tooltip.
  */
 export function PlanCell({ label, vendor, limit, day, week, now }: PlanCellProps) {
   const figures = limit !== null && hasFigure(limit, now);
-  const rows = figures && limit !== null ? usageRows(vendor, limit, now) : [];
+  const rows = figures && limit !== null ? usageRows(limit, now) : [];
   const tokens = tokensLine(day, week);
   const cost = costLine(vendor, day, week);
   return (
@@ -46,7 +52,7 @@ export function PlanCell({ label, vendor, limit, day, week, now }: PlanCellProps
           )}
         </div>
       </TooltipTrigger>
-      <TooltipContent>
+      <TooltipContent className="whitespace-normal" style={{ width: PANEL_WIDTH_PX }}>
         <div className="flex flex-col gap-1.5">
           {rows.length > 0 && (
             <div data-line="rows">

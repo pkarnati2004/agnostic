@@ -1,15 +1,21 @@
-import type { LimitFreshness, PlanLimit, PlanVendor } from "@agnostic/core";
+import type { LimitFreshness, PlanLimit } from "@agnostic/core";
 import { cn } from "../class-names";
 import { formatPercent, formatReset } from "./format-usage";
 import { barFill, windowFreshness } from "./limit-figures";
 
 const BAR_WIDTH_PX = 72;
-const BAR_HEIGHT_PX = 4;
+const BAR_HEIGHT_PX = 6;
+
+/**
+ * The panel draws on the tooltip's primary surface, where the cell bar's page foreground is all
+ * but invisible; the track takes the same surface's muted colour.
+ */
+const TOOLTIP_FILL = "var(--primary-foreground)";
 
 /** A window agn has no figure for: an en dash, not a zero the user would read as spent. */
 const STALE = "–";
 
-/** One line of the panel: a window of the plan's own meter, named the way its vendor names it. */
+/** One line of the panel: a window of the plan's own meter, named by its length. */
 export type UsageRow = {
   key: "five-hour" | "week";
   label: string;
@@ -20,17 +26,15 @@ export type UsageRow = {
 };
 
 /**
- * The rows for one plan, in the order the vendor's own usage panel lists them. Claude Code calls
- * the five-hour window the current session; every other vendor names it by its length. A window
+ * The rows for one plan, in the order a vendor's own usage panel lists them. Every vendor's
+ * five-hour window carries the same label, because a reader comparing two plans should not have
+ * to work out that Claude Code's "current session" is the window Codex calls five hours. A window
  * the harness never reported has no row at all.
  */
-export function usageRows(vendor: PlanVendor | null, limit: PlanLimit, now: number): UsageRow[] {
-  const claude = vendor === "claude";
+export function usageRows(limit: PlanLimit, now: number): UsageRow[] {
   const rows: UsageRow[] = [];
   if (limit.fiveHour !== null) {
-    rows.push(
-      row("five-hour", claude ? "Current session" : "5-hour window", limit.fiveHour, limit, now),
-    );
+    rows.push(row("five-hour", "5-hour window", limit.fiveHour, limit, now));
   }
   if (limit.week !== null) {
     rows.push(row("week", "This week", limit.week, limit, now));
@@ -61,7 +65,8 @@ export function UsageRows({ rows, now }: { rows: UsageRow[]; now: number }) {
             )}
           </span>
           <span
-            className="shrink-0 overflow-hidden rounded-full bg-border"
+            data-testid={`${row.key}-row-track`}
+            className="shrink-0 overflow-hidden rounded-full bg-primary-foreground-muted"
             style={{ width: BAR_WIDTH_PX, height: BAR_HEIGHT_PX }}
           >
             <span
@@ -69,7 +74,8 @@ export function UsageRows({ rows, now }: { rows: UsageRow[]; now: number }) {
               data-testid={`${row.key}-row-bar`}
               style={{
                 width: `${row.percent === null ? 0 : Math.min(100, Math.max(0, row.percent))}%`,
-                backgroundColor: row.percent === null ? "transparent" : barFill(row.percent),
+                backgroundColor:
+                  row.percent === null ? "transparent" : barFill(row.percent, TOOLTIP_FILL),
               }}
             />
           </span>

@@ -79,6 +79,20 @@ describe("PlanCell's tooltip", () => {
     open.unmount();
   });
 
+  it("takes one width whatever it holds, and wraps the lines that do not fit", async () => {
+    const wide = await panel();
+
+    expect(wide.content.style.width).toBe("320px");
+    expect(wide.content.className).toContain("whitespace-normal");
+    wide.unmount();
+
+    const narrow = await panel({ day: null, week: null, vendor: "chatgpt" });
+
+    expect(narrow.content.textContent).not.toContain("tokens");
+    expect(narrow.content.style.width).toBe("320px");
+    narrow.unmount();
+  });
+
   it("dates the rows once the figure is three hours old, and never the tokens", async () => {
     const open = await panel({ limit: claudeLimit({ observedAt: observed(180) }) });
 

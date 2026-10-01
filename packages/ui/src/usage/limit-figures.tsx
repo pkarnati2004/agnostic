@@ -86,12 +86,15 @@ export function windowFreshness(
   return age < APPROXIMATE_AFTER_MS ? "current" : "approximate";
 }
 
-/** The budget cell's colours, so a plan near its ceiling reads the same as a budget near one. */
-export function barFill(usedPercent: number): string {
+/**
+ * The budget cell's colours, so a plan near its ceiling reads the same as a budget near one. A
+ * caller on another surface passes the colour its own text is drawn in as `base`.
+ */
+export function barFill(usedPercent: number, base = "var(--foreground)"): string {
   if (usedPercent >= OVER_PERCENT) {
     return "var(--destructive)";
   }
-  return usedPercent >= WARN_PERCENT ? "var(--status-waiting)" : "var(--foreground)";
+  return usedPercent >= WARN_PERCENT ? "var(--status-waiting)" : base;
 }
 
 type FigureProps = {

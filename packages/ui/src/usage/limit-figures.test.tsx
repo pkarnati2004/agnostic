@@ -43,6 +43,7 @@ describe("LimitFigures", () => {
 
     expect(drawn.text).toContain("58% 5h · 41% wk");
     expect(drawn.bar.style.width).toBe("58%");
+    expect(drawn.bar.style.backgroundColor).toBe("var(--foreground)");
     expect(drawn.figure("five-hour").dataset.freshness).toBe("current");
     drawn.unmount();
   });
