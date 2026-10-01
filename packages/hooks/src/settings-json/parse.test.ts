@@ -46,8 +46,9 @@ const DROID: Case[] = [
 ];
 
 // src/shared/agent-hook-listener-interactive-prompts.test.ts for the event names. The session and
-// directory keys below are inferred, not ported: until someone runs cursor-agent, what its payload
-// calls its conversation and its workspace roots is unverified, and so is this block.
+// directory keys are not in Orca; `conversation_id` and `workspace_roots` were verified live
+// 2026-10-01 on a `stop` payload from cursor-agent 2026.10.01-14929f9, and the other three events
+// are assumed to carry the same two keys.
 const CURSOR: Case[] = [
   ["before-submit-prompt.json", "running", "cursor-conversation-1"],
   ["post-tool-use.json", "running", "cursor-conversation-1"],
@@ -115,6 +116,61 @@ describe.each(MEMBERS)("the %s hook parser", (member, parser, cases) => {
     expect(() => parser.parse(value)).toThrow(
       expect.objectContaining({ code: "hook-payload-invalid" }),
     );
+  });
+});
+
+describe("the tokens a payload carries", () => {
+  /** The one payload that reports usage: Cursor writes no tokens to disk (ADR 029). */
+  const CURSOR_STOP = fileURLToPath(
+    new URL("../../../../tests/fixtures/usage/cursor-stop.json", import.meta.url),
+  );
+
+  it("reads Cursor's stop usage, with the cache read counted inside the input", async () => {
+    const payload = JSON.parse(await readFile(CURSOR_STOP, "utf8"));
+
+    expect(cursorAgentParser.parse(payload).usage).toEqual({
+      model: "composer-2",
+      tokensInput: 1200,
+      tokensOutput: 300,
+      tokensCacheRead: 1000,
+      tokensCacheWrite: 50,
+      inputIncludesCacheRead: true,
+      ref: "cursor-agent:gen_01JD7Q3V9T",
+    });
+  });
+
+  it("reads Cursor's `default` model as no model, so nothing prices it", async () => {
+    const payload = { ...JSON.parse(await readFile(CURSOR_STOP, "utf8")), model: "default" };
+
+    expect(cursorAgentParser.parse(payload).usage).toMatchObject({
+      model: null,
+      tokensInput: 1200,
+    });
+  });
+
+  it("reports no usage for a stop payload that carries none", async () => {
+    expect(cursorAgentParser.parse(await payload("cursor-agent", "stop.json")).usage).toBeNull();
+  });
+
+  it("reports no usage for a payload with tokens and no generation to key them by", async () => {
+    const { generation_id: _dropped, ...rest } = JSON.parse(await readFile(CURSOR_STOP, "utf8"));
+
+    expect(cursorAgentParser.parse(rest).usage).toBeNull();
+  });
+
+  it("reports no usage for Cursor's other events", async () => {
+    const parsed = cursorAgentParser.parse(
+      await payload("cursor-agent", "after-agent-response.json"),
+    );
+
+    expect(parsed.usage).toBeNull();
+  });
+
+  it("reports no usage for the members that write their tokens to a file", async () => {
+    for (const [member, parser, cases] of MEMBERS.filter(([name]) => name !== "cursor-agent")) {
+      const [file] = cases[0] ?? [];
+      expect(parser.parse(await payload(member, file ?? "stop.json")).usage, member).toBeNull();
+    }
   });
 });
 

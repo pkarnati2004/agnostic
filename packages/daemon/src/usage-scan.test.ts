@@ -3,9 +3,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { newId, type Task, type TaskSession, type TaskStatus } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { Detection } from "./detection-cache.js";
 import { createTestDaemon, type TestDaemon } from "./test-daemon.js";
-import { fixtureDetection } from "./test-detection.js";
-import { writeClaudeTranscript, writeCodexRollout } from "./test-transcripts.js";
+import { fixtureDetection, fixtureProfile } from "./test-detection.js";
+import {
+  writeClaudeTranscript,
+  writeCodexRollout,
+  writeFxEvents,
+  writeGeminiChat,
+  writeGrokLog,
+  writePiSession,
+} from "./test-transcripts.js";
 
 let daemon: TestDaemon;
 let home = "";
@@ -16,6 +24,10 @@ const WORKTREE = "/tmp/agn-usage-worktree";
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), "agn-usage-home-"));
   daemon = await createTestDaemon({ userHome: home });
+  seedRepo();
+});
+
+function seedRepo(): void {
   repoId = newId();
   daemon.ledger.repos.insert({
     id: repoId,
@@ -25,7 +37,14 @@ beforeEach(async () => {
     addedAt: new Date().toISOString(),
     status: "active",
   });
-});
+}
+
+/** A second daemon on the same transcripts, for a test that needs its own detection. */
+async function restart(detect?: () => Promise<Detection>): Promise<void> {
+  await daemon.close();
+  daemon = await createTestDaemon({ userHome: home, detect });
+  seedRepo();
+}
 
 afterEach(async () => {
   await daemon.close();
@@ -114,23 +133,10 @@ describe("the usage scanner", () => {
   it("takes one detection snapshot per scan, however many tasks it prices", async () => {
     // A harness that rewrites its auth file as it runs makes every cached detection stale, which
     // is what a real Claude Code session does while a task is open.
-    await daemon.close();
     const authFile = join(home, ".claude.json");
-    daemon = await createTestDaemon({
-      userHome: home,
-      detect: async () => {
-        await writeFile(authFile, JSON.stringify({ rewritten: Date.now() }), "utf8");
-        return fixtureDetection();
-      },
-    });
-    repoId = newId();
-    daemon.ledger.repos.insert({
-      id: repoId,
-      path: "/tmp/alpha",
-      kind: "git",
-      name: "alpha",
-      addedAt: new Date().toISOString(),
-      status: "active",
+    await restart(async () => {
+      await writeFile(authFile, JSON.stringify({ rewritten: Date.now() }), "utf8");
+      return fixtureDetection();
     });
     seedTask({});
     await writeClaudeTranscript(home, [{ session: "s-aaaa", cwd: WORKTREE }]);
@@ -206,6 +212,46 @@ describe("the usage scanner", () => {
 
     expect(daemon.ledger.usage.sumForTask(metered.id).costUsd).toBe(10);
     expect(daemon.ledger.usage.sumForTask(included.id).costUsd).toBeNull();
+  });
+
+  it("reads the tokens of an agent with no session of agn's at all", async () => {
+    await writeGeminiChat(home, { session: "g-1", cwd: "/Users/me/other", cacheRead: 200 });
+    await writeGrokLog(home, [{ session: "x-1", cwd: "/Users/me/other" }]);
+    await writeFxEvents(home, { session: "f-1", cwd: "/Users/me/other" });
+
+    await scan();
+
+    const rows = everyRow();
+    expect(rows.map((row) => row.harness).sort()).toEqual(["fx", "gemini", "grok"]);
+    // No task owns them, so the plan's meter counts them and agn prices none of them.
+    expect(rows.every((row) => row.attributed)).toBe(false);
+    expect(rows.find((row) => row.harness === "gemini")?.tokensCacheRead).toBe(200);
+  });
+
+  it("keeps a cost Pi wrote for a turn no task owns, and not for one on a plan", async () => {
+    // The pi profile has to be detected: a native route on its own says nothing about who pays.
+    await restart(() =>
+      Promise.resolve({
+        ...fixtureDetection(),
+        profiles: [fixtureProfile(null), fixtureProfile(null, { harness: "pi" })],
+      }),
+    );
+    const onAPlan = seedTask({
+      profileId: "pi:default:native",
+      session: { harness: "pi", sessionId: null, cwd: WORKTREE },
+    });
+    await writePiSession(home, { session: "p-owned", cwd: WORKTREE, cost: 0.11 });
+    await writePiSession(home, { session: "p-stranger", cwd: "/Users/me/other", cost: 0.42 });
+
+    await scan();
+
+    expect(everyRow().filter((row) => !row.attributed)).toEqual([
+      expect.objectContaining({ harness: "pi", costUsd: 0.42 }),
+    ]);
+    expect(daemon.ledger.usage.sumForTask(onAPlan.id)).toMatchObject({
+      tokens: 1_500,
+      costUsd: null,
+    });
   });
 
   it("reads both harnesses' transcripts", async () => {

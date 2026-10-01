@@ -1,0 +1,41 @@
+{
+  "sessionId": "9b1c4a7e-2f10-4c88-9d31-7a0b5e2c1f44",
+  "startTime": "2026-09-11T14:00:00.000Z",
+  "lastUpdated": "2026-09-11T14:02:30.000Z",
+  "messages": [
+    {
+      "id": "m1",
+      "type": "user",
+      "timestamp": "2026-09-11T14:00:00.000Z",
+      "content": "add a --verbose flag"
+    },
+    {
+      "id": "m2",
+      "type": "gemini",
+      "timestamp": "2026-09-11T14:00:20.000Z",
+      "model": "gemini-3-pro",
+      "tokens": {
+        "input": 1200,
+        "output": 300,
+        "cached": 1000,
+        "thoughts": 40,
+        "tool": 12,
+        "total": 1552
+      }
+    },
+    {
+      "id": "m3",
+      "type": "gemini",
+      "timestamp": "2026-09-11T14:02:30.000Z",
+      "model": "gemini-3-flash",
+      "tokens": { "input": 80, "output": 20, "cached": 0, "thoughts": 0, "tool": 0, "total": 100 }
+    },
+    {
+      "id": "m4",
+      "type": "gemini",
+      "timestamp": "2026-09-11T14:02:40.000Z",
+      "model": "gemini-3-flash",
+      "tokens": { "total": 640 }
+    }
+  ]
+}

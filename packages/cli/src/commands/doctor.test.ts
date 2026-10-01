@@ -18,6 +18,7 @@ function report(over: Partial<HarnessReport>): HarnessReport {
     modelSource: "probe",
     planVendor: "claude",
     limitSource: "statusline",
+    usageSource: "transcripts",
     plan: { value: "max20", source: "detected", known: true, confirmed: true, overridden: null },
     limitCapture: "all-sessions",
     ...over,
@@ -88,8 +89,8 @@ describe("agn doctor", () => {
     ]);
     await done();
     expect(cli.out).toEqual([
-      "harness      version  login      support  models      plan   path",
-      "claude-code  2.0.1    logged-in  full     1 (probed)  max20  /opt/bin/claude",
+      "harness      version  login      support  usage        models      plan   path",
+      "claude-code  2.0.1    logged-in  full     transcripts  1 (probed)  max20  /opt/bin/claude",
       "not installed: codex, gemini (2)",
       "claude-code status-line capture: all sessions",
       "profiles: 1 available (agn profiles)",
@@ -146,8 +147,8 @@ describe("agn doctor", () => {
     );
     await done();
     expect(cli.out.slice(0, 3)).toEqual([
-      "harness  version  login  support  models      plan  path",
-      "gemini   -        -      status   1 (probed)  -     not installed",
+      "harness  version  login  support  usage  models      plan  path",
+      "gemini   -        -      status   -      1 (probed)  -     not installed",
       "not installed: codex (1)",
     ]);
   });
@@ -173,16 +174,17 @@ describe("agn doctor", () => {
         plan: null,
       }),
       report({
-        harness: "gemini",
-        support: "status",
-        binary: "gemini",
-        path: "/opt/bin/gemini",
+        harness: "cursor-agent",
+        support: "full",
+        binary: "cursor-agent",
+        path: "/opt/bin/cursor-agent",
         version: "0.4",
         login: "logged-in",
         models: [],
         modelSource: "none",
         planVendor: null,
         limitSource: null,
+        usageSource: "hook",
         plan: null,
       }),
       report({
@@ -197,15 +199,16 @@ describe("agn doctor", () => {
         modelSource: "none",
         planVendor: null,
         limitSource: null,
+        usageSource: null,
         plan: null,
       }),
     ]);
     await done();
     expect(cli.out.slice(1, 5)).toEqual([
-      "claude-code  2.0.1    logged-in  full     1 (probed)     max20  /opt/bin/claude",
-      "pi           0.9      logged-in  full     2 (seed list)  -      /opt/bin/pi",
-      "gemini       0.4      logged-in  status   none           -      /opt/bin/gemini",
-      "aider        0.1      unknown    basic    none           -      /opt/bin/aider",
+      "claude-code   2.0.1    logged-in  full     transcripts    1 (probed)     max20  /opt/bin/claude",
+      "pi            0.9      logged-in  full     transcripts    2 (seed list)  -      /opt/bin/pi",
+      "cursor-agent  0.4      logged-in  full     hook           none           -      /opt/bin/cursor-agent",
+      "aider         0.1      unknown    basic    not available  none           -      /opt/bin/aider",
     ]);
   });
 

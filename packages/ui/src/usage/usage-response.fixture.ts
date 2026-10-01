@@ -1,6 +1,7 @@
 import type {
   BudgetReport,
   DoctorResponse,
+  HarnessId,
   PlanLimit,
   PlanOption,
   PlanUsage,
@@ -9,6 +10,7 @@ import type {
   UsageResponse,
   UsageSum,
 } from "@agnostic/core";
+import { NO_LIMIT_DETAIL } from "@agnostic/core/browser";
 
 // 2026-09-11 was a Friday; the week it is in starts on Monday the 7th - the CLI's own fixture dates.
 const SCANNED_AT = "2026-09-11T15:00:00";
@@ -101,6 +103,7 @@ export function claudeLimit(over: Partial<PlanLimit> = {}): PlanLimit {
     },
     observedAt: new Date("2026-09-11T14:50:00").toISOString(),
     source: "statusline",
+    detail: NO_LIMIT_DETAIL,
     ...over,
   };
 }
@@ -110,12 +113,14 @@ export function usageResponse(
   week: PlanUsage[] = day,
   budget: BudgetReport = { day: null, week: null },
   limits: PlanLimit[] = [],
+  unavailable: HarnessId[] = [],
 ): UsageResponse {
   return {
     day: { window: bounds("day", "2026-09-11T00:00:00"), plans: day },
     week: { window: bounds("week", "2026-09-07T00:00:00"), plans: week },
     budget,
     limits,
+    unavailable,
     scannedAt: new Date(SCANNED_AT).toISOString(),
   };
 }

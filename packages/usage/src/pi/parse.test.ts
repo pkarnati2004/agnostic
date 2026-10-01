@@ -18,6 +18,7 @@ const TRANSCRIPTS = fileURLToPath(
 
 const PI_FILE = `${TRANSCRIPTS}pi/2026-09-01T10-00-00_abc.jsonl`;
 const OMP_FILE = `${TRANSCRIPTS}omp/omp-session.jsonl`;
+const COST_FILE = `${TRANSCRIPTS}pi/2026-09-02T10-00-00_cost.jsonl`;
 
 /** What each row is worth, the way a window sums it: every bucket the message reported. */
 function priced(turn: TranscriptTurn): { ref: string; model: string | null; tokens: number } {
@@ -48,8 +49,15 @@ describe("the Pi transcript parser", () => {
       tokensOutput: 40,
       tokensCacheRead: 60,
       tokensCacheWrite: 10,
+      costUsd: null,
       ref: "pi:pi-abc:msg_1",
     });
+  });
+
+  it("takes the cost Pi wrote for the turn, and null for a turn it wrote none for", async () => {
+    const { turns } = await piFamilyParser("pi").parse(COST_FILE);
+
+    expect(turns.map((turn) => turn.costUsd)).toEqual([0.42, null]);
   });
 
   it("prefers the model the message names over the last one the session switched to", async () => {
@@ -111,6 +119,7 @@ describe("the Pi transcript parser", () => {
         tokensOutput: 5,
         tokensCacheRead: null,
         tokensCacheWrite: null,
+        costUsd: null,
         ref: "omp:omp-session:4",
       },
     ]);

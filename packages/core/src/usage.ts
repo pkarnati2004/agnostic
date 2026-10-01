@@ -80,6 +80,37 @@ export type LimitWindowReport = LimitWindow & { freshness: LimitFreshness };
  */
 export type LimitSource = "rollout" | "statusline";
 
+/**
+ * The figures a limit source carries beside its windows. A harness fills only the fields its own
+ * files hold, and every other field is null: the credit and plan fields describe the account, the
+ * cost and context fields the one session the figure was read from.
+ */
+export type PlanLimitDetail = {
+  /** Credits left on the account, or "unlimited" where the source says the balance has no ceiling. */
+  credits: number | "unlimited" | null;
+  /** The plan name the source itself wrote, which is not agn's plan label (ADR 018). */
+  planType: string | null;
+  spendControlReached: boolean | null;
+  /** What the session that reported this figure has cost so far, as the harness priced it. */
+  sessionCostUsd: number | null;
+  /** How full that session's context window was, 0..100. */
+  contextUsedPercent: number | null;
+};
+
+/** What a source that reports its windows and nothing else answers with. */
+export const NO_LIMIT_DETAIL: PlanLimitDetail = {
+  credits: null,
+  planType: null,
+  spendControlReached: null,
+  sessionCostUsd: null,
+  contextUsedPercent: null,
+};
+
+/** False when the source reported none of the extra figures, so there is nothing to show. */
+export function hasLimitDetail(detail: PlanLimitDetail): boolean {
+  return Object.values(detail).some((value) => value !== null);
+}
+
 export type PlanLimit = {
   harness: HarnessId;
   vendor: PlanVendor | null;
@@ -88,6 +119,8 @@ export type PlanLimit = {
   /** When the harness reported it: the record's timestamp, or the mtime of the file agn's hook wrote. */
   observedAt: string;
   source: LimitSource;
+  /** The extra figures the source carried; every field null where it carried none. */
+  detail: PlanLimitDetail;
 };
 
 /** Without a reset time, an observation is worth showing for this long and no longer. */

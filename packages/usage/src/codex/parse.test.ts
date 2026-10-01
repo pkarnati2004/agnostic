@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { NO_LIMIT_DETAIL } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { codexParser } from "./parse.js";
 
@@ -31,11 +32,13 @@ describe("codexParser", () => {
       tokensOutput: 50,
       tokensCacheRead: 800,
       tokensCacheWrite: null,
+      costUsd: null,
       ref: `codex:${T1}:1`,
     });
     expect(turns[1]).toMatchObject({
       tokensInput: 200,
       tokensCacheRead: 1000,
+      costUsd: null,
       ref: `codex:${T1}:2`,
     });
   });
@@ -49,6 +52,7 @@ describe("codexParser", () => {
         cwd: "/Users/me/code/other",
         tokensInput: 300,
         tokensCacheRead: 0,
+        costUsd: null,
         ref: `codex:${T2}:1`,
       }),
     ]);
@@ -157,6 +161,10 @@ const RATE_LIMITS = fileURLToPath(
   new URL("../../../../tests/fixtures/usage/codex-rate-limits.jsonl", import.meta.url),
 );
 
+const CREDITS = fileURLToPath(
+  new URL("../../../../tests/fixtures/usage/codex-credits.jsonl", import.meta.url),
+);
+
 describe("codexParser and the plan's rate limit", () => {
   it("reads the newest rate limit the rollout carried, and leaves the turns alone", async () => {
     const { turns, limit } = await codexParser.parse(RATE_LIMITS);
@@ -169,6 +177,8 @@ describe("codexParser and the plan's rate limit", () => {
       // The timestamp of the record that carried it, not of the file or the scan.
       observedAt: "2026-09-24T11:59:30.000Z",
       source: "rollout",
+      // The fixture's `rate_limits` carries a plan name and no credits of its own.
+      detail: { ...NO_LIMIT_DETAIL, planType: "pro" },
     });
   });
 
@@ -188,6 +198,41 @@ describe("codexParser and the plan's rate limit", () => {
 
     expect(limit?.fiveHour).toBeNull();
     expect(limit?.week).toEqual({ usedPercent: 17, resetsAt: "2026-09-28T09:00:00.000Z" });
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("reads the account's credit balance, plan and spend control", async () => {
+    const { limit } = await codexParser.parse(CREDITS);
+
+    expect(limit?.detail).toEqual({
+      ...NO_LIMIT_DETAIL,
+      credits: 12.5,
+      planType: "plus",
+      spendControlReached: false,
+    });
+  });
+
+  it("says unlimited for a balance with no ceiling rather than a figure", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-usage-credits-"));
+    const file = join(dir, `rollout-2026-09-24T12-00-00-${T1}.jsonl`);
+    const text = await readFile(CREDITS, "utf8");
+    await writeFile(file, text.replace('"unlimited":false', '"unlimited":true'), "utf8");
+
+    const { limit } = await codexParser.parse(file);
+
+    expect(limit?.detail.credits).toBe("unlimited");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("reports no detail at all for a rollout that carries only its windows", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "agn-usage-windows-"));
+    const file = join(dir, `rollout-2026-09-24T13-00-00-${T1}.jsonl`);
+    const text = await readFile(RATE_LIMITS, "utf8");
+    await writeFile(file, text.replace(',"plan_type":"pro"', ""), "utf8");
+
+    const { limit } = await codexParser.parse(file);
+
+    expect(limit?.detail).toEqual(NO_LIMIT_DETAIL);
     await rm(dir, { recursive: true, force: true });
   });
 });

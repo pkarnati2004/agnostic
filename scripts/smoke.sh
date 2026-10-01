@@ -841,11 +841,26 @@ printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
 
 # Pi writes a message-graph transcript of its own, under its own home directory.
 mkdir -p "$USAGE_HOME/.pi/agent/sessions"
-printf '{"type":"session","id":"s-pi-smoke","timestamp":"%s","cwd":"%s"}\n{"type":"model_change","modelId":"claude-fable-5-1","timestamp":"%s"}\n{"type":"message","id":"m-pi-smoke","timestamp":"%s","message":{"role":"assistant","usage":{"input":300,"output":100}}}\n' \
+printf '{"type":"session","id":"s-pi-smoke","timestamp":"%s","cwd":"%s"}\n{"type":"model_change","modelId":"claude-fable-5-1","timestamp":"%s"}\n{"type":"message","id":"m-pi-smoke","timestamp":"%s","message":{"role":"assistant","usage":{"input":300,"output":100,"cost":0.42}}}\n' \
   "$NOW" "$WORK/runrepo" "$NOW" "$NOW" > "$USAGE_HOME/.pi/agent/sessions/s-pi-smoke.jsonl"
 agx usage > "$WORK/usage-pi.txt"
 grep -q "^unknown plan  pi " "$WORK/usage-pi.txt"
 grep -q "400" "$WORK/usage-pi.txt"
+# Pi wrote what the turn cost, so agn shows that figure rather than pricing the tokens itself.
+grep -q '\$0.42' "$WORK/usage-pi.txt"
+
+echo "smoke: an installed agent that records no usage is named, never hidden"
+# A stub on PATH is an agent agn detects; nothing on this machine counts kimi's tokens.
+{
+  echo '#!/bin/sh'
+  echo 'echo "kimi 1.0.0"'
+} > "$FAKEBIN/kimi"
+chmod +x "$FAKEBIN/kimi"
+# doctor re-detects, so the stub is on the machine as far as the daemon is concerned.
+agx doctor | grep -q "not available"
+agx usage | grep -q "usage not available for kimi: nothing on this machine records it"
+agx usage --json | grep -q '"kimi"'
+rm -f "$FAKEBIN/kimi"
 agx daemon stop | grep -q "^agnd stopped"
 echo "smoke: agn catalog update against a loopback catalog server"
 # The published catalog agn would fetch, served from this machine: the smoke never leaves it.

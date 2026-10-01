@@ -3,12 +3,31 @@ import type { HarnessId, HookStatus } from "@agnostic/core";
 import { z } from "zod";
 import { HooksError } from "./error.js";
 
+/**
+ * What a hook payload said this turn spent, for a harness that writes its tokens nowhere else.
+ * The daemon prices it and records it; the parser reads the numbers and nothing more.
+ */
+export type HookUsage = {
+  model: string | null;
+  tokensInput: number;
+  tokensOutput: number;
+  tokensCacheRead: number | null;
+  tokensCacheWrite: number | null;
+  /** True when the harness counts cache reads inside its input figure; the daemon splits them
+   * before storing or pricing. */
+  inputIncludesCacheRead: boolean;
+  /** The ledger's dedupe key, so the same payload sent twice records one row. */
+  ref: string;
+};
+
 /** `status: null` is a payload we understand that means no transition, such as `SessionStart`. */
 export type ParsedHook = {
   event: string;
   status: HookStatus | null;
   sessionId: string | null;
   cwd: string | null;
+  /** Null for every harness that writes its tokens to a file agn reads instead. */
+  usage: HookUsage | null;
 };
 
 export interface HookEventParser {
@@ -32,6 +51,8 @@ export type HookPayload = z.infer<typeof HookPayloadSchema>;
 
 export type ParseOptions = {
   eventHint?: string;
+  /** What this payload spent, for the one harness whose hook is its only usage source. */
+  usage?: HookUsage | null;
   /** The keys the event name may be under, in order. Grok spells it `hookEventName`. */
   eventKeys?: string[];
   /** In order of preference; the first usable value wins. Defaults to Claude's `session_id`. */
@@ -65,6 +86,7 @@ export function parseHookEvent(
     status: statusOf({ ...parsed.data, hook_event_name: event }),
     sessionId: firstSessionId(parsed.data, opts.sessionKeys ?? ["session_id"]),
     cwd: firstDirectory(parsed.data, opts.cwdKeys ?? ["cwd"]),
+    usage: opts.usage ?? null,
   };
 }
 

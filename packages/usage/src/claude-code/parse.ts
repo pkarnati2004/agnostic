@@ -121,6 +121,8 @@ function toTurn(
     tokensOutput,
     tokensCacheRead,
     tokensCacheWrite,
+    // Claude Code writes a `costUSD` on some turns; agn prices its tokens instead (ADR 029).
+    costUsd: null,
     ref: `claude-code:${dedupeKey(record) ?? fallbackKey}`,
   };
 }

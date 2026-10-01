@@ -95,6 +95,14 @@ You should see each agent you have installed, with its version, login state and 
 | `status` | Installs a hook and shows the live status; no token count |
 | `basic` | Starts the agent and attaches to it; the task is running until the agent exits |
 
+The `usage` column says where each agent's tokens come from:
+
+| Usage | Where the tokens come from |
+|---|---|
+| `transcripts` | Files the agent writes on this machine, which agnostic reads |
+| `hook` | The agent's own hook payload, which carries the counts it writes nowhere else |
+| `not available` | Nothing on this machine records them. See [Usage](usage.md#not-available) |
+
 Agents that are not installed are named on one `not installed:` line under the table. "Unknown"
 means agnostic couldn't verify login - start the agent once by hand and re-run. `agn doctor
 --verbose` adds the PATH agnostic searched, which the plain command prints only when an agent you
@@ -156,7 +164,7 @@ agn open <task> --editor zed     # this once, in Zed
 | `catalog_check` | Whether agnostic checks once a day for a newer benchmark catalog, which is its only outbound call. Absent means yes; `false` turns it off and leaves `agn catalog update` working. |
 | `spec_writer` | The profile that writes specs in the workspace's spec step, as a full profile id. Absent means agn picks the cheapest model your subscription already covers. |
 | `hooks` | `claude_statusline`, either `user` or `repo`. `user`, the default, puts agn's status-line command in `~/.claude/settings.json`, so every Claude Code session reports its plan's rate limit. `repo` keeps agn out of that file: only the sessions agn starts report, and your own entry goes back on the next task launch or `agn hooks install`. |
-| `budget` | `daily_usd` and `weekly_usd`, a ceiling in dollars over what agn priced in the calendar day and the Monday-based week: API-key and credits runs, and a run whose billing agn could not determine. Subscription and local runs never count. At 80% `agn run`, the New task tab and the usage bar warn; at 100% a run or handoff onto an API-key or credits profile is refused unless you pass `--ignore-budget`. Resume is never refused. |
+| `budget` | `daily_usd` and `weekly_usd`, a ceiling in dollars over what agn priced in the calendar day and the Monday-based week: API-key and credits runs, and a run whose billing agn could not determine. Subscription and local runs never count. A cost the agent wrote itself (Pi, OMP, OpenCode, fx) is kept, because the provider billed it, and it counts toward the budget. At 80% `agn run`, the New task tab and the usage bar warn; at 100% a run or handoff onto an API-key or credits profile is refused unless you pass `--ignore-budget`. Resume is never refused. |
 
 ```yaml
 port: 7431

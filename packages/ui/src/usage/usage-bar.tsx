@@ -13,6 +13,7 @@ import { BudgetCell } from "./budget-cell";
 import { planLabel } from "./format-usage";
 import { PlanCell, type PlanCellQuestion } from "./plan-cell";
 import { TaskCost } from "./task-cost";
+import { UnavailableCell } from "./unavailable-cell";
 import { lastResponse, type UsageState } from "./usage-state";
 import { usePlanOptions } from "./use-plan-options";
 
@@ -94,6 +95,7 @@ export function UsageBar({ state, flash, taskUsage, showTask, client, refresh }:
           />
         ))
       )}
+      <UnavailableCell harnesses={response.unavailable} />
       <BudgetCell budget={response.budget} />
       <div className="flex-1" />
       {showTask && <TaskCost usage={taskUsage} />}

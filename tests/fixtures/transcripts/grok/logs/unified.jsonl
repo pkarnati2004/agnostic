@@ -1,0 +1,5 @@
+{"ts":"2026-09-11T14:00:00.000Z","event":"shell.session.start","sessionId":"grok-s1","cwd":"/work/repo"}
+{"ts":"2026-09-11T14:00:20.000Z","event":"shell.turn.inference_done","sessionId":"grok-s1","cwd":"/work/repo","model":"grok-5","usage":{"input_tokens":1200,"output_tokens":300,"cached_tokens":200}}
+{"ts":"2026-09-11T14:01:00.000Z","event":"shell.tool.exec","sessionId":"grok-s1","cwd":"/work/repo","usage":{"input_tokens":99,"output_tokens":99}}
+{"ts":"2026-09-11T14:01:40.000Z","event":"shell.turn.inference_done","sessionId":"grok-s2","cwd":"/work/other","model":"grok-5-fast","usage":{"input_tokens":80,"output_tokens":20}}
+{"ts":"2026-09-11T14:02:00.000Z","event":"shell.turn.inference_

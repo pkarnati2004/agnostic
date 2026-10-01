@@ -24,6 +24,7 @@ describe("the Pi hook parser", () => {
       status: null,
       sessionId: PI_TRANSCRIPT,
       cwd: "/work/repo",
+      usage: null,
     });
   });
 
@@ -55,6 +56,7 @@ describe("the Pi hook parser", () => {
       status: "running",
       sessionId: "omp-session",
       cwd: "/work/repo",
+      usage: null,
     });
   });
 

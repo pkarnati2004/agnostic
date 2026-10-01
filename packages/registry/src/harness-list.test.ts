@@ -11,17 +11,37 @@ const SUPPORT: [HarnessId, Support][] = [
   ["codex", "full"],
   ["pi", "full"],
   ["opencode", "full"],
-  ["gemini", "status"],
+  ["gemini", "full"],
   ["droid", "status"],
-  ["cursor-agent", "status"],
+  ["cursor-agent", "full"],
   ["kimi", "status"],
   ["devin", "status"],
   ["openclaude", "status"],
   ["command-code", "status"],
   ["omp", "full"],
   ["mimo-code", "status"],
-  ["grok", "status"],
-  ["copilot", "status"],
+  ["grok", "full"],
+  ["copilot", "full"],
+];
+
+/** Where each row's tokens come from, from the ADR 029 amendment of 2026-09-30. */
+const USAGE_SOURCES: [HarnessId, string | null][] = [
+  ["claude-code", ".claude/projects"],
+  ["codex", ".codex/sessions"],
+  ["pi", ".pi/agent/sessions"],
+  ["omp", ".omp/agent/sessions"],
+  ["opencode", ".local/share/opencode"],
+  ["gemini", ".gemini/tmp"],
+  ["grok", ".grok/logs"],
+  ["copilot", ".copilot"],
+  ["fx", ".fx/sessions"],
+  ["kimi", null],
+  ["droid", null],
+  ["devin", null],
+  ["mimo-code", null],
+  ["command-code", null],
+  ["openclaude", null],
+  ["antigravity", null],
 ];
 
 describe("the harness table", () => {
@@ -237,6 +257,20 @@ describe("the harness table", () => {
     for (const def of harnesses.filter((row) => row.resume?.evidence !== "unchecked")) {
       expect(def.resume === null || def.usageSource?.kind === "transcripts").toBe(true);
     }
+  });
+
+  it("names the directory each harness's tokens are read from, and nothing for the rest", () => {
+    for (const [id, dir] of USAGE_SOURCES) {
+      const source = harnessDefinition(id).usageSource;
+      expect([id, source?.kind === "transcripts" ? source.dir : null]).toEqual([id, dir]);
+    }
+  });
+
+  it("reads Cursor's tokens off its stop hook, which is the only count Cursor writes", () => {
+    expect(harnessDefinition("cursor-agent").usageSource).toEqual({
+      kind: "hook",
+      event: "stop",
+    });
   });
 
   it("always offers the native route first", () => {

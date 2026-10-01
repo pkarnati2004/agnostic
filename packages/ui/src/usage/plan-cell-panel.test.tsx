@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import type { PlanLimit, PlanUsage, PlanVendor } from "@agnostic/core";
+import { NO_LIMIT_DETAIL } from "@agnostic/core/browser";
 import { act } from "react";
 import { describe, expect, it } from "vitest";
 import { TooltipProvider } from "../components/tooltip";
@@ -78,6 +79,7 @@ describe("PlanCell's tooltip", () => {
     );
 
     expect(order).toEqual(["rows", "age", "tokens", "cost"]);
+    // The detail line sits under the tokens, and this limit carried no extra figure.
     open.unmount();
   });
 
@@ -202,6 +204,31 @@ describe("PlanCell's tooltip", () => {
     expect(open.line("rows")).toBeNull();
     expect(open.line("age")).toBeNull();
     expect(open.line("tokens")).not.toBeNull();
+    open.unmount();
+  });
+
+  it("names the account's credits and plan where the limit source carried them", async () => {
+    const detail = { ...NO_LIMIT_DETAIL, credits: 12.5, planType: "plus" };
+    const open = await panel({ limit: claudeLimit({ detail }) });
+
+    expect(open.line("detail")?.textContent).toBe("credits $12.50 · plan plus");
+    open.unmount();
+  });
+
+  it("names the reporting session's cost and context, labelled as the session's", async () => {
+    const detail = { ...NO_LIMIT_DETAIL, sessionCostUsd: 0.8412, contextUsedPercent: 37.4 };
+    const open = await panel({ limit: claudeLimit({ detail }) });
+
+    expect(open.line("detail")?.textContent).toBe(
+      "last session $0.84 (the agent's figure) · context 37% used",
+    );
+    open.unmount();
+  });
+
+  it("draws no detail line for a limit whose extra figures are all absent", async () => {
+    const open = await panel({ limit: claudeLimit() });
+
+    expect(open.line("detail")).toBeNull();
     open.unmount();
   });
 });

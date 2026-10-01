@@ -1,4 +1,4 @@
-import type { HarnessDefinition, PromptDelivery } from "./harness-definition.js";
+import type { HarnessDefinition, PromptDelivery, UsageSource } from "./harness-definition.js";
 import { harnessIdentity } from "./harness-identity.js";
 
 /**
@@ -12,8 +12,9 @@ const argvAfterSeparator: PromptDelivery = { kind: "argv", separator: "--" };
 const typeAfterStart: PromptDelivery = { kind: "type-after-start" };
 
 /**
- * Tier 2 is launch and attach only: no model flag, no probe, no hooks, no resume, and none of the
- * fields a feature dispatches on. The name and the mark come from `harness-identity.ts`.
+ * Tier 2 is launch and attach only: no model flag, no probe, no hooks and no resume. A row may
+ * still name a usage source, because reading a file a harness writes needs nothing from the
+ * harness in return. The name and the mark come from `harness-identity.ts`.
  */
 export type Tier2Source = {
   id: string;
@@ -22,6 +23,7 @@ export type Tier2Source = {
   launch?: string[];
   prompt?: PromptDelivery;
   processNames?: string[];
+  usageSource?: UsageSource;
 };
 
 export const tier2Sources: Tier2Source[] = [
@@ -52,7 +54,8 @@ export const tier2Sources: Tier2Source[] = [
   { id: "prime-agent", prompt: argvAfterSeparator },
   // Mastra Code hooks at ~/.mastracode/hooks.json; it stays tier 2 until agn reads its events.
   { id: "mastracode" },
-  { id: "fx" },
+  // fx writes cumulative usage checkpoints to its session log; agn reads them without a hook.
+  { id: "fx", usageSource: { kind: "transcripts", dir: ".fx/sessions" } },
   { id: "deepseek", aliases: ["dsh"] },
 ];
 
@@ -76,7 +79,7 @@ export function tier2Definition(source: Tier2Source): HarnessDefinition {
     hooks: null,
     authFile: null,
     planSource: null,
-    usageSource: null,
+    usageSource: source.usageSource ?? null,
     limitSource: null,
     worktreeTrust: null,
     mcp: null,

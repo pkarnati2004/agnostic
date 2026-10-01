@@ -39,7 +39,13 @@ async function parse(name: string, event: string): Promise<ParsedHook> {
 describe("the Copilot hook parser", () => {
   it.each(STATUS)("reads %s, hinted %s, as %s", async (name, event, status) => {
     const parsed = await parse(name, event);
-    expect(parsed).toEqual({ event, status, sessionId: SESSION_ID, cwd: "/tmp/workspace" });
+    expect(parsed).toEqual({
+      event,
+      status,
+      sessionId: SESSION_ID,
+      cwd: "/tmp/workspace",
+      usage: null,
+    });
   });
 
   it("does not call a permission request a wait, because Copilot has not yet asked", async () => {
@@ -62,7 +68,13 @@ describe("the Copilot hook parser", () => {
 
   it("prefers the event the payload names over the hint", () => {
     const parsed = copilotParser.parse({ hook_event_name: "Stop" }, "UserPromptSubmit");
-    expect(parsed).toEqual({ event: "Stop", status: "waiting", sessionId: null, cwd: null });
+    expect(parsed).toEqual({
+      event: "Stop",
+      status: "waiting",
+      sessionId: null,
+      cwd: null,
+      usage: null,
+    });
   });
 
   it("treats a toolCalls entry that is not an object as no tool named, not a crash", () => {

@@ -54,6 +54,8 @@ export type HarnessReport = {
   planVendor: PlanVendor | null;
   /** Where the harness's own rate-limit figure comes from; null for one that reports none. */
   limitSource: LimitSource | null;
+  /** Where its token counts come from: files it writes, its hook payload, or nowhere. */
+  usageSource: "transcripts" | "hook" | null;
   /** null when nothing said which plan: not logged in, no plan source, no config entry. */
   plan: PlanReport | null;
   /** `none` for every harness that reports no rate limit agn can read on this machine. */

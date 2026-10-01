@@ -10,5 +10,10 @@ export {
   type TranscriptRoot,
 } from "./scan-transcripts.js";
 export { type StatusLineParser, statusLineParser } from "./statusline-parsers.js";
-export type { ObservedLimit, TranscriptParser, TranscriptTurn } from "./transcript-parser.js";
+export type {
+  ObservedLimit,
+  PriceableTurn,
+  TranscriptParser,
+  TranscriptTurn,
+} from "./transcript-parser.js";
 export { usageWindow } from "./usage-window.js";
