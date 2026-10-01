@@ -31,7 +31,9 @@ const PANEL_WIDTH_PX = 320;
  */
 export function PlanCell({ label, vendor, limit, day, week, now }: PlanCellProps) {
   const figures = limit !== null && hasFigure(limit, now);
-  const rows = figures && limit !== null ? usageRows(limit, now) : [];
+  // The cell falls back to tokens once every window is stale, but the panel still owes the reader
+  // the windows and their age: a panel of tokens alone reads as a panel that failed to load.
+  const rows = limit === null ? [] : usageRows(limit, now);
   const tokens = tokensLine(day, week);
   const cost = costLine(vendor, day, week);
   return (

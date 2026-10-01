@@ -277,7 +277,7 @@ Hover a cell for the plan's usage panel:
 - One row per window the agent reported. Every vendor's rows are **5-hour window** and **This
   week**, one label per window, so two plans in the same panel do not read as if they measured
   different things. Each row has its reset time, a bar in the same colours as the cell, and
-  `58% used`.
+  `58% used`. A window past its reset keeps its row and reads `–`, with no bar and no reset time.
 - `as of 3 h ago` under the rows, once the figure is five minutes old or more. It dates the rows
   only. The token counts below are rescanned every minute.
 - The tokens: `274M tokens this week, 12.1M by agn · 105M today, 3.2M by agn`, to three

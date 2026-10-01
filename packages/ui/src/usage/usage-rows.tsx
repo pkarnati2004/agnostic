@@ -1,5 +1,4 @@
 import type { LimitFreshness, PlanLimit } from "@agnostic/core";
-import { cn } from "../class-names";
 import { formatPercent, formatReset } from "./format-usage";
 import { barFill, windowFreshness } from "./limit-figures";
 
@@ -42,7 +41,11 @@ export function usageRows(limit: PlanLimit, now: number): UsageRow[] {
   return rows;
 }
 
-/** A bar and a percentage per window, so the panel reads like the one the harness prints. */
+/**
+ * A bar and a percentage per window, so the panel reads like the one the harness prints. Every row
+ * draws at full strength: ADR 029, amended 2026-10-01, puts the age of an approximate figure on
+ * the tilde and the `as of` line under the rows, not in the strength of the row's text.
+ */
 export function UsageRows({ rows, now }: { rows: UsageRow[]; now: number }) {
   return (
     <div className="flex flex-col gap-1">
@@ -51,10 +54,7 @@ export function UsageRows({ rows, now }: { rows: UsageRow[]; now: number }) {
           key={row.key}
           data-row={row.key}
           data-freshness={row.freshness}
-          className={cn(
-            "flex items-center gap-3",
-            row.freshness === "approximate" && "text-primary-foreground-muted",
-          )}
+          className="flex items-center gap-3"
         >
           <span className="flex min-w-28 flex-col">
             <span>{row.label}</span>

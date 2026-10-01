@@ -78,12 +78,26 @@ describe("UsageRows", () => {
     panel.unmount();
   });
 
-  it("marks an approximate row with a tilde and dims it", () => {
+  it("marks an approximate row with a tilde and draws it at full strength", () => {
     const panel = drawn(claudeLimit({ observedAt: observed(3 * 60) }));
 
     expect(panel.row("five-hour").textContent).toContain("~58% used");
     expect(panel.row("five-hour").dataset.freshness).toBe("approximate");
-    expect(panel.row("five-hour").className).toContain("text-primary-foreground-muted");
+    expect(panel.row("five-hour").className).not.toContain("text-primary-foreground-muted");
+    panel.unmount();
+  });
+
+  it("draws every row at full strength, whatever its freshness", () => {
+    const panel = drawn(
+      claudeLimit({
+        week: { usedPercent: 41, resetsAt: "2026-09-10T09:00:00.000Z", freshness: "stale" },
+        observedAt: observed(3 * 60),
+      }),
+    );
+
+    for (const key of ["five-hour", "week"]) {
+      expect(panel.row(key).className).toBe("flex items-center gap-3");
+    }
     panel.unmount();
   });
 

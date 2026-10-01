@@ -108,6 +108,30 @@ describe("PlanCell's tooltip", () => {
     open.unmount();
   });
 
+  it("keeps the window rows when every window is stale, with a dash each and the age", async () => {
+    const past = new Date(NOW - 2 * 24 * 60 * 60_000).toISOString();
+    const open = await panel({
+      limit: claudeLimit({
+        fiveHour: { usedPercent: 58, resetsAt: past, freshness: "stale" },
+        week: { usedPercent: 41, resetsAt: past, freshness: "stale" },
+        observedAt: observed(2 * 24 * 60),
+      }),
+    });
+
+    expect(open.line("rows")?.textContent).toBe("5-hour window–This week–");
+    expect(open.line("age")?.textContent).toBe("as of 2 d ago");
+    open.unmount();
+  });
+
+  it("leaves the rows out when nothing on this machine reported a limit", async () => {
+    const open = await panel({ limit: null });
+
+    expect(open.line("rows")).toBeNull();
+    expect(open.line("age")).toBeNull();
+    expect(open.line("tokens")?.textContent).toContain("274M tokens this week");
+    open.unmount();
+  });
+
   it("tildes the rows on an approximate figure and leaves the tokens line alone", async () => {
     const open = await panel({ limit: claudeLimit({ observedAt: observed(180) }) });
 
