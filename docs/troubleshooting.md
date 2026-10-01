@@ -76,9 +76,9 @@ your plan's rate limit to its `statusLine` command and nowhere else, so agn inst
 `~/.claude/settings.json`. A status line you already had is the argument of agn's command: it runs
 on the same payload and keeps drawing, and your other `statusLine` keys are unchanged. The entry
 agn replaced is in `~/.agnostic/hooks/claude-statusline-original.json`. To say no, put
-`hooks: {claude_statusline: repo}` in `~/.agnostic/config.yaml`: the next daemon start or
+`hooks: {claude_statusline: repo}` in `~/.agnostic/config.yaml`: the next task launch or
 `agn hooks install` puts your entry back, and agn then reads the limit only from the sessions it
-starts. Deleting agn's entry by hand is undone by the next daemon start; the config key is the way
+starts. Deleting agn's entry by hand is undone by the next task launch; the config key is the way
 to opt out.
 
 **`agn usage` shows an old Claude figure.** The figure is as old as the last status-line tick agn
@@ -86,8 +86,8 @@ saw. `agn usage` and the usage bar print its age, mark it `~` once it is two hou
 once the window it belongs to has reset. Start a Claude Code session and take one turn to refresh
 it. If the age never moves, check what `agn doctor` says after `claude-code status-line capture:`:
 `all sessions` means every session reports, `agn tasks only` means you have opted out with
-`hooks.claude_statusline: repo` and only agn's tasks report, and `none yet` means no session has
-reported since the command was installed.
+`hooks.claude_statusline: repo` and only agn's tasks report, and `none yet` means agn's command is not in
+`~/.claude/settings.json`: run `agn hooks install` or start a task.
 
 **`agn usage` shows less than the agent's own usage screen.** They count different windows. agn counts the calendar day and the week from Monday, in your time zone; Claude Code and Codex show their plan's rolling window (five hours, seven days). agn also reads only what is in the transcript files on this machine, so a session run on another machine under the same login is not there.
 

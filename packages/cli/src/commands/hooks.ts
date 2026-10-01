@@ -102,7 +102,7 @@ function restoredLines(statusLine: StatusLineInstall | null): string[] {
   }
   return [
     statusLine.changed
-      ? `restored your own status line: ${statusLine.file}`
+      ? `removed agn's status line: ${statusLine.file}`
       : `no status line of agn's in ${statusLine.file}`,
   ];
 }

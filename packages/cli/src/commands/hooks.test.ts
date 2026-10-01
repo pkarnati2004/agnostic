@@ -161,7 +161,7 @@ describe("agn hooks uninstall", () => {
     expect(test.asked).toEqual([{ repoId: REPO.id, body: {} }]);
     expect(test.out).toEqual([
       "removed claude-code hooks: /work/app/.claude/settings.local.json",
-      "restored your own status line: /home/u/.claude/settings.json",
+      "removed agn's status line: /home/u/.claude/settings.json",
     ]);
   });
 

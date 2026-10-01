@@ -67,7 +67,7 @@ figure is, so you can decide for yourself.
 
 Claude Code sends the percentages to the `statusLine` command it runs every turn. agn installs a
 command of its own in `~/.claude/settings.json`, the file Claude Code reads for every session, at
-every daemon start and on `agn hooks install`. The command writes the payload to
+when a task starts and on `agn hooks install`. The command writes the payload to
 `~/.agnostic/rate-limits/claude-code.json`, at most once every 15 seconds, and carries no token.
 
 - Every Claude Code session on this machine then reports, whether or not agn started it. One
@@ -79,7 +79,7 @@ every daemon start and on `agn hooks install`. The command writes the payload to
   checkout and each task worktree. That entry wins inside an agn worktree, and it runs the same
   command, so one of the two reports per session.
 - `hooks: {claude_statusline: repo}` in `~/.agnostic/config.yaml` keeps agn out of
-  `~/.claude/settings.json`. The next daemon start or `agn hooks install` puts your own entry back
+  `~/.claude/settings.json`. The next task launch or `agn hooks install` puts your own entry back
   and captures only the sessions agn starts.
 - A status line of your own in a repo's `.claude/settings.local.json` is left alone. agn captures
   no figures for that repo and `agn hooks install` says so under `verify`.
