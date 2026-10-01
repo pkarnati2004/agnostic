@@ -1,9 +1,10 @@
-import type { DaemonClient, RunTaskRequest, Task } from "@agnostic/core";
+import type { DaemonClient, RunTaskRequest, Task, TaskIntent } from "@agnostic/core";
 import { Command } from "commander";
 import { budgetWarnings } from "../budget-lines.js";
 import { type CliContext, writeJson } from "../context.js";
 import { INTENT_FLAG_HELP, intentFlag } from "../intent-flag.js";
 import { resolveRepo } from "../resolve-repo.js";
+import { launchDesignTool } from "./open.js";
 
 type RunFlags = {
   intent?: string;
@@ -15,6 +16,8 @@ type RunFlags = {
   base?: string;
   skipTests?: boolean;
   ignoreBudget?: boolean;
+  /** commander's `--no-open`: true unless the user passed it. */
+  open?: boolean;
 };
 
 export function runCommand(ctx: CliContext): Command {
@@ -30,6 +33,7 @@ export function runCommand(ctx: CliContext): Command {
     .option("--skip-tests", "do not run the repo's test_command before the agent starts")
     .option("--ignore-budget", "start the task even though the budget in config.yaml is spent")
     .option("--intent <intent>", INTENT_FLAG_HELP)
+    .option("--no-open", "with --intent design: create the task without opening the design tool")
     .action(async (prompt: string, flags: RunFlags, command: Command) => {
       if (flags.profile !== undefined && flags.harness !== undefined) {
         command.error("error: pass --profile or --harness, not both", {
@@ -38,10 +42,14 @@ export function runCommand(ctx: CliContext): Command {
         });
       }
       const intent = intentFlag(flags.intent, command);
+      assertDesignHasNoProfile(intent, flags, command);
       const { repoId } = await resolveRepo(ctx, flags.repo);
       const client = await ctx.client();
-      await announceTests(ctx, client, repoId, flags);
-      await announceBudget(ctx, client);
+      if (intent !== "design") {
+        // A design task runs no tests and is billed for nothing, so neither line would be true.
+        await announceTests(ctx, client, repoId, flags);
+        await announceBudget(ctx, client);
+      }
       const response = await client.runTask(repoId, {
         ...body(prompt, flags),
         ...(intent === undefined ? {} : { intent }),
@@ -50,10 +58,57 @@ export function runCommand(ctx: CliContext): Command {
         writeJson(ctx.io, response);
         return;
       }
-      for (const line of started(response.task)) {
+      const lines =
+        intent === "design"
+          ? await design(ctx, client, response.task, flags.open !== false)
+          : started(response.task);
+      for (const line of lines) {
         ctx.io.out(line);
       }
     });
+}
+
+/**
+ * A design task runs in a design tool with a human in it, so there is no profile to name and no
+ * model to override. Answered here rather than after a round trip, the way a bad --intent is.
+ */
+function assertDesignHasNoProfile(
+  intent: TaskIntent | undefined,
+  flags: RunFlags,
+  command: Command,
+): void {
+  const named = flags.profile ?? flags.harness ?? flags.model;
+  if (intent !== "design" || named === undefined) {
+    return;
+  }
+  command.error("error: --intent design runs in a design tool, so it takes no profile or model", {
+    exitCode: 2,
+    code: "commander.conflictingOption",
+  });
+}
+
+/**
+ * The design tool is opened from here, in the user's own login session (ADR 023), and the lines
+ * say where the design files go and what finishes the task. `--no-open` prints the command that
+ * opens it later instead.
+ */
+async function design(
+  ctx: CliContext,
+  client: DaemonClient,
+  task: Task,
+  open: boolean,
+): Promise<string[]> {
+  const info = await client.designOpenInfo(task.id);
+  if (open) {
+    await launchDesignTool(ctx, info);
+  }
+  return [
+    `started ${task.id} ${task.title}`,
+    ...where(task),
+    `design folder: ${info.folder}`,
+    open ? `opened ${info.tool.name}` : `open:     agn open ${task.id} --tool`,
+    `finish:   agn stop ${task.id}`,
+  ];
 }
 
 /**
@@ -112,9 +167,12 @@ function body(prompt: string, flags: RunFlags): RunTaskRequest {
 
 /** `agn handoff` prints these too: the child of a handoff started the same way a run does. */
 export function started(task: Task): string[] {
-  const where =
-    task.worktreePath === null
-      ? [`in place: ${task.session?.cwd ?? "the repo"}`]
-      : [`worktree: ${task.worktreePath}`, `branch:   ${task.branch ?? "-"}`];
-  return [`started ${task.id} ${task.title}`, ...where, `attach:   agn attach ${task.id}`];
+  return [`started ${task.id} ${task.title}`, ...where(task), `attach:   agn attach ${task.id}`];
+}
+
+/** A worktree and its branch, or the directory a folder task runs in. */
+function where(task: Task): string[] {
+  return task.worktreePath === null
+    ? [`in place: ${task.session?.cwd ?? "the repo"}`]
+    : [`worktree: ${task.worktreePath}`, `branch:   ${task.branch ?? "-"}`];
 }

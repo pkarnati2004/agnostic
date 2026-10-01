@@ -17,7 +17,7 @@ import { resolveProfile } from "./resolve-profile.js";
 import { assertDirectory, ensureWorktree } from "./resume-worktree.js";
 import { sessionEvidence } from "./session-evidence.js";
 import { ensureSynced } from "./sync-repo.js";
-import { launchedSession } from "./task-session.js";
+import { assertAgentTask, launchedSession } from "./task-session.js";
 
 const TERMINAL: Task["status"][] = ["done", "failed", "stopped"];
 
@@ -37,6 +37,7 @@ export async function resumeTask(
   task: Task,
   opts: { prompt?: string } = {},
 ): Promise<ResumeTaskResponse> {
+  assertAgentTask(task);
   const live = sessionHandle(task);
   if (live !== null && (await ctx.executor.sessionState(live)) === "running") {
     return {

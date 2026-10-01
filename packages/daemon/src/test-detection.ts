@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { type Catalog, type LoadedCatalog, readCatalogFile } from "@agnostic/catalog";
 import {
   type Billing,
+  type DesignTool,
   type Editor,
   formatProfileId,
   type HarnessId,
@@ -125,6 +126,12 @@ export function launchDetection(binDir: string, servers: LocalServer[]): Detecti
     pathVar: binDir,
   };
 }
+
+/** Both design tools as a machine with neither installed has them: at their own addresses. */
+export const fixtureDesignTools: DesignTool[] = [
+  { id: "claude-design", name: "Claude Design", via: "url", path: "https://claude.ai/design" },
+  { id: "figma", name: "Figma", via: "url", path: "https://www.figma.com" },
+];
 
 /** One editor of each kind, so an open test can check both argv shapes without a real editor. */
 export const fixtureEditors: Editor[] = [

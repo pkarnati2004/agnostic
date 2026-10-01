@@ -12,8 +12,11 @@ import { TaskStatusSchema } from "./task.js";
 
 const INLINE = "<inline>";
 const FENCE = "---";
-const HANDOFF_HEADING = /^Handoff to (\S+) at (\S+)$/;
+// A handoff with nobody named is a design task's: the next agent is not chosen yet (ADR 006).
+const HANDOFF_HEADING = /^Handoff(?: to (\S+))? at (\S+)$/;
 const NAMED_HEADINGS = ["Spec", "Acceptance", "Notes"];
+const HANDOFF_FORMS =
+  "`## Handoff to <profile id> at <iso timestamp>`, or `## Handoff at <iso timestamp>`";
 
 // No `updated` key: a status change rewrites the file, and a timestamp churning every time hides
 // the edits that matter in a diff.
@@ -29,7 +32,8 @@ type TaskNoteFrontMatter = z.infer<typeof TaskNoteFrontMatterSchema>;
 
 // The body is raw markdown: the next agent receives the whole section as its first prompt.
 export type TaskNoteHandoff = {
-  toProfileId: string;
+  /** Null when the section names no recipient, which is what `agn stop` writes for a design task. */
+  toProfileId: string | null;
   at: string;
   body: string;
 };
@@ -88,9 +92,7 @@ export function formatTaskNote(note: TaskNote): string {
     sections.push(formatSection("Notes", note.notes));
   }
   for (const handoff of note.handoffs) {
-    sections.push(
-      formatSection(`Handoff to ${handoff.toProfileId} at ${handoff.at}`, handoff.body),
-    );
+    sections.push(formatSection(handoffHeading(handoff), handoff.body));
   }
   return `${FENCE}\n${front}${FENCE}\n\n${sections.join("\n")}`;
 }
@@ -106,6 +108,11 @@ export async function writeTaskNote(repoPath: string, note: TaskNote): Promise<v
   const file = taskNotePath(repoPath, note.id);
   await mkdir(dirname(file), { recursive: true });
   await writeFile(file, formatTaskNote(note), "utf8");
+}
+
+function handoffHeading(handoff: TaskNoteHandoff): string {
+  const to = handoff.toProfileId === null ? "" : ` to ${handoff.toProfileId}`;
+  return `Handoff${to} at ${handoff.at}`;
 }
 
 function formatSection(heading: string, body: string): string {
@@ -191,13 +198,13 @@ function parseHandoff(section: Section, file: string): TaskNoteHandoff {
   const match = HANDOFF_HEADING.exec(section.heading);
   if (!match) {
     const detail = section.heading.startsWith("Handoff")
-      ? "a handoff heading reads `## Handoff to <profile id> at <iso timestamp>`"
+      ? `a handoff heading reads ${HANDOFF_FORMS} when nobody is named`
       : `a task note holds ${NAMED_HEADINGS.map((heading) => `## ${heading}`).join(", ")} and handoff sections`;
     throw invalid(file, `## ${section.heading} is not a section a task note can hold; ${detail}`);
   }
   const parsed = z
-    .object({ to: ProfileIdSchema, at: z.iso.datetime() })
-    .safeParse({ to: match[1], at: match[2] });
+    .object({ to: ProfileIdSchema.nullable(), at: z.iso.datetime() })
+    .safeParse({ to: match[1] ?? null, at: match[2] });
   if (!parsed.success) {
     throw invalid(
       file,

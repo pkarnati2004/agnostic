@@ -60,6 +60,7 @@ export async function recommendContext(
     detect: () => Promise.resolve(detection),
     tmuxConfigStale: () => Promise.resolve(false),
     detectEditors: () => Promise.resolve([]),
+    detectDesignTools: () => Promise.resolve([]),
     catalog: fixtureCatalogStore(catalog),
     catalogSource: {
       manifestUrl: "http://127.0.0.1:1/manifest.json",

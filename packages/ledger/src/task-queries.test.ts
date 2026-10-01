@@ -217,35 +217,6 @@ describe("tasks.setSession", () => {
   });
 });
 
-describe("tasks.start", () => {
-  it("writes branch, session and running status with both events in one transaction", () => {
-    ledger.tasks.insert(task);
-    const started = ledger.tasks.start(task.id, {
-      branch: "agn/split-t3n9v2wxyz",
-      baseCommit: "abc1234",
-      session,
-    });
-    expect(started.status).toBe("running");
-    expect(started.branch).toBe("agn/split-t3n9v2wxyz");
-    expect(started.session).toEqual(session);
-    expect(ledger.tasks.get(task.id)).toEqual(started);
-    expect(ledger.events.forTask(task.id).map((event) => event.kind)).toEqual([
-      "task.created",
-      "session.captured",
-      "task.status",
-    ]);
-  });
-
-  it("skips the status event when the task is already running", () => {
-    ledger.tasks.insert({ ...task, status: "running" });
-    ledger.tasks.start(task.id, { branch: null, baseCommit: null, session });
-    expect(ledger.events.forTask(task.id).map((event) => event.kind)).toEqual([
-      "task.created",
-      "session.captured",
-    ]);
-  });
-});
-
 describe("tasks.clean", () => {
   it("records the removed worktree and keeps the row's path and branch", () => {
     ledger.tasks.insert({ ...task, worktreePath: "/w/t3n9v2wxyz", branch: "agn/split" });

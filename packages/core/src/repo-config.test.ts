@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { z } from "zod";
+import { describeIssues } from "./describe-issues.js";
 import {
   defaultRepoConfig,
   RepoConfigSchema,
@@ -27,6 +29,7 @@ describe("readRepoConfig", () => {
       branchPrefix: "feat/",
       setupCommand: "pnpm i --frozen-lockfile",
       cleanAfterMerge: true,
+      designFolder: "design",
     });
   });
 
@@ -97,6 +100,25 @@ describe("RepoConfigSchema", () => {
     });
   });
 
+  it("takes a design folder, and falls back to design/ when the repo names none", () => {
+    expect(RepoConfigSchema.parse({ ...valid, design_folder: "mockups" }).designFolder).toBe(
+      "mockups",
+    );
+    expect(RepoConfigSchema.parse(valid).designFolder).toBe("design");
+  });
+
+  it("takes a nested design folder", () => {
+    expect(RepoConfigSchema.parse({ ...valid, design_folder: "a/b" }).designFolder).toBe("a/b");
+  });
+
+  it("refuses a design folder that is not inside the worktree, naming the key", () => {
+    for (const folder of ["/abs", "../x", "a/../b", "design/", ""]) {
+      const parsed = RepoConfigSchema.safeParse({ ...valid, design_folder: folder });
+      expect(parsed.success).toBe(false);
+      expect(describeIssues(parsed.error as z.ZodError)).toContain("design_folder");
+    }
+  });
+
   it("rejects a default profile that is not a profile id", () => {
     expect(RepoConfigSchema.safeParse({ ...valid, default_profile: "nonsense" }).success).toBe(
       false,
@@ -116,6 +138,7 @@ describe("writeRepoConfig", () => {
       branchPrefix: "agent/",
       setupCommand: "make deps",
       cleanAfterMerge: true,
+      designFolder: "mockups",
     };
     await writeRepoConfig(repo, config);
     expect(await readRepoConfig(repo)).toEqual(config);
@@ -136,6 +159,7 @@ describe("writeRepoConfig", () => {
     expect(text).not.toContain("default_profile");
     expect(text).not.toContain("base_branch");
     expect(text).not.toContain("clean_after_merge");
+    expect(text).not.toContain("design_folder");
     expect(await readRepoConfig(repo)).toEqual(defaultRepoConfig("r7k2m4pqrs"));
   });
 });
@@ -151,6 +175,7 @@ describe("defaultRepoConfig", () => {
       branchPrefix: null,
       setupCommand: null,
       cleanAfterMerge: false,
+      designFolder: "design",
     });
   });
 });

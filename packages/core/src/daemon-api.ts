@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { DesignTool } from "./design.js";
 import type { LimitCapture } from "./doctor-api.js";
 import { type Editor, type EditorId, EditorIdSchema } from "./editor.js";
 import type { AttachInfo, DetectedHarness } from "./executor.js";
@@ -179,6 +180,18 @@ export type OpenTaskQuery = z.infer<typeof OpenTaskQuerySchema>;
 
 /** Everything an open needs, resolved by the daemon; the client runs `argv`, which opens `dir`. */
 export type OpenTaskResponse = { task: Task; editor: Editor; dir: string; argv: string[] };
+
+/** Where a design task's files live and what opens the tool; the caller runs `argv` (ADR 023). */
+export type DesignOpenResponse = {
+  task: Task;
+  tool: DesignTool;
+  /** The design folder inside the task's worktree, which the tool is not handed. */
+  folder: string;
+  argv: string[];
+};
+
+/** The same open, run by the daemon itself for a caller with no terminal. */
+export type DesignOpenedResponse = { tool: DesignTool; folder: string };
 
 // The path a caller is asking about, which the daemon checks is the repo or inside it.
 export const SessionsQuerySchema = z.strictObject({ path: z.string().min(1) });

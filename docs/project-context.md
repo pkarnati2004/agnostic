@@ -58,12 +58,13 @@ The header means agn owns the whole file, so an edit made *below* an intact head
 
 ## `agnostic.yaml`
 
-Four keys change what `agn run` does.
+Five keys change what `agn run` does.
 
 - `test_command` runs twice per task: in the new worktree after `setup_command` and before the agent starts, and again when the task ends. `agn outcomes` reports both results. The first run is what `agn run` waits for; pass `--skip-tests` to start the agent at once and record no baseline. A task that branches from a commit agn has already tested on this repo reuses that result and starts without waiting. Output goes to `~/.agnostic/logs/tasks/<task>.log`, and a command that takes more than ten minutes is abandoned and recorded as not run.
 - `setup_command` runs once, when the worktree is created.
 - `base_branch` is the branch tasks are cut from, and the branch agn compares against when it decides whether a task's work was merged.
 - `clean_after_merge: true` removes a task's worktree once agn sees its branch merged. The branch stays; `agn clean --delete-branch` is still yours to run.
+- `design_folder` is the folder `agn run --intent design` creates in the worktree for the design files; `design` by default. The path is relative to the worktree, and `..` in it is an error. See [docs/design-tasks.md](design-tasks.md).
 
 ## Handoff notes
 

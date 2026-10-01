@@ -176,6 +176,22 @@ describe("POST /tasks/:id/stop", () => {
   });
 });
 
+describe("stopping a task that never had a session", () => {
+  it("settles it done, because stopping a design task is finishing it", async () => {
+    const response = await daemon.request(`/repos/${repo.id}/tasks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt: "wireframe the onboarding", intent: "design" }),
+    });
+    const task = ((await response.json()) as TaskResponse).task;
+    expect(task.status).toBe("waiting");
+
+    const stopped = await daemon.request(`/tasks/${task.id}/stop`, { method: "POST" });
+    expect(((await stopped.json()) as TaskResponse).task.status).toBe("done");
+    expect(statusEvents(task.id)).toEqual(["waiting", "done"]);
+  });
+});
+
 describe("an exit that is still on its way", () => {
   // The reconcile a read runs can see the session dead before the watcher has read the exit file.
   // Settling it as stopped there would overwrite the real answer, so this runs several times.

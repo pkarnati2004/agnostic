@@ -1,6 +1,7 @@
 import { type Catalog, type CatalogSource, entitlement, type PlanRow } from "@agnostic/catalog";
 import type {
   AgnosticPaths,
+  DesignTool,
   Editor,
   ExecutorProvider,
   HarnessReport,
@@ -10,6 +11,7 @@ import type {
 } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
 import {
+  detectDesignTools,
   detectEditors,
   detectHarnesses,
   detectLocalServers,
@@ -40,6 +42,7 @@ import { branchRoutes } from "./routes/branch.js";
 import { catalogRoutes } from "./routes/catalog.js";
 import { changesRoutes } from "./routes/changes.js";
 import { compareRoutes } from "./routes/compares.js";
+import { designRoutes } from "./routes/design.js";
 import { editorRoutes } from "./routes/editors.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
@@ -71,6 +74,8 @@ export type DaemonDeps = {
   detect: () => Promise<Detection>;
   /** Scanned per open request rather than cached: an editor installed today is there today. */
   detectEditors: () => Promise<Editor[]>;
+  /** The same, for the design tools a design task can be opened in. */
+  detectDesignTools: () => Promise<DesignTool[]>;
   /** Loaded at start and reloaded after a download, so an update needs no restart. */
   catalog: CatalogStore;
   /** The URLs the daily check reads; `AGNOSTIC_CATALOG_URL` points them at a mirror or a test. */
@@ -132,6 +137,7 @@ export function createApp(deps: DaemonDeps): {
   app.route("/", recommendRoutes(ctx));
   app.route("/", specRoutes(ctx));
   app.route("/", editorRoutes(ctx));
+  app.route("/", designRoutes(ctx));
   app.route("/", changesRoutes(ctx));
   app.route("/", branchRoutes(ctx));
   app.route("/", eventRoutes(ctx));
@@ -221,6 +227,14 @@ export function realDetectEditors(
   home: string,
 ): () => Promise<Editor[]> {
   return () => detectEditors({ env, home });
+}
+
+/** The design tools of the machine the daemon runs on, which is the machine the user is at. */
+export function realDetectDesignTools(
+  env: Record<string, string>,
+  home: string,
+): () => Promise<DesignTool[]> {
+  return () => detectDesignTools({ env, home });
 }
 
 function toReport(

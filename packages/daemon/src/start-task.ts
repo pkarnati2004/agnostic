@@ -36,7 +36,7 @@ import { runTestCommand } from "./test-command.js";
 /** What `agn compare` adds to a run: the group its siblings share, stamped on the queued row. */
 export type StartOptions = { compareId?: string };
 
-type QueuedRow = {
+export type QueuedRow = {
   profileId: string;
   recommendation: Recommendation | null;
   /** Null for every run but a compare's; `task.created` carries it, so the page learns the group. */
@@ -128,7 +128,12 @@ export async function withCurrentKind(ctx: DaemonContext, repo: Repo): Promise<R
  * The folder guard and the row it protects are one SQLite transaction, which better-sqlite3 runs
  * synchronously: two runs arriving on the same folder at once cannot both see an empty list.
  */
-function insertQueued(ctx: DaemonContext, repo: Repo, req: RunTaskRequest, of: QueuedRow): Task {
+export function insertQueued(
+  ctx: DaemonContext,
+  repo: Repo,
+  req: RunTaskRequest,
+  of: QueuedRow,
+): Task {
   const { profileId, recommendation } = of;
   const id = newId();
   const now = new Date().toISOString();
@@ -202,7 +207,7 @@ async function launch(
   const prepared = await ctx.executor.prepare({
     task,
     repo,
-    base: await resolveBase(ctx, opts),
+    base: await resolveBase(ctx, opts.base, opts.config),
     // A first run has no branch to keep: the name comes from the title and the repo's prefix.
     branch: null,
     branchPrefix: opts.config?.branchPrefix ?? null,
@@ -261,10 +266,13 @@ async function testsBefore(
 }
 
 /** `--base` wins over `base_branch`, and a task id means "continue from that task's branch". */
-async function resolveBase(ctx: DaemonContext, opts: LaunchOptions): Promise<string | null> {
-  const base = opts.base;
+export async function resolveBase(
+  ctx: DaemonContext,
+  base: string | null,
+  config: RepoConfig | null,
+): Promise<string | null> {
   if (base === null) {
-    return opts.config?.baseBranch ?? null;
+    return config?.baseBranch ?? null;
   }
   const task = ctx.ledger.tasks.get(base);
   if (task === null) {

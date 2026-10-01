@@ -112,6 +112,7 @@ describe("POST /tasks/:id/handoff when the launch itself fails", () => {
       branchPrefix: null,
       setupCommand: "exit 3",
       cleanAfterMerge: false,
+      designFolder: "design",
     });
 
     const response = await post(`/tasks/${parent.id}/handoff`, { profile: "codex", note: NOTE });

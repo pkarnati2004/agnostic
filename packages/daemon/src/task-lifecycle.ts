@@ -116,6 +116,7 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
       return (await executor.sessionState(handle)) === "gone" ? settle(task, "stopped") : task;
     }
     // A session adopted from outside tmux has no pane to ask about, so the pid is the liveness.
+    // A design task has neither, and there is nothing to check: it waits until a human stops it.
     const pid = task.session?.pid ?? null;
     if (pid === null) {
       return task;
@@ -135,9 +136,12 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
       if (!LIVE.includes(task.status)) {
         return task;
       }
-      // Stopped is written first, so the exit event that follows finds a terminal task and no
-      // second transition is recorded.
-      const stopped = await settle(task, "stopped", true);
+      // A live task with no session at all is a design task, and stopping one is finishing it:
+      // there was no agent to interrupt, only a human who says the design is done.
+      const to: TaskStatus = task.session === undefined ? "done" : "stopped";
+      // The terminal status is written first, so the exit event that follows finds a terminal
+      // task and no second transition is recorded.
+      const stopped = await settle(task, to, true);
       const handle = sessionHandle(task);
       const session = task.session;
       if (handle !== null) {
