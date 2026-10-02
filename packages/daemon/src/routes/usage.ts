@@ -1,16 +1,21 @@
-import type {
-  Plans,
-  TaskUsageResponse,
-  UsageBreakdown,
-  UsageResponse,
-  UsageWindow,
+import {
+  type LimitWindow,
+  type LimitWindowReport,
+  limitFreshness,
+  type PlanLimit,
+  type Plans,
+  type TaskUsageResponse,
+  type UsageBreakdown,
+  type UsageResponse,
+  type UsageWindow,
 } from "@agnostic/core";
 import { planVendor } from "@agnostic/registry";
-import { summarizePlans, usageWindow } from "@agnostic/usage";
+import { type ObservedLimit, summarizePlans, usageWindow } from "@agnostic/usage";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { budgetReport, spentUsd } from "../budget.js";
 import { readDaemonConfig } from "../daemon-config.js";
+import { readRateLimitsFile } from "../rate-limits-file.js";
 import { resolveTaskId } from "../resolve-id.js";
 import { billingForProfile } from "../usage-scan.js";
 
@@ -28,13 +33,14 @@ export function usageRoutes(ctx: DaemonContext): Hono {
       const scannedAt = new Date();
       const config = await readDaemonConfig(ctx.paths);
       const plans = await plansInUse(ctx, config.plans);
+      const { catalog } = ctx.catalog.current();
       const read = (kind: "day" | "week") => {
         const bounds: UsageWindow = usageWindow(kind, scannedAt);
         const rows = summarize(ctx, bounds);
         // The budget counts the same rows the plan cells are built from: one read per window.
         return {
           window: bounds,
-          plans: summarizePlans(rows, plans, planVendor),
+          plans: summarizePlans(rows, plans, planVendor, catalog),
           spent: spentUsd(rows),
         };
       };
@@ -44,6 +50,7 @@ export function usageRoutes(ctx: DaemonContext): Hono {
         day: { window: day.window, plans: day.plans },
         week: { window: week.window, plans: week.plans },
         budget: budgetReport(config.budget, { day: day.spent, week: week.spent }),
+        limits: await planLimits(ctx, scannedAt),
         scannedAt: scannedAt.toISOString(),
       };
       return c.json(body);
@@ -58,6 +65,49 @@ export function usageRoutes(ctx: DaemonContext): Hono {
       };
       return c.json(body);
     });
+}
+
+/**
+ * What the harnesses last said about their plans' own meters, from the two sources this machine
+ * has: Codex's rollouts, which the scan above already read, and the file agn's status-line command
+ * writes for Claude Code. One row per harness, the newer observation winning.
+ */
+async function planLimits(ctx: DaemonContext, scannedAt: Date): Promise<PlanLimit[]> {
+  const observed: ObservedLimit[] = [...ctx.usage.limits()];
+  const claude = await readRateLimitsFile(ctx.paths, "claude-code", ctx.log);
+  if (claude !== null) {
+    observed.push(claude);
+  }
+  const newest = new Map<string, ObservedLimit>();
+  for (const limit of observed) {
+    const seen = newest.get(limit.harness);
+    if (seen === undefined || seen.observedAt <= limit.observedAt) {
+      newest.set(limit.harness, limit);
+    }
+  }
+  return [...newest.values()].map((limit) => ({
+    harness: limit.harness,
+    vendor: planVendor(limit.harness),
+    fiveHour: report(limit.fiveHour, limit.observedAt, scannedAt),
+    week: report(limit.week, limit.observedAt, scannedAt),
+    observedAt: limit.observedAt,
+    source: limit.source,
+  }));
+}
+
+/**
+ * The figure's state at the instant this response was built. The bar and `agn usage` recompute it
+ * from `observedAt` with their own clock, so a figure crosses two hours on screen without a
+ * reload; the stamp is for a script reading the body as it stands.
+ */
+function report(
+  window: LimitWindow | null,
+  observedAt: string,
+  scannedAt: Date,
+): LimitWindowReport | null {
+  return window === null
+    ? null
+    : { ...window, freshness: limitFreshness(window, observedAt, scannedAt) };
 }
 
 /** The plan each vendor's rows are labelled with: what detection read, else what the user wrote. */

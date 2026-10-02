@@ -23,8 +23,15 @@ const HookGroupSchema = HookEntrySchema.extend({
   matcher: z.string().optional(),
   hooks: z.array(HookEntrySchema).optional(),
 });
+/** Claude Code's one status-line slot, which agn fills only when it is empty or already agn's. */
+const StatusLineSchema = z.looseObject({
+  type: z.string().optional(),
+  command: z.string().optional(),
+});
+
 const HooksJsonSchema = z.looseObject({
   hooks: z.record(z.string(), z.array(HookGroupSchema)).optional(),
+  statusLine: StatusLineSchema.nullish(),
 });
 
 type HookEntry = z.infer<typeof HookEntrySchema>;

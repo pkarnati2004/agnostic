@@ -18,6 +18,7 @@ function report(over: Partial<HarnessReport>): HarnessReport {
     modelSource: "probe",
     planVendor: "claude",
     plan: { value: "max20", source: "detected", known: true, confirmed: true, overridden: null },
+    limitCapture: "all-sessions",
     ...over,
   };
 }
@@ -89,6 +90,7 @@ describe("agn doctor", () => {
       "harness      version  login      support  models      plan   path",
       "claude-code  2.0.1    logged-in  full     1 (probed)  max20  /opt/bin/claude",
       "not installed: codex, gemini (2)",
+      "claude-code status-line capture: all sessions",
       "profiles: 1 available (agn profiles)",
     ]);
   });
@@ -238,5 +240,37 @@ describe("agn doctor", () => {
     cli.ctx.json = true;
     await done();
     expect(JSON.parse(cli.out.join("\n"))).toEqual(response);
+  });
+
+  it("names which Claude Code sessions report their limits, in each of its three states", async () => {
+    const all = run([report({ limitCapture: "all-sessions" })]);
+    await all.done();
+    expect(all.cli.out).toContain("claude-code status-line capture: all sessions");
+
+    const tasks = run([report({ limitCapture: "agn-tasks" })]);
+    await tasks.done();
+    expect(tasks.cli.out).toContain(
+      "claude-code status-line capture: agn tasks only (hooks.claude_statusline: repo)",
+    );
+
+    const none = run([report({ limitCapture: "none" })]);
+    await none.done();
+    expect(none.cli.out).toContain(
+      "claude-code status-line capture: none yet - run agn hooks install, or start a task",
+    );
+  });
+
+  it("says nothing about the status line when Claude Code is not in the table", async () => {
+    const { cli, done } = run([report({ harness: "codex", planVendor: null, plan: null })]);
+    await done();
+    expect(cli.out.some((line) => line.includes("status-line capture"))).toBe(false);
+  });
+
+  it("carries the capture state per harness with --json", async () => {
+    const { cli, done } = run([report({ limitCapture: "all-sessions" })]);
+    cli.ctx.json = true;
+    await done();
+    const body = JSON.parse(cli.out.join("\n")) as { harnesses: { limitCapture: string }[] };
+    expect(body.harnesses[0]?.limitCapture).toBe("all-sessions");
   });
 });

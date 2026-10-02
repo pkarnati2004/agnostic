@@ -53,6 +53,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn resume [<task>]` | Bring a session back after a reboot, with its history where the agent supports it |
 | `agn adopt <path>` | Register an agent session you started outside agn. `--task "<title>"`, `--pid <n>`, `--repo <r>` |
 | `agn hooks install` | Install the status hook in a repo. `--repo <r>`, `--harness <id>` |
+| `agn hooks uninstall` | Remove the status hook and the status line again. `--repo <r>`, `--harness <id>` |
 | `agn init` | Create `.ag/`, seeding `instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--from <file>`, `--force`, `--repo <r>` |
 | `agn sync` | Regenerate `CLAUDE.md` and `AGENTS.md` from `.ag/instructions.md`, and the MCP servers of `.ag/mcp.yaml` into each agent's own config. `--dry-run`, `--force`, `--repo <r>` |
 | `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--intent <class>`, `--subscriptions-only` |

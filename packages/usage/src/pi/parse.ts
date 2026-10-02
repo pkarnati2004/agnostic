@@ -42,6 +42,7 @@ type Session = { id: string; path: string; cwd: string | null; model: string | n
 export function piFamilyParser(harness: "pi" | "omp"): TranscriptParser {
   return {
     harness,
+    reportsLimits: false,
     isTranscript: (path) => path.endsWith(".jsonl"),
     parse: (path) => parseMessageGraph(harness, path),
   };
@@ -88,7 +89,7 @@ async function parseMessageGraph(harness: "pi" | "omp", path: string): Promise<P
     }
     turns.push(turn);
   }
-  return { turns, skipped };
+  return { turns, skipped, limit: null };
 }
 
 function graphRecord(line: string): GraphRecord | null {

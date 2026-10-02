@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { LimitCapture } from "./doctor-api.js";
 import { type Editor, type EditorId, EditorIdSchema } from "./editor.js";
 import type { AttachInfo, DetectedHarness } from "./executor.js";
 import type { Outcome } from "./outcome.js";
@@ -7,7 +8,7 @@ import type { Recommendation } from "./recommendation.js";
 import type { Repo } from "./repo.js";
 import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
 import { TaskIntentSchema } from "./task-intent.js";
-import type { BudgetReport, PlanUsage, UsageSum, UsageWindow } from "./usage.js";
+import type { BudgetReport, PlanLimit, PlanUsage, UsageSum, UsageWindow } from "./usage.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;
@@ -211,7 +212,19 @@ export type HookInstallResult = {
 export const HooksInstallRequestSchema = z.strictObject({ harness: z.string().min(1).optional() });
 export type HooksInstallRequest = z.infer<typeof HooksInstallRequestSchema>;
 
-export type HooksInstallResponse = { installs: HookInstallResult[] };
+/** Claude Code's status-line slot in the user's own settings file, which no other harness has. */
+export type StatusLineInstall = { file: string; changed: boolean; capture: LimitCapture };
+
+export type HooksInstallResponse = {
+  installs: HookInstallResult[];
+  /** null unless a harness with a user-scope status line was installed in this call. */
+  statusLine: StatusLineInstall | null;
+};
+
+export type HooksUninstallResponse = {
+  uninstalls: HookInstallResult[];
+  statusLine: StatusLineInstall | null;
+};
 
 export type ProfilesResponse = { profiles: Profile[]; detectedAt: string };
 
@@ -248,6 +261,11 @@ export type UsageResponse = {
   week: { window: UsageWindow; plans: PlanUsage[] };
   /** The ceilings from config.yaml over these same windows, from this same scan. */
   budget: BudgetReport;
+  /**
+   * What the harnesses last said about their plans' own meters, one row per harness with a local
+   * source. Each window carries the `freshness` the figure had at `scannedAt`.
+   */
+  limits: PlanLimit[];
   scannedAt: string;
 };
 

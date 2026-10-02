@@ -16,6 +16,12 @@ const BudgetFileSchema = z.strictObject({
   weekly_usd: z.number().positive().optional(),
 });
 
+// `user` is every Claude Code session on the machine; `repo` keeps agn out of the user's own
+// settings file, so only the sessions agn starts report their limits.
+const HooksFileSchema = z.strictObject({
+  claude_statusline: z.enum(["user", "repo"]).optional(),
+});
+
 // Strict: a misspelled key must be an error, not a port silently back at the default.
 const DaemonConfigFileSchema = z.strictObject({
   port: z.number().int().min(1).max(65535).optional(),
@@ -24,7 +30,11 @@ const DaemonConfigFileSchema = z.strictObject({
   catalog_check: z.boolean().optional(),
   spec_writer: ProfileIdSchema.optional(),
   budget: BudgetFileSchema.optional(),
+  hooks: HooksFileSchema.optional(),
 });
+
+/** Where agn installs Claude Code's status-line command, and so which sessions it captures. */
+export type HooksConfig = { claudeStatusline: "user" | "repo" };
 
 /** Null per window when the file sets no ceiling for it (ADR 036 Q8). */
 export type BudgetConfig = { dailyUsd: number | null; weeklyUsd: number | null };
@@ -37,6 +47,7 @@ type DaemonConfig = {
   /** The profile that writes specs, overriding the automatic choice (ADR 028). */
   specWriter: string | null;
   budget: BudgetConfig;
+  hooks: HooksConfig;
 };
 
 const HEADER = "agn machine settings. agn doctor --plan rewrites the plans section.";
@@ -46,7 +57,7 @@ const FIX_HINT = "Fix the file, or delete it to use the defaults.";
 /**
  * `~/.agnostic/config.yaml` holds user settings for the machine, not for a repo: the port to bind,
  * the plan each vendor bills the user on, the editor `agn open` uses, whether the daily catalog
- * check runs, and the spend ceiling. The port and the check are read once at start and the rest
+ * check runs, the spend ceiling, and where agn installs Claude Code's status-line command. The port and the check are read once at start and the rest
  * per request. This reader moves to core when a second component needs it.
  */
 export async function readDaemonConfig(paths: AgnosticPaths): Promise<DaemonConfig> {
@@ -62,6 +73,8 @@ export async function readDaemonConfig(paths: AgnosticPaths): Promise<DaemonConf
       dailyUsd: file?.budget?.daily_usd ?? null,
       weeklyUsd: file?.budget?.weekly_usd ?? null,
     },
+    // Absent means user scope: agn captures every session unless the user opts out.
+    hooks: { claudeStatusline: file?.hooks?.claude_statusline ?? "user" },
   };
 }
 
@@ -90,6 +103,9 @@ export async function writeDaemonConfigPlans(paths: AgnosticPaths, plans: Plans)
   const budget = budgetSection(current.budget);
   if (budget !== null) {
     file.budget = budget;
+  }
+  if (current.hooks.claudeStatusline !== "user") {
+    file.hooks = { claude_statusline: current.hooks.claudeStatusline };
   }
   await writeYamlFile(paths.config, file, HEADER);
   return merged;

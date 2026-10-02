@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readDaemonConfig, writeDaemonConfigPlans } from "./daemon-config.js";
 
 const NO_BUDGET = { dailyUsd: null, weeklyUsd: null };
+const USER_SCOPE = { claudeStatusline: "user" };
 
 describe("readDaemonConfig", () => {
   let home: string;
@@ -24,6 +25,7 @@ describe("readDaemonConfig", () => {
       catalogCheck: true,
       specWriter: null,
       budget: NO_BUDGET,
+      hooks: USER_SCOPE,
     });
   });
 
@@ -36,6 +38,7 @@ describe("readDaemonConfig", () => {
       catalogCheck: true,
       specWriter: null,
       budget: NO_BUDGET,
+      hooks: USER_SCOPE,
     });
   });
 
@@ -150,6 +153,7 @@ describe("writeDaemonConfigPlans", () => {
       catalogCheck: true,
       specWriter: null,
       budget: NO_BUDGET,
+      hooks: USER_SCOPE,
     });
   });
 
@@ -163,6 +167,7 @@ describe("writeDaemonConfigPlans", () => {
       catalogCheck: true,
       specWriter: null,
       budget: NO_BUDGET,
+      hooks: USER_SCOPE,
     });
   });
 
@@ -204,5 +209,29 @@ describe("writeDaemonConfigPlans", () => {
     await writeFile(paths.config, "catalog_check: false\n");
     await writeDaemonConfigPlans(paths, { claude: "pro" });
     expect(await readDaemonConfig(paths)).toMatchObject({ catalogCheck: false });
+  });
+
+  it("reads the status-line scope, and refuses a value that is neither", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "hooks:\n  claude_statusline: repo\n");
+    expect((await readDaemonConfig(paths)).hooks).toEqual({ claudeStatusline: "repo" });
+
+    await writeFile(paths.config, "hooks:\n  claude_statusline: both\n");
+    await expect(readDaemonConfig(paths)).rejects.toMatchObject({
+      hint: "Fix the file, or delete it to use the defaults.",
+    });
+  });
+
+  it("keeps the status-line scope when agn doctor --plan rewrites the file", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "hooks:\n  claude_statusline: repo\n");
+    await writeDaemonConfigPlans(paths, { claude: "pro" });
+    expect(await readFile(paths.config, "utf8")).toContain("claude_statusline: repo");
+  });
+
+  it("writes no hooks section for a file that had none", async () => {
+    const paths = agnosticPaths(home);
+    await writeDaemonConfigPlans(paths, { claude: "pro" });
+    expect(await readFile(paths.config, "utf8")).not.toContain("claude_statusline");
   });
 });

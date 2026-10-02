@@ -71,6 +71,24 @@ agn's, a file of that name is yours - move it aside and install again.
 
 **`agn init` says CLAUDE.md and AGENTS.md "are both here and they differ".** agn will not guess which one your instructions live in, and it never concatenates them. Run `agn init --from CLAUDE.md` or `agn init --from AGENTS.md`.
 
+**Your Claude Code status line now runs a command of agn's.** Claude Code reports what is left of
+your plan's rate limit to its `statusLine` command and nowhere else, so agn installs one in
+`~/.claude/settings.json`. A status line you already had is the argument of agn's command: it runs
+on the same payload and keeps drawing, and your other `statusLine` keys are unchanged. The entry
+agn replaced is in `~/.agnostic/hooks/claude-statusline-original.json`. To say no, put
+`hooks: {claude_statusline: repo}` in `~/.agnostic/config.yaml`: the next task launch or
+`agn hooks install` puts your entry back, and agn then reads the limit only from the sessions it
+starts. Deleting agn's entry by hand is undone by the next task launch; the config key is the way
+to opt out.
+
+**`agn usage` shows an old Claude figure.** The figure is as old as the last status-line tick agn
+saw. `agn usage` and the usage bar print its age, mark it `~` once it is two hours old, and drop it
+once the window it belongs to has reset. Start a Claude Code session and take one turn to refresh
+it. If the age never moves, check what `agn doctor` says after `claude-code status-line capture:`:
+`all sessions` means every session reports, `agn tasks only` means you have opted out with
+`hooks.claude_statusline: repo` and only agn's tasks report, and `none yet` means agn's command is not in
+`~/.claude/settings.json`: run `agn hooks install` or start a task.
+
 **`agn usage` shows less than the agent's own usage screen.** They count different windows. agn counts the calendar day and the week from Monday, in your time zone; Claude Code and Codex show their plan's rolling window (five hours, seven days). agn also reads only what is in the transcript files on this machine, so a session run on another machine under the same login is not there.
 
 **`agn usage` shows a `-` in the cost column.** Either the model runs on your subscription, where the tokens cost nothing extra, or agn has no price for the model the agent reported. Run `agn catalog update` to refresh the rates. Usage from a session agn did not start is never priced.
@@ -87,7 +105,7 @@ package next to it, and that package has no `dist` until it is built. From a che
 
 **A command fails with "the agn daemon could not be started".** Every command except `agn daemon status` and `agn daemon stop` starts the daemon itself, so this means the start failed rather than that you forgot one. Check `~/.agnostic/logs/agnd.log`, then `agn daemon start` to see the error directly.
 
-**You want to script agn.** `--json` prints the daemon's response body instead of a table, on `agn add`, `agn repos` (including `agn repos --all`), `agn repo close|open`, `agn repo remove`, `agn doctor`, `agn profiles`, `agn run`, `agn status`, `agn stop`, `agn clean`, `agn handoff`, `agn adopt`, `agn hooks install`, `agn init` and `agn sync`; on `agn attach` and `agn resume` it prints the tmux command instead of running it, and on `agn open` the editor command instead of running it. Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
+**You want to script agn.** `--json` prints the daemon's response body instead of a table, on `agn add`, `agn repos` (including `agn repos --all`), `agn repo close|open`, `agn repo remove`, `agn doctor`, `agn profiles`, `agn run`, `agn status`, `agn stop`, `agn clean`, `agn handoff`, `agn adopt`, `agn hooks install`, `agn hooks uninstall`, `agn init` and `agn sync`; on `agn attach` and `agn resume` it prints the tmux command instead of running it, and on `agn open` the editor command instead of running it. Exit codes: 0 ok, 1 the command failed, 2 the command line was wrong.
 
 **Where things live.** Task database `~/.agnostic/agnostic.db`; worktrees `~/.agnostic/worktrees/<repo>/<task>`; the daemon log `~/.agnostic/logs/agnd.log`; the tmux config agn's server runs on `~/.agnostic/tmux.conf`.
 

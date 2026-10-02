@@ -1,5 +1,6 @@
 import type {
   BudgetReport,
+  PlanLimit,
   PlanUsage,
   Task,
   TaskUsageResponse,
@@ -30,6 +31,7 @@ export function claudePlan(over: Partial<PlanUsage> = {}): PlanUsage {
     usage: usageSum(),
     unattributedTokens: 1_700,
     fableShare: 0.25,
+    apiRateUsd: 12.4,
     ...over,
   };
 }
@@ -41,6 +43,7 @@ const codexPlan: PlanUsage = {
   usage: usageSum({ tokens: 88_000, costUsd: null }),
   unattributedTokens: 0,
   fableShare: null,
+  apiRateUsd: 4.2,
 };
 
 const meteredPlan: PlanUsage = {
@@ -50,17 +53,41 @@ const meteredPlan: PlanUsage = {
   usage: usageSum({ tokens: 12_000, costUsd: 1.234 }),
   unattributedTokens: 0,
   fableShare: null,
+  apiRateUsd: null,
 };
+
+/** The plan's own meter as `GET /usage` reports it, current against the fixture's scan time. */
+export function claudeLimit(over: Partial<PlanLimit> = {}): PlanLimit {
+  return {
+    harness: "claude-code",
+    vendor: "claude",
+    fiveHour: {
+      usedPercent: 58,
+      resetsAt: new Date("2026-09-11T17:05:00").toISOString(),
+      freshness: "current",
+    },
+    week: {
+      usedPercent: 41,
+      resetsAt: new Date("2026-09-14T09:00:00").toISOString(),
+      freshness: "current",
+    },
+    observedAt: new Date("2026-09-11T14:50:00").toISOString(),
+    source: "claude-statusline",
+    ...over,
+  };
+}
 
 export function usageResponse(
   day: PlanUsage[] = [claudePlan(), codexPlan, meteredPlan],
   week: PlanUsage[] = day,
   budget: BudgetReport = { day: null, week: null },
+  limits: PlanLimit[] = [],
 ): UsageResponse {
   return {
     day: { window: bounds("day", "2026-09-11T00:00:00"), plans: day },
     week: { window: bounds("week", "2026-09-07T00:00:00"), plans: week },
     budget,
+    limits,
     scannedAt: new Date(SCANNED_AT).toISOString(),
   };
 }

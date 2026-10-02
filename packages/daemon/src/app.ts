@@ -31,6 +31,7 @@ import { readDaemonConfig } from "./daemon-config.js";
 import type { Detection, DetectionCache } from "./detection-cache.js";
 import { errorBody, noRoute } from "./error.js";
 import type { EventFeed } from "./event-feed.js";
+import { limitCapture } from "./limit-capture.js";
 import { type Logger, requestLog } from "./log.js";
 import type { NativeResumeWatch } from "./native-resume-watch.js";
 import { originCheck } from "./origin.js";
@@ -180,13 +181,19 @@ export function realDetect(
   store: CatalogStore,
 ): () => Promise<Detection> {
   return async () => {
-    const { plans } = await readDaemonConfig(paths);
+    const { plans, hooks } = await readDaemonConfig(paths);
     // Read per run rather than captured: an update lands in the middle of a daemon's life.
     const { catalog } = store.current();
     const statuses = await detectHarnesses({ env, home, models: catalog.models });
     const servers = await detectLocalServers();
+    const scope = { home: env.HOME ?? home, env, paths, config: hooks };
     return {
-      harnesses: statuses.map((status) => toReport(status, plans, catalog)),
+      harnesses: await Promise.all(
+        statuses.map(async (status) => ({
+          ...toReport(status, plans, catalog),
+          limitCapture: await limitCapture(status.harness, status.path !== null, scope),
+        })),
+      ),
       profiles: enumerateProfiles({
         statuses,
         env,
@@ -216,7 +223,11 @@ export function realDetectEditors(
   return () => detectEditors({ env, home });
 }
 
-function toReport(status: HarnessStatus, plans: Plans, catalog: Catalog): HarnessReport {
+function toReport(
+  status: HarnessStatus,
+  plans: Plans,
+  catalog: Catalog,
+): Omit<HarnessReport, "limitCapture"> {
   return {
     harness: status.harness,
     name: status.name,

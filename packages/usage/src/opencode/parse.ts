@@ -30,6 +30,7 @@ type MessageData = z.infer<typeof MessageDataSchema>;
 /** A live OpenCode writes to `opencode.db`; a sibling `opencode-*.db` is a copy of older turns. */
 export const opencodeParser: TranscriptParser = {
   harness: "opencode",
+  reportsLimits: false,
   isTranscript: (path) => basename(path) === "opencode.db",
   parse: parseOpenCodeDatabase,
 };
@@ -46,7 +47,7 @@ async function parseOpenCodeDatabase(path: string): Promise<ParsedTranscript> {
     db.pragma("query_only = ON");
     const rows = messageRows(db);
     if (rows.length === 0) {
-      return { turns: [], skipped: sessionTotals(db) };
+      return { turns: [], skipped: sessionTotals(db), limit: null };
     }
     const turns: TranscriptTurn[] = [];
     let skipped = 0;
@@ -58,7 +59,7 @@ async function parseOpenCodeDatabase(path: string): Promise<ParsedTranscript> {
       }
       turns.push(turn);
     }
-    return { turns, skipped };
+    return { turns, skipped, limit: null };
   } finally {
     db.close();
   }

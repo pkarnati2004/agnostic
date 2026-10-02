@@ -1,4 +1,4 @@
-import type { HarnessId } from "@agnostic/core";
+import type { HarnessId, LimitWindow, PlanLimit } from "@agnostic/core";
 
 /** One priced unit of work as the harness recorded it: an assistant turn, or one API response. */
 export type TranscriptTurn = {
@@ -20,6 +20,19 @@ export type TranscriptTurn = {
   ref: string;
 };
 
+/**
+ * A rate limit as a parser read it: the windows the harness reported and nothing else. The vendor
+ * is not the parser's to know, and the freshness is not the parser's to judge - `GET /usage`
+ * stamps that against its own scan time.
+ */
+export type ObservedLimit = {
+  harness: HarnessId;
+  fiveHour: LimitWindow | null;
+  week: LimitWindow | null;
+  observedAt: string;
+  source: PlanLimit["source"];
+};
+
 export type ParsedTranscript = {
   turns: TranscriptTurn[];
   /**
@@ -27,10 +40,17 @@ export type ParsedTranscript = {
    * price or attribute. Zero for a harness that always reports its buckets.
    */
   skipped: number;
+  /** The newest rate limit the file carried, or null for a harness that writes none. */
+  limit: ObservedLimit | null;
 };
 
 export interface TranscriptParser {
   harness: HarnessId;
+  /**
+   * Whether this harness writes its plan's rate limit into the transcripts themselves, so every
+   * session it runs feeds agn's figure without agn installing anything.
+   */
+  reportsLimits: boolean;
   isTranscript(path: string): boolean;
   parse(path: string): Promise<ParsedTranscript>;
 }

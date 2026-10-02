@@ -34,6 +34,70 @@ their subscription limits over rolling windows of their own - five hours, seven 
 percentages Claude Code or Codex show you will not match these totals. They are counting a
 different window, not different tokens.
 
+## Limits
+
+Some agents write what their vendor's meter says into a file on your machine. agn reads those
+files and shows the percentage of the plan's rolling windows that is spent. agn calls no vendor
+endpoint for this, and there is nothing to configure.
+
+| Agent | What this machine has |
+| --- | --- |
+| Codex CLI | Every rollout under `~/.codex/sessions` records the 5-hour and weekly percentages. agn reads them in the same pass that counts its tokens. |
+| Claude Code | The percentages arrive on the status line, not in a file. agn captures them (below). |
+| Gemini, Grok, Kimi, Cursor | Login and plan only. Tokens and cost. |
+| Pi, OpenCode | Billed per provider key, so there is no plan limit. Tokens and cost. |
+
+A figure has one of three states, and both `agn usage` and the usage bar work them out from the
+time the agent reported it:
+
+| State | When | How it reads |
+| --- | --- | --- |
+| Current | The window has not reset and the figure is under two hours old. | `58%` |
+| Approximate | The window has not reset and the figure is two hours old or more. | `~58%`, dimmed in the bar |
+| Stale | The window has reset, or the agent reported no reset time and the figure is an hour old. | `–` in the bar, left out of `agn usage` |
+
+The percentages are your account's, not this machine's or this task's. A session you ran outside
+agn moves them, and agn sees the new figure the next time one of these files is written. That is
+why a figure older than two hours is marked: your usage elsewhere has had time to move it.
+
+Nothing agn does acts on an approximate figure. Both `agn usage` and the bar say how old the
+figure is, so you can decide for yourself.
+
+### How agn captures Claude Code's figures
+
+Claude Code sends the percentages to the `statusLine` command it runs every turn. agn installs a
+command of its own in `~/.claude/settings.json`, the file Claude Code reads for every session, at
+when a task starts and on `agn hooks install`. The command writes the payload to
+`~/.agnostic/rate-limits/claude-code.json`, at most once every 15 seconds, and carries no token.
+
+- Every Claude Code session on this machine then reports, whether or not agn started it. One
+  session reporting is enough: the figures are the plan's, not the session's.
+- A status line you already had keeps drawing. agn's command runs it on the same payload and
+  prints what it prints, and your other `statusLine` keys stay as they are. The entry agn replaced
+  is kept in `~/.agnostic/hooks/claude-statusline-original.json`.
+- agn also keeps its entry in the `.claude/settings.local.json` it writes for hooks, in each
+  checkout and each task worktree. That entry wins inside an agn worktree, and it runs the same
+  command, so one of the two reports per session.
+- `hooks: {claude_statusline: repo}` in `~/.agnostic/config.yaml` keeps agn out of
+  `~/.claude/settings.json`. The next task launch or `agn hooks install` puts your own entry back
+  and captures only the sessions agn starts.
+- A status line of your own in a repo's `.claude/settings.local.json` is left alone. agn captures
+  no figures for that repo and `agn hooks install` says so under `verify`.
+- `agn doctor` prints `claude-code status-line capture:` with `all sessions`, `agn tasks only` or
+  `none yet`.
+
+### `agn usage`
+
+Under the two tables, `agn usage` prints one line per agent whose figures still hold:
+
+```
+claude-code  58% of the 5-hour window (resets 14:05) · 41% of the week (resets Mon 09:00) · as of 12 min ago
+codex  ~1% of the 5-hour window (resets 15:00) · ~17% of the week (resets Sun 02:00) · as of 3 h ago
+```
+
+The tilde marks an approximate figure. `as of` is the age of the whole line: the agent reports both
+windows at once.
+
 ## Cost
 
 A model that runs on your subscription costs nothing per token, so the task view says
@@ -50,6 +114,11 @@ A number is `-` when agn will not guess:
   stays empty for it.
 
 Usage that no task owns is never priced: agn does not know which key or plan paid for it.
+
+For a plan you pay a subscription for, the workspace also shows what the week's tokens would have
+cost at the catalog's API rates: `≈ $12.40 at API rates, not billed`. It is a comparison, not a
+bill. Nothing is charged, and the figure is missing when any model in the window has no pricing
+row. `agn usage --json` carries it per plan as `apiRateUsd`.
 
 ## Budgets
 

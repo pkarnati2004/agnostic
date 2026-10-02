@@ -430,6 +430,36 @@ agx doctor | grep -q "^tools: gh"
 agx hooks install --repo "$WORK/runrepo" | grep -q "^installed claude-code hooks"
 test -f "$WORK/runrepo/.claude/settings.local.json"
 if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$WORK/runrepo/.claude/settings.local.json"; then echo "smoke: token written into settings.local.json" >&2; exit 1; fi
+# The same file carries agn's statusLine command in the running task's worktree: that is where
+# Claude Code reports what is left of the plan's rate limit. It carries no token either.
+RUN_TREE="$(agx status "$TASK" | awk '$1 == "worktree:" { print $2 }')"
+grep -q statusline.sh "$RUN_TREE/.claude/settings.local.json"
+if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$RUN_TREE/.claude/settings.local.json"; then echo "smoke: token written into the worktree's settings.local.json" >&2; exit 1; fi
+# The same command goes in the user's own settings file, where every Claude Code session reads it,
+# wrapping the status line already there so it keeps drawing.
+USER_SETTINGS="$USAGE_HOME/.claude/settings.json"
+SIDECAR="$AGNOSTIC_HOME/hooks/claude-statusline-original.json"
+mkdir -p "$USAGE_HOME/.claude"
+printf '{"statusLine":{"type":"command","command":"printf mine","padding":0}}' > "$USER_SETTINGS"
+agx hooks install --repo "$WORK/runrepo" --harness claude-code > "$WORK/claude-hooks.txt"
+grep -q statusline.sh "$USER_SETTINGS"
+grep -q "'printf mine'" "$USER_SETTINGS"
+grep -q '"padding": 0' "$USER_SETTINGS"
+test -f "$SIDECAR"
+grep -q "status-line capture: all sessions" "$WORK/claude-hooks.txt"
+agx doctor | grep -q "status-line capture: all sessions"
+if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$USER_SETTINGS"; then echo "smoke: token written into settings.json" >&2; exit 1; fi
+# The repo entry chains the user's own command, not agn's wrapper: one script path, one argument.
+grep -q "'printf mine'" "$WORK/runrepo/.claude/settings.local.json"
+test "$(grep -c statusline.sh "$WORK/runrepo/.claude/settings.local.json")" = 1
+# The opt-out puts their own entry back and leaves nothing of agn's behind.
+printf 'port: %s\nhooks:\n  claude_statusline: repo\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+agx hooks install --repo "$WORK/runrepo" --harness claude-code > "$WORK/claude-optout.txt"
+grep -q "status-line capture: agn tasks only" "$WORK/claude-optout.txt"
+test "$("$NODE" -e "process.stdout.write(require('$USER_SETTINGS').statusLine.command)")" = "printf mine"
+test ! -f "$SIDECAR"
+printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+
 # Every harness but Claude Code keeps its hooks per user: one file under HOME, never in the repo.
 agx hooks install --repo "$WORK/runrepo" --harness gemini > "$WORK/gemini-hooks.txt" 2>&1
 grep -q "^installed gemini hooks: $USAGE_HOME/.gemini/settings.json" "$WORK/gemini-hooks.txt"
@@ -721,6 +751,47 @@ grep -q "1,700" "$WORK/usage.txt"
 agx usage --json > "$WORK/usage.json"
 grep -q '"unattributedTokens": 1700' "$WORK/usage.json"
 
+echo "smoke: the percent of each plan's rate limit, from files on this machine"
+# Codex records the plan's own meter on its token_count events; both windows reset ahead of now,
+# so both are still worth showing.
+RESET_5H="$("$NODE" -e "process.stdout.write(String(Math.floor(Date.now() / 1000) + 3600))")"
+RESET_WEEK="$("$NODE" -e "process.stdout.write(String(Math.floor(Date.now() / 1000) + 259200))")"
+CODEX_SESSIONS="$USAGE_HOME/.codex/sessions/2026/09/24"
+mkdir -p "$CODEX_SESSIONS"
+{
+  printf '{"timestamp":"%s","type":"session_meta","payload":{"id":"s-limits","cwd":"%s"}}\n' \
+    "$NOW" "$WORK/runrepo"
+  printf '{"timestamp":"%s","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":120,"cached_input_tokens":20,"output_tokens":30}},"rate_limits":{"primary":{"used_percent":1,"window_minutes":300,"resets_at":%s},"secondary":{"used_percent":17,"window_minutes":10080,"resets_at":%s}}}}\n' \
+    "$NOW" "$RESET_5H" "$RESET_WEEK"
+} > "$CODEX_SESSIONS/rollout-2026-09-24T12-00-00-s-limits.jsonl"
+agx usage --json | grep -q '"source": "codex-rollout"'
+agx usage | grep -q "17% of the week"
+# Claude Code reports its figures only to a statusLine command, so agn's script is the capture.
+# It writes the payload it was given and hands the same bytes to the command the user had.
+PAYLOAD="$("$NODE" -e "
+process.stdout.write(JSON.stringify({
+  session_id: 's-smoke',
+  rate_limits: {
+    five_hour: { used_percentage: 58, resets_at: Number(process.argv[1]) },
+    seven_day: { used_percentage: 41, resets_at: Number(process.argv[2]) },
+  },
+}));
+" "$RESET_5H" "$RESET_WEEK")"
+printf '%s' "$PAYLOAD" | sh "$AGNOSTIC_HOME/hooks/statusline.sh" cat | grep -q rate_limits
+test "$(cat "$AGNOSTIC_HOME/rate-limits/claude-code.json")" = "$PAYLOAD"
+agx usage | grep -q "58% of the 5-hour window"
+agx usage --json | grep -q '"freshness": "current"'
+# The file's mtime is when the harness said it, so ageing the file ages the figure. Node's
+# utimesSync is the one portable way to set it on both macOS and Linux.
+"$NODE" -e "
+const { utimesSync } = require('node:fs');
+const when = new Date(Date.now() - 3 * 3600 * 1000);
+utimesSync(process.argv[1], when, when);
+" "$AGNOSTIC_HOME/rate-limits/claude-code.json"
+agx usage > "$WORK/usage-aged.txt"
+grep -q '~58% of the 5-hour window' "$WORK/usage-aged.txt"
+grep -q 'as of 3 h ago' "$WORK/usage-aged.txt"
+
 echo "smoke: a budget in config.yaml, warned about and overridden"
 # The smoke's transcripts belong to no task, so nothing is priced and the window reads $0.00.
 printf 'port: %s\nbudget:\n  daily_usd: 0.01\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
@@ -812,6 +883,8 @@ test -n "$(grep -l '/compares/' packages/ui/dist/assets/*.js)"
 test -n "$(grep -l 'binary file, no diff' packages/ui/dist/assets/*.js)"
 # And the command palette, which is the only place that line is written.
 test -n "$(grep -l 'Type a command' packages/ui/dist/assets/*.js)"
+# And the plan cell's usage panel, whose API-rate line is written nowhere else.
+test "$(grep -l 'at API rates, not billed' packages/ui/dist/assets/*.js | wc -l | tr -d ' ')" = 1
 # And nothing of the daemon's own runtime is: the page imports types from core and never its code.
 test "$(grep -L execa packages/ui/dist/assets/*.js | wc -l)" = "$(ls packages/ui/dist/assets/*.js | wc -l)"
 test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$UI_PORT/ui/nope.js")" = 404

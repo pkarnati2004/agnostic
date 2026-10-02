@@ -1,4 +1,4 @@
-import type { DoctorResponse, HarnessReport, ToolReport } from "@agnostic/core";
+import type { DoctorResponse, HarnessReport, LimitCapture, ToolReport } from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
 import { type Column, renderTable } from "../table.js";
@@ -53,6 +53,10 @@ function report(ctx: CliContext, response: DoctorResponse, verbose: boolean): vo
   const missing = notInstalled(response);
   if (missing !== null) {
     ctx.io.out(missing);
+  }
+  const capture = captureLine(reported(response));
+  if (capture !== null) {
+    ctx.io.out(capture);
   }
   for (const tool of response.tools) {
     ctx.io.out(toolLine(tool));
@@ -113,6 +117,29 @@ function pathExplainsAGap(response: DoctorResponse): boolean {
   return response.harnesses.some(
     (row) => row.path === null && response.named.includes(row.harness),
   );
+}
+
+/**
+ * Which Claude Code sessions report their plan's rate limit. It is the one harness whose limits
+ * come from a status line agn installs; the others report in files they write themselves.
+ */
+function captureLine(rows: HarnessReport[]): string | null {
+  const row = rows.find((candidate) => candidate.harness === "claude-code");
+  if (row === undefined) {
+    return null;
+  }
+  return `claude-code status-line capture: ${captureState(row.limitCapture)}`;
+}
+
+function captureState(capture: LimitCapture): string {
+  switch (capture) {
+    case "all-sessions":
+      return "all sessions";
+    case "agn-tasks":
+      return "agn tasks only (hooks.claude_statusline: repo)";
+    case "none":
+      return "none yet - run agn hooks install, or start a task";
+  }
 }
 
 /** Not a harness and not in the table: `gh` is what `agn handoff` opens a pull request with. */

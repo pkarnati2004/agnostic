@@ -1,4 +1,4 @@
-import type { PlanUsage, UsageResponse } from "@agnostic/core";
+import type { PlanLimit, PlanUsage, UsageResponse } from "@agnostic/core";
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { cn } from "../class-names";
 import { BudgetCell } from "./budget-cell";
@@ -9,6 +9,8 @@ import { lastResponse, type UsageState } from "./usage-state";
 type Row = {
   harness: PlanUsage["harness"];
   label: string;
+  vendor: PlanUsage["vendor"];
+  limit: PlanLimit | null;
   day: PlanUsage | null;
   week: PlanUsage | null;
 };
@@ -34,7 +36,8 @@ export function UsageBar({ state, flash }: { state: UsageState; flash: number })
     );
   }
   const rows = planRows(response);
-  const windows = { day: response.day.window, week: response.week.window };
+  // The scan's own clock, so every cell in one draw decides freshness against the same instant.
+  const now = Date.parse(response.scannedAt);
   return (
     <Bar ref={bar} lit={lit}>
       {rows.length === 0 ? (
@@ -44,9 +47,11 @@ export function UsageBar({ state, flash }: { state: UsageState; flash: number })
           <PlanCell
             key={row.harness}
             label={row.label}
+            vendor={row.vendor}
+            limit={row.limit}
             day={row.day}
             week={row.week}
-            windows={windows}
+            now={now}
           />
         ))
       )}
@@ -90,16 +95,20 @@ function useFlash(flash: number) {
 /** Day order first, because that is what the user is spending now; a week-only plan follows. */
 function planRows(response: UsageResponse): Row[] {
   const week = new Map(response.week.plans.map((plan) => [plan.harness, plan]));
-  const rows: Row[] = response.day.plans.map((plan) => ({
+  const limits = new Map(response.limits.map((limit) => [limit.harness, limit]));
+  const row = (plan: PlanUsage, day: PlanUsage | null): Row => ({
     harness: plan.harness,
     label: planLabel(plan),
-    day: plan,
+    vendor: plan.vendor,
+    limit: limits.get(plan.harness) ?? null,
+    day,
     week: week.get(plan.harness) ?? null,
-  }));
+  });
+  const rows: Row[] = response.day.plans.map((plan) => row(plan, plan));
   const shown = new Set(response.day.plans.map((plan) => plan.harness));
   for (const plan of response.week.plans) {
     if (!shown.has(plan.harness)) {
-      rows.push({ harness: plan.harness, label: planLabel(plan), day: null, week: plan });
+      rows.push(row(plan, null));
     }
   }
   return rows;

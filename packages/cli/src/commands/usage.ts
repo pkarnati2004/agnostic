@@ -1,4 +1,13 @@
-import type { PlanUsage, TaskUsageResponse, UsageResponse, UsageWindow } from "@agnostic/core";
+import {
+  formatAgo,
+  type LimitWindow,
+  limitFreshness,
+  type PlanLimit,
+  type PlanUsage,
+  type TaskUsageResponse,
+  type UsageResponse,
+  type UsageWindow,
+} from "@agnostic/core";
 import { Command } from "commander";
 import { budgetSummary } from "../budget-lines.js";
 import { type CliContext, writeJson } from "../context.js";
@@ -29,6 +38,9 @@ async function showWindows(ctx: CliContext): Promise<void> {
   print(ctx, response.day, "today");
   ctx.io.out("");
   print(ctx, response.week, "this week");
+  for (const line of limitLines(response.limits, new Date())) {
+    ctx.io.out(line);
+  }
   const budget = budgetSummary(response.budget);
   if (budget.length > 0) {
     ctx.io.out("");
@@ -51,6 +63,55 @@ function print(
   for (const line of renderTable(plans, columns())) {
     ctx.io.out(line);
   }
+}
+
+/**
+ * What each plan's own meter says, under the tables: one line per harness that reported a window
+ * that still holds, dated with how old the figures are. A stale window is left out rather than
+ * printed as if it were now; one the account has had two hours to move takes a tilde.
+ */
+function limitLines(limits: PlanLimit[], now: Date): string[] {
+  const lines: string[] = [];
+  for (const limit of limits) {
+    const windows = [
+      phrase(limit.fiveHour, limit.observedAt, "the 5-hour window", now),
+      phrase(limit.week, limit.observedAt, "the week", now),
+    ].filter((part) => part !== null);
+    if (windows.length > 0) {
+      const dated = [...windows, `as of ${formatAgo(limit.observedAt, now)}`].join(" · ");
+      lines.push(`${limit.harness}  ${dated}`);
+    }
+  }
+  return lines.length === 0 ? lines : ["", ...lines];
+}
+
+function phrase(
+  window: LimitWindow | null,
+  observedAt: string,
+  named: string,
+  now: Date,
+): string | null {
+  if (window === null) {
+    return null;
+  }
+  const freshness = limitFreshness(window, observedAt, now);
+  if (freshness === "stale") {
+    return null;
+  }
+  const about = freshness === "approximate" ? "~" : "";
+  const resets = window.resetsAt === null ? "" : ` (resets ${reset(window.resetsAt, now)})`;
+  return `${about}${Math.round(window.usedPercent)}% of ${named}${resets}`;
+}
+
+/** The clock time on its own while the reset is today, and the weekday too once it is not. */
+function reset(iso: string, now: Date): string {
+  const at = new Date(iso);
+  const time = `${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  return at.toDateString() === now.toDateString() ? time : `${DAYS[at.getDay()]} ${time}`;
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
 }
 
 /** The day the window starts, in the zone the daemon computed it in. */

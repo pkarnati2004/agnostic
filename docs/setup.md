@@ -37,8 +37,17 @@ agn installs each agent's hook in the directory that agent reads by default, und
 Moving an agent's config with `GROK_HOME`, `COPILOT_HOME`, `KIMI_CODE_HOME`, `XDG_CONFIG_HOME` or
 `OPENCODE_CONFIG_DIR` is not supported.
 
-Claude Code's hook is the one agn installs per repo. Every other agent keeps its hooks in one file
-per user, and agn prints one line to stderr naming the file it wrote:
+Claude Code's hook is the one agn installs per repo. In that same
+`.claude/settings.local.json`, agn also sets `statusLine` to a command of its own, which is how
+agn captures the rate-limit percentages Claude Code sends to its status line. agn sets the same
+command in `~/.claude/settings.json`, so every Claude Code session reports and not only the ones
+agn starts. A status line you already had is wrapped: it runs on the same payload and keeps
+drawing, and `~/.agnostic/hooks/claude-statusline-original.json` holds the entry agn replaced. Set
+`hooks: {claude_statusline: repo}` to keep agn out of `~/.claude/settings.json`. One you wrote
+into a repo's own `settings.local.json` is left alone. See [Limits](usage.md#limits).
+
+Every other agent keeps its hooks in one file per user, and agn prints one line to stderr naming
+the file it wrote:
 
 | Agent | File |
 |---|---|
@@ -146,6 +155,7 @@ agn open <task> --editor zed     # this once, in Zed
 | `editor` | Which editor `agn open` uses, as one of the ids above. Absent means the first editor agn detects. |
 | `catalog_check` | Whether agnostic checks once a day for a newer benchmark catalog, which is its only outbound call. Absent means yes; `false` turns it off and leaves `agn catalog update` working. |
 | `spec_writer` | The profile that writes specs in the new-task dialog, as a full profile id. Absent means agn picks the cheapest model your subscription already covers. |
+| `hooks` | `claude_statusline`, either `user` or `repo`. `user`, the default, puts agn's status-line command in `~/.claude/settings.json`, so every Claude Code session reports its plan's rate limit. `repo` keeps agn out of that file: only the sessions agn starts report, and your own entry goes back on the next task launch or `agn hooks install`. |
 | `budget` | `daily_usd` and `weekly_usd`, a ceiling in dollars over what agn priced in the calendar day and the Monday-based week: API-key and credits runs, and a run whose billing agn could not determine. Subscription and local runs never count. At 80% `agn run`, the new-task dialog and the usage bar warn; at 100% a run or handoff onto an API-key or credits profile is refused unless you pass `--ignore-budget`. Resume is never refused. |
 
 ```yaml
@@ -156,6 +166,8 @@ spec_writer: claude-code:haiku:native
 budget:
   daily_usd: 5
   weekly_usd: 20
+hooks:
+  claude_statusline: repo
 ```
 
 An unknown key or an unknown editor id is an error, not a silent default.

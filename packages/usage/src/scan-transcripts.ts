@@ -7,7 +7,7 @@ import { join } from "node:path";
 import type { HarnessId } from "@agnostic/core";
 import { UsageError } from "./error.js";
 import { transcriptParser } from "./harness-transcripts.js";
-import type { TranscriptTurn } from "./transcript-parser.js";
+import type { ObservedLimit, TranscriptTurn } from "./transcript-parser.js";
 
 export type TranscriptRoot = { harness: HarnessId; dir: string };
 
@@ -22,6 +22,8 @@ export type ScanResult = {
   parsedFiles: number;
   /** Usage events read that carried no per-bucket split, so no row could be built from them. */
   skipped: number;
+  /** One per file that carried a rate limit; the caller keeps the newest per harness. */
+  limits: ObservedLimit[];
   problems: UsageError[];
 };
 
@@ -36,6 +38,7 @@ export async function scanTranscripts(opts: {
   modifiedSince: number | null;
 }): Promise<ScanResult> {
   const turns: TranscriptTurn[] = [];
+  const limits: ObservedLimit[] = [];
   const problems: UsageError[] = [];
   let parsedFiles = 0;
   let skipped = 0;
@@ -57,6 +60,9 @@ export async function scanTranscripts(opts: {
         const parsed = await parser.parse(path);
         turns.push(...parsed.turns);
         skipped += parsed.skipped;
+        if (parsed.limit !== null) {
+          limits.push(parsed.limit);
+        }
         parsedFiles += 1;
         opts.memo.set(path, info);
       } catch (cause) {
@@ -71,7 +77,7 @@ export async function scanTranscripts(opts: {
       }
     }
   }
-  return { turns, parsedFiles, skipped, problems };
+  return { turns, parsedFiles, skipped, limits, problems };
 }
 
 /**

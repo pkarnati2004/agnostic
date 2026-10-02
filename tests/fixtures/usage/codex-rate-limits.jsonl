@@ -1,0 +1,4 @@
+{"timestamp":"2026-09-24T11:58:00.000Z","type":"session_meta","payload":{"id":"0198d1f4-6c21-7b3a-9f10-5c2e7a4b8d33","cwd":"/Users/me/code/agnostic","originator":"codex_cli_rs"}}
+{"timestamp":"2026-09-24T11:58:01.000Z","type":"turn_context","payload":{"cwd":"/Users/me/code/agnostic","model":"gpt-6-astra"}}
+{"timestamp":"2026-09-24T11:58:30.000Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":1200,"cached_input_tokens":200,"output_tokens":300}}}}
+{"timestamp":"2026-09-24T11:59:30.000Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":900,"cached_input_tokens":100,"output_tokens":150}},"rate_limits":{"primary":{"used_percent":1,"window_minutes":300,"resets_at":1790258700},"secondary":{"used_percent":17,"window_minutes":10080,"resets_at":1790586000},"plan_type":"pro"}}}
