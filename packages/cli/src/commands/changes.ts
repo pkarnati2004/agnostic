@@ -53,6 +53,7 @@ const COLUMNS: Column<ChangedFile>[] = [
   { header: "", value: (file) => file.path },
   { header: "", value: (file) => LETTERS[file.status] },
   { header: "", value: counts },
+  { header: "", value: (file) => file.state },
 ];
 
 function render(changes: ChangesResponse): string[] {

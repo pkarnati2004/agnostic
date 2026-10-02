@@ -1,5 +1,6 @@
 import {
   type ChangedFile,
+  type ChangedFileState,
   type ChangedFileStatus,
   type ChangesResponse,
   type Repo,
@@ -17,6 +18,9 @@ import { taskDir } from "./task-dir.js";
 /** The old path of a rename, which the diff route needs as a second pathspec. */
 export type ChangedFileEntry = ChangedFile & { from: string | null };
 
+/** A row before its state is known: what the diff route reads, and what `changedFiles` marks. */
+export type DiffEntry = Omit<ChangedFileEntry, "state">;
+
 /**
  * What the task's branch changed against its base, read where the task's git lives: the worktree
  * while it is there, the main checkout after a clean. Every command is read-only; agn never
@@ -32,7 +36,7 @@ export async function taskChanges(
     return nothingYet(repo, task);
   }
   const tip = at.where === "worktree" ? "HEAD" : `refs/heads/${task.branch}`;
-  const worktree = at.where === "worktree";
+  const states = at.where === "worktree" ? await worktreeStates(at.dir) : null;
   const base = await resolveTaskBase(ctx, repo, task, at);
   const refHead = await refCommit(at.dir, base.ref);
   return {
@@ -40,10 +44,10 @@ export async function taskChanges(
     base: { ref: base.ref, commit: base.commit },
     ahead: base.commit === null ? 0 : await countCommits(at.dir, `${base.commit}..${tip}`),
     behind: refHead === null ? null : await countCommits(at.dir, `${tip}..${refHead}`),
-    uncommitted: worktree ? await uncommitted(at.dir) : 0,
+    uncommitted: states?.size ?? 0,
     pushed: (await branchUpstream(at.dir, task.branch ?? "HEAD")) !== null,
     remote: gitLines(await gitStdout(at.dir, ["remote", "get-url", "origin"]))[0] ?? null,
-    files: (await changedFiles(at.dir, base.commit, tip, worktree)).map(listed),
+    files: (await changedFiles(at.dir, base.commit, tip, states)).map(listed),
   };
 }
 
@@ -52,9 +56,31 @@ function listed(entry: ChangedFileEntry): ChangedFile {
   return {
     path: entry.path,
     status: entry.status,
+    state: entry.state,
     additions: entry.additions,
     deletions: entry.deletions,
   };
+}
+
+/**
+ * The XY code of every path the working tree or the index has pending, keyed by path. A rename or
+ * a copy writes two paths with `-z`, the new one first, which is also the name `diff -M` gives the
+ * row; the old one follows as its own field and is skipped.
+ */
+export async function worktreeStates(cwd: string): Promise<Map<string, string>> {
+  const fields = ((await gitStdout(cwd, ["status", "--porcelain", "-z"])) ?? "")
+    .split("\0")
+    .filter((field) => field !== "");
+  const states = new Map<string, string>();
+  for (let index = 0; index < fields.length; ) {
+    const field = fields[index++] ?? "";
+    const code = field.slice(0, 2);
+    states.set(field.slice(3), code);
+    if (code.includes("R") || code.includes("C")) {
+      index += 1;
+    }
+  }
+  return states;
 }
 
 /** Where the branch was published, or null: the branch has never left this machine. */
@@ -65,16 +91,36 @@ export async function branchUpstream(cwd: string, branch: string): Promise<strin
 }
 
 /**
- * One row per path: `--name-status` says what happened to it and `--numstat` how much, joined by
- * path because neither says both. In a worktree the comparison is the working tree against the
- * base commit, so what the agent has not committed yet is listed too.
+ * The rows with their state, in wire order. `states` is null when the changes are read from the
+ * main checkout, where every row is committed.
  */
 export async function changedFiles(
   cwd: string,
   base: string | null,
   tip: "HEAD" | string,
-  worktree: boolean,
+  states: Map<string, string> | null,
 ): Promise<ChangedFileEntry[]> {
+  const entries = await diffEntries(cwd, base, tip, states !== null);
+  return byState(
+    entries.map((entry) => ({
+      ...entry,
+      state: entry.status === "untracked" ? "unstaged" : stateOf(states?.get(entry.path)),
+    })),
+  );
+}
+
+/**
+ * One row per path: `--name-status` says what happened to it and `--numstat` how much, joined by
+ * path because neither says both. In a worktree the comparison is the working tree against the
+ * base commit, so what the agent has not committed yet is listed too. The diff route reads this
+ * list for a path's status and old name, and does not need the state.
+ */
+export async function diffEntries(
+  cwd: string,
+  base: string | null,
+  tip: "HEAD" | string,
+  worktree: boolean,
+): Promise<DiffEntry[]> {
   if (base === null) {
     return [];
   }
@@ -94,15 +140,37 @@ export async function changedFiles(
 }
 
 /**
+ * Where a tracked row's change sits, from its `git status` code: a path with no entry is committed
+ * and untouched since. An untracked file is unstaged by definition and never looked up: `git
+ * status` collapses an untracked directory to one entry, which no file inside it matches.
+ */
+function stateOf(code: string | undefined): ChangedFileState {
+  if (code === undefined) {
+    return "committed";
+  }
+  if (code[1] !== " ") {
+    return "unstaged";
+  }
+  return code[0] === " " ? "committed" : "staged";
+}
+
+const STATES: ChangedFileState[] = ["unstaged", "staged", "committed"];
+
+/** The wire order, set once here: the panel groups without sorting and the CLI prints as it reads. */
+function byState(entries: ChangedFileEntry[]): ChangedFileEntry[] {
+  return STATES.flatMap((state) => entries.filter((entry) => entry.state === state));
+}
+
+/**
  * A file git is not tracking has no diff of its own, so each one is counted against /dev/null.
  * git lists a symlinked directory as one entry and never descends into it, so every path here is
  * inside the worktree; the diff route resolves the path it is handed all the same.
  */
-async function untracked(cwd: string): Promise<ChangedFileEntry[]> {
+async function untracked(cwd: string): Promise<DiffEntry[]> {
   const paths = ((await gitStdout(cwd, ["ls-files", "--others", "--exclude-standard", "-z"])) ?? "")
     .split("\0")
     .filter((path) => path !== "");
-  const entries: ChangedFileEntry[] = [];
+  const entries: DiffEntry[] = [];
   for (const path of paths) {
     const result = await gitResult(cwd, ["diff", "--numstat", "--no-index", "/dev/null", path]);
     const [additions, deletions] = (gitLines(result?.stdout ?? null)[0] ?? "").split("\t");
@@ -180,22 +248,6 @@ function number(field: string | undefined): number | null {
 export async function countCommits(cwd: string, range: string): Promise<number> {
   const value = Number(gitLines(await gitStdout(cwd, ["rev-list", "--count", range]))[0]);
   return Number.isInteger(value) ? value : 0;
-}
-
-/** Entries, not fields: a rename writes its old path as a record of its own. */
-async function uncommitted(cwd: string): Promise<number> {
-  const fields = ((await gitStdout(cwd, ["status", "--porcelain", "-z"])) ?? "")
-    .split("\0")
-    .filter((field) => field !== "");
-  let entries = 0;
-  for (let index = 0; index < fields.length; index++) {
-    const code = (fields[index] ?? "").slice(0, 2);
-    entries += 1;
-    if (code.includes("R") || code.includes("C")) {
-      index += 1;
-    }
-  }
-  return entries;
 }
 
 /** A task with no branch has nothing to compare; one whose branch was deleted has lost it. */

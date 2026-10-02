@@ -1,19 +1,19 @@
 // @vitest-environment happy-dom
-import type { AskCommitResponse, TaskListRow } from "@agnostic/core";
+import type { AskCommitResponse, ChangesResponse, TaskListRow } from "@agnostic/core";
 import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceClient } from "../api/client";
 import { TooltipProvider } from "../components/tooltip";
 import { stubClient } from "../task/new-task-dialog-fixture";
 import { click, render } from "../test/render";
-import { changesResponse, taskRow } from "./changes-fixture";
+import { changesResponse, FILES, taskRow } from "./changes-fixture";
 import { ChangesPanel } from "./changes-panel";
 
 const LABEL = "Ask the agent to commit";
 
-function panelClient(uncommitted: number): WorkspaceClient {
+function panelClient(read: Partial<ChangesResponse>): WorkspaceClient {
   return stubClient({
-    changes: () => Promise.resolve(changesResponse({ uncommitted })),
+    changes: () => Promise.resolve(changesResponse(read)),
     diff: () => Promise.resolve({ patch: "" }),
     editors: () => Promise.resolve({ editors: [], default: null }),
   });
@@ -24,7 +24,7 @@ function response(): AskCommitResponse {
 }
 
 async function panel(opts: {
-  uncommitted: number;
+  read: Partial<ChangesResponse>;
   task?: TaskListRow;
   onAskCommit?: () => Promise<AskCommitResponse | null>;
 }) {
@@ -32,7 +32,7 @@ async function panel(opts: {
     <TooltipProvider delayDuration={0}>
       <ChangesPanel
         task={opts.task ?? taskRow()}
-        client={panelClient(opts.uncommitted)}
+        client={panelClient(opts.read)}
         notice={null}
         onOpen={() => Promise.resolve()}
         onCreatePr={() => Promise.resolve(null)}
@@ -70,7 +70,7 @@ async function hover(element: Element): Promise<void> {
 
 describe("Ask the agent to commit", () => {
   it("is enabled with the tooltip naming the branch and the repo's file", async () => {
-    const { container, unmount } = await panel({ uncommitted: 2 });
+    const { container, unmount } = await panel({ read: {} });
     const control = button(container, LABEL);
     expect(control.disabled).toBe(false);
     await hover(control.parentElement ?? control);
@@ -83,17 +83,30 @@ describe("Ask the agent to commit", () => {
   });
 
   it("is disabled with its own text when there is nothing uncommitted", async () => {
-    const { container, unmount } = await panel({ uncommitted: 0 });
+    const committed = FILES.map((file) => ({ ...file, state: "committed" as const }));
+    const { container, unmount } = await panel({ read: { files: committed, uncommitted: 0 } });
     const control = button(container, LABEL);
     expect(control.disabled).toBe(true);
     await hover(control.parentElement ?? control);
-    expect(document.body.textContent).toContain("Nothing to commit.");
+    expect(document.body.textContent).toContain(
+      "Nothing to commit: the working tree is clean. The files listed are the branch's commits against main.",
+    );
+    unmount();
+  });
+
+  it("names no file list in that text when the branch has nothing on it", async () => {
+    const { container, unmount } = await panel({ read: { files: [], uncommitted: 0 } });
+    const control = button(container, LABEL);
+    expect(control.disabled).toBe(true);
+    await hover(control.parentElement ?? control);
+    expect(document.body.textContent).toContain("Nothing to commit: the working tree is clean.");
+    expect(document.body.textContent).not.toContain("The files listed");
     unmount();
   });
 
   it("is disabled with the Resume-first text once the worktree was cleaned", async () => {
     const cleaned = taskRow({ status: "stopped", worktreePresent: false });
-    const { container, unmount } = await panel({ uncommitted: 2, task: cleaned });
+    const { container, unmount } = await panel({ read: {}, task: cleaned });
     const control = button(container, LABEL);
     expect(control.disabled).toBe(true);
     await hover(control.parentElement ?? control);
@@ -109,7 +122,7 @@ describe("Ask the agent to commit", () => {
           settle = resolve;
         }),
     );
-    const { container, unmount } = await panel({ uncommitted: 2, onAskCommit });
+    const { container, unmount } = await panel({ read: {}, onAskCommit });
     await act(async () => {
       click(button(container, LABEL));
       await Promise.resolve();

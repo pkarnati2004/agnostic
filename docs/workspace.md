@@ -150,6 +150,11 @@ including files git has not been told about yet. Each row has the status letter 
 prints - A, M, D, R, `?` for untracked - and the lines added and removed. Click a row for that
 file's patch below the list. The first file is selected when the panel opens.
 
+The rows sit under Unstaged, Staged and Committed, in that order, with a count on each heading. A
+group with nothing in it is left out, and a list where everything is committed has no heading at
+all. A file with both staged and unstaged edits is one row under Unstaged, which is what "Ask the
+agent to commit" would commit. Untracked files are unstaged.
+
 The panel re-reads itself when the task changes status and when you click Refresh; nothing watches
 the files, so Refresh is how you see what the agent wrote a moment ago. **Open in editor** opens
 the task's worktree in the editor agn is configured for, and the chevron beside it lists the other
@@ -205,8 +210,9 @@ resumes the task with the prompt as the first turn. The panel says which happene
 page moves when the commit lands, so click Refresh to see it.
 
 The button is enabled while the task has a worktree of agn's, uncommitted changes in it, and an
-agent to ask: a running or waiting session, or a task that can be resumed. It reads "Nothing to
-commit." at zero uncommitted changes, and a task whose worktree was cleaned needs Resume first.
+agent to ask: a running or waiting session, or a task that can be resumed. At zero uncommitted
+changes it reads "Nothing to commit: the working tree is clean. The files listed are the branch's
+commits against `<base>`.", and a task whose worktree was cleaned needs Resume first.
 
 `agn commit [<task>]` does the same from a terminal. It prints one line: which profile was asked,
 and whether the prompt went to a live session or to a resume.

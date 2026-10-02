@@ -60,7 +60,7 @@ Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one c
 | `agn handoff [<task>] --to <id\|harness>` | Stop a task and hand its work to another agent with a structured note. `--note <text>` (`-` reads stdin), `--note-file <path>` |
 | `agn usage [<task>]` | Today's and this week's usage per plan, or one task's |
 | `agn outcomes <task>` | What the task changed, what passed, what you kept |
-| `agn changes [<task>]` | Files the task changed against its base, with counts. `--patch <path>` prints one file's diff |
+| `agn changes [<task>]` | Files the task changed against its base, with counts and whether each is unstaged, staged or committed. `--patch <path>` prints one file's diff |
 | `agn pr [<task>]` | Push the branch and open its pull request. `--title <t>`, `--no-open` |
 | `agn update [<task>]` | Ask the agent to bring the branch up to date with its base: rebase if never pushed, merge if pushed |
 | `agn commit [<task>]` | Ask the agent to commit its uncommitted work, with the prompt in `.ag/prompts/commit.md` or agn's default |

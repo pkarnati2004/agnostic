@@ -42,7 +42,7 @@ const RESUME_FIRST = "Resume first: the worktree was cleaned";
 const NO_ORIGIN = "This repo has no origin remote.";
 const NOTHING_YET = "Nothing to open a pull request for yet.";
 const NO_BRANCH = "This task works in the checkout itself, so it has no branch to update.";
-const NOTHING_TO_COMMIT = "Nothing to commit.";
+const NOTHING_TO_COMMIT = "Nothing to commit: the working tree is clean.";
 const NO_COMMIT_BRANCH =
   "This task works in the checkout itself, so agn has no branch to commit on.";
 const NO_AGENT = "There is no agent to ask yet.";
@@ -132,12 +132,20 @@ function commitTip(task: TaskListRow, changes: ChangesResponse, cleaned: boolean
     return NO_COMMIT_BRANCH;
   }
   if (changes.uncommitted === 0) {
-    return NOTHING_TO_COMMIT;
+    return nothingToCommit(changes);
   }
   return canAskCommit(task, changes.uncommitted)
     ? `Sends the agent a prompt to commit its work on \`${task.branch}\`: the text of ` +
         ".ag/prompts/commit.md, or agn's default. agn runs no git command itself."
     : NO_AGENT;
+}
+
+/** Says what the list below the button is, because at zero uncommitted it is the branch's commits. */
+function nothingToCommit(changes: ChangesResponse): string {
+  if (changes.files.length === 0) {
+    return NOTHING_TO_COMMIT;
+  }
+  return `${NOTHING_TO_COMMIT} The files listed are the branch's commits against ${changes.base.ref}.`;
 }
 
 function updateBlocked(task: TaskListRow, cleaned: boolean): boolean {

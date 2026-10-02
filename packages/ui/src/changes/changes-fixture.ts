@@ -21,9 +21,30 @@ export function taskRow(over: Partial<TaskListRow> = {}): TaskListRow {
 }
 
 export const FILES: ChangedFile[] = [
-  { path: "src/invite.ts", status: "modified", additions: 42, deletions: 3 },
-  { path: "src/invite.test.ts", status: "added", additions: 80, deletions: 0 },
-  { path: "docs/invites.md", status: "untracked", additions: null, deletions: null },
+  { path: "src/invite.ts", status: "modified", state: "unstaged", additions: 42, deletions: 3 },
+  { path: "src/invite.test.ts", status: "added", state: "unstaged", additions: 80, deletions: 0 },
+  {
+    path: "docs/invites.md",
+    status: "untracked",
+    state: "unstaged",
+    additions: null,
+    deletions: null,
+  },
+];
+
+/** One of each state, in the order the daemon sends them. */
+export const MIXED_FILES: ChangedFile[] = [
+  { path: "src/invite.ts", status: "modified", state: "unstaged", additions: 42, deletions: 3 },
+  {
+    path: "docs/invites.md",
+    status: "untracked",
+    state: "unstaged",
+    additions: null,
+    deletions: null,
+  },
+  { path: "src/invite.test.ts", status: "added", state: "staged", additions: 80, deletions: 0 },
+  { path: "src/links.ts", status: "modified", state: "committed", additions: 7, deletions: 1 },
+  { path: "docs/links.md", status: "added", state: "committed", additions: 12, deletions: 0 },
 ];
 
 export function changesResponse(over: Partial<ChangesResponse> = {}): ChangesResponse {
@@ -32,7 +53,7 @@ export function changesResponse(over: Partial<ChangesResponse> = {}): ChangesRes
     base: { ref: "main", commit: "c0ffee1" },
     ahead: 3,
     behind: 0,
-    uncommitted: 2,
+    uncommitted: 3,
     pushed: false,
     remote: "git@github.com:agn/petal.git",
     files: FILES,

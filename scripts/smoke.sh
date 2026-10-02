@@ -529,7 +529,12 @@ git -C "$WORKTREE" -c user.email=t@agn.test -c user.name=agn commit -q -m "the a
 
 # What the workspace's right panel reads, through the CLI and through the API.
 agx changes "$TASK" > "$WORK/changes.txt"
-grep -q "agent.txt  *A  *+3" "$WORK/changes.txt"
+grep -q "agent.txt  *A  *+3 -0  *committed" "$WORK/changes.txt"
+agx changes "$TASK" --json | grep -q '"state": "committed"'
+# A file the agent has written but not added reads as unstaged, under its own group in the panel.
+printf 'scratch\n' > "$WORKTREE/scratch.txt"
+agx changes "$TASK" | grep -q "scratch.txt  *?  *untracked  *unstaged"
+rm "$WORKTREE/scratch.txt"
 agx changes "$TASK" --patch agent.txt | grep -q "^+three$"
 agx changes "$TASK" --json | grep -q '"ahead": 1'
 curl -fsS -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/tasks/$TASK/changes" |
@@ -637,7 +642,9 @@ agx clean "$TASK" --force | grep -q "^cleaned $TASK"
 # With the worktree gone the changes are read from the main checkout. The branch was merged into
 # main further up, so the merge-base is the branch's own tip and the file list is empty by right;
 # what this checks is that the read still answers without a worktree.
-agx changes "$TASK" --json | grep -q '"uncommitted": 0'
+agx changes "$TASK" --json > "$WORK/changes-cleaned.json"
+grep -q '"uncommitted": 0' "$WORK/changes-cleaned.json"
+test "$(grep -c '"state": "unstaged"' "$WORK/changes-cleaned.json")" -eq 0
 
 # A resume after a clean rebuilds the worktree at the same path from the branch the clean kept.
 agx resume "$TASK" --json > "$WORK/resume-recreated.json"
