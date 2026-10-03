@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  formatAgo,
   formatCount,
   formatMoney,
   formatPercent,
-  formatReset,
   formatShare,
   formatTaskCost,
-  formatTokens3,
   planLabel,
 } from "./format-usage";
 import { claudePlan, meteredTaskUsage, subscriptionTaskUsage } from "./usage-response.fixture";
@@ -82,53 +79,5 @@ describe("formatPercent", () => {
     expect(formatPercent(58)).toBe("58%");
     expect(formatPercent(0.4)).toBe("0%");
     expect(formatPercent(99.6)).toBe("100%");
-  });
-});
-
-describe("formatReset", () => {
-  const now = new Date("2026-09-11T13:00:00").getTime();
-
-  it("gives the clock time alone while the reset is today", () => {
-    expect(formatReset(new Date("2026-09-11T14:05:00").toISOString(), now)).toBe("14:05");
-  });
-
-  it("names the weekday once the reset is another day", () => {
-    expect(formatReset(new Date("2026-09-14T09:00:00").toISOString(), now)).toBe("Mon 09:00");
-  });
-});
-
-describe("formatAgo", () => {
-  const now = new Date("2026-09-11T13:00:00").getTime();
-  const ago = (minutes: number) => formatAgo(new Date(now - minutes * 60_000).toISOString(), now);
-
-  it("counts minutes, then hours, then days", () => {
-    expect(ago(0)).toBe("just now");
-    expect(ago(3)).toBe("3 min ago");
-    expect(ago(90)).toBe("1 h ago");
-    expect(ago(60 * 30)).toBe("1 d ago");
-  });
-});
-
-// Core's `formatTokens3` cases (packages/core/src/usage-format.test.ts), against the page's copy.
-describe("formatTokens3", () => {
-  it("prints a count under a thousand as it is", () => {
-    expect(formatTokens3(999)).toBe("999");
-    expect(formatTokens3(0)).toBe("0");
-  });
-
-  it("rounds to three significant figures and drops the zeros", () => {
-    expect(formatTokens3(1_000)).toBe("1k");
-    expect(formatTokens3(1_234)).toBe("1.23k");
-    expect(formatTokens3(12_100_000)).toBe("12.1M");
-    expect(formatTokens3(273_900_000)).toBe("274M");
-  });
-
-  it("moves up a scale rather than printing a fourth figure", () => {
-    expect(formatTokens3(999_999)).toBe("1M");
-    expect(formatTokens3(1_200_000_000)).toBe("1.2B");
-  });
-
-  it("shows a bucket nothing reported as a dash", () => {
-    expect(formatTokens3(null)).toBe("-");
   });
 });

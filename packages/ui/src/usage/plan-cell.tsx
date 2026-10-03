@@ -1,6 +1,7 @@
 import type { PlanLimit, PlanUsage, PlanVendor } from "@agnostic/core";
+import { formatAgo, formatTokens3 } from "@agnostic/core/browser";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
-import { formatAgo, formatCount, formatMoney, formatShare, formatTokens3 } from "./format-usage";
+import { formatCount, formatMoney, formatShare } from "./format-usage";
 import { hasFigure, LimitFigures } from "./limit-figures";
 import { UsageRows, usageRows } from "./usage-rows";
 import { VendorMark } from "./vendor-mark";
@@ -63,7 +64,7 @@ export function PlanCell({ label, vendor, limit, day, week, now }: PlanCellProps
           )}
           {rows.length > 0 && limit !== null && worthDating(limit, now) && (
             <span data-line="age" className="text-primary-foreground-muted">
-              as of {formatAgo(limit.observedAt, now)}
+              as of {formatAgo(limit.observedAt, new Date(now))}
             </span>
           )}
           {tokens !== null && (

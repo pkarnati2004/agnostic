@@ -1,9 +1,8 @@
 // @vitest-environment happy-dom
 import type { PlanLimit } from "@agnostic/core";
-import { limitFreshness } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { render } from "../test/render";
-import { hasFigure, LimitFigures, windowFreshness } from "./limit-figures";
+import { hasFigure, LimitFigures } from "./limit-figures";
 import { claudeLimit, usageResponse } from "./usage-response.fixture";
 
 const NOW = Date.parse(usageResponse().scannedAt);
@@ -105,33 +104,5 @@ describe("hasFigure", () => {
     });
 
     expect(hasFigure(stale, NOW)).toBe(false);
-  });
-});
-
-// Core's own cases (packages/core/src/usage.test.ts), against the page's copy of the rule: the
-// page bundles no runtime code from `@agnostic/core`.
-describe("windowFreshness", () => {
-  const ahead = { usedPercent: 58, resetsAt: new Date(NOW + 3_600_000).toISOString() };
-  const noReset = { usedPercent: 41, resetsAt: null };
-
-  const cases: [string, { usedPercent: number; resetsAt: string | null }, string][] = [
-    ["a reset ahead and 119 min", ahead, observed(119)],
-    ["a reset ahead and 120 min", ahead, observed(120)],
-    ["a reset at now", { usedPercent: 58, resetsAt: new Date(NOW).toISOString() }, observed(10)],
-    ["no reset and 59 min", noReset, observed(59)],
-    ["no reset and 60 min", noReset, observed(60)],
-    ["an observation time it cannot read", ahead, "not a time"],
-  ];
-
-  for (const [name, window, observedAt] of cases) {
-    it(`agrees with core on ${name}`, () => {
-      expect(windowFreshness(window, observedAt, NOW)).toBe(
-        limitFreshness(window, observedAt, new Date(NOW)),
-      );
-    });
-  }
-
-  it("has no figure at all for a window the harness never reported", () => {
-    expect(windowFreshness(null, observed(1), NOW)).toBe("stale");
   });
 });
