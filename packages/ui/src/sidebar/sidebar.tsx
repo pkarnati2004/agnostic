@@ -99,19 +99,19 @@ type NeedsYouProps = {
   onSelect: (id: string) => void;
 };
 
-/** The tasks asking a question, oldest first, each one named by the repo it is in. */
+/** The tasks asking a question, oldest first. */
 function NeedsYou({ groups, selectedId, onSelect }: NeedsYouProps) {
   if (groups.needsYou.length === 0) {
     return null;
   }
-  const repoNames = new Map(groups.repos.map((group) => [group.repo.id, group.repo.name]));
+  const repos = new Map(groups.repos.map((group) => [group.repo.id, group.repo]));
   return (
-    <Section title="Needs you">
+    <Section title="Needs you" count={groups.needsYou.length} tone="waiting">
       {groups.needsYou.map((task: TaskListRow) => (
         <TaskRow
           key={task.id}
           task={task}
-          repoName={repoNames.get(task.repoId) ?? null}
+          repo={repos.get(task.repoId) ?? null}
           selected={task.id === selectedId}
           onSelect={onSelect}
         />

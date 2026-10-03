@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { type Plan, type Plans, PlansSchema, type PlanVendor } from "./plans.js";
-import type { Billing, HarnessId, Profile } from "./profile.js";
+import type { Billing, Profile } from "./profile.js";
+import type { HarnessId } from "./profile-id.js";
 
 export type ModelSource = "probe" | "seed" | "none";
 

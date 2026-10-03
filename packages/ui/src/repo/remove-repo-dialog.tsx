@@ -4,6 +4,7 @@ import { type ApiError, asApiError } from "../api/error";
 import { Button } from "../components/button";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -12,6 +13,7 @@ import {
   DialogTitle,
 } from "../components/dialog";
 import { HintText } from "../hint-text";
+import { NoticeLine } from "../notice/notice-line";
 
 type RemoveRepoDialogProps = {
   /** The repo the user asked to remove, or null when nothing is being removed. */
@@ -57,29 +59,29 @@ function Confirm({ repo, onOpenChange, onRemove }: ConfirmProps) {
             The folder at {repo.path} is not touched.
           </DialogDescription>
         </DialogHeader>
-        <p className="text-muted-foreground text-sm">
-          <HintText
-            hint={`Its usage and outcome history is kept, and \`agn add ${repo.path}\` brings it back.`}
-          />
-        </p>
-        {failure !== null && (
-          <div role="alert" className="min-w-0">
-            <p className="text-destructive text-sm">{failure.message}</p>
-            {failure.hint !== null && (
-              <p className="mt-1 text-muted-foreground text-xs">
-                <HintText hint={failure.hint} />
-              </p>
-            )}
-          </div>
-        )}
+        <DialogBody>
+          <p className="text-muted-foreground type-body">
+            <HintText
+              hint={`Its usage and outcome history is kept, and \`agn add ${repo.path}\` brings it back.`}
+            />
+          </p>
+          {failure !== null && (
+            <NoticeLine tone="error" className="border-b-0 px-0">
+              {failure.message}
+              {failure.hint !== null && (
+                <span className="mt-0.5 block text-muted-foreground">
+                  <HintText hint={failure.hint} />
+                </span>
+              )}
+            </NoticeLine>
+          )}
+        </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="ghost" size="sm">
-              Cancel
-            </Button>
+            <Button variant="ghost">Cancel</Button>
           </DialogClose>
-          <Button size="sm" onClick={remove} disabled={busy}>
-            Remove
+          <Button variant="destructive" onClick={remove} disabled={busy}>
+            Remove {repo.name}
           </Button>
         </DialogFooter>
       </DialogContent>

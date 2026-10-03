@@ -1,5 +1,5 @@
 import type { Plan, PlanVendor } from "./plans.js";
-import type { HarnessId } from "./profile.js";
+import type { HarnessId } from "./profile-id.js";
 
 /**
  * Tokens and cost over some set of usage rows. The buckets are null when nothing in the set

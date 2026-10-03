@@ -21,7 +21,7 @@ export function BudgetCell({ budget }: { budget: BudgetReport }) {
             "flex min-w-0 items-center gap-2 whitespace-nowrap",
             tone === "exceeded" && "text-destructive",
           )}
-          style={tone === "warn" ? { color: "var(--status-waiting)" } : undefined}
+          style={tone === "warn" ? { color: "var(--warning)" } : undefined}
         >
           <span className="shrink-0 font-medium">budget</span>
           {budget.day !== null && (

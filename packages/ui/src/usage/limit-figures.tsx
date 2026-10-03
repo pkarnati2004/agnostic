@@ -75,7 +75,7 @@ export function barFill(usedPercent: number, base = "var(--foreground)"): string
   if (usedPercent >= OVER_PERCENT) {
     return "var(--destructive)";
   }
-  return usedPercent >= WARN_PERCENT ? "var(--status-waiting)" : base;
+  return usedPercent >= WARN_PERCENT ? "var(--warning)" : base;
 }
 
 type FigureProps = {

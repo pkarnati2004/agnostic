@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app";
 import "./styles/index.css";
 
-// Dark is the only theme in v1; a light one would be a token flip and a toggle.
+// `:root` already carries the dark values, so this is the class a light switch would flip.
 document.documentElement.classList.add("dark");
 
 const root = document.getElementById("root");

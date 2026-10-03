@@ -70,6 +70,7 @@ export function NewTaskFields(props: NewTaskFieldsProps) {
           placeholder={profiles.length === 0 ? "No profile is available" : "Pick a profile"}
           options={profiles.map((profile) => ({ value: profile.id, label: profile.id }))}
           onChange={props.onPickProfile}
+          mono
         />
         <p className="text-muted-foreground text-xs">{pickNote(state, props.profileId)}</p>
         <BudgetNote
@@ -125,13 +126,15 @@ type PickerProps = {
   placeholder: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
+  /** Set where the value is a profile id, which the design draws in mono. */
+  mono?: boolean;
 };
 
 /** One list of values with no free text, which is every select in this dialog. */
-function Picker({ id, value, placeholder, options, onChange }: PickerProps) {
+function Picker({ id, value, placeholder, options, onChange, mono }: PickerProps) {
   return (
     <Select value={value ?? undefined} onValueChange={onChange}>
-      <SelectTrigger id={id}>
+      <SelectTrigger id={id} mono={mono}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

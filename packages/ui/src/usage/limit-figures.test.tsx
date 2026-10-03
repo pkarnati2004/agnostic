@@ -69,6 +69,18 @@ describe("LimitFigures", () => {
     drawn.unmount();
   });
 
+  it("warns before the window is spent, in the colour a budget warning uses", () => {
+    const warm = claudeLimit({
+      fiveHour: { usedPercent: 85, resetsAt: new Date("2026-09-11T17:05:00").toISOString() },
+    });
+    const { container, unmount } = render(<LimitFigures limit={warm} now={NOW} />);
+
+    const bar = container.querySelector<HTMLElement>('[data-testid="five-hour-bar"]');
+
+    expect(bar?.style.backgroundColor).toBe("var(--warning)");
+    unmount();
+  });
+
   it("colours the bar once the window is nearly spent", () => {
     const hot = claudeLimit({
       fiveHour: {

@@ -22,6 +22,12 @@ const OVER_BUDGET: BudgetReport = {
 };
 
 describe("NewTaskDialog", () => {
+  it("draws its fields inside the dialog's body, between the header and the footer", () => {
+    const { unmount } = dialog(stubClient());
+    expect(document.querySelector("[data-slot='dialog-body']")).not.toBeNull();
+    unmount();
+  });
+
   it("enables Run only once there is a prompt and a profile", () => {
     const { unmount } = dialog(stubClient());
     expect(runButton().disabled).toBe(true);
@@ -123,6 +129,16 @@ describe("NewTaskDialog", () => {
         },
       },
     ]);
+    unmount();
+  });
+
+  it("draws the profile value in mono and the repo value in the body face", () => {
+    const { unmount } = dialog(stubClient());
+    const repo = document.getElementById("new-task-repo") as HTMLButtonElement;
+    const profile = document.getElementById("new-task-profile") as HTMLButtonElement;
+
+    expect(repo.classList.contains("type-mono-lg")).toBe(false);
+    expect(profile.classList.contains("type-mono-lg")).toBe(true);
     unmount();
   });
 

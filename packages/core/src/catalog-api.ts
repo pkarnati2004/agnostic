@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { HarnessId } from "./profile.js";
+import type { HarnessId } from "./profile-id.js";
 import type { EvidenceLevel } from "./recommendation.js";
 import type { TaskIntent } from "./task-intent.js";
 

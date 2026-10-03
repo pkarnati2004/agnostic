@@ -2,19 +2,19 @@ import { describe, expect, it } from "vitest";
 import { xtermTheme } from "./terminal-theme";
 
 const TOKENS: Record<string, string> = {
-  "--background": " #0a0a0a ",
-  "--foreground": "#fafafa",
-  "--ring": "#737373",
+  "--terminal": " #121010 ",
+  "--foreground": "#e8e4df",
+  "--ring": "#7fa3cf",
 };
 
 describe("xtermTheme", () => {
   it("takes the pane's colours from the page's tokens", () => {
     expect(xtermTheme((token) => TOKENS[token] ?? "")).toEqual({
-      background: "#0a0a0a",
-      foreground: "#fafafa",
-      cursor: "#fafafa",
-      cursorAccent: "#0a0a0a",
-      selectionBackground: "#73737366",
+      background: "#121010",
+      foreground: "#e8e4df",
+      cursor: "#e8e4df",
+      cursorAccent: "#121010",
+      selectionBackground: "#7fa3cf66",
     });
   });
 

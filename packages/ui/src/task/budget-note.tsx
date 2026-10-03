@@ -28,7 +28,7 @@ export function BudgetNote({ budget, profile, ignore, onIgnore }: BudgetNoteProp
   }
   if (over.length === 0) {
     return (
-      <p className="text-xs" style={{ color: "var(--status-waiting)" }}>
+      <p className="text-xs" style={{ color: "var(--warning)" }}>
         {warn
           .map(([kind, window]) => `Budget: ${amounts(kind, window)} (${budgetPercent(window)}%).`)
           .join(" ")}

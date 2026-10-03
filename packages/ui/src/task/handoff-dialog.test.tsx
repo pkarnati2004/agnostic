@@ -69,34 +69,41 @@ function open(
   act(() => button("Hand off").click());
   const trigger = document.getElementById("handoff-profile") as HTMLButtonElement;
   act(() => trigger.click());
+  // The option draws the chip, not the id: "claude-code · opus", with the billing badge after it.
   const item = Array.from(document.querySelectorAll('[role="option"]')).find(
-    (one) => one.textContent === pick,
+    (one) => one.getAttribute("title") === pick || one.querySelector(`[title="${pick}"]`) !== null,
   ) as HTMLElement | undefined;
   act(() => item?.click());
   return rendered;
 }
 
 describe("HandoffDialog", () => {
+  it("draws its fields inside the dialog's body, between the header and the footer", () => {
+    const { unmount } = open(null, () => Promise.resolve(true));
+    expect(document.querySelector("[data-slot='dialog-body']")).not.toBeNull();
+    unmount();
+  });
+
   it("stays open with the daemon's answer in it when the handoff is refused", async () => {
     const { unmount } = open(REFUSED, () => Promise.resolve(false));
-    await act(async () => button("Run").click());
+    await act(async () => button("Hand off to claude-code").click());
 
-    expect(document.body.textContent).toContain("Hand off Port the parser");
+    expect(document.body.textContent).toContain("Port the parser");
     expect(document.body.textContent).toContain(
       "Hand off failed for Port the parser: codex is not installed",
     );
     expect(document.body.textContent).toContain("Run agn doctor.");
-    expect(button("Run").disabled).toBe(false);
+    expect(button("Hand off to claude-code").disabled).toBe(false);
     unmount();
   });
 
   it("closes once the child has started", async () => {
     const onSubmit = vi.fn(() => Promise.resolve(true));
     const { unmount } = open(null, onSubmit);
-    await act(async () => button("Run").click());
+    await act(async () => button("Hand off to claude-code").click());
 
     expect(onSubmit).toHaveBeenCalledWith({ profile: PROFILE.id });
-    expect(document.body.textContent).not.toContain("Hand off Port the parser");
+    expect(document.body.textContent).not.toContain("Note for the next agent");
     unmount();
   });
 
@@ -111,7 +118,7 @@ describe("HandoffDialog", () => {
     expect(document.body.textContent).toContain("Over budget: today $5.20 of $5.00.");
     const box = document.querySelector('input[type="checkbox"]') as HTMLInputElement;
     click(box);
-    await act(async () => button("Run").click());
+    await act(async () => button("Hand off to claude-code").click());
 
     expect(onSubmit).toHaveBeenCalledWith({ profile: KEYED_PROFILE.id, ignoreBudget: true });
     unmount();
@@ -128,7 +135,7 @@ describe("HandoffDialog", () => {
       />,
     );
 
-    expect(document.body.textContent).not.toContain("Hand off Port the parser");
+    expect(document.body.textContent).not.toContain("Note for the next agent");
     unmount();
   });
 
@@ -146,7 +153,7 @@ describe("HandoffDialog", () => {
       />,
     );
 
-    expect(document.body.textContent).toContain("Hand off Port the parser");
+    expect(document.body.textContent).toContain("Note for the next agent");
     act(() => button("Cancel").click());
 
     expect(onOpenChange).toHaveBeenCalledWith(false);

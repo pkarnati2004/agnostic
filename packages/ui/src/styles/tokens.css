@@ -1,10 +1,11 @@
 /*
- * Design tokens copied from stablyai/orca src/renderer/src/assets/main.css, MIT © Lovecast Inc.
+ * The token names are stablyai/orca's, from src/renderer/src/assets/main.css, MIT © Lovecast Inc.
+ * Every value is agnostic's own design system (2026-09-24): a warm near-black dark theme and a warm
+ * light one, with a value for every name in both so a theme switch is a class and nothing else.
  *
- * The shadcn set, the sidebar family, the radius scale and the agent-question hue, with the
- * families agn has no surface for dropped. Orca reads the orange and green from Tailwind's
- * palette; the values are written out here so a token never depends on a palette variable
- * Tailwind may not emit. The six status tokens are agn's own names for the dots.
+ * This file is the only place the page writes a colour, a radius or a font stack. A component reads
+ * a token; it never writes a hex. Terminal content is the agent's own and is never restyled, so
+ * --terminal colours the canvas the pane sits on and nothing inside it.
  */
 
 @theme inline {
@@ -28,8 +29,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-agent-question: var(--agent-question);
-  --color-agent-question-text: var(--agent-question-text);
+  --color-warning: var(--warning);
+  --color-terminal: var(--terminal);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -38,110 +39,128 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --shadow-floating: 0 10px 24px rgb(0 0 0 / 0.18);
+  --shadow-floating: var(--shadow-floating);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
-}
-
-:root {
+  /* Declared here, not in a theme block, so `font-mono` and `var(--font-mono)` are one stack. The
+     mono is the user's: JetBrains Mono is named first and no font file is fetched or bundled. */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono:
-    "SF Mono", SFMono-Regular, ui-monospace, "Cascadia Code", Menlo, Consolas, "Liberation Mono",
-    monospace;
-  --radius: 0.625rem;
-  --background: #fff;
-  --foreground: #0a0a0a;
-  --card: #fff;
-  --card-foreground: #0a0a0a;
-  --popover: #fff;
-  --popover-foreground: #0a0a0a;
-  --primary: #171717;
-  --primary-foreground: #fafafa;
-  /* A second rank of text on a --primary surface, for a tooltip's own muted lines:
-     --muted-foreground is read against --background and falls under 4.5:1 here. 5.5:1 on #171717. */
-  --primary-foreground-muted: #8f8f8f;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #171717;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --accent: #f5f5f5;
-  --accent-foreground: #171717;
-  --destructive: #e40014;
-  --destructive-foreground: #fcf3f3;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #a1a1a1;
-  /* "An agent is asking you something": one hue for every surface that shows it. Orange, not
-     amber, so it stays separable from a working yellow at a glance. */
-  --agent-question: oklch(0.646 0.222 41.116);
-  /* Legible weight for text on a tinted --agent-question surface. */
-  --agent-question-text: oklch(0.553 0.195 38.402);
-  --sidebar: #fafafa;
-  --sidebar-foreground: #0a0a0a;
-  --sidebar-primary: #171717;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #f5f5f5;
-  --sidebar-accent-foreground: #171717;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #a1a1a1;
-  --status-waiting: var(--agent-question);
-  --status-running: #15803d;
-  /* Not --muted: a surface colour is invisible as an 8px dot. Tailwind's slate and neutral
-     values, written out, over 3:1 on the sidebar and apart from done's lighter neutral. */
-  --status-queued: #64748b;
-  --status-done: var(--muted-foreground);
-  --status-failed: var(--destructive);
-  --status-stopped: #525252;
-  /* The patch's own family: a tint behind the row and a stronger hue for its +/- marker. Orca has
-     no diff tokens, so these are agn's, not copied. */
-  --diff-add-bg: #e8f6ec;
-  --diff-add-fg: #15803d;
-  --diff-del-bg: #fdeceb;
-  --diff-del-fg: #b3261e;
+    "JetBrains Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
 }
 
+:root,
 .dark {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
-  --card: #171717;
-  --card-foreground: #fafafa;
-  --popover: #171717;
-  --popover-foreground: #fafafa;
-  --primary: #e5e5e5;
-  --primary-foreground: #171717;
-  /* 5.2:1 on #e5e5e5. */
-  --primary-foreground-muted: #5e5e5e;
-  --secondary: #262626;
-  --secondary-foreground: #fafafa;
-  --muted: #262626;
-  --muted-foreground: #a1a1a1;
-  --accent: #404040;
-  --accent-foreground: #fafafa;
-  --destructive: #ff6568;
-  --destructive-foreground: #df2225;
-  --border: rgb(255 255 255 / 0.07);
-  --input: rgb(255 255 255 / 0.15);
-  --ring: #737373;
-  --agent-question: oklch(0.705 0.213 47.604);
-  --agent-question-text: oklch(0.837 0.128 66.29);
-  --sidebar: #171717;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #1447e6;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #262626;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: rgb(255 255 255 / 0.07);
-  --sidebar-ring: #525252;
-  --status-waiting: var(--agent-question);
-  --status-running: #86efac;
-  --status-queued: #64748b;
-  --status-done: var(--muted-foreground);
-  --status-failed: var(--destructive);
-  --status-stopped: #737373;
-  --diff-add-bg: rgb(34 197 94 / 0.14);
-  --diff-add-fg: #86efac;
-  --diff-del-bg: rgb(248 113 113 / 0.14);
-  --diff-del-fg: #fca5a5;
+  --background: #141211;
+  --foreground: #e8e4df;
+  --card: #1a1816;
+  --card-foreground: #e8e4df;
+  --popover: #1e1b19;
+  --popover-foreground: #e8e4df;
+  --primary: #e8e4df;
+  --primary-foreground: #161412;
+  /* The tooltip's own muted lines, on a --primary surface: --muted-foreground is read against
+     --background and reaches only 2.8:1 here. 5.4:1 on #e8e4df. */
+  --primary-foreground-muted: #5f5a55;
+  --secondary: #2a2623;
+  --secondary-foreground: #f2eee9;
+  --muted: #211e1c;
+  --muted-foreground: #8e8781;
+  --accent: #24211e;
+  --accent-foreground: #f2eee9;
+  --destructive: #e0604e;
+  /* Text on a destructive surface. The design gives no value; this is its light background. */
+  --destructive-foreground: #fbfaf8;
+  --border: #2a2624;
+  --input: #332f2c;
+  --ring: #7fa3cf;
+  --sidebar: #171514;
+  --sidebar-foreground: #d9d4ce;
+  --sidebar-primary: #e8e4df;
+  --sidebar-primary-foreground: #161412;
+  --sidebar-accent: #24211e;
+  --sidebar-accent-foreground: #f2eee9;
+  --sidebar-border: #252220;
+  --sidebar-ring: #7fa3cf;
+  --status-waiting: #f09a4a;
+  --status-running: #5fbf7f;
+  --status-queued: #8a96a8;
+  --status-done: #6d6863;
+  --status-failed: #e0604e;
+  --status-stopped: #4b4744;
+  /* Budget, risk and behind. The waiting orange means "the agent asked you something" and nothing else. */
+  --warning: #d9b24c;
+  --terminal: #121010;
+  --diff-add-bg: rgb(95 191 127 / 0.1);
+  --diff-add-fg: #b9dcc0;
+  --diff-del-bg: rgb(224 96 78 / 0.1);
+  --diff-del-fg: #f0c0b6;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.03);
+}
+
+.light {
+  --background: #fbfaf8;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+  --primary: #1c1917;
+  --primary-foreground: #fbfaf8;
+  /* 5.2:1 on #1c1917. */
+  --primary-foreground-muted: #918b85;
+  --secondary: #f1efec;
+  --secondary-foreground: #1c1917;
+  --muted: #f1efec;
+  --muted-foreground: #6f6a64;
+  --accent: #ebe8e4;
+  --accent-foreground: #1c1917;
+  --destructive: #c8412f;
+  --destructive-foreground: #fbfaf8;
+  --border: #e4e0db;
+  --input: #d9d4ce;
+  --ring: #3f6fb0;
+  --sidebar: #f5f3f0;
+  --sidebar-foreground: #292524;
+  --sidebar-primary: #1c1917;
+  --sidebar-primary-foreground: #fbfaf8;
+  --sidebar-accent: #ebe8e4;
+  --sidebar-accent-foreground: #1c1917;
+  --sidebar-border: #e7e3de;
+  --sidebar-ring: #3f6fb0;
+  --status-waiting: #d4731c;
+  --status-running: #2f9a57;
+  --status-queued: #6b7788;
+  --status-done: #9a948e;
+  --status-failed: #c8412f;
+  --status-stopped: #8a847e;
+  --warning: #a87f12;
+  --terminal: #ffffff;
+  --diff-add-bg: #e8f6ec;
+  --diff-add-fg: #2f9a57;
+  --diff-del-bg: #fdeceb;
+  --diff-del-fg: #c8412f;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(28 25 23 / 0.18), 0 0 0 1px rgb(28 25 23 / 0.06);
+}
+
+/*
+ * A harness mark's own two colours, one pair per harness, outside the theme blocks: the mark stands
+ * for the vendor rather than the page, and the same pair reads on both themes. Placeholders until
+ * real marks are licensed.
+ */
+:root {
+  --mark-claude-code: #d08a6a;
+  --mark-claude-code-foreground: #1a1310;
+  --mark-codex: #cfc9c2;
+  --mark-codex-foreground: #1a1714;
+  --mark-opencode: #8fb8a2;
+  --mark-opencode-foreground: #111a15;
+  --mark-pi: #b7a0db;
+  --mark-pi-foreground: #17121f;
+  --mark-gemini: #86a9d6;
+  --mark-gemini-foreground: #101722;
 }

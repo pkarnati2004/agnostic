@@ -4,9 +4,13 @@ import { worktreeGone } from "../task/worktree-gone";
 /** The siblings of one compare, oldest first, which is the order the profiles were given in. */
 export type CompareGroup = { compareId: string; title: string; tasks: TaskListRow[] };
 
-/** What the sidebar draws under a repo: one task, or one compare standing for all of its siblings. */
+/**
+ * What the sidebar draws under a repo: one task, or one compare standing for all of its siblings.
+ * A task row carries the task handed off from it while both are live, so the two are drawn together
+ * and the child is not sorted away from its parent.
+ */
 export type SidebarRow =
-  | { kind: "task"; task: TaskListRow }
+  | { kind: "task"; task: TaskListRow; child: TaskListRow | null }
   | { kind: "compare"; group: CompareGroup };
 
 export type RepoGroup = { repo: RepoListRow; rows: SidebarRow[]; history: SidebarRow[] };
@@ -36,7 +40,7 @@ export function groupTasks(repos: RepoListRow[], tasks: TaskListRow[]): SidebarG
     const rows = sidebarRows(byRepo.get(repo.id) ?? []);
     return {
       repo,
-      rows: inRepoOrder(rows.filter((row) => !rowInHistory(row))),
+      rows: withChildren(inRepoOrder(rows.filter((row) => !rowInHistory(row)))),
       history: newestFirst(rows.filter(rowInHistory)),
     };
   });
@@ -53,7 +57,7 @@ function sidebarRows(tasks: TaskListRow[]): SidebarRow[] {
   for (const task of tasks) {
     const compareId = task.compareId;
     if (compareId === null) {
-      rows.push({ kind: "task", task });
+      rows.push({ kind: "task", task, child: null });
     } else {
       compares.set(compareId, [...(compares.get(compareId) ?? []), task]);
     }
@@ -70,6 +74,41 @@ function sidebarRows(tasks: TaskListRow[]): SidebarRow[] {
     }
   }
   return rows;
+}
+
+/**
+ * A task handed off from another one sits under its parent, indented, when both are still live in
+ * this repo. The child leaves the list as a row of its own and rides on the parent's, so the pair
+ * cannot drift apart as their times change. A child whose parent is in History, in another repo, or
+ * itself under someone else sorts as an ordinary row.
+ */
+function withChildren(rows: SidebarRow[]): SidebarRow[] {
+  const parents = new Map<string, Extract<SidebarRow, { kind: "task" }>>();
+  for (const row of rows) {
+    if (row.kind === "task") {
+      parents.set(row.task.id, row);
+    }
+  }
+  // One indent is the whole relationship a row can draw, so a chain of handoffs pairs its first two
+  // rows and leaves the third where its time puts it.
+  const children = new Set<string>();
+  const shown = new Set<string>();
+  for (const row of rows) {
+    if (row.kind !== "task" || row.task.parentTaskId === undefined) {
+      continue;
+    }
+    const parent = parents.get(row.task.parentTaskId);
+    if (parent === undefined || parent.child !== null) {
+      continue;
+    }
+    if (children.has(parent.task.id) || shown.has(row.task.id)) {
+      continue;
+    }
+    parent.child = row.task;
+    children.add(row.task.id);
+    shown.add(parent.task.id);
+  }
+  return rows.filter((row) => row.kind !== "task" || !children.has(row.task.id));
 }
 
 /** A compare is in History once every sibling is: one live agent keeps the group in the list. */

@@ -27,6 +27,7 @@ export * from "./plans.js";
 export * from "./preferences.js";
 export * from "./process.js";
 export * from "./profile.js";
+export * from "./profile-id.js";
 export { readTextFile } from "./read-text-file.js";
 export * from "./recommendation.js";
 export * from "./repo.js";

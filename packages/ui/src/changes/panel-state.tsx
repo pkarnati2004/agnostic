@@ -1,6 +1,7 @@
 import type { ChangesResponse } from "@agnostic/core";
 import type { ApiError } from "../api/error";
 import { HintText } from "../hint-text";
+import { NoticeLine } from "../notice/notice-line";
 import { type ChangesState, lastChanges } from "./changes-state";
 
 /** What the panel draws now: the list, or the one line that stands in for it. */
@@ -53,7 +54,11 @@ export function FailedLine({ error }: { error: ApiError }) {
 
 /** The worktree is gone but the branch is not, so what was committed still reads (ADR 031). */
 export function CleanedLine({ branch }: { branch: string }) {
-  return <PanelLine>{`worktree cleaned; branch \`${branch}\` kept`}</PanelLine>;
+  return (
+    <NoticeLine tone="info" className="border-b-0">
+      <HintText hint={`worktree cleaned; branch \`${branch}\` kept`} />
+    </NoticeLine>
+  );
 }
 
 export function EmptyLine({ base }: { base: string }) {
