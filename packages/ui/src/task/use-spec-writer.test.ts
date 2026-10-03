@@ -29,44 +29,30 @@ function stubClient(writeSpec: WorkspaceClient["writeSpec"]): WorkspaceClient {
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
+  const promise = new Promise<T>((res) => {
     resolve = res;
-    reject = rej;
   });
-  return { promise, resolve, reject };
+  return { promise, resolve };
 }
 
 /** Exposes the hook's latest return value on every render, so a test can read it after an act(). */
-function mount(client: WorkspaceClient, open = true) {
+function mount(client: WorkspaceClient) {
   const latest: { current: SpecWriter | null } = { current: null };
   const written: SpecResponse[] = [];
-  function Host(props: { open: boolean }) {
-    latest.current = useSpecWriter({
-      client,
-      open: props.open,
-      onWritten: (spec) => written.push(spec),
-    });
+  function Host() {
+    latest.current = useSpecWriter({ client, onWritten: (spec) => written.push(spec) });
     return null;
   }
-  const rendered = render(createElement(Host, { open }));
+  const rendered = render(createElement(Host));
   return {
     latest: () => latest.current as SpecWriter,
     written,
-    // Two steps: the render (a prop change) and a flush for the passive effect it schedules,
-    // which happy-dom does not settle inside a single synchronous act().
-    setOpen: async (next: boolean) => {
-      rendered.update(createElement(Host, { open: next }));
-      await act(async () => {
-        await Promise.resolve();
-      });
-    },
     unmount: rendered.unmount,
   };
 }
 
 describe("useSpecWriter", () => {
-  it("is busy while the call is in flight and idle with the fields shown once it resolves", async () => {
+  it("is busy while the call is in flight and names the writer once it answers", async () => {
     const { promise, resolve } = deferred<SpecResponse>();
     const host = mount(stubClient(() => promise));
 
@@ -81,15 +67,14 @@ describe("useSpecWriter", () => {
 
     expect(host.latest().busy).toBe(false);
     expect(host.latest().writtenBy).toBe(SPEC.profileId);
-    expect(host.latest().shown).toBe(true);
     expect(host.written).toEqual([SPEC]);
     host.unmount();
   });
 
-  it("exposes the message and hint of a 409 and leaves the dialog usable", async () => {
+  it("exposes the message and hint of a 409 and leaves the step usable", async () => {
     const failure = new ApiError("no subscription-billed agent can write specs on this machine", {
       code: "spec-writer-unavailable",
-      hint: "Write the spec yourself in the dialog.",
+      hint: "Write the spec yourself.",
       status: 409,
     });
     const host = mount(stubClient(() => Promise.reject(failure)));
@@ -102,9 +87,7 @@ describe("useSpecWriter", () => {
 
     expect(host.latest().busy).toBe(false);
     expect(host.latest().error).toBe(failure);
-    expect(host.latest().error?.hint).toBe("Write the spec yourself in the dialog.");
     expect(host.latest().writtenBy).toBeNull();
-    expect(host.latest().shown).toBe(true);
     host.unmount();
   });
 
@@ -124,46 +107,21 @@ describe("useSpecWriter", () => {
 
     expect(host.latest().error).toBe(failure);
     expect(host.latest().error?.hint).toContain("Write the spec yourself");
-    expect(host.latest().writtenBy).toBeNull();
-    expect(host.latest().shown).toBe(true);
     host.unmount();
   });
 
-  it("resets to idle when the dialog reopens", async () => {
-    const host = mount(stubClient(() => Promise.resolve(SPEC)));
-    await act(async () => {
-      host.latest().write("r1", { prompt: "add a retry budget" });
-      await Promise.resolve();
-    });
-    expect(host.latest().writtenBy).toBe(SPEC.profileId);
-
-    await host.setOpen(false);
-    await host.setOpen(true);
-
-    expect(host.latest()).toMatchObject({
-      busy: false,
-      error: null,
-      writtenBy: null,
-      shown: false,
-    });
-    host.unmount();
-  });
-
-  it("drops an answer that arrives after the dialog closed and reopened", async () => {
+  it("drops an answer to a call whose tab has since closed", async () => {
     const { promise, resolve } = deferred<SpecResponse>();
     const host = mount(stubClient(() => promise));
     act(() => host.latest().write("r1", { prompt: "add a retry budget" }));
 
-    await host.setOpen(false);
-    await host.setOpen(true);
+    host.unmount();
     await act(async () => {
       resolve(SPEC);
       await promise;
     });
 
-    expect(host.latest()).toMatchObject({ busy: false, writtenBy: null, shown: false });
     expect(host.written).toEqual([]);
-    host.unmount();
   });
 
   it("keeps the first attribution when a second write fails and its text stays", async () => {
@@ -192,7 +150,7 @@ describe("useSpecWriter", () => {
     host.unmount();
   });
 
-  it("replaces the fields when Write spec is pressed a second time", async () => {
+  it("replaces the answer when Rewrite asks again", async () => {
     let calls = 0;
     const host = mount(stubClient(() => Promise.resolve(calls++ === 0 ? SPEC : OTHER_SPEC)));
     await act(async () => {
@@ -227,17 +185,6 @@ describe("useSpecWriter", () => {
 
     expect(calls).toBe(1);
     expect(host.latest().busy).toBe(true);
-    host.unmount();
-  });
-
-  it("shows the fields with no attribution when the user asks to write it themselves", () => {
-    const host = mount(stubClient(() => new Promise(() => undefined)));
-    expect(host.latest().shown).toBe(false);
-
-    act(() => host.latest().show());
-
-    expect(host.latest().shown).toBe(true);
-    expect(host.latest().writtenBy).toBeNull();
     host.unmount();
   });
 });

@@ -8,8 +8,8 @@ import { taskRow } from "../changes/changes-fixture";
 import { TooltipProvider } from "../components/tooltip";
 import type { TaskNotice } from "../store/task-notices";
 import type { UsageStamp } from "../store/workspace-state";
-import { stubClient } from "../task/new-task-dialog-fixture";
 import { click, render } from "../test/render";
+import { stubClient } from "../test/workspace-fixture";
 import { compareResponse, compareRow } from "./compare-fixture";
 import { CompareView } from "./compare-view";
 

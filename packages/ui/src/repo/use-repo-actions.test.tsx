@@ -4,8 +4,8 @@ import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceClient } from "../api/client";
 import { ApiError } from "../api/error";
-import { stubClient } from "../task/new-task-dialog-fixture";
 import { render } from "../test/render";
+import { stubClient } from "../test/workspace-fixture";
 import type { RepoActions } from "./use-repo-actions";
 import { useRepoActions } from "./use-repo-actions";
 

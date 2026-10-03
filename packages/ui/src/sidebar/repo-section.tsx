@@ -1,6 +1,7 @@
 import type { RepoListRow } from "@agnostic/core";
 import { Archive, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { RepoAvatar } from "../repo/repo-avatar";
 import { RepoNoticeLine } from "../repo/repo-notice-line";
 import type { RepoNotice } from "../repo/repo-notices";
 import { compareTabId } from "../tabs/tabs-state";
@@ -32,7 +33,7 @@ export function RepoSection({ group, selectedId, expanded, notice, ...on }: Repo
   return (
     <section className="px-2 pt-3">
       <div className="group flex h-7 items-center gap-2 px-2">
-        <Avatar name={repo.name} />
+        <RepoAvatar name={repo.name} className="text-sidebar-foreground" />
         <h2 className="min-w-0 flex-1 truncate text-sidebar-foreground text-[13px]">{repo.name}</h2>
         <span className="text-muted-foreground text-[11px]">{group.rows.length}</span>
         {/* In the DOM and in the tab order whether or not they are visible: the heading stays quiet
@@ -83,18 +84,6 @@ export function RepoSection({ group, selectedId, expanded, notice, ...on }: Repo
         onOpenCompare={on.onOpenCompare}
       />
     </section>
-  );
-}
-
-/** The repo's first letter, so a heading is recognisable before it is read. */
-function Avatar({ name }: { name: string }) {
-  return (
-    <span
-      aria-hidden
-      className="flex size-4 shrink-0 items-center justify-center rounded bg-input text-[10px] font-semibold text-sidebar-foreground"
-    >
-      {name.slice(0, 1).toLowerCase()}
-    </span>
   );
 }
 

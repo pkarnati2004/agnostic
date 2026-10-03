@@ -17,8 +17,9 @@ import type { NoticeHost, TaskNotice, TaskNotices } from "./store/task-notices";
 import type { UsageStamp } from "./store/workspace-state";
 import type { ResumeNotice } from "./tabs/resume-notice";
 import { type TabItem, TabStrip } from "./tabs/tab-strip";
-import { compareIdOf, type TabsAction, type TabsState } from "./tabs/tabs-state";
+import { compareIdOf, NEW_TASK_TAB, type TabsAction, type TabsState } from "./tabs/tabs-state";
 import { TaskTabs } from "./tabs/task-tabs";
+import { NewTaskTab } from "./task/new-task-tab";
 import { TaskHeader } from "./task/task-header";
 import { UsageBar } from "./usage/usage-bar";
 import type { UsageState } from "./usage/usage-state";
@@ -58,6 +59,13 @@ type CentreProps = {
   onPick: (compareId: string, taskId: string) => Promise<PickCompareResponse | null>;
   /** Counts the times the page was asked for the cost; each one brings the usage bar into view. */
   flash: number;
+  /** The repo a new task starts in: the tab in front's, else the first in the sidebar. */
+  defaultRepoId: string | null;
+  /** What the New task tab's prompt starts as, from the palette's "Run: <prompt>". */
+  seed: { prompt: string; at: number } | null;
+  /** The task the New task tab started: the page opens its tab and closes the composer's. */
+  onStarted: (task: Task) => void;
+  onAddRepo: () => void;
   /** The task whose handoff dialog the command palette opened, or null while none is open. */
   handoffFor: string | null;
   onHandoffFor: (taskId: string | null) => void;
@@ -71,6 +79,10 @@ export function Centre(props: CentreProps) {
   const items = tabItems(tabs.open, tasks);
   const open = items.filter((item) => item.kind === "task").map((item) => item.task);
   const compareId = compareIdOf(tabs.active);
+  const composing = tabs.active === NEW_TASK_TAB;
+  const composerOpen = tabs.open.includes(NEW_TASK_TAB);
+  // With no tab in front the centre is the composer too, under the design's first-run heading.
+  const starter = items.length === 0 && compareId === null && loaded;
   // The Compare view is in front, so no terminal is: every one of them stays mounted and hidden.
   const active = compareId !== null || tabs.active === null ? undefined : tasks[tabs.active];
   const repoNames = new Map(props.repos.map((repo) => [repo.id, repo.name]));
@@ -101,6 +113,7 @@ export function Centre(props: CentreProps) {
           onResume={() => props.onResume(active.id, "header")}
           changesOpen={props.changesOpen}
           onToggleChanges={props.onToggleChanges}
+          client={client}
           onHandoff={(body) => props.onHandoff(active, body)}
           handoffOpen={props.handoffFor === active.id}
           onHandoffOpenChange={(open) => props.onHandoffFor(open ? active.id : null)}
@@ -119,8 +132,25 @@ export function Centre(props: CentreProps) {
           onPick={props.onPick}
         />
       )}
-      {items.length === 0 && compareId === null && (
-        <Centred>{emptyCentre(loaded, props.error !== null)}</Centred>
+      {/* The draft outlives a tab switch, so the composer stays mounted and hidden like a terminal. */}
+      {(composerOpen || starter) && (
+        <NewTaskTab
+          mode={composerOpen ? "tab" : "empty"}
+          active={composing || starter}
+          repos={activeRepos(props.repos)}
+          defaultRepoId={props.defaultRepoId}
+          profiles={props.profiles}
+          budget={props.budget}
+          seed={props.seed}
+          client={client}
+          onStarted={props.onStarted}
+          onAddRepo={props.onAddRepo}
+        />
+      )}
+      {items.length === 0 && compareId === null && !loaded && (
+        <Centred>
+          {props.error !== null ? "The workspace did not load." : "Loading the workspace…"}
+        </Centred>
       )}
       <TaskTabs
         activeId={compareId === null ? tabs.active : null}
@@ -141,6 +171,10 @@ export function Centre(props: CentreProps) {
 function tabItems(open: string[], tasks: Record<string, TaskListRow>): TabItem[] {
   const items: TabItem[] = [];
   for (const id of open) {
+    if (id === NEW_TASK_TAB) {
+      items.push({ kind: "new", id: NEW_TASK_TAB });
+      continue;
+    }
     const compareId = compareIdOf(id);
     if (compareId === null) {
       const task = tasks[id];
@@ -180,14 +214,6 @@ function compareNotice(
   }
   // The newest, because an older failure is no longer what the daemon said about this group.
   return own.sort((a, b) => b.at - a.at)[0] ?? null;
-}
-
-/** With no tab open the centre says where the page got to; the notice above it says why. */
-function emptyCentre(loaded: boolean, failed: boolean): string {
-  if (loaded) {
-    return "Pick a task on the left to open it.";
-  }
-  return failed ? "The workspace did not load." : "Loading the workspace…";
 }
 
 export function Centred({ children }: { children: string }) {

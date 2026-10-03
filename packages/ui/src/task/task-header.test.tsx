@@ -7,7 +7,7 @@ import { CHANGES_KEY, readPanelOpen, writePanelOpen } from "../changes/panel-ope
 import type { TaskNotice } from "../store/task-notices";
 import { selectModifier } from "../terminal/select-modifier";
 import { click, render } from "../test/render";
-import { PROFILE } from "./new-task-dialog-fixture";
+import { PROFILE, stubClient } from "../test/workspace-fixture";
 import { TaskHeader } from "./task-header";
 
 const REPO: RepoListRow = {
@@ -62,6 +62,7 @@ function header(
       profiles={[PROFILE]}
       budget={null}
       cost={null}
+      client={stubClient()}
       files={files}
       notice={taskNotice}
       changesOpen={false}
@@ -111,6 +112,7 @@ describe("TaskHeader notice", () => {
         profiles={[PROFILE]}
         budget={null}
         cost={null}
+        client={stubClient()}
         files={null}
         notice={null}
         changesOpen={false}
@@ -179,6 +181,7 @@ describe("TaskHeader and a closed repo", () => {
         profiles={[PROFILE]}
         budget={null}
         cost={null}
+        client={stubClient()}
         files={null}
         notice={null}
         changesOpen={false}
@@ -220,6 +223,7 @@ function ChangesToggleHarness({ width }: { width: number }) {
       profiles={[PROFILE]}
       budget={null}
       cost={null}
+      client={stubClient()}
       files={null}
       notice={null}
       changesOpen={open}

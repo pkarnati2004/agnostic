@@ -19,7 +19,7 @@ than the page.
 
 - **Left:** your repos and their tasks. The glyph before a title says where the task is: a dot with a halo for "Waiting for you", a filled dot for "Running" and for "Failed", a turning ring for "Running tests", a hollow ring for "Done", a square for "Stopped". A task whose worktree agn has cleaned up draws a dashed ring. The mark at the right of a row is the harness running it. The second line is the task's branch, "Running tests before launch" or "Starting" while it waits to launch, and `<branch> · <status>` once it is over; a task handed off from another sits indented under it and reads "From `<harness>`". A closed repo and its tasks are not in the list; they are under "Closed" at the foot of the sidebar.
 - **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback. The line above the terminal says the task's status, its profile, the repo, the branch and how long it has run.
-- **+ Task:** describe the work, see the recommendation, pick or accept, run.
+- **+ Task:** opens the New task tab: describe the work, see agn's pick, keep it or change it, start.
 - **Right:** what the selected task has changed, with the patch of the file you click. "Changes" in the task header opens and closes it.
 - **Compare:** `agn compare` runs one prompt on several agents at once. The siblings are one row in the sidebar, and the row opens a Compare view with a column per agent.
 - **Bottom:** tokens and cost per plan, for today and for this week.
@@ -28,25 +28,41 @@ Everything the workspace shows comes from the local daemon; closing the tab lose
 
 ## Starting a task
 
-"+ Task" at the top of the sidebar opens the dialog. Pick the repo, describe the work, and about a
-second after you stop typing agn shows its pick. The card holds the same five lines
-`agn recommend` prints: what agn made of the prompt, the recommended profile and why, the
-alternative, what would be worth trying if you enabled it, and the risk.
+"+ Task" at the top of the sidebar, or the "+" at the end of the tab strip, opens the New task tab.
+There is one of it: a second click brings it to the front and keeps what you have typed.
 
-The Profile select follows the pick until you change it, and then stays where you put it. What it
-shows is what runs: agn sends that profile with the task, so `agn outcomes` later says both what
-agn picked and what you chose. Intent is read from the prompt unless you set it yourself.
+Describe the work. About a second after you stop typing, agn shows its pick: the profile it
+recommends, what that profile costs, why it won, how much evidence stands behind the reason, and
+which benchmarks and histories the reason was read from. Confidence is a word, never a percentage.
+Under the pick are the alternative agn would have taken instead and, where there is one, the agent
+worth trying once you enable it, with the step that would enable it. A prompt that matches a
+`risk_rules` area carries a risk line. With nothing measured to go on, the card says "No evidence;
+using your default." rather than inventing a reason.
 
-Enter writes a newline; Cmd+Enter (Ctrl+Enter) runs, as does the Run button. If the repo has a
-`test_command`, agn runs it before the agent starts and the dialog says so while it waits. The
-task opens in a tab as soon as it starts.
+The chips under the prompt are the four things worth saying before the task starts: the repo, the
+intent, the profile, and whether agn writes a spec first. Intent is read from the prompt unless you
+set it yourself, and while it is on auto the chip says what the prompt reads as. The profile chip
+reads "Profile: recommended" until you pick one, and then reads the profile you picked. What it
+shows is what runs: agn sends that profile with the task, so `agn outcomes` later says both what agn
+picked and what you chose.
+
+The arrow starts the task. Enter writes a newline; Cmd+Enter (Ctrl+Enter) is the arrow. If the repo
+has a `test_command`, agn runs it before the agent starts and the tab says so while it waits. The
+task opens in a tab of its own as soon as it starts, and the New task tab closes.
+
+The line under the composer says where the task will run: this machine, the repo, and whether agn
+makes a worktree for it or works in the folder in place. At its right, "Detected" marks the coding
+agents this machine has. A reload does not keep a draft; the tab comes back empty.
+
+With no tab open at all, the centre draws the same composer under "What should an agent work on?".
+On a machine with no repo yet it offers to add one.
 
 The first prompt ends with a "Before you finish" section that asks the agent to commit its work on
 the task branch. The text is `.ag/prompts/commit.md` if the repo has one, and agn's own prompt if
 not. agn never commits and never pushes; the agent does both or neither.
 
-If you have set a `budget` and the selected profile is billed by the token, a note under the
-Profile select says what has been spent. Past the ceiling the note says the run would be refused
+If you have set a `budget` and the selected profile is billed by the token, a note under the chips
+says what has been spent. Past the ceiling the note says the run would be refused
 and offers a checkbox, "Ignore the budget for this task", which runs it anyway this once. The
 handoff dialog carries the same note. See [Budgets](usage.md#budgets).
 
@@ -125,7 +141,7 @@ failure appears under the repo in the sidebar.
 
 Typing a prompt adds two more rows:
 
-- **Run: `<prompt>`** opens the new-task dialog with the prompt filled in. Use it when you want a
+- **Run: `<prompt>`** opens the New task tab with the prompt filled in. Use it when you want a
   title, a spec, or a profile of your own choosing before the task starts.
 - **Recommend: `<prompt>`** asks agn which profile fits and replaces the list with the answer: the
   recommended profile, the alternative when there is one, and "Back". Enter on a profile runs the
@@ -293,6 +309,16 @@ Hand off is not offered for a task whose worktree is gone: the next agent would 
 work. Resume rebuilds the worktree from the task's branch and the button comes back. `agn handoff`
 still accepts the task.
 
+## Hand off
+
+**Hand off** in the task header gives the task to another agent. The dialog shows who has it now,
+who would take it, and agn's pick for the task's own prompt, in the same card the New task tab
+draws. The select follows that pick until you change it, and the button names where the task is
+going: "Hand off to codex".
+
+Write a note for the next agent if there is something it should know. The child task starts in the
+same worktree on the same branch, and the current session stops when the new one starts.
+
 ## When an action fails
 
 Stop, Resume and Hand off answer where you asked for them: under the task header, on the terminal's
@@ -343,22 +369,23 @@ it: `$4.10 / $5.00 today` and the week beside it. The cell turns amber at 80% of
 at 100%. Hover it for the percentage and for what is counted - API-key and credits runs, never
 subscription runs. See [Budgets](usage.md#budgets).
 
-## Write spec
+## The spec step
 
-In the new-task dialog, **Write spec** turns your one-liner into a title, a spec and a checklist of
-acceptance criteria. agn runs one of your own agents in the repo, headless and read-only, with the
-same repo state a launched agent gets: recent tasks, what is in flight, and your recorded decisions.
-It edits nothing and runs nothing.
+Turn on **Write the spec** in the composer and the arrow writes a spec before anything runs. agn
+runs one of your own agents in the repo, headless and read-only, with the same repo state a launched
+agent gets: recent tasks, what is in flight, and your recorded decisions. It edits nothing and runs
+nothing.
 
-The three fields - title, spec and acceptance - appear once a spec arrives; **Write it yourself**
-opens them empty. They are yours to edit before you run, and a field you empty is left out. Run
-writes them into the task note's Spec and Acceptance sections, which is what the agent reads first.
-The one-liner stays the task's prompt.
+The step holds a title, a spec and the acceptance criteria, one per line. They are yours to edit,
+whoever wrote them, and a field you empty is left out. **Rewrite** asks the model again. **Back**
+goes to the prompt and keeps it. **Approve and start** runs the task and writes the spec and the
+acceptance into the task note's Spec and Acceptance sections, which is what the agent reads first.
+The one-liner stays the task's prompt. Nothing is started until you approve.
 
 agn picks the cheapest model you already pay a subscription for, Claude Code first. A model metered
 on credits is never picked for you. To name one yourself, set `spec_writer` in
-`~/.agnostic/config.yaml`. If nothing on the machine qualifies, agn says so and you write the spec
-in the dialog.
+`~/.agnostic/config.yaml`. If nothing on the machine qualifies, agn says so on the step and you
+write the spec there.
 
 Spec writing was verified with Claude Code. The headless flags for Codex, Pi and OpenCode follow
 each vendor's documented headless form and have not been run here. If one of them rejects a flag,

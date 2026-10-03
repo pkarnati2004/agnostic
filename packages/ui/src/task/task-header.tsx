@@ -9,6 +9,7 @@ import type {
 } from "@agnostic/core";
 import { GitBranch, PanelRight, Play, Square } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import type { WorkspaceClient } from "../api/client";
 import { Button } from "../components/button";
 import { ProfileChip } from "../profile/profile-chip";
 import { StatusPill } from "../status/status-pill";
@@ -35,6 +36,8 @@ export type TaskHeaderProps = {
   budget: BudgetReport | null;
   /** What this task has spent, filled by the page that knows how to read it. */
   cost: ReactNode;
+  /** Passed to the handoff dialog, whose card asks agn who should take the task next. */
+  client: WorkspaceClient;
   /** How many files the Changes panel found on its last read of this task; null before one. */
   files: number | null;
   /** This task's latest failure, drawn here when that is where it was asked for. */
@@ -110,6 +113,7 @@ function Actions({
           profiles={profiles}
           budget={props.budget}
           notice={props.notice}
+          client={props.client}
           onSubmit={props.onHandoff}
           open={props.handoffOpen}
           onOpenChange={props.onHandoffOpenChange}

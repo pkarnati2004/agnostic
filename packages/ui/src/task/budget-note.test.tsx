@@ -2,8 +2,8 @@
 import type { BudgetReport, Profile } from "@agnostic/core";
 import { describe, expect, it, vi } from "vitest";
 import { click, render } from "../test/render";
+import { PROFILE } from "../test/workspace-fixture";
 import { BudgetNote } from "./budget-note";
-import { PROFILE } from "./new-task-dialog-fixture";
 
 const KEYED: Profile = { ...PROFILE, id: "claude-code:opus:openrouter", billing: "api-key" };
 

@@ -204,7 +204,7 @@ function focusPath(field: RefObject<HTMLInputElement | null>) {
   };
 }
 
-/** One line of text, so Enter adds; the new-task dialog needs Cmd+Enter only for its textarea. */
+/** One line of text, so Enter adds; the composer needs Cmd+Enter only for its textarea. */
 function addsNow(submit: () => void) {
   return (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {

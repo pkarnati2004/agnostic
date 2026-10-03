@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "../components/tooltip";
 import { click, find, render } from "../test/render";
 import { type TabItem, TabStrip } from "./tab-strip";
+import { NEW_TASK_TAB } from "./tabs-state";
 
 function task(id: string, title: string, status: TaskStatus = "running"): Task {
   return {
@@ -136,6 +137,21 @@ describe("TabStrip", () => {
     expect(last.tabIndex).not.toBe(-1);
     last.focus();
     expect(document.activeElement).toBe(last);
+    unmount();
+  });
+});
+
+describe("the composer's tab", () => {
+  it("reads as New task and closes from the tab in front", () => {
+    const { container, onClose, unmount } = strip({
+      tabs: [{ kind: "new", id: NEW_TASK_TAB }],
+      activeId: NEW_TASK_TAB,
+    });
+
+    expect(container.textContent).toContain("New task");
+    click(find(container, '[aria-label="Close New task"]'));
+
+    expect(onClose).toHaveBeenCalledWith(NEW_TASK_TAB);
     unmount();
   });
 });

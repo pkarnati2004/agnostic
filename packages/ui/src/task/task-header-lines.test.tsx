@@ -2,7 +2,7 @@
 // What the header's two lines say and which of Stop and Resume it offers; `task-header.test.tsx`
 // covers the notices, the handoff and the Changes toggle's own state.
 import { describe, expect, it, vi } from "vitest";
-import { PROFILE } from "./new-task-dialog-fixture";
+import { PROFILE } from "../test/workspace-fixture";
 import { headerTask, renderHeader } from "./task-header-fixture";
 
 /** The Changes toggle is the one control in the header that reports whether it is pressed. */

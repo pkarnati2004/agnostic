@@ -1,6 +1,6 @@
 import type { HandoffTaskRequest, Task } from "@agnostic/core";
 import type { Workspace } from "../store/use-workspace";
-import type { TabsAction } from "../tabs/tabs-state";
+import { NEW_TASK_TAB, type TabsAction } from "../tabs/tabs-state";
 
 /** The two actions that open a tab: a handoff opens the child, a run opens what it started. */
 export function useTaskActions(
@@ -18,10 +18,12 @@ export function useTaskActions(
     dispatchTabs({ type: "open", taskId: child.id });
     return true;
   };
-  // The run answered with the row, so the task is in the store before its event arrives.
+  // The run answered with the row, so the task is in the store before its event arrives. The
+  // composer has done its job once the task exists, so its tab gives way to the task's own.
   const started = (task: Task) => {
     put(task);
     dispatchTabs({ type: "open", taskId: task.id });
+    dispatchTabs({ type: "close", taskId: NEW_TASK_TAB });
   };
   return { handoff, started };
 }

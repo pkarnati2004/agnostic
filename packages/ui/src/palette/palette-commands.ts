@@ -43,7 +43,7 @@ export function paletteCommands(ctx: PaletteContext, on: PaletteHandlers): Palet
   const query = ctx.query.trim();
   const repo = ctx.repo;
   const rows: PaletteCommand[] = [
-    row("new-task", "New task", "opens the new-task dialog", () => on.newTask(null)),
+    row("new-task", "New task", "opens the New task tab", () => on.newTask(null)),
   ];
   if (query !== "" && repo !== null) {
     rows.push(

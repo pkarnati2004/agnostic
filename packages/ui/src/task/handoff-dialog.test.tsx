@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
-import type { BudgetReport, Profile, Task } from "@agnostic/core";
+import type { BudgetReport, Profile, RecommendRequest, Task } from "@agnostic/core";
 import { act } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { WorkspaceClient } from "../api/client";
 import { ApiError } from "../api/error";
 import type { TaskNotice } from "../store/task-notices";
 import { click, render } from "../test/render";
+import { KEYED_PROFILE, PROFILE, stubClient } from "../test/workspace-fixture";
 import { HandoffDialog } from "./handoff-dialog";
-import { KEYED_PROFILE, PROFILE } from "./new-task-dialog-fixture";
 
 const OVER_BUDGET: BudgetReport = {
   day: { limitUsd: 5, spentUsd: 5.2, state: "exceeded" },
@@ -53,7 +54,12 @@ function button(label: string): HTMLButtonElement {
 function open(
   notice: TaskNotice | null,
   onSubmit: () => Promise<boolean>,
-  opts: { profiles?: Profile[]; budget?: BudgetReport | null; pick?: string } = {},
+  opts: {
+    profiles?: Profile[];
+    budget?: BudgetReport | null;
+    pick?: string;
+    client?: WorkspaceClient;
+  } = {},
 ) {
   const profiles = opts.profiles ?? [PROFILE];
   const pick = opts.pick ?? PROFILE.id;
@@ -63,6 +69,7 @@ function open(
       profiles={profiles}
       budget={opts.budget ?? null}
       notice={notice}
+      client={opts.client ?? stubClient()}
       onSubmit={onSubmit}
     />,
   );
@@ -77,10 +84,69 @@ function open(
   return rendered;
 }
 
+const CODEX: Profile = {
+  ...PROFILE,
+  id: "codex:gpt-5.6:native",
+  harness: "codex",
+  model: "gpt-5.6",
+};
+
+function recommending(asked: RecommendRequest[]): WorkspaceClient {
+  return stubClient({
+    recommend: (body) => {
+      asked.push(body);
+      return Promise.resolve({
+        recommendation: {
+          recommended: {
+            profileId: CODEX.id,
+            reason: "ahead on the shell benchmarks",
+            evidence: "some",
+            sources: [],
+          },
+          alternative: null,
+          worthTrying: null,
+          riskNote: null,
+          taskClass: {
+            intent: "debug",
+            scope: "small",
+            risk: [],
+            needsBrowser: false,
+            automaticIntent: null,
+          },
+        },
+      });
+    },
+  });
+}
+
+afterEach(() => vi.useRealTimers());
+
 describe("HandoffDialog", () => {
-  it("draws its fields inside the dialog's body, between the header and the footer", () => {
-    const { unmount } = open(null, () => Promise.resolve(true));
-    expect(document.querySelector("[data-slot='dialog-body']")).not.toBeNull();
+  it("asks agn who should take the task next, for the prompt the task already has", async () => {
+    vi.useFakeTimers();
+    const asked: RecommendRequest[] = [];
+    const { unmount } = render(
+      <HandoffDialog
+        task={TASK}
+        profiles={[PROFILE, CODEX]}
+        budget={null}
+        notice={null}
+        client={recommending(asked)}
+        onSubmit={() => Promise.resolve(true)}
+        open
+      />,
+    );
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(asked).toEqual([{ repoId: TASK.repoId, prompt: TASK.prompt, dryRun: true }]);
+    expect(document.body.textContent).toContain("ahead on the shell benchmarks");
+    expect(document.body.textContent).toContain("Evidence: some");
+    // The select follows the pick, so the button already names who would take it.
+    expect(button("Hand off to codex")).toBeDefined();
     unmount();
   });
 
@@ -131,6 +197,7 @@ describe("HandoffDialog", () => {
         profiles={[PROFILE]}
         budget={null}
         notice={null}
+        client={stubClient()}
         onSubmit={() => Promise.resolve(true)}
       />,
     );
@@ -147,6 +214,7 @@ describe("HandoffDialog", () => {
         profiles={[PROFILE]}
         budget={null}
         notice={null}
+        client={stubClient()}
         onSubmit={() => Promise.resolve(true)}
         open
         onOpenChange={onOpenChange}

@@ -27,7 +27,7 @@ export type Workspace = {
     scope: ActionScope,
     run: (client: WorkspaceClient) => Promise<Task | undefined>,
   ): Promise<Task | undefined>;
-  /** A row that already arrived whole (the new-task dialog's answer); nothing here can fail. */
+  /** A row that already arrived whole (the run the composer made); nothing here can fail. */
   put(task: Task): void;
 };
 
