@@ -8,6 +8,8 @@ export type AgPaths = {
   decisionsMd: string;
   mcpYaml: string;
   tasksDir: string;
+  promptsDir: string;
+  commitPromptMd: string;
 };
 
 /** The committed folder is always `.ag/` at the repo root; nothing here is configurable. */
@@ -21,6 +23,8 @@ export function agPaths(repoPath: string): AgPaths {
     decisionsMd: join(dir, "decisions.md"),
     mcpYaml: join(dir, "mcp.yaml"),
     tasksDir: join(dir, "tasks"),
+    promptsDir: join(dir, "prompts"),
+    commitPromptMd: join(dir, "prompts", "commit.md"),
   };
 }
 

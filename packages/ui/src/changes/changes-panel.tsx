@@ -1,4 +1,6 @@
 import type {
+  AskCommitResponse,
+  ChangesResponse,
   CreatePrRequest,
   CreatePrResponse,
   EditorId,
@@ -11,8 +13,10 @@ import type { WorkspaceClient } from "../api/client";
 import { DiffView } from "../diff/diff-view";
 import type { TaskAction, TaskNotice } from "../store/task-notices";
 import { TaskNoticeLine } from "../task/task-notice-line";
+import { worktreeGone } from "../task/worktree-gone";
 import { ActionRow } from "./action-row";
 import { ChangesHeader } from "./changes-header";
+import { commitLine } from "./commit-result";
 import { FileList } from "./file-list";
 import {
   EmptyLine,
@@ -36,23 +40,27 @@ type ChangesPanelProps = {
   onCreatePr: (body: CreatePrRequest) => Promise<CreatePrResponse | null>;
   /** Null when the daemon refused, which the notice says; otherwise what the agent was asked. */
   onUpdate: () => Promise<UpdateTaskResponse | null>;
+  /** Null when the daemon refused; otherwise the prompt the agent was given and how. */
+  onAskCommit: () => Promise<AskCommitResponse | null>;
+  /** Every read the panel finishes, so the page can offer the same actions from the palette. */
+  onLoaded: (response: ChangesResponse) => void;
   /** Given when the command palette opened the Create PR dialog rather than its button. */
   prOpen?: boolean;
   onPrOpenChange?: (open: boolean) => void;
 };
 
-// Long enough to read the line the update answered with, short enough not to sit in the way.
-const UPDATE_SHOWN_MS = 8_000;
+// Long enough to read the line the ask answered with, short enough not to sit in the way.
+const ASK_SHOWN_MS = 8_000;
 
 /** The third column: what the task's branch has changed, and the patch of the file selected in it. */
 export function ChangesPanel(props: ChangesPanelProps) {
   const { task, client, notice, onOpen, onCreatePr, onUpdate } = props;
-  const changes = useChanges(client, task);
+  const changes = useChanges(client, task, props.onLoaded);
   const editors = useEditors(client);
   const [busy, setBusy] = useState<TaskAction | null>(null);
-  const [updated, showUpdated] = useFading(UPDATE_SHOWN_MS);
+  const [asked, showAsked] = useFading(ASK_SHOWN_MS);
   const view = panelView(changes.state);
-  const cleaned = !task.worktreePresent && task.worktreePath !== null;
+  const cleaned = worktreeGone(task);
   const open = (editor: EditorId | null) => {
     setBusy("open");
     void onOpen(editor).finally(() => setBusy(null));
@@ -72,7 +80,16 @@ export function ChangesPanel(props: ChangesPanelProps) {
     void onUpdate().then((response) => {
       setBusy(null);
       if (response !== null) {
-        showUpdated(updateLine(response));
+        showAsked(updateLine(response));
+      }
+    });
+  };
+  const askCommit = () => {
+    setBusy("commit");
+    void props.onAskCommit().then((response) => {
+      setBusy(null);
+      if (response !== null) {
+        showAsked(commitLine(response));
       }
     });
   };
@@ -94,6 +111,7 @@ export function ChangesPanel(props: ChangesPanelProps) {
           loading={changes.state.kind === "loading"}
           onOpen={open}
           onCreatePr={createPr}
+          onAskCommit={askCommit}
           onUpdate={update}
           onRefresh={changes.refresh}
           prOpen={props.prOpen}
@@ -105,7 +123,7 @@ export function ChangesPanel(props: ChangesPanelProps) {
           <TaskNoticeLine notice={notice} task={task} />
         </div>
       ) : (
-        updated !== null && <p className="px-4 py-2 text-muted-foreground text-sm">{updated}</p>
+        asked !== null && <p className="px-4 py-2 text-muted-foreground text-sm">{asked}</p>
       )}
       <PanelBody view={view} changes={changes} />
     </aside>

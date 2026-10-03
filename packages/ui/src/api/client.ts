@@ -1,4 +1,5 @@
 import type {
+  AskCommitResponse,
   ChangesResponse,
   CompareResponse,
   CreatePrRequest,
@@ -67,6 +68,8 @@ export type WorkspaceClient = {
   createPr(id: string, body: CreatePrRequest): Promise<CreatePrResponse>;
   /** Asks the agent itself to bring the branch up to date with its base (ADR 036 Q6). */
   updateTask(id: string): Promise<UpdateTaskResponse>;
+  /** Asks the agent to commit its work, with the repo's own prompt or agn's default. */
+  askCommit(id: string): Promise<AskCommitResponse>;
   /** The siblings of one compare side by side, with what each has spent and changed (ADR 036 Q7). */
   compare(id: string): Promise<CompareResponse>;
   /** Keeps one sibling and cleans the rest; their branches stay. */
@@ -154,6 +157,7 @@ export function createClient(opts: {
     createPr: (id, body) =>
       json<CreatePrResponse>("POST", `/tasks/${encodeURIComponent(id)}/pr`, body),
     updateTask: (id) => json<UpdateTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/update`),
+    askCommit: (id) => json<AskCommitResponse>("POST", `/tasks/${encodeURIComponent(id)}/commit`),
     compare: (id) => json<CompareResponse>("GET", `/compares/${encodeURIComponent(id)}`),
     pickCompare: (id, body) =>
       json<PickCompareResponse>("POST", `/compares/${encodeURIComponent(id)}/pick`, body),

@@ -33,3 +33,15 @@ export type UpdateTaskResponse = {
   base: string;
   prompt: string;
 };
+
+/**
+ * The answer to `POST /tasks/:id/commit`: the prompt the agent was given, and how it was given.
+ * agn runs no git command for it - the agent commits in its own session, or does not.
+ */
+export type AskCommitResponse = {
+  task: Task;
+  /** live: typed into the running session; native | fresh: the resume tree ran with it (ADR 014). */
+  via: "live" | "native" | "fresh";
+  /** `.ag/prompts/commit.md` when the repo has one, agn's default otherwise. */
+  prompt: string;
+};

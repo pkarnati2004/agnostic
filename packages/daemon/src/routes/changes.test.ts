@@ -69,16 +69,46 @@ describe("GET /tasks/:id/changes", () => {
     expect(row(body, "a.ts")).toEqual({
       path: "a.ts",
       status: "added",
+      state: "committed",
       additions: 1,
       deletions: 0,
     });
-    expect(row(body, "README.md")).toMatchObject({ status: "modified", additions: 1 });
+    expect(row(body, "README.md")).toMatchObject({
+      status: "modified",
+      state: "unstaged",
+      additions: 1,
+    });
     expect(row(body, "notes.md")).toEqual({
       path: "notes.md",
       status: "untracked",
+      state: "unstaged",
       additions: 1,
       deletions: 0,
     });
+    expect(body.files.map((file) => file.path)).toEqual(["README.md", "notes.md", "a.ts"]);
+  });
+
+  it("reads a staged file as staged, and one committed then edited again as one unstaged row", async () => {
+    await work();
+    await writeFile(join(worktree, "staged.ts"), "export const s = 1;\n");
+    await gitIn(worktree, ["add", "staged.ts"]);
+    await writeFile(join(worktree, "a.ts"), "export const a = 2;\n");
+
+    const staged = await changes();
+    expect(row(staged, "staged.ts")).toMatchObject({ status: "added", state: "staged" });
+    expect(staged.files.filter((file) => file.path === "a.ts")).toMatchObject([
+      { state: "unstaged" },
+    ]);
+
+    await gitIn(worktree, ["add", "a.ts"]);
+    const added = await changes();
+    expect(added.files.filter((file) => file.path === "a.ts")).toMatchObject([{ state: "staged" }]);
+
+    await writeFile(join(worktree, "a.ts"), "export const a = 3;\n");
+    const again = await changes();
+    expect(again.files.filter((file) => file.path === "a.ts")).toMatchObject([
+      { state: "unstaged" },
+    ]);
   });
 
   it("reads a deleted file, a rename and a binary file", async () => {
@@ -130,6 +160,7 @@ describe("GET /tasks/:id/changes", () => {
     expect(cleaned.status).toBe(200);
     const body = await changes();
     expect(body.files.map((file) => file.path)).toEqual(["a.ts"]);
+    expect(body.files.map((file) => file.state)).toEqual(["committed"]);
     expect(body.uncommitted).toBe(0);
   });
 

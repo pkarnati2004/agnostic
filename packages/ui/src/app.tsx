@@ -1,4 +1,6 @@
 import type {
+  AskCommitResponse,
+  ChangesResponse,
   CreatePrRequest,
   CreatePrResponse,
   EditorId,
@@ -70,6 +72,9 @@ function Workspace({ token }: { token: string }) {
   const [changesOpen, setChangesOpen] = useState(() =>
     readPanelOpen(localStorage, window.innerWidth),
   );
+  // The last Changes read, kept with the task it was about: the palette needs the count and only
+  // the panel fetches it, so a task the panel has not read yet has none.
+  const [read, setRead] = useState<{ taskId: string; uncommitted: number } | null>(null);
   const [tabs, dispatchTabs] = useReducer(tabsReducer, undefined, () => readTabs(localStorage));
   const groups = useMemo(
     () => groupTasks(state.repos, Object.values(state.tasks)),
@@ -87,6 +92,7 @@ function Workspace({ token }: { token: string }) {
   useTabsStorage(tabs, state, dispatchTabs);
 
   const activeTask = activeId === null ? null : (state.tasks[activeId] ?? null);
+  const uncommitted = read !== null && read.taskId === activeId ? read.uncommitted : null;
   // The tab in front's repo, or the first in the sidebar: what a new task and the palette's Run,
   // Recommend and Sync rows act on.
   const repo = state.repos.find((row) => row.id === defaultRepoId(state, activeId)) ?? null;
@@ -121,6 +127,15 @@ function Workspace({ token }: { token: string }) {
     let asked: UpdateTaskResponse | null = null;
     await act({ taskId, action: "update", host: "panel" }, async (api) => {
       asked = await api.updateTask(taskId);
+      return asked.task;
+    });
+    return asked;
+  };
+
+  const askCommit = async (taskId: string): Promise<AskCommitResponse | null> => {
+    let asked: AskCommitResponse | null = null;
+    await act({ taskId, action: "commit", host: "panel" }, async (api) => {
+      asked = await api.askCommit(taskId);
       return asked.task;
     });
     return asked;
@@ -234,13 +249,17 @@ function Workspace({ token }: { token: string }) {
           onOpen={(editor) => openInEditor(activeTask.id, editor)}
           onCreatePr={(body) => createPr(activeTask.id, body)}
           onUpdate={() => update(activeTask.id)}
+          onAskCommit={() => askCommit(activeTask.id)}
+          onLoaded={(response: ChangesResponse) =>
+            setRead({ taskId: response.task.id, uncommitted: response.uncommitted })
+          }
           prOpen={prFor === activeTask.id}
           onPrOpenChange={(open) => setPrFor(open ? activeTask.id : null)}
         />
       )}
       <WorkspacePalette
         client={client}
-        context={{ activeTask, repo }}
+        context={{ activeTask, repo, uncommitted }}
         onStarted={started}
         handlers={{
           newTask: (seed) => {
@@ -257,6 +276,7 @@ function Workspace({ token }: { token: string }) {
             setPrFor(taskId);
           },
           update: (taskId) => void update(taskId),
+          commit: (taskId) => void askCommit(taskId),
           showCost: () => setFlash((count) => count + 1),
           addRepo: () => setAddRepo(true),
           // The sidebar draws the failure under the repo's heading; a rejection here has no reader.

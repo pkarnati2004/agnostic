@@ -1,4 +1,9 @@
-import type { CreatePrRequest, CreatePrResponse, UpdateTaskResponse } from "./branch-api.js";
+import type {
+  AskCommitResponse,
+  CreatePrRequest,
+  CreatePrResponse,
+  UpdateTaskResponse,
+} from "./branch-api.js";
 import type { CatalogRowsResponse, CatalogUpdateResponse } from "./catalog-api.js";
 import type { ChangesResponse, DiffResponse } from "./changes-api.js";
 import type {
@@ -101,6 +106,8 @@ export type DaemonClient = {
   createPr(id: string, body: CreatePrRequest): Promise<CreatePrResponse>;
   /** Asks the agent itself to bring the branch up to date with its base (ADR 036 Q6). */
   updateTask(id: string): Promise<UpdateTaskResponse>;
+  /** Asks the agent to commit its work, with the repo's prompt or agn's default. */
+  commitTask(id: string): Promise<AskCommitResponse>;
   /** Runs one prompt on two to four profiles, a worktree and a branch each (ADR 036 Q7). */
   startCompare(repoId: string, body: StartCompareRequest): Promise<StartCompareResponse>;
   /** The siblings of one compare side by side, with what each has spent and changed. */
@@ -207,6 +214,7 @@ export function createDaemonClient(opts: {
     createPr: (id, body) =>
       json<CreatePrResponse>("POST", `/tasks/${encodeURIComponent(id)}/pr`, body),
     updateTask: (id) => json<UpdateTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/update`),
+    commitTask: (id) => json<AskCommitResponse>("POST", `/tasks/${encodeURIComponent(id)}/commit`),
     startCompare: (repoId, body) =>
       json<StartCompareResponse>("POST", `/repos/${encodeURIComponent(repoId)}/compare`, body),
     getCompare: (id) => json<CompareResponse>("GET", `/compares/${encodeURIComponent(id)}`),

@@ -47,6 +47,7 @@ export function handlers(): Omit<PaletteHandlers, "recommend"> {
     openInEditor: vi.fn(),
     createPr: vi.fn(),
     update: vi.fn(),
+    commit: vi.fn(),
     showCost: vi.fn(),
     addRepo: vi.fn(),
     sync: vi.fn(),
@@ -59,6 +60,8 @@ export type HarnessProps = {
   repo?: RepoListRow | null;
   recommend?: (repoId: string, prompt: string) => Promise<Recommendation>;
   runOn?: (repoId: string, body: RunTaskRequest) => Promise<void>;
+  /** What the Changes panel last read for the task in front; null until it has read one. */
+  uncommitted?: number | null;
 };
 
 /** The palette as the page wires it: the shortcut opens it, and closing it is the page's call. */
@@ -72,6 +75,7 @@ export function Harness(props: HarnessProps) {
       context={{
         activeTask: taskRow({ id: "task9", status: "running" }),
         repo: props.repo === undefined ? REPO : props.repo,
+        uncommitted: props.uncommitted ?? null,
       }}
       handlers={props.handlers}
       recommend={props.recommend ?? (() => Promise.resolve(RECOMMENDATION))}

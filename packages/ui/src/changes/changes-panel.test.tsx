@@ -29,6 +29,8 @@ const HANDLERS = {
   onOpen: () => Promise.resolve(),
   onCreatePr: () => Promise.resolve(null),
   onUpdate: () => Promise.resolve(null),
+  onAskCommit: () => Promise.resolve(null),
+  onLoaded: () => undefined,
 };
 
 /** The list and the first file's patch both arrive before the panel has drawn anything. */
@@ -51,12 +53,15 @@ describe("ChangesPanel", () => {
   it("draws the header, the files and the first file's patch", async () => {
     const { container, unmount } = await panel(panelClient());
     expect(container.textContent).toContain("agn/invite-links-a1b2");
-    expect(container.textContent).toContain("3 commits, 2 uncommitted");
+    expect(container.textContent).toContain("3 commits, 3 uncommitted");
     expect(rows(container).map((row) => row.textContent)).toEqual([
       "src/invite.tsM+42 -3",
       "src/invite.test.tsA+80 -0",
       "docs/invites.md?untracked",
     ]);
+    const unstaged = container.querySelectorAll('[role="group"][data-state="unstaged"]');
+    expect(unstaged).toHaveLength(1);
+    expect(unstaged[0]?.firstElementChild?.textContent).toBe("Unstaged 3");
     expect(rows(container)[0]?.getAttribute("aria-selected")).toBe("true");
     expect(container.querySelector("table")?.textContent).toContain("const ttl = readTtl();");
     unmount();
@@ -207,6 +212,7 @@ describe("ChangesPanel", () => {
     const binaryFile = {
       path: "assets/logo.png",
       status: "modified" as const,
+      state: "unstaged" as const,
       additions: null,
       deletions: null,
     };

@@ -1,17 +1,20 @@
 import {
+  type AskCommitResponse,
   CreatePrRequestSchema,
   type CreatePrResponse,
   type UpdateTaskResponse,
 } from "@agnostic/core";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
+import { askCommit } from "../commit-task.js";
 import { createPr } from "../create-pr.js";
 import { requestInvalid } from "../error.js";
 import { requestBody } from "../request-body.js";
 import { resolveRepoId, resolveTaskId } from "../resolve-id.js";
 import { updateTask } from "../update-task.js";
 
-/** What can be asked of a task's branch: a pull request, and a turn that brings it up to date. */
+/** What can be asked of a task's branch: a pull request, a turn that brings it up to date, and a
+ * turn that asks the agent to commit what it has written. */
 export function branchRoutes(ctx: DaemonContext): Hono {
   return new Hono()
     .post("/tasks/:id/pr", async (c) => {
@@ -29,6 +32,13 @@ export function branchRoutes(ctx: DaemonContext): Hono {
       const task = await ctx.lifecycle.reconcile(resolveTaskId(ctx.ledger, c.req.param("id")));
       const repo = resolveRepoId(ctx.ledger, task.repoId);
       const body: UpdateTaskResponse = await updateTask(ctx, repo, task);
+      return c.json(body);
+    })
+    .post("/tasks/:id/commit", async (c) => {
+      // Reconciled first, as /update is: a row the ledger has written off may still be running.
+      const task = await ctx.lifecycle.reconcile(resolveTaskId(ctx.ledger, c.req.param("id")));
+      const repo = resolveRepoId(ctx.ledger, task.repoId);
+      const body: AskCommitResponse = await askCommit(ctx, repo, task);
       return c.json(body);
     });
 }

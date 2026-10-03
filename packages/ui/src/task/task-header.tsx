@@ -3,7 +3,7 @@ import type {
   HandoffTaskRequest,
   Profile,
   RepoListRow,
-  Task,
+  TaskListRow,
   TaskStatus,
 } from "@agnostic/core";
 import { type ReactNode, useState } from "react";
@@ -15,9 +15,10 @@ import { selectModifier } from "../terminal/select-modifier";
 import { sessionTarget } from "../terminal/terminal-phase";
 import { HandoffDialog } from "./handoff-dialog";
 import { TaskNoticeLine } from "./task-notice-line";
+import { worktreeGone } from "./worktree-gone";
 
 type TaskHeaderProps = {
-  task: Task;
+  task: TaskListRow;
   repo: RepoListRow | null;
   profiles: Profile[];
   /** Passed to the handoff dialog, which refuses a counted profile the daemon would refuse. */
@@ -97,15 +98,19 @@ export function TaskHeader(props: TaskHeaderProps) {
         >
           Resume
         </Button>
-        <HandoffDialog
-          task={task}
-          profiles={profiles}
-          budget={props.budget}
-          notice={notice}
-          onSubmit={onHandoff}
-          open={props.handoffOpen}
-          onOpenChange={props.onHandoffOpenChange}
-        />
+        {/* A worktree agn made and no longer has is nothing to hand off: the next agent would have
+            nowhere to work until a resume rebuilds it. */}
+        {!worktreeGone(task) && (
+          <HandoffDialog
+            task={task}
+            profiles={profiles}
+            budget={props.budget}
+            notice={notice}
+            onSubmit={onHandoff}
+            open={props.handoffOpen}
+            onOpenChange={props.onHandoffOpenChange}
+          />
+        )}
         <Button
           variant="outline"
           size="sm"

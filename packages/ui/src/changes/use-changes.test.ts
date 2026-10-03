@@ -19,13 +19,16 @@ function deferred<T>() {
 /** Exposes the hook's latest return value on every render, so a test can read it after an act(). */
 function mount(client: WorkspaceClient, task: TaskListRow | null) {
   const latest: { current: Changes | null } = { current: null };
+  const loaded: ChangesResponse[] = [];
   function Host(props: { task: TaskListRow | null }) {
-    latest.current = useChanges(client, props.task);
+    // A new function on every render, which is what the hook's ref is there to absorb.
+    latest.current = useChanges(client, props.task, (response) => loaded.push(response));
     return null;
   }
   const rendered = render(createElement(Host, { task }));
   return {
     latest: () => latest.current as Changes,
+    loaded: () => loaded,
     setTask: async (next: TaskListRow | null) => {
       rendered.update(createElement(Host, { task: next }));
       await act(async () => {
@@ -79,6 +82,30 @@ describe("useChanges stale-answer guard", () => {
     });
 
     expect(readyResponse(host).task.id).toBe("task2");
+    host.unmount();
+  });
+});
+
+describe("useChanges onLoaded", () => {
+  it("hands each read that lands to the caller, and re-reads nothing for a new callback", async () => {
+    let reads = 0;
+    const host = mount(
+      client({
+        changes: () => {
+          reads += 1;
+          return Promise.resolve(changesResponse({ files: [], uncommitted: 4 }));
+        },
+      }),
+      taskRow({ status: "running" }),
+    );
+    await flush();
+    expect(reads).toBe(1);
+    expect(host.loaded().map((response) => response.uncommitted)).toEqual([4]);
+
+    // The same task again: a render with a new callback must not be a new read.
+    await host.setTask(taskRow({ status: "running" }));
+    expect(reads).toBe(1);
+    expect(host.loaded()).toHaveLength(1);
     host.unmount();
   });
 });

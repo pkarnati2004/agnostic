@@ -1,4 +1,6 @@
 import {
+  COMMIT_PROMPT_FILE,
+  commitPrompt,
   composeLaunchPrompt,
   type LaunchCommand,
   type LaunchPromptInput,
@@ -106,7 +108,23 @@ async function promptInput(ctx: DaemonContext, repo: Repo, task: Task): Promise<
     note: (await readTaskNote(repo.path, task.id)) ?? initialTaskNote(task, task.prompt),
     ...(await repoStateInput(ctx, repo, task.id)),
     handoff: await parentHandoff(repo, task),
+    commit: await commitSection(repo, task),
   };
+}
+
+/**
+ * The last thing a fresh prompt asks for, and only for a task working on a branch in a worktree of
+ * agn's: a folder task has no branch of agn's, and an adopted one sits on the user's own. The file
+ * is read at launch, so an edit to it takes effect on the next one.
+ */
+async function commitSection(repo: Repo, task: Task): Promise<string | null> {
+  if (task.branch === null || task.worktreePath === null) {
+    return null;
+  }
+  return commitPrompt({
+    branch: task.branch,
+    file: await readAgText(repo.path, COMMIT_PROMPT_FILE),
+  });
 }
 
 /**

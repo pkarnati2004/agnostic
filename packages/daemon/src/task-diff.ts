@@ -5,7 +5,7 @@ import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 import { gitResult, gitStdout } from "./git-read.js";
 import { resolveTaskBase } from "./task-base.js";
-import { type ChangedFileEntry, changedFiles, hasBranchToRead } from "./task-changes.js";
+import { type DiffEntry, diffEntries, hasBranchToRead } from "./task-changes.js";
 import { taskDir } from "./task-dir.js";
 
 /**
@@ -27,7 +27,7 @@ export async function taskDiff(
   const tip = at.where === "worktree" ? "HEAD" : `refs/heads/${task.branch}`;
   const worktree = at.where === "worktree";
   const base = await resolveTaskBase(ctx, repo, task, at);
-  const files = await changedFiles(at.dir, base.commit, tip, worktree);
+  const files = await diffEntries(at.dir, base.commit, tip, worktree);
   const entry = files.find((file) => file.path === path);
   if (entry === undefined || base.commit === null) {
     return { patch: "" };
@@ -40,7 +40,7 @@ async function patch(
   base: string,
   tip: string,
   worktree: boolean,
-  entry: ChangedFileEntry,
+  entry: DiffEntry,
 ): Promise<string> {
   if (entry.status === "untracked") {
     // The patch is the whole file against nothing, and git exits 1 having printed it.

@@ -22,9 +22,21 @@ describe("summarizeChanges", () => {
   it("counts every file and sums the lines a binary file does not have", () => {
     const summary = summarizeChanges(
       changes([
-        { path: "src/parse.ts", status: "modified", additions: 12, deletions: 3 },
-        { path: "docs/logo.png", status: "added", additions: null, deletions: null },
-        { path: "src/read.ts", status: "renamed", additions: 1, deletions: 1 },
+        {
+          path: "src/parse.ts",
+          status: "modified",
+          state: "unstaged",
+          additions: 12,
+          deletions: 3,
+        },
+        {
+          path: "docs/logo.png",
+          status: "added",
+          state: "staged",
+          additions: null,
+          deletions: null,
+        },
+        { path: "src/read.ts", status: "renamed", state: "committed", additions: 1, deletions: 1 },
       ]),
     );
     expect(summary).toEqual({ files: 3, additions: 13, deletions: 4 });

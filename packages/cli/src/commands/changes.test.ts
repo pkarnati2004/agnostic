@@ -15,10 +15,22 @@ function response(over: Partial<ChangesResponse> = {}): ChangesResponse {
     pushed: false,
     remote: null,
     files: [
-      { path: "src/invite.ts", status: "modified", additions: 42, deletions: 3 },
-      { path: "src/invite.test.ts", status: "added", additions: 80, deletions: 0 },
-      { path: "docs/invites.md", status: "untracked", additions: 4, deletions: 0 },
-      { path: "logo.png", status: "added", additions: null, deletions: null },
+      { path: "src/invite.ts", status: "modified", state: "unstaged", additions: 42, deletions: 3 },
+      {
+        path: "src/invite.test.ts",
+        status: "added",
+        state: "unstaged",
+        additions: 80,
+        deletions: 0,
+      },
+      {
+        path: "docs/invites.md",
+        status: "untracked",
+        state: "unstaged",
+        additions: 4,
+        deletions: 0,
+      },
+      { path: "logo.png", status: "added", state: "committed", additions: null, deletions: null },
     ],
     ...over,
   };
@@ -45,10 +57,10 @@ describe("agn changes", () => {
     expect(out[0]).toBe(
       "agn/invite-links-a1b2 -> main  3 commits, 2 uncommitted, behind 4  not pushed",
     );
-    expect(out[1]).toBe("src/invite.ts       M  +42 -3");
-    expect(out[2]).toBe("src/invite.test.ts  A  +80 -0");
-    expect(out[3]).toBe("docs/invites.md     ?  untracked");
-    expect(out[4]).toBe("logo.png            A  binary");
+    expect(out[1]).toBe("src/invite.ts       M  +42 -3     unstaged");
+    expect(out[2]).toBe("src/invite.test.ts  A  +80 -0     unstaged");
+    expect(out[3]).toBe("docs/invites.md     ?  untracked  unstaged");
+    expect(out[4]).toBe("logo.png            A  binary     committed");
   });
 
   it("says when a pushed branch is level with its base", async () => {

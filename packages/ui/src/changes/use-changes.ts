@@ -1,4 +1,4 @@
-import type { TaskListRow, TaskStatus } from "@agnostic/core";
+import type { ChangesResponse, TaskListRow, TaskStatus } from "@agnostic/core";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { asApiError } from "../api/error";
@@ -29,8 +29,15 @@ type Read = { taskId: string; status: TaskStatus | null; worktree: boolean; aske
  *
  * The handoff's `enabled` flag is not a parameter: the panel is mounted only while the column is
  * open, so opening it is what mounts this hook and starts the first read.
+ *
+ * `onLoaded` hears every read that lands. It is held in a ref rather than taken as a dependency: a
+ * caller passing an inline function would otherwise make each render a new read.
  */
-export function useChanges(client: WorkspaceClient, task: TaskListRow | null): Changes {
+export function useChanges(
+  client: WorkspaceClient,
+  task: TaskListRow | null,
+  onLoaded: (response: ChangesResponse) => void,
+): Changes {
   const [state, dispatch] = useReducer(changesReducer, IDLE_CHANGES);
   const [selected, setSelected] = useState<string | null>(null);
   const [patch, setPatch] = useState<PatchState>(null);
@@ -44,6 +51,8 @@ export function useChanges(client: WorkspaceClient, task: TaskListRow | null): C
     path: null,
   });
   const read = useRef<Read | null>(null);
+  const loaded = useRef(onLoaded);
+  loaded.current = onLoaded;
 
   const taskId = task?.id ?? null;
   const status = task?.status ?? null;
@@ -103,6 +112,7 @@ export function useChanges(client: WorkspaceClient, task: TaskListRow | null): C
           return;
         }
         dispatch({ type: "loaded", response, at: Date.now() });
+        loaded.current(response);
         const next = selectedAfterLoad(shown.current, response.files);
         shown.current = next;
         setSelected(next);

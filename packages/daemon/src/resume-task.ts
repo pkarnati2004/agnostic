@@ -28,14 +28,15 @@ const TERMINAL: Task["status"][] = ["done", "failed", "stopped"];
  * that was cleaned is rebuilt from its branch before any of that, so a resume after a clean takes
  * the same three ways as a resume after a stop (ADR 031).
  *
- * `opts.prompt` is a turn to open the session with: the native route pastes it once the harness
+ * `opts.turn` is a turn to open the session with: the native route pastes its body once the harness
  * has restored its history, and a fresh launch carries it as one more section of the context
- * prompt. A live session takes no prompt here - the caller types into the session it was given.
+ * prompt, under its own heading. A live session takes no turn here - the caller types into the
+ * session it was given.
  */
 export async function resumeTask(
   ctx: DaemonContext,
   task: Task,
-  opts: { prompt?: string } = {},
+  opts: { turn?: ExtraSection } = {},
 ): Promise<ResumeTaskResponse> {
   const live = sessionHandle(task);
   if (live !== null && (await ctx.executor.sessionState(live)) === "running") {
@@ -67,11 +68,11 @@ export async function resumeTask(
   await ensureHooks(ctx, profile.harness, cwd);
   const native = await nativeResume(ctx, task, profile);
   const branch = prepared?.branch ?? task.branch;
-  const prompt = opts.prompt ?? null;
+  const turn = opts.turn ?? null;
   const command =
     native === null
-      ? await freshLaunchCommand(ctx, repo, { ...task, branch }, profile, extraSection(prompt))
-      : { ...native, promptAfterStart: prompt };
+      ? await freshLaunchCommand(ctx, repo, { ...task, branch }, profile, turn)
+      : { ...native, promptAfterStart: turn?.body ?? null };
   const handle = await ctx.executor.launch({ taskId: task.id, cwd, command });
   if (native !== null && handle.launchId !== null) {
     // The belt behind the check above: a harness that rejects the id exits without a hook.
@@ -88,12 +89,6 @@ export async function resumeTask(
     attach: ctx.executor.attach(handle),
     recreatedFrom,
   };
-}
-
-/** The heading a prompt handed to a fresh launch is composed under, so the agent reads it as
- * an instruction of its own and not as part of the spec. */
-function extraSection(prompt: string | null): ExtraSection | null {
-  return prompt === null ? null : { heading: "Bring up to date", body: prompt };
 }
 
 /**

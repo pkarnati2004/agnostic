@@ -11,6 +11,8 @@ describe("agPaths", () => {
       decisionsMd: "/repos/app/.ag/decisions.md",
       mcpYaml: "/repos/app/.ag/mcp.yaml",
       tasksDir: "/repos/app/.ag/tasks",
+      promptsDir: "/repos/app/.ag/prompts",
+      commitPromptMd: "/repos/app/.ag/prompts/commit.md",
     });
   });
 });

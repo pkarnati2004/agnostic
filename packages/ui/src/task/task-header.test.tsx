@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import type { RepoListRow, Task } from "@agnostic/core";
+import type { RepoListRow, TaskListRow } from "@agnostic/core";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../api/error";
@@ -21,7 +21,7 @@ const REPO: RepoListRow = {
   pathPresent: true,
 };
 
-function task(id: string, title: string): Task {
+function task(id: string, title: string, over: Partial<TaskListRow> = {}): TaskListRow {
   return {
     id,
     repoId: REPO.id,
@@ -36,6 +36,8 @@ function task(id: string, title: string): Task {
     compareId: null,
     createdAt: "2026-09-14T09:00:00.000Z",
     updatedAt: "2026-09-14T10:00:00.000Z",
+    worktreePresent: true,
+    ...over,
   };
 }
 
@@ -48,7 +50,7 @@ function notice(taskLabel: string): TaskNotice {
   };
 }
 
-function header(activeTask: Task, taskNotice: TaskNotice | null) {
+function header(activeTask: TaskListRow, taskNotice: TaskNotice | null) {
   return render(
     <TaskHeader
       task={activeTask}
@@ -117,6 +119,49 @@ describe("TaskHeader notice", () => {
   });
 });
 
+function hasHandoff(container: HTMLElement): boolean {
+  return Array.from(container.querySelectorAll("button")).some(
+    (one) => one.textContent === "Hand off",
+  );
+}
+
+describe("TaskHeader Hand off", () => {
+  it("offers Hand off while the worktree agn made is there", () => {
+    const { container, unmount } = header(task("task1", "Port the parser"), null);
+    expect(hasHandoff(container)).toBe(true);
+    unmount();
+  });
+
+  it("offers nothing to hand off once that worktree is gone", () => {
+    const cleaned = task("task1", "Port the parser", { status: "stopped", worktreePresent: false });
+    const { container, unmount } = header(cleaned, null);
+    expect(hasHandoff(container)).toBe(false);
+    // Resume is what brings the worktree, and the button, back.
+    expect(container.textContent).toContain("Resume");
+    unmount();
+  });
+
+  it("keeps Hand off for a folder task and for an adopted one: neither had a worktree", () => {
+    const folder = task("task1", "Port the parser", {
+      worktreePath: null,
+      worktreePresent: false,
+      branch: null,
+    });
+    const folderHeader = header(folder, null);
+    expect(hasHandoff(folderHeader.container)).toBe(true);
+    folderHeader.unmount();
+
+    const adopted = task("task2", "Cache rows", {
+      origin: "adopted",
+      worktreePath: null,
+      worktreePresent: false,
+    });
+    const adoptedHeader = header(adopted, null);
+    expect(hasHandoff(adoptedHeader.container)).toBe(true);
+    adoptedHeader.unmount();
+  });
+});
+
 describe("TaskHeader and a closed repo", () => {
   it("still names the repo of a tab left open after its repo closed", () => {
     const closed: RepoListRow = { ...REPO, status: "archived" };
@@ -150,7 +195,7 @@ describe("TaskHeader terminal hint", () => {
   });
 
   it("says nothing for a queued task, which has no terminal yet", () => {
-    const queued: Task = { ...task("task1", "Port the parser"), status: "queued" };
+    const queued = task("task1", "Port the parser", { status: "queued" });
     const { container, unmount } = header(queued, null);
     expect(container.textContent).not.toContain("Wheel scrolls");
     unmount();

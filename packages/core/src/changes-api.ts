@@ -4,10 +4,17 @@ import type { Task } from "./task.js";
 
 export type ChangedFileStatus = "added" | "modified" | "deleted" | "renamed" | "untracked";
 
+/** Where a row's change sits: unstaged (the working tree differs from the index; untracked
+ * included), staged (the index differs from HEAD and the tree matches it), committed (on the
+ * branch, nothing pending). Every row is committed when the changes are read from the main
+ * checkout. */
+export type ChangedFileState = "unstaged" | "staged" | "committed";
+
 /** Counts are null for a binary file. */
 export type ChangedFile = {
   path: string;
   status: ChangedFileStatus;
+  state: ChangedFileState;
   additions: number | null;
   deletions: number | null;
 };
@@ -28,6 +35,7 @@ export type ChangesResponse = {
   pushed: boolean;
   /** `git remote get-url origin`, null when there is no origin. */
   remote: string | null;
+  /** Ordered unstaged, then staged, then committed; git's own order within a group. */
   files: ChangedFile[];
 };
 

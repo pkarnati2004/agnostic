@@ -12,6 +12,8 @@ export type LaunchPromptInput = {
   /** The raw text of `.ag/decisions.md`, or null when the repo has none. */
   decisions: string | null;
   handoff: TaskNoteHandoff | null;
+  /** What to ask for before the task ends, or null for a task with no branch of agn's. */
+  commit: string | null;
 };
 
 /** The rows a "## Repo state" block is built from, which a launch and a spec call read alike. */
@@ -34,6 +36,7 @@ export function composeLaunchPrompt(input: LaunchPromptInput): string {
     input.handoff === null || input.task.parentTaskId === undefined
       ? null
       : section(`Handoff from ${input.task.parentTaskId}`, input.handoff.body),
+    input.commit === null ? null : section("Before you finish", input.commit),
   ];
   return `${sections.filter(present).join("\n\n")}\n`;
 }
