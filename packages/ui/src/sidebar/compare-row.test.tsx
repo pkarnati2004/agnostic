@@ -25,17 +25,35 @@ function row(props: Partial<Parameters<typeof CompareRow>[0]> = {}) {
   };
   const rendered = render(
     <TooltipProvider>
-      <CompareRow group={GROUP} selectedId={null} expanded={false} {...handlers} {...props} />
+      <CompareRow
+        group={GROUP}
+        repo={null}
+        selectedId={null}
+        expanded={false}
+        {...handlers}
+        {...props}
+      />
     </TooltipProvider>,
   );
   return { ...rendered, ...handlers };
 }
 
 describe("CompareRow", () => {
-  it("names the compare and says what its agents are doing", () => {
+  it("names the compare and counts its agents", () => {
     const { container, unmount } = row();
     expect(container.textContent).toContain("Try two parsers");
-    expect(container.textContent).toContain("compare · 2 agents · 2 running");
+    expect(container.textContent).toContain("2");
+    unmount();
+  });
+
+  it("puts the sibling count in the badge, not a fixed number", () => {
+    const three: CompareGroup = {
+      ...GROUP,
+      tasks: [...GROUP.tasks, sibling("task3", { profileId: "gemini:pro:native" })],
+    };
+    const { container, unmount } = row({ group: three });
+    const badge = find(container, "[data-slot='badge']");
+    expect(badge.textContent).toBe("3");
     unmount();
   });
 
@@ -50,7 +68,6 @@ describe("CompareRow", () => {
       ],
     };
     const { container, unmount } = row({ group: cleaned });
-    expect(container.textContent).toContain("compare · 2 agents · 1 running, 1 stopped");
     expect(container.textContent).not.toContain("picked");
     unmount();
   });
@@ -63,7 +80,7 @@ describe("CompareRow", () => {
     collapsed.unmount();
 
     const open = row({ expanded: true });
-    expect(open.container.textContent).toContain("codex:gpt-5-codex:native");
+    expect(open.container.querySelector('[aria-label="codex"]')).not.toBeNull();
     expect(open.container.querySelectorAll("button")).toHaveLength(4);
     open.unmount();
   });

@@ -37,6 +37,12 @@ function open(others: number, onConfirm: () => Promise<void> = vi.fn(() => Promi
 }
 
 describe("PickDialog", () => {
+  it("draws its warning inside the dialog's body, between the header and the footer", () => {
+    const { unmount } = open(1);
+    expect(dialog().querySelector("[data-slot='dialog-body']")).not.toBeNull();
+    unmount();
+  });
+
   it("names the profile the pick would keep", () => {
     const { unmount } = open(1);
     expect(dialog().textContent).toContain("Keep claude-code:sonnet-4.5:native?");

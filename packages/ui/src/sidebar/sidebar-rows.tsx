@@ -1,3 +1,5 @@
+import type { RepoListRow } from "@agnostic/core";
+import { Fragment } from "react";
 import { CompareRow } from "./compare-row";
 import type { CompareGroup, SidebarRow } from "./group-tasks";
 import { TaskRow } from "./task-row";
@@ -12,27 +14,41 @@ export type CompareRowsProps = {
 
 type SidebarRowsProps = CompareRowsProps & {
   rows: SidebarRow[];
+  /** The repo these rows belong to, which is what a queued row is waiting on. */
+  repo: Pick<RepoListRow, "testCommand"> | null;
   selectedId: string | null;
   onSelect: (id: string) => void;
 };
 
 /** A repo's rows, live or in History: a task is one row and a compare stands for its siblings. */
-export function SidebarRows({ rows, selectedId, onSelect, ...on }: SidebarRowsProps) {
+export function SidebarRows({ rows, repo, selectedId, onSelect, ...on }: SidebarRowsProps) {
   return (
     <>
       {rows.map((row) =>
         row.kind === "task" ? (
-          <TaskRow
-            key={row.task.id}
-            task={row.task}
-            repoName={null}
-            selected={row.task.id === selectedId}
-            onSelect={onSelect}
-          />
+          <Fragment key={row.task.id}>
+            <TaskRow
+              task={row.task}
+              repo={repo}
+              selected={row.task.id === selectedId}
+              onSelect={onSelect}
+            />
+            {/* The task handed off from this one, indented under it (group-tasks.ts). */}
+            {row.child !== null && (
+              <TaskRow
+                task={row.child}
+                repo={repo}
+                parent={row.task}
+                selected={row.child.id === selectedId}
+                onSelect={onSelect}
+              />
+            )}
+          </Fragment>
         ) : (
           <CompareRow
             key={row.group.compareId}
             group={row.group}
+            repo={repo}
             selectedId={selectedId}
             expanded={expandedRow(row.group, on.openCompares)}
             onToggle={(compareId) =>

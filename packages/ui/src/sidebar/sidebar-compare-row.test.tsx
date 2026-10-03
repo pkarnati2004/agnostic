@@ -86,17 +86,17 @@ describe("a compare row's expansion", () => {
   it("keeps a collapse the user chose across a re-render with a fresh groups object", () => {
     const page = render(sidebar(withCompare(12)));
     expect(labelled(page.container, "Hide the agents of Try two parsers")).toBeDefined();
-    expect(page.container.textContent).toContain("codex:gpt-5-codex:native");
+    expect(page.container.querySelector('[aria-label="codex"]')).not.toBeNull();
 
     click(labelled(page.container, "Hide the agents of Try two parsers"));
     expect(page.container.querySelector('button[aria-label^="Hide the agents of"]')).toBeNull();
-    expect(page.container.textContent).not.toContain("codex:gpt-5-codex:native");
+    expect(page.container.querySelector('[aria-label="codex"]')).toBeNull();
 
     // Collapse state lives in the sidebar's own state, keyed by compareId; a re-render with a new
     // `groups` object (a fresh event, a poll) must not reopen it the way a fresh mount would.
     page.update(sidebar(withCompare(13)));
     expect(labelled(page.container, "Show the agents of Try two parsers")).toBeDefined();
-    expect(page.container.textContent).not.toContain("codex:gpt-5-codex:native");
+    expect(page.container.querySelector('[aria-label="codex"]')).toBeNull();
     page.unmount();
   });
 });

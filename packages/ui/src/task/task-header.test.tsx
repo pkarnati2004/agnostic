@@ -50,7 +50,11 @@ function notice(taskLabel: string): TaskNotice {
   };
 }
 
-function header(activeTask: TaskListRow, taskNotice: TaskNotice | null) {
+function header(
+  activeTask: TaskListRow,
+  taskNotice: TaskNotice | null,
+  files: number | null = null,
+) {
   return render(
     <TaskHeader
       task={activeTask}
@@ -58,6 +62,7 @@ function header(activeTask: TaskListRow, taskNotice: TaskNotice | null) {
       profiles={[PROFILE]}
       budget={null}
       cost={null}
+      files={files}
       notice={taskNotice}
       changesOpen={false}
       onToggleChanges={() => undefined}
@@ -106,6 +111,7 @@ describe("TaskHeader notice", () => {
         profiles={[PROFILE]}
         budget={null}
         cost={null}
+        files={null}
         notice={null}
         changesOpen={false}
         onToggleChanges={() => undefined}
@@ -173,6 +179,7 @@ describe("TaskHeader and a closed repo", () => {
         profiles={[PROFILE]}
         budget={null}
         cost={null}
+        files={null}
         notice={null}
         changesOpen={false}
         onToggleChanges={() => undefined}
@@ -213,6 +220,7 @@ function ChangesToggleHarness({ width }: { width: number }) {
       profiles={[PROFILE]}
       budget={null}
       cost={null}
+      files={null}
       notice={null}
       changesOpen={open}
       onToggleChanges={() => {
@@ -227,11 +235,9 @@ function ChangesToggleHarness({ width }: { width: number }) {
 }
 
 function changesButton(container: HTMLElement): HTMLButtonElement {
-  const found = Array.from(container.querySelectorAll("button")).find(
-    (one) => one.textContent === "Changes",
-  );
-  if (found === undefined) {
-    throw new Error("no Changes button");
+  const found = container.querySelector<HTMLButtonElement>("button[aria-pressed]");
+  if (found === null) {
+    throw new Error("no Changes toggle");
   }
   return found;
 }

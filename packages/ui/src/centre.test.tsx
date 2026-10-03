@@ -59,6 +59,7 @@ function centre(tabs: TabsState) {
         usage={IDLE_USAGE}
         budget={null}
         cost={null}
+        files={null}
         error={null}
         resumed={null}
         notices={{}}
@@ -71,6 +72,7 @@ function centre(tabs: TabsState) {
         flash={0}
         handoffFor={null}
         onHandoffFor={vi.fn()}
+        onNewTask={vi.fn()}
         usageStamp={{ plans: 0, byTask: {} }}
         onPick={() => Promise.resolve(null)}
       />

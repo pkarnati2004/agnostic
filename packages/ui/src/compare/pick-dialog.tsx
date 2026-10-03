@@ -2,6 +2,7 @@ import type { CompareTaskRow } from "@agnostic/core";
 import { useState } from "react";
 import { Button } from "../components/button";
 import {
+  DialogBody,
   DialogClose,
   DialogDescription,
   DialogFooter,
@@ -27,15 +28,17 @@ export function PickDialog({ row, others, onConfirm }: PickDialogProps) {
     <>
       <DialogHeader>
         <DialogTitle>{`Keep ${row.profileId}?`}</DialogTitle>
-        <DialogDescription>{stopping(others)}</DialogDescription>
       </DialogHeader>
+      <DialogBody>
+        <DialogDescription>{stopping(others)}</DialogDescription>
+      </DialogBody>
       <DialogFooter>
         <DialogClose asChild>
-          <Button variant="ghost" size="sm" disabled={busy}>
+          <Button variant="ghost" disabled={busy}>
             Cancel
           </Button>
         </DialogClose>
-        <Button size="sm" onClick={confirm} disabled={busy}>
+        <Button onClick={confirm} disabled={busy}>
           Pick
         </Button>
       </DialogFooter>

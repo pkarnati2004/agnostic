@@ -8,7 +8,6 @@ import type { RepoGroup, SidebarRow } from "./group-tasks";
 import { HistorySection } from "./history-section";
 import { IconAction } from "./icon-action";
 import { removeTooltip } from "./remove-tooltip";
-import { Section } from "./section";
 import { type CompareRowsProps, SidebarRows } from "./sidebar-rows";
 
 type RepoSectionProps = CompareRowsProps & {
@@ -31,10 +30,14 @@ export function RepoSection({ group, selectedId, expanded, notice, ...on }: Repo
   // A section nobody opened still shows its rows while the task in front is one of them.
   const showing = expanded || group.history.some((row) => holds(row, selectedId));
   return (
-    <Section
-      title={repo.name}
-      action={
-        <>
+    <section className="px-2 pt-3">
+      <div className="group flex h-7 items-center gap-2 px-2">
+        <Avatar name={repo.name} />
+        <h2 className="min-w-0 flex-1 truncate text-sidebar-foreground text-[13px]">{repo.name}</h2>
+        <span className="text-muted-foreground text-[11px]">{group.rows.length}</span>
+        {/* In the DOM and in the tab order whether or not they are visible: the heading stays quiet
+            until the pointer or the keyboard is on it. */}
+        <span className="flex items-center gap-0.5 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
           {/* Remove sits on the heading only while the folder is gone: there is nothing to close. */}
           {!repo.pathPresent && (
             <IconAction
@@ -47,26 +50,29 @@ export function RepoSection({ group, selectedId, expanded, notice, ...on }: Repo
             </IconAction>
           )}
           <CloseButton repo={repo} onClose={on.onClose} />
-        </>
-      }
-    >
+        </span>
+      </div>
       {!repo.pathPresent && (
-        <p className="truncate px-2 text-muted-foreground text-xs" title={repo.path}>
+        <p className="truncate px-2 text-muted-foreground type-meta" title={repo.path}>
           Not found: {repo.path}
         </p>
       )}
       {notice !== null && <RepoNoticeLine notice={notice} repo={repo} />}
-      {empty && <p className="px-2 py-1.5 text-muted-foreground text-xs">No tasks yet.</p>}
-      <SidebarRows
-        rows={group.rows}
-        selectedId={selectedId}
-        onSelect={on.onSelect}
-        openCompares={on.openCompares}
-        onToggleCompare={on.onToggleCompare}
-        onOpenCompare={on.onOpenCompare}
-      />
+      {empty && <p className="px-2 py-1.5 text-muted-foreground type-meta">No tasks yet</p>}
+      <div className="flex flex-col gap-0.5">
+        <SidebarRows
+          rows={group.rows}
+          repo={repo}
+          selectedId={selectedId}
+          onSelect={on.onSelect}
+          openCompares={on.openCompares}
+          onToggleCompare={on.onToggleCompare}
+          onOpenCompare={on.onOpenCompare}
+        />
+      </div>
       <HistorySection
         repoId={repo.id}
+        repo={repo}
         rows={group.history}
         selectedId={selectedId}
         expanded={showing}
@@ -76,14 +82,26 @@ export function RepoSection({ group, selectedId, expanded, notice, ...on }: Repo
         onToggleCompare={on.onToggleCompare}
         onOpenCompare={on.onOpenCompare}
       />
-    </Section>
+    </section>
+  );
+}
+
+/** The repo's first letter, so a heading is recognisable before it is read. */
+function Avatar({ name }: { name: string }) {
+  return (
+    <span
+      aria-hidden
+      className="flex size-4 shrink-0 items-center justify-center rounded bg-input text-[10px] font-semibold text-sidebar-foreground"
+    >
+      {name.slice(0, 1).toLowerCase()}
+    </span>
   );
 }
 
 /** Whether a row is the one in front: a compare row answers for its siblings as well as itself. */
 function holds(row: SidebarRow, selectedId: string | null): boolean {
   if (row.kind === "task") {
-    return row.task.id === selectedId;
+    return row.task.id === selectedId || row.child?.id === selectedId;
   }
   return (
     selectedId === compareTabId(row.group.compareId) ||

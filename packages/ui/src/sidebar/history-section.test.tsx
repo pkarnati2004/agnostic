@@ -42,10 +42,10 @@ const GROUPS: SidebarGroups = {
   repos: [
     {
       repo: REPO,
-      rows: [{ kind: "task", task: task("live", "running") }],
+      rows: [{ kind: "task", task: task("live", "running"), child: null }],
       history: [
-        { kind: "task", task: task("old-one", "done") },
-        { kind: "task", task: task("old-two", "stopped") },
+        { kind: "task", task: task("old-one", "done"), child: null },
+        { kind: "task", task: task("old-two", "stopped"), child: null },
       ],
     },
   ],
@@ -92,7 +92,7 @@ function toggle(container: HTMLElement): Element {
 describe("HistorySection", () => {
   it("counts a repo's finished tasks and keeps them folded away", () => {
     const { container, unmount } = sidebar();
-    expect(toggle(container).textContent).toBe("History (2)");
+    expect(toggle(container).textContent).toBe("History2");
     expect(rowTitles(container)).toHaveLength(1);
     unmount();
   });
@@ -122,6 +122,7 @@ describe("HistorySection", () => {
     const { container, unmount } = render(
       <HistorySection
         repoId={REPO.id}
+        repo={REPO}
         rows={[]}
         selectedId={null}
         expanded={false}
@@ -202,7 +203,7 @@ describe("HistorySection", () => {
       </TooltipProvider>,
     );
     // Two siblings, one row: the History count and the row both read as one.
-    expect(toggle(container).textContent).toBe("History (1)");
+    expect(toggle(container).textContent).toBe("History1");
     click(toggle(container));
     expect(container.textContent).toContain("Try two parsers");
     expect(container.textContent).not.toContain("sib-a");

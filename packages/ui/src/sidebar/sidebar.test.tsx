@@ -188,10 +188,10 @@ describe("managing repos from the sidebar", () => {
     const onReopenRepo = vi.fn(() => Promise.resolve());
     const page = render(sidebar(closed, { onReopenRepo }));
     expect(headings(page.container)).toEqual(["katha"]);
-    expect(page.container.textContent).toContain("Closed (1)");
+    expect(buttonSaying(page.container, "Closed").textContent).toBe("Closed1");
     expect(page.container.textContent).not.toContain("Fix the parser");
 
-    click(buttonSaying(page.container, "Closed (1)"));
+    click(buttonSaying(page.container, "Closed"));
     expect(page.container.textContent).toContain("Its usage and outcome history is kept.");
     click(buttonSaying(page.container, "Reopen"));
     expect(onReopenRepo).toHaveBeenCalledWith("r1");
@@ -237,7 +237,7 @@ describe("managing repos from the sidebar", () => {
       event: statusEvent(13, "archived"),
     });
     const page = render(sidebar(closed, { repoNotices }));
-    click(buttonSaying(page.container, "Closed (1)"));
+    click(buttonSaying(page.container, "Closed"));
     expect(page.container.textContent).toContain("Reopen failed for petal: no repo matches r1");
 
     // The notices map is keyed by repo id and outlives the repo's own status; a `repo.updated`

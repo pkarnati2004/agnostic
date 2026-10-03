@@ -1,30 +1,38 @@
 // Copied from shadcn/ui `button`, MIT (c) shadcn. The variant tables are plain records merged
-// through cn(), so the copy needs no class-variance-authority.
+// through cn(), so the copy needs no class-variance-authority. The values are the design's:
+// 30 px tall, 26 px in a header or a row, radius 7, and a ring that sits off the surface.
 import { Slot } from "@radix-ui/react-slot";
 import type { ComponentProps } from "react";
 import { cn } from "../class-names";
 
-type ButtonVariant = "default" | "secondary" | "outline" | "ghost";
-type ButtonSize = "default" | "sm" | "icon";
+type ButtonVariant = "default" | "secondary" | "outline" | "ghost" | "destructive";
+type ButtonSize = "default" | "sm" | "icon" | "icon-sm";
 
 const BASE =
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm " +
-  "font-medium outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] " +
-  "focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 " +
-  "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4";
+  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[7px] " +
+  "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring " +
+  "focus-visible:ring-offset-2 focus-visible:ring-offset-background " +
+  "disabled:pointer-events-none disabled:opacity-50 " +
+  "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
-  secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
-  outline:
-    "border border-border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
-  ghost: "hover:bg-accent hover:text-accent-foreground",
+  default: "bg-primary font-medium text-primary-foreground hover:bg-primary/90",
+  secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+  outline: "border border-input text-foreground hover:bg-accent",
+  ghost: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+  // Tinted rather than filled: the one destructive button on the page is a confirmation, not a
+  // thing to reach for by accident.
+  destructive:
+    "bg-[color-mix(in_srgb,var(--destructive)_16%,transparent)] " +
+    "text-[color-mix(in_srgb,var(--destructive)_70%,var(--foreground))] " +
+    "hover:bg-[color-mix(in_srgb,var(--destructive)_24%,transparent)]",
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  default: "h-9 px-4 py-2 has-[>svg]:px-3",
-  sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-  icon: "size-8",
+  default: "h-[30px] px-3 text-[13px]",
+  sm: "h-[26px] px-[9px] text-[12.5px]",
+  icon: "size-[30px]",
+  "icon-sm": "size-[26px]",
 };
 
 export function Button({

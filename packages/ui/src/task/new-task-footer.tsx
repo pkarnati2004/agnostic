@@ -19,31 +19,30 @@ type NewTaskFooterProps = {
 export function NewTaskFooter(props: NewTaskFooterProps) {
   const { writer, onWriteSpec } = props;
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col">
       <Failure error={props.error} />
       {props.testing !== null && (
-        <p className="text-muted-foreground text-xs">Running the tests first: {props.testing}</p>
+        <p className="px-[18px] pb-2 text-muted-foreground type-meta">
+          Running the tests first: {props.testing}
+        </p>
       )}
       <DialogFooter>
         <DialogClose asChild>
-          <Button variant="ghost" size="sm">
-            Cancel
-          </Button>
+          <Button variant="ghost">Cancel</Button>
         </DialogClose>
         {!writer.shown && (
-          <Button variant="ghost" size="sm" onClick={writer.show}>
+          <Button variant="ghost" onClick={writer.show}>
             Write it yourself
           </Button>
         )}
         <Button
           variant="outline"
-          size="sm"
           onClick={() => onWriteSpec?.()}
           disabled={onWriteSpec === null || writer.busy}
         >
           {writer.busy ? "Writing…" : "Write spec"}
         </Button>
-        <Button size="sm" onClick={props.onRun} disabled={props.runDisabled}>
+        <Button onClick={props.onRun} disabled={props.runDisabled}>
           Run
         </Button>
       </DialogFooter>
@@ -53,15 +52,16 @@ export function NewTaskFooter(props: NewTaskFooterProps) {
   );
 }
 
+/** A failure here sits on the dialog's own padding: the footer's hairline is below it. */
 function Failure({ error }: { error: ApiError | null }) {
   if (error === null) {
     return null;
   }
   return (
-    <div>
-      <p className="text-destructive text-sm">{error.message}</p>
+    <div className="px-[18px] py-2">
+      <p className="text-destructive type-body">{error.message}</p>
       {error.hint !== null && (
-        <p className="mt-1 text-muted-foreground text-xs">
+        <p className="mt-1 text-muted-foreground type-meta">
           <HintText hint={error.hint} />
         </p>
       )}

@@ -61,6 +61,12 @@ async function pressEnter(): Promise<void> {
 }
 
 describe("AddRepoDialog", () => {
+  it("draws its fields inside the dialog's body, between the header and the footer", () => {
+    const { unmount } = dialog(stubClient());
+    expect(document.querySelector("[data-slot='dialog-body']")).not.toBeNull();
+    unmount();
+  });
+
   it("takes the focus into the path field and disables Add until something is typed", () => {
     const { unmount } = dialog(stubClient());
     expect(document.activeElement).toBe(pathField());

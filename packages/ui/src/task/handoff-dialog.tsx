@@ -1,8 +1,10 @@
 import type { BudgetReport, HandoffTaskRequest, Profile, Task } from "@agnostic/core";
+import { ArrowRight, ArrowRightLeft, GitFork } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/button";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -18,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/select";
+import { ProfileChip } from "../profile/profile-chip";
+import { profileParts } from "../profile/profile-parts";
 import type { TaskNotice } from "../store/task-notices";
 import { BudgetNote } from "./budget-note";
 import { TaskNoticeLine } from "./task-notice-line";
@@ -76,67 +80,105 @@ export function HandoffDialog(props: HandoffDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="secondary" size="sm">
+          <ArrowRightLeft />
           Hand off
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Hand off {task.title}</DialogTitle>
-          <DialogDescription>
-            The task stops here and a new one starts from your note.
-          </DialogDescription>
+          <DialogTitle>Hand off</DialogTitle>
+          <DialogDescription>{task.title}</DialogDescription>
         </DialogHeader>
-        <label className="flex flex-col gap-2 text-sm" htmlFor="handoff-profile">
-          Profile
-          <Select value={profileId ?? undefined} onValueChange={setProfileId}>
-            <SelectTrigger id="handoff-profile">
-              <SelectValue placeholder="Pick a profile" />
-            </SelectTrigger>
-            <SelectContent>
-              {available.map((profile) => (
-                <SelectItem key={profile.id} value={profile.id}>
-                  {profile.id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
-        <BudgetNote
-          budget={budget}
-          profile={available.find((profile) => profile.id === profileId) ?? null}
-          ignore={ignoreBudget}
-          onIgnore={setIgnoreBudget}
-        />
-        {available.length === 0 && (
-          <p className="text-muted-foreground text-xs">
-            No profile is available. Run `agn doctor` to see what this machine has.
-          </p>
-        )}
-        <label className="flex flex-col gap-2 text-sm" htmlFor="handoff-note">
-          Note (optional)
-          <textarea
-            id="handoff-note"
-            value={note}
-            onChange={(change) => setNote(change.target.value)}
-            rows={4}
-            className="rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        <DialogBody>
+          <Profiles task={task} available={available} profileId={profileId} onPick={setProfileId} />
+          <BudgetNote
+            budget={budget}
+            profile={available.find((profile) => profile.id === profileId) ?? null}
+            ignore={ignoreBudget}
+            onIgnore={setIgnoreBudget}
           />
-        </label>
-        {notice !== null && notice.host === "dialog" && (
-          <TaskNoticeLine notice={notice} task={task} />
-        )}
+          {available.length === 0 && (
+            <p className="text-muted-foreground type-meta">
+              No profile is available. Run `agn doctor` to see what this machine has.
+            </p>
+          )}
+          <label className="flex flex-col gap-1.5 type-meta" htmlFor="handoff-note">
+            Note for the next agent
+            <textarea
+              id="handoff-note"
+              value={note}
+              onChange={(change) => setNote(change.target.value)}
+              rows={4}
+              className="rounded-[7px] border border-input bg-transparent px-3 py-2 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/15"
+            />
+          </label>
+          <ChildLine branch={task.branch} />
+          {notice !== null && notice.host === "dialog" && (
+            <TaskNoticeLine notice={notice} task={task} />
+          )}
+        </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="ghost" size="sm">
-              Cancel
-            </Button>
+            <Button variant="ghost">Cancel</Button>
           </DialogClose>
-          <Button size="sm" onClick={submit} disabled={profileId === null || busy}>
-            Run
+          <Button onClick={submit} disabled={profileId === null || busy}>
+            <ArrowRightLeft />
+            {profileId === null ? "Hand off" : `Hand off to ${profileParts(profileId).harness}`}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type ProfilesProps = {
+  task: Task;
+  available: Profile[];
+  profileId: string | null;
+  onPick: (profileId: string) => void;
+};
+
+/** Which agent has the task now, and which one gets it. The recommendation for the task's prompt
+ * lands between the two in a later pass. */
+function Profiles({ task, available, profileId, onPick }: ProfilesProps) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <span className="flex h-[30px] items-center rounded-[7px] border border-border px-2.5 text-muted-foreground">
+        <ProfileChip profileId={task.profileId} variant="option" dim />
+      </span>
+      <ArrowRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      <Select value={profileId ?? undefined} onValueChange={onPick}>
+        <SelectTrigger id="handoff-profile" aria-label="Profile" mono>
+          <SelectValue placeholder="Pick a profile" />
+        </SelectTrigger>
+        <SelectContent>
+          {available.map((profile) => (
+            <SelectItem key={profile.id} value={profile.id}>
+              <ProfileChip profileId={profile.id} billing={profile.billing} variant="option" />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** What the handoff leaves behind: a second task on the same branch, and this session stopped. */
+function ChildLine({ branch }: { branch: string | null }) {
+  return (
+    <p className="flex gap-2 text-muted-foreground type-meta">
+      <GitFork aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+      <span>
+        {branch === null ? (
+          "Starts a child task in the same folder."
+        ) : (
+          <>
+            Starts a child task in the same worktree, <span className="type-mono">{branch}</span>.
+          </>
+        )}{" "}
+        The current session stops when the new one starts.
+      </span>
+    </p>
   );
 }

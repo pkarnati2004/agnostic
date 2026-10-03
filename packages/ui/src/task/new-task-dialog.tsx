@@ -4,6 +4,7 @@ import type { WorkspaceClient } from "../api/client";
 import { type ApiError, asApiError } from "../api/error";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -77,7 +78,7 @@ export function NewTaskDialog(props: NewTaskDialogProps) {
             agn picks the agent and model for the prompt; change it before you run if you disagree.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+        <DialogBody className="min-h-0 gap-4 overflow-y-auto">
           <NewTaskFields
             repos={props.repos}
             profiles={profiles}
@@ -104,7 +105,7 @@ export function NewTaskDialog(props: NewTaskDialogProps) {
               writtenBy={writer.writtenBy}
             />
           )}
-        </div>
+        </DialogBody>
         <NewTaskFooter
           error={error}
           testing={busy ? (repo?.testCommand ?? null) : null}

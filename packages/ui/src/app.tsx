@@ -1,13 +1,4 @@
-import type {
-  AskCommitResponse,
-  ChangesResponse,
-  CreatePrRequest,
-  CreatePrResponse,
-  EditorId,
-  PickCompareResponse,
-  RepoListRow,
-  UpdateTaskResponse,
-} from "@agnostic/core";
+import type { ChangesResponse, PickCompareResponse, RepoListRow } from "@agnostic/core";
 import { useMemo, useReducer, useState } from "react";
 import { createClient } from "./api/client";
 import type { ApiError } from "./api/error";
@@ -15,6 +6,7 @@ import { browserTokenSources, readToken } from "./auth/token";
 import { Centre, Centred } from "./centre";
 import { ChangesPanel } from "./changes/changes-panel";
 import { readPanelOpen, writePanelOpen } from "./changes/panel-open";
+import { useChangesActions } from "./changes/use-changes-actions";
 import { cn } from "./class-names";
 import { TooltipProvider } from "./components/tooltip";
 import { WorkspacePalette } from "./palette/workspace-palette";
@@ -74,7 +66,11 @@ function Workspace({ token }: { token: string }) {
   );
   // The last Changes read, kept with the task it was about: the palette needs the count and only
   // the panel fetches it, so a task the panel has not read yet has none.
-  const [read, setRead] = useState<{ taskId: string; uncommitted: number } | null>(null);
+  const [read, setRead] = useState<{
+    taskId: string;
+    uncommitted: number;
+    files: number;
+  } | null>(null);
   const [tabs, dispatchTabs] = useReducer(tabsReducer, undefined, () => readTabs(localStorage));
   const groups = useMemo(
     () => groupTasks(state.repos, Object.values(state.tasks)),
@@ -92,55 +88,20 @@ function Workspace({ token }: { token: string }) {
   useTabsStorage(tabs, state, dispatchTabs);
 
   const activeTask = activeId === null ? null : (state.tasks[activeId] ?? null);
-  const uncommitted = read !== null && read.taskId === activeId ? read.uncommitted : null;
+  const ownRead = read !== null && read.taskId === activeId ? read : null;
   // The tab in front's repo, or the first in the sidebar: what a new task and the palette's Run,
   // Recommend and Sync rows act on.
   const repo = state.repos.find((row) => row.id === defaultRepoId(state, activeId)) ?? null;
   const showChanges = changesOpen && activeTask !== null;
+  // The sidebar's New task and the tab strip's "+" are the same click with no prompt behind it.
+  const newTaskFromScratch = () => {
+    setPrefill(null);
+    setNewTask(true);
+  };
   const toggleChanges = () => {
     writePanelOpen(localStorage, !changesOpen);
     setChangesOpen(!changesOpen);
   };
-  // The open answers with the editor it started, not with the task, so only a failure is drawn.
-  const openInEditor = async (taskId: string, editor: EditorId | null): Promise<void> => {
-    await act({ taskId, action: "open", host: "panel" }, async (api) => {
-      await api.openTask(taskId, editor === null ? {} : { editor });
-      return undefined;
-    });
-  };
-
-  // The response is the dialog's: it holds the URL and the description, which no row carries.
-  const createPr = async (
-    taskId: string,
-    body: CreatePrRequest,
-  ): Promise<CreatePrResponse | null> => {
-    let created: CreatePrResponse | null = null;
-    await act({ taskId, action: "pr", host: "dialog" }, async (api) => {
-      created = await api.createPr(taskId, body);
-      return created.task;
-    });
-    return created;
-  };
-
-  // The panel draws what the agent was asked to do, so the response comes back to it.
-  const update = async (taskId: string): Promise<UpdateTaskResponse | null> => {
-    let asked: UpdateTaskResponse | null = null;
-    await act({ taskId, action: "update", host: "panel" }, async (api) => {
-      asked = await api.updateTask(taskId);
-      return asked.task;
-    });
-    return asked;
-  };
-
-  const askCommit = async (taskId: string): Promise<AskCommitResponse | null> => {
-    let asked: AskCommitResponse | null = null;
-    await act({ taskId, action: "commit", host: "panel" }, async (api) => {
-      asked = await api.askCommit(taskId);
-      return asked.task;
-    });
-    return asked;
-  };
-
   // The view holds the response: it says what was cleaned, which no row of the store carries.
   const pick = async (compareId: string, taskId: string): Promise<PickCompareResponse | null> => {
     let picked: PickCompareResponse | null = null;
@@ -157,6 +118,7 @@ function Workspace({ token }: { token: string }) {
       async (api) => (await api.stopTask(taskId)).task,
     );
 
+  const { openInEditor, createPr, update, askCommit } = useChangesActions(act);
   const { handoff, started } = useTaskActions(act, put, dispatchTabs);
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
   // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
@@ -179,10 +141,7 @@ function Workspace({ token }: { token: string }) {
         onOpenCompare={(compareId) =>
           dispatchTabs({ type: "open", taskId: compareTabId(compareId) })
         }
-        onNewTask={() => {
-          setPrefill(null);
-          setNewTask(true);
-        }}
+        onNewTask={newTaskFromScratch}
         onAddRepo={() => setAddRepo(true)}
         onCloseRepo={repoActions.close}
         onReopenRepo={repoActions.reopen}
@@ -226,6 +185,7 @@ function Workspace({ token }: { token: string }) {
         usage={usage}
         budget={budget}
         cost={<TaskCost usage={taskUsage} />}
+        files={ownRead?.files ?? null}
         error={error === dismissed ? null : error}
         notices={notices}
         onDismiss={() => setDismissed(error)}
@@ -240,6 +200,7 @@ function Workspace({ token }: { token: string }) {
         flash={flash}
         usageStamp={state.usageStamp}
         onPick={pick}
+        onNewTask={newTaskFromScratch}
       />
       {showChanges && activeTask !== null && (
         <ChangesPanel
@@ -251,7 +212,11 @@ function Workspace({ token }: { token: string }) {
           onUpdate={() => update(activeTask.id)}
           onAskCommit={() => askCommit(activeTask.id)}
           onLoaded={(response: ChangesResponse) =>
-            setRead({ taskId: response.task.id, uncommitted: response.uncommitted })
+            setRead({
+              taskId: response.task.id,
+              uncommitted: response.uncommitted,
+              files: response.files.length,
+            })
           }
           prOpen={prFor === activeTask.id}
           onPrOpenChange={(open) => setPrFor(open ? activeTask.id : null)}
@@ -259,7 +224,7 @@ function Workspace({ token }: { token: string }) {
       )}
       <WorkspacePalette
         client={client}
-        context={{ activeTask, repo, uncommitted }}
+        context={{ activeTask, repo, uncommitted: ownRead?.uncommitted ?? null }}
         onStarted={started}
         handlers={{
           newTask: (seed) => {

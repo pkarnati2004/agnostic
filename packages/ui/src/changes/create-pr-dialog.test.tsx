@@ -116,6 +116,12 @@ function open(
 }
 
 describe("CreatePrDialog", () => {
+  it("draws its fields inside the dialog's body, between the header and the footer", () => {
+    const { unmount } = open(() => Promise.resolve(null));
+    expect(document.querySelector("[data-slot='dialog-body']")).not.toBeNull();
+    unmount();
+  });
+
   it("shows the remote, the branch, the base and the task's title", () => {
     const { unmount } = open(() => Promise.resolve(null));
     const text = document.body.textContent ?? "";
