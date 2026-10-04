@@ -4,7 +4,12 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { CatalogCheckState, CatalogRowsResponse, CatalogUpdateResponse } from "@agnostic/core";
+import type {
+  CatalogCheckState,
+  CatalogResponse,
+  CatalogRowsResponse,
+  CatalogUpdateResponse,
+} from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
 import { fixtureCatalog } from "../test-detection.js";
@@ -54,6 +59,31 @@ beforeEach(() => {
 afterEach(async () => {
   await daemon.close();
   await published?.close();
+});
+
+describe("GET /catalog", () => {
+  it("answers which catalog is loaded and when it was last checked", async () => {
+    daemon = await createTestDaemon();
+    const response = await daemon.request("/catalog");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as CatalogResponse;
+    expect(body.catalog).toMatchObject({ version: 2, origin: "bundled", checkEnabled: false });
+    expect(body.catalog.lastCheck).toBeNull();
+  });
+
+  it("reports the last check once one has run", async () => {
+    daemon = await daemonBehind(await publish());
+    await daemon.request("/catalog/update", { method: "POST" });
+    const body = (await (await daemon.request("/catalog")).json()) as CatalogResponse;
+    expect(body.catalog.lastCheck).toMatchObject({ outcome: "updated", remoteVersion: 2 });
+  });
+
+  it("refuses a request with no token", async () => {
+    daemon = await createTestDaemon();
+    const response = await daemon.app.request("/catalog");
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ error: { code: "unauthorized" } });
+  });
 });
 
 describe("GET /catalog/rows", () => {

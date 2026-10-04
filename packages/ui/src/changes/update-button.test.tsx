@@ -44,6 +44,7 @@ async function panel(
         onCreatePr={() => Promise.resolve(null)}
         onUpdate={onUpdate}
         onAskCommit={() => Promise.resolve(null)}
+        onClose={vi.fn()}
         onLoaded={() => undefined}
       />
     </TooltipProvider>,

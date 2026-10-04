@@ -1,4 +1,5 @@
 import {
+  type CatalogResponse,
   CatalogRowsQuerySchema,
   type CatalogRowsResponse,
   type CatalogSummary,
@@ -10,12 +11,18 @@ import { catalogRowsFor } from "../catalog-rows.js";
 import { requestInvalid } from "../error.js";
 
 /**
- * The two things a user does with the catalog: read the rows behind a recommendation, and ask
- * whether a newer catalog has been published. The update is a POST because it reaches off the
- * machine and replaces a file; it answers 200 for every outcome, including "nothing newer".
+ * What a user does with the catalog: read which one is loaded and when it was last checked, read the
+ * rows behind a recommendation, and ask whether a newer catalog has been published. The update is a
+ * POST because it reaches off the machine and replaces a file; it answers 200 for every outcome,
+ * including "nothing newer". The summary reads state the daemon already holds: no detection, no
+ * network.
  */
 export function catalogRoutes(ctx: DaemonContext): Hono {
   return new Hono()
+    .get("/catalog", (c) => {
+      const body: CatalogResponse = { catalog: summary(ctx) };
+      return c.json(body);
+    })
     .get("/catalog/rows", (c) => {
       const query = CatalogRowsQuerySchema.safeParse(c.req.query());
       if (!query.success) {

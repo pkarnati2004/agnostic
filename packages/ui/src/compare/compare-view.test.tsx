@@ -8,7 +8,7 @@ import { taskRow } from "../changes/changes-fixture";
 import { TooltipProvider } from "../components/tooltip";
 import type { TaskNotice } from "../store/task-notices";
 import type { UsageStamp } from "../store/workspace-state";
-import { click, render } from "../test/render";
+import { click, find, render } from "../test/render";
 import { stubClient } from "../test/workspace-fixture";
 import { compareResponse, compareRow } from "./compare-fixture";
 import { CompareView } from "./compare-view";
@@ -92,8 +92,9 @@ describe("CompareView", () => {
   it("draws the header and one column per agent, with every cell", async () => {
     const { container, unmount } = await view();
     expect(container.textContent).toContain("Add the invite links");
-    expect(container.textContent).toContain("add invite links");
-    expect(container.textContent).toContain("2 agents");
+    expect(container.textContent).toContain(
+      "2 agents, same prompt, separate worktrees. Pick one to keep; the others close.",
+    );
     const columns = container.querySelectorAll("section");
     expect(columns).toHaveLength(2);
     const first = columns[0]?.textContent ?? "";
@@ -102,8 +103,9 @@ describe("CompareView", () => {
     expect(columns[0]?.querySelector('[title="claude-code:sonnet-4.5:native"]')).not.toBeNull();
     expect(first).toContain("Running");
     expect(first).toContain("3");
-    expect(first).toContain("+42 -7");
-    expect(container.querySelectorAll("dd")).toHaveLength(10);
+    expect(first).toContain("+42");
+    expect(first).toContain("−7");
+    expect(container.querySelectorAll("dd")).toHaveLength(12);
     unmount();
   });
 
@@ -115,7 +117,8 @@ describe("CompareView", () => {
       client: { compare: () => Promise.resolve(response) },
     });
     const cells = [...container.querySelectorAll("dd")].map((cell) => cell.textContent);
-    expect(cells.slice(0, 2)).toEqual(["-", "-"]);
+    // Status, then the two counts git declined to give.
+    expect(cells.slice(1, 3)).toEqual(["-", "-"]);
     expect(cells).toContain("in plan");
     unmount();
   });
@@ -166,7 +169,7 @@ describe("CompareView", () => {
       client: { compare: () => Promise.resolve(picked) },
     });
     const [kept, removed] = [...container.querySelectorAll("section")];
-    expect(button(kept as HTMLElement, "Pick").disabled).toBe(true);
+    expect(button(kept as HTMLElement, "Picked").disabled).toBe(true);
     expect(removed?.textContent).toContain("removed · branch kept");
     unmount();
   });
@@ -182,7 +185,7 @@ describe("CompareView", () => {
       },
     });
     expect(reads).toBe(1);
-    click(button(container, "Refresh"));
+    click(find(container, 'button[aria-label="Refresh the compare"]'));
     expect(container.querySelectorAll("section")).toHaveLength(2);
     await act(async () => undefined);
     expect(reads).toBe(2);

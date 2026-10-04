@@ -1,15 +1,16 @@
 import type { Recommendation, RunTaskRequest } from "@agnostic/core";
-import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from "react";
+import { Fragment, type KeyboardEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { type ApiError, asApiError } from "../api/error";
-import { cn } from "../class-names";
 import { Dialog, DialogContent, DialogTitle } from "../components/dialog";
 import { HintText } from "../hint-text";
 import { filterCommands, moveSelection } from "./filter-commands";
 import type { PaletteCommand } from "./palette-command";
 import { type PaletteContext, type PaletteHandlers, paletteCommands } from "./palette-commands";
+import { labelled, optionId, Row } from "./palette-row";
 import { recommendRows } from "./recommend-rows";
 
 export type CommandPaletteProps = {
+  /** The page owns the state; the shortcut that flips it lives in `workspace-palette.tsx`. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
   context: Omit<PaletteContext, "query">;
@@ -28,8 +29,6 @@ type PaletteState =
   | { mode: "failed"; error: ApiError };
 
 const LIST_ID = "palette-commands";
-
-const optionId = (id: string): string => `palette-row-${id}`;
 
 const WAITING: Record<string, string> = {
   recommending: "Asking agn which profile fits…",
@@ -175,16 +174,20 @@ function PaletteBody({ state, rows, cursor, onRun, onHover }: BodyProps) {
           role="listbox"
           id={LIST_ID}
           aria-label="Commands"
-          className="max-h-80 overflow-y-auto py-2"
+          className="flex max-h-80 flex-col gap-0.5 overflow-y-auto p-2"
         >
-          {rows.map((command, index) => (
-            <Row
-              key={command.id}
-              command={command}
-              selected={index === cursor}
-              onRun={() => onRun(command)}
-              onHover={() => onHover(index)}
-            />
+          {labelled(rows).map(({ command, index, label }) => (
+            <Fragment key={command.id}>
+              {label !== null && (
+                <span className="px-2.5 pt-1.5 pb-1 text-muted-foreground type-label">{label}</span>
+              )}
+              <Row
+                command={command}
+                selected={index === cursor}
+                onRun={() => onRun(command)}
+                onHover={() => onHover(index)}
+              />
+            </Fragment>
           ))}
         </div>
       )}
@@ -201,50 +204,6 @@ function Refusal({ error }: { error: ApiError }) {
         <p className="mt-1 text-muted-foreground text-xs">
           <HintText hint={error.hint} />
         </p>
-      )}
-    </div>
-  );
-}
-
-type RowProps = {
-  command: PaletteCommand;
-  selected: boolean;
-  onRun: () => void;
-  onHover: () => void;
-};
-
-/**
- * The input keeps the focus and the keys, as a listbox does, so a row is never tabbed to. The press
- * rather than the release runs it: the mouse is a shortcut to what Enter would have done.
- */
-function Row({ command, selected, onRun, onHover }: RowProps) {
-  const row = useRef<HTMLDivElement>(null);
-  // The list scrolls past the fold, and the keys move the cursor, so the cursor brings the list.
-  useEffect(() => {
-    if (selected) {
-      row.current?.scrollIntoView({ block: "nearest" });
-    }
-  }, [selected]);
-  return (
-    <div
-      ref={row}
-      role="option"
-      id={optionId(command.id)}
-      tabIndex={-1}
-      aria-selected={selected}
-      onMouseDown={(event) => {
-        event.preventDefault();
-        onRun();
-      }}
-      onMouseEnter={onHover}
-      className={cn(
-        "flex min-w-0 cursor-pointer items-baseline gap-3 px-4 py-2 text-sm",
-        selected && "bg-accent text-accent-foreground",
-      )}
-    >
-      <span className="min-w-0 flex-1 truncate">{command.label}</span>
-      {command.hint !== null && (
-        <span className="max-w-[40%] truncate text-muted-foreground text-xs">{command.hint}</span>
       )}
     </div>
   );

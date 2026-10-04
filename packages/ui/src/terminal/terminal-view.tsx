@@ -1,4 +1,4 @@
-import type { Task, TerminalSize } from "@agnostic/core";
+import type { TaskListRow, TerminalSize } from "@agnostic/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import type { TaskNotice } from "../store/task-notices";
@@ -12,7 +12,7 @@ import { type TerminalHandle, useTerminal } from "./use-terminal";
 const FIT_DEBOUNCE_MS = 100;
 
 type TerminalViewProps = {
-  task: Task;
+  task: TaskListRow;
   token: string;
   /** A hidden tab keeps its terminal, its buffer and its socket; only the element is hidden. */
   active: boolean;
@@ -22,6 +22,8 @@ type TerminalViewProps = {
   /** This task's latest failure; named apart from the close notice the socket sets below. */
   failure: TaskNotice | null;
   onResume: () => Promise<void>;
+  /** The overlay's Hand off, which opens the dialog the task header owns. */
+  onHandoff: () => void;
 };
 
 /** One tab's pane: the terminal, the socket behind it, and what to say when there is none. */
@@ -95,8 +97,8 @@ export function TerminalView(props: TerminalViewProps) {
 
 /** All the overlay needs but the two things only the pane knows: where the session got to. */
 function overlayProps(props: TerminalViewProps, phase: OverlayPhase, notice: string | null) {
-  const { task, failure, onResume } = props;
-  return { phase, task, notice, failure, onResume };
+  const { task, failure, onResume, onHandoff } = props;
+  return { phase, task, notice, failure, onResume, onHandoff };
 }
 
 /** The element the terminal lives in, fitted on every layout change while the tab is mounted. */

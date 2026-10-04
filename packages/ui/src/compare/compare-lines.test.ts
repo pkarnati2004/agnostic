@@ -34,16 +34,24 @@ describe("the cells the column and `agn compare show` share", () => {
   it("counts the files and the lines, and says nothing when git could not", () => {
     expect(changesCell({ files: 3, additions: 42, deletions: 7 })).toEqual({
       files: "3",
-      lines: "+42 -7",
+      added: "+42",
+      removed: "−7",
     });
-    expect(changesCell(null)).toEqual({ files: "-", lines: "-" });
+    expect(changesCell(null)).toEqual({ files: "-", added: null, removed: null });
   });
 
   it("reads the tests the close work recorded", () => {
-    expect(testsCell(outcome({ testsAfter: true }))).toBe("pass");
-    expect(testsCell(outcome({ testsAfter: false }))).toBe("fail");
-    expect(testsCell(outcome({ testsAfter: null }))).toBe("-");
-    expect(testsCell(null)).toBe("-");
+    expect(testsCell(outcome({ testsAfter: true }), "done")).toBe("pass");
+    expect(testsCell(outcome({ testsAfter: false }), "done")).toBe("fail");
+  });
+
+  // A sibling that has finished with nothing recorded ran no tests; one still working may yet.
+  it("says an agent that finished ran no tests, and waits on one that has not", () => {
+    expect(testsCell(outcome({ testsAfter: null }), "done")).toBe("did not run");
+    expect(testsCell(null, "failed")).toBe("did not run");
+    expect(testsCell(null, "stopped")).toBe("did not run");
+    expect(testsCell(null, "running")).toBe("-");
+    expect(testsCell(outcome({ testsAfter: null }), "waiting")).toBe("-");
   });
 
   it("prices a run, or says the plan absorbed it", () => {

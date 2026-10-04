@@ -165,6 +165,24 @@ describe("paletteCommands", () => {
     expect(on.resume).not.toHaveBeenCalled();
   });
 
+  it("puts every row in a group, with the icon its own button carries", () => {
+    const task = taskRow({ title: "Add the invite links", status: "running" });
+    const rows = paletteCommands(
+      { query: "port the parser", activeTask: task, repo: REPO, uncommitted: 2 },
+      handlers(),
+    );
+    expect(rows.every((row) => row.icon !== null)).toBe(true);
+    expect(rows.every((row) => row.profileId === null)).toBe(true);
+    const groups = new Map(rows.map((row) => [row.id, row.group]));
+    expect(groups.get("new-task")).toBe("query");
+    expect(groups.get("run")).toBe("query");
+    expect(groups.get("recommend")).toBe("query");
+    expect(groups.get("stop")).toBe("task");
+    expect(groups.get("pr")).toBe("task");
+    expect(groups.get("cost")).toBe("commands");
+    expect(groups.get("sync")).toBe("commands");
+  });
+
   it("names the task in the label, which is what the filter reads", () => {
     const task = taskRow({ title: "Add the invite links", status: "running" });
     const labels = paletteCommands(

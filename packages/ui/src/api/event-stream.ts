@@ -38,10 +38,14 @@ export async function* readFrames(response: Response): AsyncGenerator<Event> {
   }
 }
 
+/** Whether the page is reading the feed now, or waiting to get back onto it. */
+export type FeedState = "live" | "reconnecting";
+
 /**
  * The feed the page reads for as long as it is open: one request per connection, resumed from the
  * last id seen after a drop. The first connection failing is a daemon that is not there; a drop
- * after that is a daemon restarting, which is worth waiting out.
+ * after that is a daemon restarting, which is worth waiting out. `onState` reports each connection
+ * and each drop after the first connection, which is what the sidebar footer and the banner draw.
  */
 export async function* streamEvents(opts: {
   fetch: typeof fetch;
@@ -50,11 +54,13 @@ export async function* streamEvents(opts: {
   after: number;
   signal: AbortSignal;
   reconnectMs?: number;
+  onState?: (state: FeedState) => void;
 }): AsyncGenerator<Event> {
   const headers = { authorization: `Bearer ${opts.token}` };
   const reconnectMs = opts.reconnectMs ?? RECONNECT_MS;
   // Called off `opts` the browser's fetch would see the options object as its `this` and refuse.
   const doFetch = opts.fetch;
+  const report = opts.onState ?? (() => undefined);
   let cursor = opts.after;
   let connected = false;
   while (!opts.signal.aborted) {
@@ -68,9 +74,11 @@ export async function* streamEvents(opts: {
       if (opts.signal.aborted) {
         return;
       }
+      // The first connection failing is the bootstrap's failure to report, not a reconnect.
       if (!connected) {
         throw unreachable(opts.baseUrl, cause);
       }
+      report("reconnecting");
       await delay(reconnectMs, opts.signal);
       continue;
     }
@@ -78,10 +86,15 @@ export async function* streamEvents(opts: {
       throw await apiError(response);
     }
     connected = true;
+    report("live");
     for await (const event of readFrames(response)) {
       cursor = event.id;
       yield event;
     }
+    if (opts.signal.aborted) {
+      return;
+    }
+    report("reconnecting");
     await delay(reconnectMs, opts.signal);
   }
 }

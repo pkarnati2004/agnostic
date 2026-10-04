@@ -227,6 +227,28 @@ describe("workspaceReducer", () => {
   });
 });
 
+describe("the connection to the daemon", () => {
+  it("starts as connecting and follows what the feed reports", () => {
+    expect(EMPTY_WORKSPACE.connection).toBe("connecting");
+    const live = workspaceReducer(loaded(), { type: "connection", state: "live" });
+    expect(live.connection).toBe("live");
+    const dropped = workspaceReducer(live, { type: "connection", state: "reconnecting" });
+    expect(dropped.connection).toBe("reconnecting");
+  });
+
+  it("survives the snapshot a retry reads, so the footer does not flicker", () => {
+    const live = workspaceReducer(loaded(), { type: "connection", state: "live" });
+    expect(
+      workspaceReducer(live, {
+        type: "loaded",
+        repos: [REPO],
+        tasks: [ROW],
+        cursor: 20,
+      }).connection,
+    ).toBe("live");
+  });
+});
+
 describe("worktreePresent", () => {
   const done = (state: WorkspaceState) =>
     workspaceReducer(state, { type: "task", task: { ...TASK, status: "done" } });

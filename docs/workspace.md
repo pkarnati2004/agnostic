@@ -17,9 +17,10 @@ If you pull a newer agn while a daemon from an older version is running, run `ag
 once. A daemon that started before this version answers `/ui` with an authentication error rather
 than the page.
 
-- **Left:** your repos and their tasks. The glyph before a title says where the task is: a dot with a halo for "Waiting for you", a filled dot for "Running" and for "Failed", a turning ring for "Running tests", a hollow ring for "Done", a square for "Stopped". A task whose worktree agn has cleaned up draws a dashed ring. The mark at the right of a row is the harness running it. The second line is the task's branch, "Running tests before launch" or "Starting" while it waits to launch, and `<branch> · <status>` once it is over; a task handed off from another sits indented under it and reads "From `<harness>`". A closed repo and its tasks are not in the list; they are under "Closed" at the foot of the sidebar.
+- **Left:** the sidebar. "New task" and "Search" sit under the wordmark; Search opens the command palette. Tasks waiting for an answer are listed under "Needs you" above the repos, with how long each has waited. The foot of the sidebar says whether agnd is running and which version. The panel icon collapses the sidebar to a 52 px rail of repo initials, each with a dot when a task there is waiting, failed or running, in that order; clicking one opens the sidebar again.
+- **Repos and tasks:** your repos and their tasks. The glyph before a title says where the task is: a dot with a halo for "Waiting for you", a filled dot for "Running" and for "Failed", a turning ring for "Running tests", a hollow ring for "Done", a square for "Stopped". A task whose worktree agn has cleaned up draws a dashed ring. The mark at the right of a row is the harness running it. The second line is the task's branch, "Running tests before launch" or "Starting" while it waits to launch, and `<branch> · <status>` once it is over; a task handed off from another sits indented under it and reads "From `<harness>`". A closed repo and its tasks are not in the list; they are under "Closed" at the foot of the sidebar.
 - **Center:** the live terminal for the selected task. This is the agent's own session - approve tools, use plan mode, switch models exactly as in a terminal. Tabs keep scrollback. The line above the terminal says the task's status, its profile, the repo, the branch and how long it has run.
-- **+ Task:** opens the New task tab: describe the work, see agn's pick, keep it or change it, start.
+- **New task:** the row in the sidebar, and the "+" at the end of the tab strip, open the New task tab: describe the work, see agn's pick, keep it or change it, start.
 - **Right:** what the selected task has changed, with the patch of the file you click. "Changes" in the task header opens and closes it.
 - **Compare:** `agn compare` runs one prompt on several agents at once. The siblings are one row in the sidebar, and the row opens a Compare view with a column per agent.
 - **Bottom:** tokens and cost per plan, for today and for this week.
@@ -28,7 +29,7 @@ Everything the workspace shows comes from the local daemon; closing the tab lose
 
 ## Starting a task
 
-"+ Task" at the top of the sidebar, or the "+" at the end of the tab strip, opens the New task tab.
+"New task" at the top of the sidebar, or the "+" at the end of the tab strip, opens the New task tab.
 There is one of it: a second click brings it to the front and keeps what you have typed.
 
 Describe the work. About a second after you stop typing, agn shows its pick: the profile it
@@ -68,7 +69,7 @@ handoff dialog carries the same note. See [Budgets](usage.md#budgets).
 
 ## Repos
 
-The folder icon in the sidebar header adds a repo. Type the full path to a folder on this machine,
+The folder icon on the "Repos" heading adds a repo. Type the full path to a folder on this machine,
 starting with `/`: the browser cannot expand `~` or a path relative to a terminal, and it has no
 picker that yields a real path, so the field is plain text. A folder with no `.git` is registered
 as a folder repo and tasks run in it in place; tick "Run git init first" to make it a git repo
@@ -121,11 +122,18 @@ tmux server predates this setting; troubleshooting says how to restart it.
 The open tabs and the one in front are remembered per daemon address, so a reload comes back to
 the same tabs. A task you clean loses its tab.
 
-When a session is over the tab says so and offers Resume, which starts the agent again in the
-same worktree, rebuilding it from the task's branch first if the worktree was cleaned and saying
-which branch it came from. If the daemon restarts, the tab reconnects by itself: tmux held the session while
-it was gone. A session that was adopted from outside tmux cannot be attached to, and the tab says
-that instead.
+When a session is over the tab says "Session ended" and offers two things. **Resume session**
+starts the agent again in the same worktree, naming the harness and the branch it reopens in, and
+rebuilds the worktree from the task's branch first if it was cleaned. **Hand off** gives the task to
+another agent instead; it is not offered once the worktree is gone. Under both, "From a shell:
+`agn resume <task>`" names the command that does the same thing in a terminal.
+
+If the daemon restarts, the tab reconnects by itself: tmux held the session while it was gone. A
+session adopted from outside tmux cannot be attached to. That tab names the process id, says agn
+tracks the task's status and changes but cannot type into it, and names `agn status <task>`.
+
+A task waiting for an answer says so in a line under its header: "The agent asked a question. Answer
+in the terminal below."
 
 ## Command palette
 
@@ -133,6 +141,10 @@ Press Cmd-K (Ctrl-K outside macOS) to open the command palette. It lists what ag
 page, filtered by what you type, and runs the row you pick. The arrow keys move, Enter runs, Escape
 closes. The shortcut works while a terminal tab has the focus: agn takes the keystroke before the
 terminal does.
+
+The rows are grouped, with a heading over each group: "Run" for "New task" and the two rows a typed
+prompt adds, then "Current task" for the tab in front, then "Commands". Each row carries the icon of
+the button it stands for.
 
 Four rows are always there: "New task"; "Cost", which brings the usage bar into view and highlights
 it; "Add repo"; and "Sync `<repo>`" for the repo you are working in. Sync writes that repo's
@@ -164,12 +176,16 @@ remembers which it was, per daemon address. On a window narrower than 1280 px th
 closed, so the terminal keeps its width; the state is read when the page loads, so a window you
 widen afterwards still needs the toggle.
 
-The line at the top names the task's branch, the base branch it is read against, how many commits
-it is ahead, how many files have uncommitted changes, and "behind n" when the base has moved on.
+The column is headed "Changes" with the number of changed files, a Refresh button and a close
+button; closing it is the same as the toggle in the task header. The line under the heading names
+the task's branch, the base branch it is read against, how many commits it is ahead, how many files
+have uncommitted changes, and "n behind" in yellow when the base has moved on.
+
 Under it are the files the branch changed: everything the agent has written, committed or not,
-including files git has not been told about yet. Each row has the status letter `agn changes`
-prints - A, M, D, R, `?` for untracked - and the lines added and removed. Click a row for that
-file's patch below the list. The first file is selected when the panel opens.
+including files git has not been told about yet. Each row starts with the status letter `agn changes`
+prints, coloured: green A for added, yellow M for modified, red D for deleted, and a muted R or `?`.
+The directory is muted and the file name is not. The lines added and removed are at the right. Click
+a row for that file's patch below the list. The first file is selected when the panel opens.
 
 The rows sit under Unstaged, Staged and Committed, in that order, with a count on each heading. A
 group with nothing in it is left out, and a list where everything is committed has no heading at
@@ -184,8 +200,8 @@ says so, and `agn open <task>` from your own terminal does it instead.
 
 Some tasks have no file list to show:
 
-- A folder workspace has no git to read, so the panel says "git init to enable" and gives the
-  command.
+- A folder workspace has no git to read, so the panel says "This folder is not a git repo." and
+  gives the command that would make it one.
 - A task agn adopted has no base commit of its own, so its header reads
   "adopted: changes against `main`".
 - A task whose worktree was cleaned reads "worktree cleaned; branch `<branch>` kept" and shows what
@@ -277,9 +293,11 @@ under the row, each one a task row that opens its own terminal tab. The row is o
 and closed once none is. Which agent a pick kept is said in the Compare view, not in the sidebar.
 
 Clicking the title opens the Compare view in the centre. It is a tab like a terminal: it sits in
-the strip beside them, closes the same way, and comes back when you reload the page. The view has
-one column per agent with the profile, the status, the files changed, the lines added and removed,
-the tests, the cost and the time. **Open** on a column brings that agent's terminal to the front.
+the strip beside them, closes the same way, and comes back when you reload the page. The header
+names the task and reads "n agents, same prompt, separate worktrees. Pick one to keep; the others
+close." The view has one column per agent, each headed by the agent's profile, with the status, the
+files changed, the lines added and removed, the tests, the cost and the time. **Open** on a column
+brings that agent's terminal to the front.
 
 **Pick** keeps one agent. agn stops the others, removes their worktrees and keeps their branches,
 so nothing committed is lost; they read as reverted in History and in `agn outcomes`. A
@@ -287,9 +305,13 @@ confirmation dialog says how many agents that is before anything happens. You ca
 later: the second pick stops and cleans whatever is still standing, including the agent the first
 pick kept, and its branch stays too.
 
+The kept column is tinted, marked "Picked" under its profile, and its button reads "Picked" and
+does nothing. The others read "removed · branch kept".
+
 The table refreshes when the agents' events arrive - a stop, a clean, a usage row - and on
 **Refresh** in the header. Nothing polls. The tests column of an agent that has just stopped reads
-`-` until its close work records the outcome a few seconds later; Refresh fetches it.
+`-` until its close work records the outcome a few seconds later; Refresh fetches it. An agent that
+finished with no tests recorded reads "did not run".
 
 `agn compare show <id>` prints the same table in a terminal, and `agn compare pick <id> <task>`
 keeps one from there.
@@ -326,6 +348,24 @@ overlay, or in the handoff dialog, which stays open so you can change the profil
 The line names the task and repeats the daemon's message and hint. It clears itself after a few
 seconds, or sooner if the next action on that task works. The only message across the whole page
 is the one for a workspace that could not load.
+
+## When the daemon is down
+
+If the daemon stops, a red line appears under the tab strip: "agnd is not running. Start it with
+`agn daemon start` and this window reconnects. Agents keep running in tmux meanwhile." **Retry** on
+that line reads the workspace again and reopens the event feed. The foot of the sidebar reads "agnd
+not running" at the same time.
+
+The page waits three seconds before it says anything, so an `agn daemon restart` that comes back
+quickly shows nothing. Your agents are not affected either way: they run under tmux, and the page
+picks them up where they are when the daemon is back.
+
+## Catalog
+
+agn checks once a day for a newer benchmark catalog, which is what the recommender reads. If the
+last check is more than seven days old or it failed, a yellow line says so and offers **Update
+now**. That runs the same check `agn catalog update` runs: one request, for the catalog file. If the
+check is turned off in `config.yaml`, the page says nothing about it.
 
 ## The usage bar
 

@@ -4,6 +4,7 @@ import { ApiError } from "../api/error";
 import type { Rendered } from "../test/render";
 import {
   field,
+  groupLabels,
   handlers,
   labels,
   open as openPalette,
@@ -68,6 +69,30 @@ describe("CommandPalette", () => {
     expect(on.sync).toHaveBeenCalledWith("repo1");
   });
 
+  it("labels each group of rows, in the order the list draws them", () => {
+    open({ handlers: handlers() });
+
+    // One heading per group, and never the same one twice: Cost and Add repo continue "Commands".
+    expect(groupLabels()).toEqual(["Run", "Current task", "Commands"]);
+
+    // The two rows a typed prompt adds join New task under the heading it already carries.
+    type("port the parser");
+    expect(groupLabels()).toEqual(["Run"]);
+  });
+
+  it("draws a recommended profile as a card with its mark, not as a line", async () => {
+    open({ handlers: handlers() });
+    type("port the parser");
+    press("ArrowDown");
+    await pressAwaiting("Enter");
+
+    expect(groupLabels()).toEqual(["Recommend"]);
+    const card = document.querySelector('[role="option"][aria-label="Run on claude-code · opus"]');
+    expect(card?.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe("claude-code");
+    expect(card?.textContent).toContain("strongest on refactors here");
+    expect(card?.textContent).toContain("↵ Start a task with this profile");
+  });
+
   it("answers Recommend in the palette, and runs the prompt on the profile picked there", async () => {
     const on = handlers();
     const recommend = vi.fn(() => Promise.resolve(RECOMMENDATION));
@@ -78,11 +103,7 @@ describe("CommandPalette", () => {
     await pressAwaiting("Enter");
 
     expect(recommend).toHaveBeenCalledWith("repo1", "port the parser");
-    expect(labels()).toEqual([
-      "Run on claude-code:opus:native",
-      "Run on codex:gpt-5:native",
-      "Back",
-    ]);
+    expect(labels()).toEqual(["Run on claude-code · opus", "Run on codex · gpt-5", "Back"]);
 
     await pressAwaiting("Enter");
     expect(runOn).toHaveBeenCalledWith("repo1", {

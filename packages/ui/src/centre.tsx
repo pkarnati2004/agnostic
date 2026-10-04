@@ -7,14 +7,16 @@ import type {
   Task,
   TaskListRow,
 } from "@agnostic/core";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
 import { CompareView } from "./compare/compare-view";
 import { Notice } from "./notice";
+import { CatalogNotice } from "./notice/catalog-notice";
+import { DaemonBanner } from "./notice/daemon-banner";
 import { activeRepos } from "./sidebar/group-tasks";
 import type { NoticeHost, TaskNotice, TaskNotices } from "./store/task-notices";
-import type { UsageStamp } from "./store/workspace-state";
+import type { ConnectionState, UsageStamp } from "./store/workspace-state";
 import type { ResumeNotice } from "./tabs/resume-notice";
 import { type TabItem, TabStrip } from "./tabs/tab-strip";
 import { compareIdOf, NEW_TASK_TAB, type TabsAction, type TabsState } from "./tabs/tabs-state";
@@ -42,6 +44,12 @@ type CentreProps = {
   files: number | null;
   /** The bootstrap failure, and only that: every other failure is in `notices`. */
   error: ApiError | null;
+  /** Where the page stands with the daemon, which is what the banner watches. */
+  connection: ConnectionState;
+  /** Opens the feed again: the banner's Retry. */
+  onRetry: () => void;
+  /** The page's 30 s tick, read by the catalog line. */
+  now: number;
   /** What the last resume had to say, for the tab it belongs to; the rest of the page ignores it. */
   resumed: ResumeNotice | null;
   /** Keyed by task: the latest failure per task, each drawn where its click was. */
@@ -49,7 +57,6 @@ type CentreProps = {
   /** The Changes column's toggle lives in the task header, and its state in the page. */
   changesOpen: boolean;
   onToggleChanges: () => void;
-  onDismiss: () => void;
   onResume: (taskId: string, host: NoticeHost) => Promise<void>;
   onStop: (taskId: string) => Promise<unknown>;
   onHandoff: (task: Task, body: HandoffTaskRequest) => Promise<boolean>;
@@ -86,6 +93,7 @@ export function Centre(props: CentreProps) {
   // The Compare view is in front, so no terminal is: every one of them stays mounted and hidden.
   const active = compareId !== null || tabs.active === null ? undefined : tasks[tabs.active];
   const repoNames = new Map(props.repos.map((repo) => [repo.id, repo.name]));
+  const dropped = useDropped(props.connection);
 
   return (
     <main className="flex min-w-[640px] flex-col overflow-hidden">
@@ -119,8 +127,14 @@ export function Centre(props: CentreProps) {
           onHandoffOpenChange={(open) => props.onHandoffFor(open ? active.id : null)}
         />
       )}
-      {/* The one failure with no task to sit on: the page never loaded. */}
-      <Notice error={props.error} onDismiss={props.onDismiss} />
+      <DaemonBanner
+        shown={props.error?.code === "daemon-unreachable" || dropped}
+        onRetry={props.onRetry}
+      />
+      {/* The one failure with no task to sit on: the page never loaded. A daemon that did not
+          answer is the banner's line, not a second one saying the same thing. */}
+      <Notice error={props.error?.code === "daemon-unreachable" ? null : props.error} />
+      <CatalogNotice client={client} now={props.now} />
       {compareId !== null && (
         <CompareView
           compareId={compareId}
@@ -160,6 +174,7 @@ export function Centre(props: CentreProps) {
         resumed={props.resumed}
         notices={props.notices}
         onResume={(taskId) => props.onResume(taskId, "overlay")}
+        onHandoff={props.onHandoffFor}
       />
       <UsageBar state={props.usage} flash={props.flash} />
     </main>
@@ -214,6 +229,24 @@ function compareNotice(
   }
   // The newest, because an older failure is no longer what the daemon said about this group.
   return own.sort((a, b) => b.at - a.at)[0] ?? null;
+}
+
+// Long enough for `agn daemon restart` to come back inside the feed's own retry, so a restart the
+// user asked for shows nothing (handoff pick 1).
+const BANNER_DELAY_MS = 3_000;
+
+/** Whether the feed has been off for long enough to be worth saying so. */
+function useDropped(connection: ConnectionState): boolean {
+  const [dropped, setDropped] = useState(false);
+  useEffect(() => {
+    if (connection !== "reconnecting") {
+      setDropped(false);
+      return;
+    }
+    const timer = setTimeout(() => setDropped(true), BANNER_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [connection]);
+  return dropped;
 }
 
 export function Centred({ children }: { children: string }) {

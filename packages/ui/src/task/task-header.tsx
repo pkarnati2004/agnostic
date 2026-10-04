@@ -11,6 +11,7 @@ import { GitBranch, PanelRight, Play, Square } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { Button } from "../components/button";
+import { NoticeLine } from "../notice/notice-line";
 import { ProfileChip } from "../profile/profile-chip";
 import { StatusPill } from "../status/status-pill";
 import type { TaskNotice } from "../store/task-notices";
@@ -76,6 +77,11 @@ export function TaskHeader(props: TaskHeaderProps) {
         </div>
         <Facts {...props} now={now} />
       </header>
+      {task.status === "waiting" && (
+        <NoticeLine tone="question">
+          The agent asked a question. Answer in the terminal below.
+        </NoticeLine>
+      )}
       {notice !== null && notice.host === "header" && (
         <TaskNoticeLine notice={notice} task={task} />
       )}

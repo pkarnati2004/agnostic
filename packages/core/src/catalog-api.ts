@@ -47,6 +47,9 @@ export type CatalogSummary = {
   checkEnabled: boolean;
 };
 
+/** What the workspace reads once a page load to decide whether to say the catalog is stale. */
+export type CatalogResponse = { catalog: CatalogSummary };
+
 /**
  * A benchmark row as `agn catalog show` prints it: the catalog's row flattened for the wire, with
  * the weight its age has left it and whether the last recommendation leaned on it.

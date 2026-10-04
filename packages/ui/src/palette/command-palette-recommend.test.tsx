@@ -78,7 +78,7 @@ describe("CommandPalette recommend answers", () => {
     waiting[1]?.(second);
     await settle();
 
-    expect(labels()).toEqual(["Run on gemini:pro:native", "Back"]);
+    expect(labels()).toEqual(["Run on gemini · pro", "Back"]);
   });
 
   it("keeps the prompt and shows the hint as code when the daemon refuses to start the run", async () => {
@@ -91,11 +91,7 @@ describe("CommandPalette recommend answers", () => {
     open({ handlers: handlers(), runOn });
 
     await askRecommend("port the parser");
-    expect(labels()).toEqual([
-      "Run on claude-code:opus:native",
-      "Run on codex:gpt-5:native",
-      "Back",
-    ]);
+    expect(labels()).toEqual(["Run on claude-code · opus", "Run on codex · gpt-5", "Back"]);
     await pressAwaiting("Enter");
 
     expect(document.body.textContent).toContain("that folder is in use");
@@ -121,13 +117,24 @@ describe("CommandPalette recommend answers", () => {
     open({ handlers: handlers() });
 
     await askRecommend("port the parser");
-    expect(labels()).toEqual([
-      "Run on claude-code:opus:native",
-      "Run on codex:gpt-5:native",
-      "Back",
-    ]);
+    expect(labels()).toEqual(["Run on claude-code · opus", "Run on codex · gpt-5", "Back"]);
 
     press("Escape");
     expect(document.querySelector('input[aria-label="Command"]')).toBeNull();
+  });
+
+  it("returns to the command list on Back, staying open with the query still typed", async () => {
+    open({ handlers: handlers() });
+
+    await askRecommend("port the parser");
+    expect(labels()).toEqual(["Run on claude-code · opus", "Run on codex · gpt-5", "Back"]);
+
+    press("ArrowDown");
+    press("ArrowDown");
+    await pressAwaiting("Enter");
+
+    expect(document.querySelector('input[aria-label="Command"]')).not.toBeNull();
+    expect(field().value).toBe("port the parser");
+    expect(labels()).toEqual(["Run: port the parser", "Recommend: port the parser"]);
   });
 });

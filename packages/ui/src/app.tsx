@@ -1,7 +1,6 @@
 import type { ChangesResponse, PickCompareResponse, RepoListRow } from "@agnostic/core";
-import { useMemo, useReducer, useState } from "react";
-import { createClient } from "./api/client";
-import type { ApiError } from "./api/error";
+import { useEffect, useMemo, useReducer, useState } from "react";
+import { createClient, type WorkspaceClient } from "./api/client";
 import { browserTokenSources, readToken } from "./auth/token";
 import { Centre, Centred } from "./centre";
 import { ChangesPanel } from "./changes/changes-panel";
@@ -22,12 +21,16 @@ import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
 import { compareTabId, NEW_TASK_TAB, readTabs, tabsReducer } from "./tabs/tabs-state";
 import { useTabsStorage } from "./tabs/use-tabs-storage";
 import { useTaskActions } from "./task/use-task-actions";
+import { useTick } from "./time/use-tick";
 import { TaskCost } from "./usage/task-cost";
 import { lastResponse } from "./usage/usage-state";
 import { useTaskUsage } from "./usage/use-task-usage";
 import { useUsage } from "./usage/use-usage";
 
 const TOOLTIP_DELAY_MS = 400;
+
+// The waiting times on the page are minutes old at worst; a render every half minute keeps them honest.
+const TICK_MS = 30_000;
 
 export function App() {
   // The fragment is read once, on the first render of the page it arrived with.
@@ -44,9 +47,10 @@ export function App() {
 
 function Workspace({ token }: { token: string }) {
   const client = useMemo(() => createClient({ token }), [token]);
-  const { state, error, notices, act, put } = useWorkspace(client);
+  const { state, error, notices, act, put, retry } = useWorkspace(client);
   const profiles = useProfiles(client);
   const [collapsed, setCollapsed] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   // What the palette's "Run: <prompt>" seeds the New task tab with; `at` re-seeds a tab already open.
   const [seed, setSeed] = useState<{ prompt: string; at: number } | null>(null);
   const [addRepo, setAddRepo] = useState(false);
@@ -58,7 +62,6 @@ function Workspace({ token }: { token: string }) {
   // The repo the Remove confirmation is about, or null while it is closed.
   const [removing, setRemoving] = useState<RepoListRow | null>(null);
   const repoActions = useRepoActions(client);
-  const [dismissed, setDismissed] = useState<ApiError | null>(null);
   const [changesOpen, setChangesOpen] = useState(() =>
     readPanelOpen(localStorage, window.innerWidth),
   );
@@ -75,6 +78,9 @@ function Workspace({ token }: { token: string }) {
     [state.repos, state.tasks],
   );
   const usage = useUsage(client, state.usageStamp.plans);
+  const version = useDaemonVersion(client);
+  // One clock for the waiting times the sidebar strip and the catalog line read.
+  const now = useTick(TICK_MS);
   // The budget rides on the usage body the bar already reads; no dialog asks for it on its own.
   const budget = lastResponse(usage)?.budget ?? null;
   const activeId = tabs.active;
@@ -143,6 +149,7 @@ function Workspace({ token }: { token: string }) {
           dispatchTabs({ type: "open", taskId: compareTabId(compareId) })
         }
         onNewTask={() => openNewTask(null)}
+        onSearch={() => setPaletteOpen(true)}
         onAddRepo={() => setAddRepo(true)}
         onCloseRepo={repoActions.close}
         onReopenRepo={repoActions.reopen}
@@ -150,6 +157,8 @@ function Workspace({ token }: { token: string }) {
           setRemoving(state.repos.find((repo) => repo.id === repoId) ?? null)
         }
         repoNotices={repoActions.notices}
+        daemon={{ version, connection: state.connection }}
+        now={now}
         onToggle={() => setCollapsed(!collapsed)}
       />
       <AddRepoDialog
@@ -176,9 +185,11 @@ function Workspace({ token }: { token: string }) {
         budget={budget}
         cost={<TaskCost usage={taskUsage} />}
         files={ownRead?.files ?? null}
-        error={error === dismissed ? null : error}
+        error={error}
+        connection={state.connection}
+        onRetry={retry}
+        now={now}
         notices={notices}
-        onDismiss={() => setDismissed(error)}
         resumed={resumed}
         onResume={resume}
         onStop={stop}
@@ -205,6 +216,7 @@ function Workspace({ token }: { token: string }) {
           onCreatePr={(body) => createPr(activeTask.id, body)}
           onUpdate={() => update(activeTask.id)}
           onAskCommit={() => askCommit(activeTask.id)}
+          onClose={toggleChanges}
           onLoaded={(response: ChangesResponse) =>
             setRead({
               taskId: response.task.id,
@@ -218,6 +230,8 @@ function Workspace({ token }: { token: string }) {
       )}
       <WorkspacePalette
         client={client}
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
         context={{ activeTask, repo, uncommitted: ownRead?.uncommitted ?? null }}
         onStarted={started}
         handlers={{
@@ -241,6 +255,29 @@ function Workspace({ token }: { token: string }) {
       />
     </div>
   );
+}
+
+/**
+ * The daemon's version, read once per page load for the sidebar footer. A read that fails leaves the
+ * footer without a version; whether agnd is answering is the feed's answer, not this one's.
+ */
+function useDaemonVersion(client: WorkspaceClient): string | null {
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    void client.health().then(
+      (response) => {
+        if (live) {
+          setVersion(response.version);
+        }
+      },
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, [client]);
+  return version;
 }
 
 /** The Changes column takes its 360 px from the centre, which keeps its own 640 px minimum. */

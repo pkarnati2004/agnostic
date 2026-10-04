@@ -121,7 +121,14 @@ export async function pressAwaiting(key: string): Promise<void> {
 
 export function labels(): string[] {
   return Array.from(document.querySelectorAll('[role="option"]')).map(
-    (row) => row.firstElementChild?.textContent ?? "",
+    (row) => row.getAttribute("aria-label") ?? "",
+  );
+}
+
+/** The group labels over the rows, in the order the list draws them. */
+export function groupLabels(): string[] {
+  return Array.from(document.querySelectorAll('[role="listbox"] > span')).map(
+    (label) => label.textContent ?? "",
   );
 }
 

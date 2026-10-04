@@ -31,15 +31,15 @@ describe("DiffView", () => {
     expect(del.className).toContain("--diff-del-bg");
     expect(del.cells[0]?.textContent).toBe("6");
     expect(del.cells[1]?.textContent).toBe("");
+    expect(del.className).toContain("--diff-del-fg");
     expect(del.querySelector("span")?.textContent).toBe("-");
-    expect(del.querySelector("span")?.className).toContain("--diff-del-fg");
     expect(del.cells[2]?.textContent).toBe("-drop this");
 
     expect(add.className).toContain("--diff-add-bg");
     expect(add.cells[0]?.textContent).toBe("");
     expect(add.cells[1]?.textContent).toBe("6");
+    expect(add.className).toContain("--diff-add-fg");
     expect(add.querySelector("span")?.textContent).toBe("+");
-    expect(add.querySelector("span")?.className).toContain("--diff-add-fg");
     expect(add.cells[2]?.textContent).toBe("+add this");
 
     expect(add2.cells[1]?.textContent).toBe("7");

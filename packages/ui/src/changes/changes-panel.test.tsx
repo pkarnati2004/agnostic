@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { WorkspaceClient } from "../api/client";
 import { ApiError } from "../api/error";
 import { TooltipProvider } from "../components/tooltip";
-import { click, render } from "../test/render";
+import { click, find, render } from "../test/render";
 import { stubClient } from "../test/workspace-fixture";
 import { changesResponse, taskRow } from "./changes-fixture";
 import { ChangesPanel } from "./changes-panel";
@@ -31,6 +31,7 @@ const HANDLERS = {
   onUpdate: () => Promise.resolve(null),
   onAskCommit: () => Promise.resolve(null),
   onLoaded: () => undefined,
+  onClose: () => undefined,
 };
 
 /** The list and the first file's patch both arrive before the panel has drawn anything. */
@@ -49,15 +50,27 @@ function rows(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>('[role="option"]'));
 }
 
+/** The header's Refresh, which is the only control a failed read leaves beside Close. */
+function refresh(container: HTMLElement): HTMLButtonElement {
+  return find<HTMLButtonElement>(container, 'button[aria-label="Refresh the changes"]');
+}
+
+function labelsOf(container: HTMLElement): (string | null)[] {
+  return Array.from(container.querySelectorAll("button")).map((one) =>
+    one.getAttribute("aria-label"),
+  );
+}
+
 describe("ChangesPanel", () => {
   it("draws the header, the files and the first file's patch", async () => {
     const { container, unmount } = await panel(panelClient());
     expect(container.textContent).toContain("agn/invite-links-a1b2");
-    expect(container.textContent).toContain("3 commits, 3 uncommitted");
+    expect(container.textContent).toContain("3 commits");
+    expect(container.textContent).toContain("3 uncommitted");
     expect(rows(container).map((row) => row.textContent)).toEqual([
-      "src/invite.tsM+42 -3",
-      "src/invite.test.tsA+80 -0",
-      "docs/invites.md?untracked",
+      "Msrc/invite.ts+42\u22123",
+      "Asrc/invite.test.ts+80\u22120",
+      "?docs/invites.mduntracked",
     ]);
     const unstaged = container.querySelectorAll('[role="group"][data-state="unstaged"]');
     expect(unstaged).toHaveLength(1);
@@ -102,9 +115,9 @@ describe("ChangesPanel", () => {
       },
     });
     const { container, unmount } = await panel(client);
-    click(button(container, "Refresh"));
+    click(refresh(container));
     expect(rows(container)).toHaveLength(3);
-    expect(button(container, "Refresh").disabled).toBe(true);
+    expect(refresh(container).disabled).toBe(true);
     await act(async () => {
       answer(changesResponse({ files: [], uncommitted: 0 }));
     });
@@ -121,10 +134,11 @@ describe("ChangesPanel", () => {
     });
     const client = panelClient({ changes: () => Promise.reject(refused) });
     const { container, unmount } = await panel(client);
-    expect(container.textContent).toContain("git init to enable");
+    expect(container.textContent).toContain("This folder is not a git repo.");
     expect(container.querySelector("code")?.textContent).toBe("git init");
     expect(container.textContent).toContain("agn add /repos/petal --git-init");
-    expect(container.querySelector("button")).toBeNull();
+    // The header's Refresh and Close are all that is left: there is nothing to act on.
+    expect(labelsOf(container)).toEqual(["Refresh the changes", "Close the Changes column"]);
     unmount();
   });
 
@@ -140,8 +154,7 @@ describe("ChangesPanel", () => {
       "the branch agn/invite-links-a1b2 no longer exists",
     );
     expect(container.querySelector("code")?.textContent).toBe("agn clean task1");
-    const buttons = Array.from(container.querySelectorAll("button"));
-    expect(buttons.map((one) => one.textContent)).toEqual(["Refresh"]);
+    expect(labelsOf(container)).toEqual(["Refresh the changes", "Close the Changes column"]);
     unmount();
   });
 
@@ -154,7 +167,7 @@ describe("ChangesPanel", () => {
     );
     await act(async () => undefined);
     expect(container.textContent).toContain("Loading changes…");
-    expect(container.querySelector("button")).toBeNull();
+    expect(labelsOf(container)).toEqual(["Refresh the changes", "Close the Changes column"]);
     unmount();
   });
 
@@ -169,7 +182,7 @@ describe("ChangesPanel", () => {
   it("says a base the branch is behind", async () => {
     const client = panelClient({ changes: () => Promise.resolve(changesResponse({ behind: 4 })) });
     const { container, unmount } = await panel(client);
-    expect(container.textContent).toContain("behind 4");
+    expect(container.textContent).toContain("4 behind");
     unmount();
   });
 
@@ -222,7 +235,7 @@ describe("ChangesPanel", () => {
         Promise.resolve({ patch: "Binary files a/assets/logo.png and b/assets/logo.png differ\n" }),
     });
     const { container, unmount } = await panel(client);
-    expect(rows(container).map((row) => row.textContent)).toEqual(["assets/logo.pngMbinary"]);
+    expect(rows(container).map((row) => row.textContent)).toEqual(["Massets/logo.pngbinary"]);
     expect(container.textContent).toContain("binary file, no diff");
     unmount();
   });
@@ -273,13 +286,3 @@ describe("ChangesPanel", () => {
     rendered.unmount();
   });
 });
-
-function button(container: HTMLElement, label: string): HTMLButtonElement {
-  const found = Array.from(container.querySelectorAll("button")).find(
-    (one) => one.textContent === label,
-  );
-  if (found === undefined) {
-    throw new Error(`no ${label} button`);
-  }
-  return found;
-}

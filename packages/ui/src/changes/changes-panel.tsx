@@ -44,6 +44,8 @@ type ChangesPanelProps = {
   onAskCommit: () => Promise<AskCommitResponse | null>;
   /** Every read the panel finishes, so the page can offer the same actions from the palette. */
   onLoaded: (response: ChangesResponse) => void;
+  /** Closes the column: the same toggle the task header's Changes button calls. */
+  onClose: () => void;
   /** Given when the command palette opened the Create PR dialog rather than its button. */
   prOpen?: boolean;
   onPrOpenChange?: (open: boolean) => void;
@@ -96,24 +98,26 @@ export function ChangesPanel(props: ChangesPanelProps) {
 
   return (
     <aside className="flex min-w-0 flex-col overflow-hidden border-border border-l">
+      <ChangesHeader
+        task={task}
+        response={view.kind === "changes" ? view.response : null}
+        cleaned={cleaned}
+        loading={changes.state.kind === "loading"}
+        onRefresh={changes.refresh}
+        onClose={props.onClose}
+      />
       {view.kind === "changes" && (
-        <ChangesHeader task={task} response={view.response} cleaned={cleaned} />
-      )}
-      {(view.kind === "changes" || view.kind === "failed") && (
         <ActionRow
           task={task}
-          changes={view.kind === "changes" ? view.response : null}
+          changes={view.response}
           notice={notice}
           editors={editors}
           busy={busy}
           cleaned={cleaned}
-          refreshOnly={view.kind === "failed"}
-          loading={changes.state.kind === "loading"}
           onOpen={open}
           onCreatePr={createPr}
           onAskCommit={askCommit}
           onUpdate={update}
-          onRefresh={changes.refresh}
           prOpen={props.prOpen}
           onPrOpenChange={props.onPrOpenChange}
         />

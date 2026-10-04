@@ -17,7 +17,7 @@ export function headerLine(response: ChangesResponse): HeaderLine {
     base: response.base.ref,
     commits: `${response.ahead} ${response.ahead === 1 ? "commit" : "commits"}`,
     uncommitted: `${response.uncommitted} uncommitted`,
-    behind: behind > 0 ? `behind ${behind}` : null,
+    behind: behind > 0 ? `${behind} behind` : null,
   };
 }
 

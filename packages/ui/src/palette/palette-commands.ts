@@ -1,7 +1,21 @@
 import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
+import {
+  ArrowRightLeft,
+  Coins,
+  FolderPlus,
+  GitCommit,
+  GitMerge,
+  GitPullRequest,
+  Play,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Square,
+  SquareArrowOutUpRight,
+} from "lucide-react";
 import { canAskCommit } from "../changes/commit-result";
 import { worktreeGone } from "../task/worktree-gone";
-import type { PaletteCommand } from "./palette-command";
+import type { PaletteCommand, PaletteGroup } from "./palette-command";
 
 export type PaletteContext = {
   query: string;
@@ -34,6 +48,25 @@ export type PaletteHandlers = {
 const STOPPABLE: TaskStatus[] = ["running", "waiting"];
 const RESUMABLE: TaskStatus[] = ["done", "failed", "stopped"];
 
+/** The icon each row carries, by row id: the same glyph the button it stands for uses. */
+const ICONS = {
+  "new-task": Plus,
+  run: Play,
+  recommend: Sparkles,
+  stop: Square,
+  resume: Play,
+  handoff: ArrowRightLeft,
+  open: SquareArrowOutUpRight,
+  pr: GitPullRequest,
+  commit: GitCommit,
+  update: GitMerge,
+  cost: Coins,
+  "add-repo": FolderPlus,
+  sync: RefreshCw,
+};
+
+type RowId = keyof typeof ICONS;
+
 /**
  * The rows for this moment, in the order ADR 036 Q16 rules. A row is offered only when the button
  * it stands for would be enabled, so the palette never offers a click the header or the panel
@@ -43,7 +76,7 @@ export function paletteCommands(ctx: PaletteContext, on: PaletteHandlers): Palet
   const query = ctx.query.trim();
   const repo = ctx.repo;
   const rows: PaletteCommand[] = [
-    row("new-task", "New task", "opens the New task tab", () => on.newTask(null)),
+    row("query", "new-task", "New task", "opens the New task tab", () => on.newTask(null)),
   ];
   if (query !== "" && repo !== null) {
     rows.push(
@@ -56,11 +89,13 @@ export function paletteCommands(ctx: PaletteContext, on: PaletteHandlers): Palet
     );
   }
   rows.push(...taskCommands(ctx, repo, on));
-  rows.push(row("cost", "Cost", "jumps to the usage bar", on.showCost));
-  rows.push(row("add-repo", "Add repo", "registers a folder with agn", on.addRepo));
+  rows.push(row("commands", "cost", "Cost", "jumps to the usage bar", on.showCost));
+  rows.push(row("commands", "add-repo", "Add repo", "registers a folder with agn", on.addRepo));
   if (repo !== null) {
     rows.push(
-      row("sync", `Sync ${repo.name}`, "writes the repo's generated files", () => on.sync(repo.id)),
+      row("commands", "sync", `Sync ${repo.name}`, "writes the repo's generated files", () =>
+        on.sync(repo.id),
+      ),
     );
   }
   return rows;
@@ -84,34 +119,42 @@ function taskCommands(
   }
   const where = repo?.name ?? null;
   const rows: PaletteCommand[] = [];
+  const offer = (id: RowId, label: string, hint: string | null, run: () => void) =>
+    rows.push(row("task", id, label, hint, run));
   if (STOPPABLE.includes(task.status)) {
-    rows.push(row("stop", `Stop ${task.title}`, where, () => on.stop(task.id)));
+    offer("stop", `Stop ${task.title}`, where, () => on.stop(task.id));
   }
   if (RESUMABLE.includes(task.status)) {
-    rows.push(row("resume", `Resume ${task.title}`, where, () => on.resume(task.id)));
+    offer("resume", `Resume ${task.title}`, where, () => on.resume(task.id));
   }
   if (!worktreeGone(task)) {
-    rows.push(row("handoff", `Hand off ${task.title}`, where, () => on.handoff(task.id)));
+    offer("handoff", `Hand off ${task.title}`, where, () => on.handoff(task.id));
   }
   if (task.worktreePresent) {
-    rows.push(row("open", `Open ${task.title} in editor`, where, () => on.openInEditor(task.id)));
+    offer("open", `Open ${task.title} in editor`, where, () => on.openInEditor(task.id));
   }
   if (task.branch !== null) {
-    rows.push(row("pr", `Create PR for ${task.title}`, task.branch, () => on.createPr(task.id)));
+    offer("pr", `Create PR for ${task.title}`, task.branch, () => on.createPr(task.id));
   }
   if (canAskCommit(task, ctx.uncommitted)) {
-    rows.push(row("commit", `Ask ${task.title} to commit`, task.branch, () => on.commit(task.id)));
+    offer("commit", `Ask ${task.title} to commit`, task.branch, () => on.commit(task.id));
   }
   if (task.worktreePresent && task.branch !== null) {
-    rows.push(row("update", `Bring ${task.title} up to date`, where, () => on.update(task.id)));
+    offer("update", `Bring ${task.title} up to date`, where, () => on.update(task.id));
   }
   return rows;
 }
 
-function row(id: string, label: string, hint: string | null, run: () => void): PaletteCommand {
-  return { id, label, hint, fromQuery: false, run };
+function row(
+  group: PaletteGroup,
+  id: RowId,
+  label: string,
+  hint: string | null,
+  run: () => void,
+): PaletteCommand {
+  return { id, label, hint, fromQuery: false, group, icon: ICONS[id], profileId: null, run };
 }
 
-function fromQuery(id: string, label: string, hint: string, run: () => void): PaletteCommand {
-  return { id, label, hint, fromQuery: true, run };
+function fromQuery(id: RowId, label: string, hint: string, run: () => void): PaletteCommand {
+  return { ...row("query", id, label, hint, run), fromQuery: true };
 }

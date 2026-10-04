@@ -1,4 +1,4 @@
-import type { Task } from "@agnostic/core";
+import type { TaskListRow } from "@agnostic/core";
 import { Columns4, Plus, X } from "lucide-react";
 import { cn } from "../class-names";
 import { Badge } from "../components/badge";
@@ -8,7 +8,7 @@ import type { NEW_TASK_TAB } from "./tabs-state";
 
 /** What a tab stands for: a task's terminal, a compare's columns (ADR 036 Q7), or the composer. */
 export type TabItem =
-  | { kind: "task"; id: string; task: Task }
+  | { kind: "task"; id: string; task: TaskListRow }
   | { kind: "compare"; id: string; title: string; agents: number }
   | { kind: "new"; id: typeof NEW_TASK_TAB };
 

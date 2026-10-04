@@ -4,7 +4,7 @@ import { act } from "react";
 import { describe, expect, it } from "vitest";
 import type { WorkspaceClient } from "../api/client";
 import { ApiError } from "../api/error";
-import { render } from "../test/render";
+import { click, render } from "../test/render";
 import { noticeLine } from "./task-notices";
 import { followWorkspace, useWorkspace } from "./use-workspace";
 import type { WorkspaceAction } from "./workspace-state";
@@ -140,6 +140,50 @@ async function clickStop(container: HTMLElement): Promise<void> {
     container.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
 }
+
+/** A feed that stays open until its signal aborts, so the test can count how many were opened. */
+function retryClient() {
+  let feeds = 0;
+  const client = {
+    listRepos: () => Promise.resolve({ repos: [REPO], cursor: 0 }),
+    listTasks: () => Promise.resolve({ tasks: [], cursor: 0 }),
+    getTask: () => Promise.resolve({ task: TASK }),
+    events: (_after: number, signal: AbortSignal) => {
+      feeds += 1;
+      return (async function* () {
+        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()));
+      })();
+    },
+  } as unknown as WorkspaceClient;
+  return { client, feeds: () => feeds };
+}
+
+function RetryHarness({ client }: { client: WorkspaceClient }) {
+  const { retry } = useWorkspace(client);
+  return (
+    <button type="button" onClick={retry}>
+      retry
+    </button>
+  );
+}
+
+describe("retry", () => {
+  it("drops the feed and opens exactly one new one, not two", async () => {
+    const { client, feeds } = retryClient();
+    const { container, unmount } = render(<RetryHarness client={client} />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(feeds()).toBe(1);
+
+    click(container.querySelector("button") as HTMLButtonElement);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(feeds()).toBe(2);
+    unmount();
+  });
+});
 
 describe("act", () => {
   it("shows the refusal under the host that asked, and clears it when the next call answers", async () => {
