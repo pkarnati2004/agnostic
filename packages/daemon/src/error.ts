@@ -54,6 +54,8 @@ const statusByCode: Record<string, number> = {
   "worktree-cleaned": 409,
   // The worktree still holds work no commit is keeping: the user decides, with --force or a commit.
   "worktree-unsaved": 409,
+  // git would not remove the worktree a delete has to remove first, so no row was touched.
+  "worktree-remove-failed": 409,
   // A generated file was written by hand, or two instructions files disagree: the user decides.
   "sync-conflict": 409,
   "init-ambiguous-source": 409,

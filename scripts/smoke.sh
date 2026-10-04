@@ -780,6 +780,35 @@ grep -q "1,700" "$WORK/usage.txt"
 agx usage --json > "$WORK/usage.json"
 grep -q '"unattributedTokens": 1700' "$WORK/usage.json"
 
+echo "smoke: agn task delete removes the task and keeps its usage and its branch"
+agx run "delete me" --profile claude-code --repo "$WORK/runrepo" > "$WORK/delete-run.txt"
+DEL_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/delete-run.txt")"
+DEL_BRANCH="$(agx status "$DEL_TASK" | awk '$1 == "branch:" { print $2 }')"
+# A task with an agent in its worktree keeps every record it has, and the refusal names the stop.
+if agx task delete "$DEL_TASK" 2> "$WORK/delete-active.txt"; then echo "smoke: delete accepted a running task" >&2; exit 1; fi
+grep -q "agn stop" "$WORK/delete-active.txt"
+agx stop "$DEL_TASK" | grep -q "^stopped $DEL_TASK"
+agx usage --json > "$WORK/usage-before-delete.json"
+agx task delete "$DEL_TASK" | grep -q "^deleted $DEL_TASK: worktree removed, branch agn/"
+if agx status "$DEL_TASK" 2> "$WORK/delete-gone.txt"; then echo "smoke: a deleted task still answers" >&2; exit 1; fi
+grep -q "no task" "$WORK/delete-gone.txt"
+# The branch the task left behind is the user's, so a delete never touches it.
+git -C "$WORK/runrepo" branch --list "$DEL_BRANCH" | grep -q "$DEL_BRANCH"
+# The parent of $CHILD: the child stays, as a root.
+agx task delete "$TASK" | grep -q "^deleted $TASK:"
+agx status "$CHILD" | grep -q "^parent: *-$"
+# The tokens of both deleted tasks stay in the week's total, with no task to count them against.
+agx usage --json > "$WORK/usage-after-delete.json"
+"$NODE" -e "
+const read = (file) => JSON.parse(require('node:fs').readFileSync(file, 'utf8'));
+const week = (body) => body.week.plans.reduce((total, plan) => total + plan.usage.tokens, 0);
+const before = week(read('$WORK/usage-before-delete.json'));
+const after = week(read('$WORK/usage-after-delete.json'));
+if (before !== after) {
+  throw new Error('week tokens moved from ' + before + ' to ' + after);
+}
+"
+
 echo "smoke: the percent of each plan's rate limit, from files on this machine"
 # Codex records the plan's own meter on its token_count events; both windows reset ahead of now,
 # so both are still worth showing.
