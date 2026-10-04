@@ -194,6 +194,7 @@ describe("updateCatalog", () => {
   it("keeps the plain hint for a status other than 404, which says nothing about the repo", async () => {
     const error = await failure(
       updateCatalog({
+        vendorOf: testVendorOf,
         source: SOURCE,
         localVersion: 14,
         downloaded,
