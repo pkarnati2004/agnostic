@@ -13,7 +13,7 @@ import { detectHarnesses } from "./detect.js";
 import { ExecutorError } from "./error.js";
 import { isExitFileFor } from "./exit-file.js";
 import { createExitWatch } from "./exit-watch.js";
-import { launchSession } from "./launch.js";
+import { type LaunchDebug, launchSession } from "./launch.js";
 import { processProbe, readProcessTable } from "./process-table.js";
 import { sendText } from "./send.js";
 import { createEventFanout } from "./session-events.js";
@@ -36,6 +36,8 @@ export type TmuxExecutorOptions = {
   socketName?: string;
   /** What tmux client processes run with; the pane's own environment comes from the daemon. */
   env?: Record<string, string>;
+  /** Where a launch writes what it noticed; the daemon passes its log. Default: nothing is kept. */
+  debug?: LaunchDebug;
 };
 
 export async function createTmuxExecutor(opts: TmuxExecutorOptions): Promise<ExecutorProvider> {
@@ -67,7 +69,7 @@ export async function createTmuxExecutor(opts: TmuxExecutorOptions): Promise<Exe
   return {
     id: "tmux-local",
     prepare: (input) => prepareWorktree(opts.paths, input),
-    launch: (req) => launchSession(client, opts.paths.sessions, req),
+    launch: (req) => launchSession(client, opts.paths.sessions, req, opts.debug),
     async sessionState(handle): Promise<SessionState> {
       // Null is "no such session"; remain-on-exit holds a dead pane until the watcher reads it.
       const dead = await paneDead(clientFor(handle), handle.tmuxSession);
@@ -82,7 +84,7 @@ export async function createTmuxExecutor(opts: TmuxExecutorOptions): Promise<Exe
     attach(handle): AttachInfo {
       return { kind: "tmux", argv: attachArgv(handle, configFile) };
     },
-    send: (handle, text) => sendText(clientFor(handle), handle, text),
+    send: (handle, text) => sendText(clientFor(handle), handle, text, opts.debug),
     async terminal(handle, size: TerminalSize): Promise<TerminalStream> {
       if (!(await hasSession(clientFor(handle), handle.tmuxSession))) {
         throw new ExecutorError(`task ${handle.taskId} has no running session`, {

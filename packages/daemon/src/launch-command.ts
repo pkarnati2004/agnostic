@@ -38,7 +38,12 @@ export async function freshLaunchCommand(
   const prompt = extra === null ? context : `${context}\n## ${extra.heading}\n\n${extra.body}\n`;
   // A profile on the local route is launched against whichever server detection found serving it.
   const { servers } = await ctx.detection.current();
-  const spec = launchSpec(profile, { prompt, env: ctx.env, servers });
+  const spec = launchSpec(profile, {
+    prompt,
+    env: ctx.env,
+    servers,
+    worktreePath: agnWorktree(task),
+  });
   return {
     command: spec.command,
     args: spec.args,
@@ -63,7 +68,7 @@ export function resumeLaunchCommand(
     return null;
   }
   try {
-    const spec = resumeSpec(profile, sessionId, env);
+    const spec = resumeSpec(profile, sessionId, env, agnWorktree(task));
     return {
       command: spec.command,
       args: spec.args,
@@ -77,6 +82,14 @@ export function resumeLaunchCommand(
     }
     throw cause;
   }
+}
+
+/**
+ * The worktree agn made for this task, or null. A folder task works in the checkout and an adopted
+ * task sits in the user's own, so neither has one, and neither gets Codex's trust override.
+ */
+function agnWorktree(task: Task): string | null {
+  return task.branch === null ? null : task.worktreePath;
 }
 
 /**

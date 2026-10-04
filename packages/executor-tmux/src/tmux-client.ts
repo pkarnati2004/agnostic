@@ -185,6 +185,12 @@ export async function paneDead(client: TmuxClient, name: string): Promise<boolea
   return parsePaneValue(result.stdout) === "1";
 }
 
+/** What the pane is showing now: visible lines only, no history and no escape sequences. */
+export async function capturePane(client: TmuxClient, name: string): Promise<string> {
+  const result = await client.run(["capture-pane", "-p", "-t", name], { allowFailure: true });
+  return result.exitCode === 0 ? result.stdout : "";
+}
+
 export async function panePid(client: TmuxClient, name: string): Promise<number | null> {
   const result = await client.run(
     ["list-panes", "-s", "-t", name, "-F", "#{session_name}|#{pane_pid}"],

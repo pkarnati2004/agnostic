@@ -46,7 +46,10 @@ function logOf(req: LaunchRequest): Promise<string> {
 }
 
 /** A client that answers instead of running tmux, so the argv sequence itself can be asserted. */
-function recordingClient(): { client: TmuxClient; calls: { args: string[]; at: number }[] } {
+function recordingClient(opts: { paneDead?: boolean } = {}): {
+  client: TmuxClient;
+  calls: { args: string[]; at: number }[];
+} {
   const calls: { args: string[]; at: number }[] = [];
   return {
     calls,
@@ -54,12 +57,20 @@ function recordingClient(): { client: TmuxClient; calls: { args: string[]; at: n
       socket: "agn-recording",
       async run(args: string[]): Promise<RunResult> {
         calls.push({ args, at: Date.now() });
-        const stdout = args[0] === "-V" ? "tmux 3.7b" : "";
+        const stdout = recordedStdout(args, opts.paneDead === true);
         // has-session answers "no session", so launch takes the fresh-start path.
         return { stdout, stderr: "", exitCode: args[0] === "has-session" ? 1 : 0, durationMs: 0 };
       },
     },
   };
+}
+
+function recordedStdout(args: string[], paneIsDead: boolean): string {
+  if (args[0] === "-V") {
+    return "tmux 3.7b";
+  }
+  // list-panes carries `#{session_name}|#{pane_dead}`, which is what paneDead reads.
+  return args[0] === "list-panes" ? `agn-recorded|${paneIsDead ? "1" : "0"}` : "";
 }
 
 describe("newSessionArgs", () => {
@@ -123,6 +134,17 @@ describe("launchSession against a client that only records", () => {
     // the exact number. The order of the three calls above is what has to be right.
     expect((last[2]?.at ?? 0) - (last[1]?.at ?? 0)).toBeGreaterThanOrEqual(90);
     expect(calls.flatMap((call) => call.args)).not.toContain("-l");
+  });
+
+  it("types nothing into a pane whose process exited while the wait was polling", async () => {
+    const { client, calls } = recordingClient({ paneDead: true });
+    const req = await request({ promptAfterStart: "do it" });
+
+    await expect(launchSession(client, "/tmp/sessions", req)).rejects.toMatchObject({
+      name: "ExecutorError",
+      code: "session-not-running",
+    });
+    expect(calls.map((call) => call.args[0])).not.toContain("paste-buffer");
   });
 });
 

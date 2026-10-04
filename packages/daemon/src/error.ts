@@ -47,6 +47,8 @@ const statusByCode: Record<string, number> = {
   "task-active": 409,
   "session-not-running": 409,
   "session-not-attachable": 409,
+  // The harness is showing a screen only the user can answer, so agn typed nothing into the pane.
+  "agent-not-ready": 409,
   // The worktree a task ran in is gone and so is the branch a resume would rebuild it from, so
   // there is nothing left to continue; a worktree gone on its own is rebuilt, not refused.
   "worktree-cleaned": 409,
