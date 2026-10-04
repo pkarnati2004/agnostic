@@ -1,7 +1,12 @@
 // The payload's shape and its tolerances - `utilization` beside `used_percentage`, a `resets_at`
 // that may be epoch seconds or a string - come from stablyai/orca
 // `src/shared/claude-statusline-rate-limits.ts` (MIT © Lovecast Inc.).
-import type { LimitWindow } from "@agnostic/core";
+import {
+  hasLimitDetail,
+  type LimitWindow,
+  NO_LIMIT_DETAIL,
+  type PlanLimitDetail,
+} from "@agnostic/core";
 import { z } from "zod";
 import type { ObservedLimit } from "../transcript-parser.js";
 
@@ -23,6 +28,9 @@ const PayloadSchema = z.looseObject({
       seven_day: WindowSchema.nullish(),
     })
     .nullish(),
+  /** This session's spend and context, which Claude Code reports beside the account's windows. */
+  cost: z.looseObject({ total_cost_usd: z.number().nullish() }).nullish(),
+  context_window: z.looseObject({ used_percentage: z.number().nullish() }).nullish(),
 });
 
 /**
@@ -31,13 +39,18 @@ const PayloadSchema = z.looseObject({
  */
 export function parseStatusLinePayload(text: string, observedAt: string): ObservedLimit | null {
   const parsed = PayloadSchema.safeParse(json(text));
-  const limits = parsed.success ? parsed.data.rate_limits : null;
-  if (limits === null || limits === undefined) {
+  if (!parsed.success) {
     return null;
   }
-  const fiveHour = toWindow(limits.five_hour);
-  const week = toWindow(limits.seven_day);
-  if (fiveHour === null && week === null) {
+  const limits = parsed.data.rate_limits;
+  const fiveHour = toWindow(limits?.five_hour);
+  const week = toWindow(limits?.seven_day);
+  const detail: PlanLimitDetail = {
+    ...NO_LIMIT_DETAIL,
+    sessionCostUsd: finite(parsed.data.cost?.total_cost_usd ?? undefined),
+    contextUsedPercent: finite(parsed.data.context_window?.used_percentage ?? undefined),
+  };
+  if (fiveHour === null && week === null && !hasLimitDetail(detail)) {
     return null;
   }
   return {
@@ -46,6 +59,7 @@ export function parseStatusLinePayload(text: string, observedAt: string): Observ
     week,
     observedAt,
     source: "statusline",
+    detail,
   };
 }
 

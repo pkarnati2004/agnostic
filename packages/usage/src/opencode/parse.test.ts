@@ -59,6 +59,7 @@ describe("the OpenCode transcript parser", () => {
       tokensOutput: 400,
       tokensCacheRead: 1000,
       tokensCacheWrite: 50,
+      costUsd: null,
       ref: "opencode:ses_root:msg_1",
     });
   });
@@ -74,6 +75,12 @@ describe("the OpenCode transcript parser", () => {
     });
   });
 
+  it("takes the cost OpenCode wrote, and null for a message it wrote none for", async () => {
+    const { turns } = await opencodeParser.parse(await database("rows-cost.sql"));
+
+    expect(turns.map((turn) => turn.costUsd)).toEqual([0.42, null]);
+  });
+
   it("reads the older table when that is the one the database has", async () => {
     const { turns } = await opencodeParser.parse(await database("rows-session-message.sql"));
     expect(turns).toEqual([
@@ -87,6 +94,7 @@ describe("the OpenCode transcript parser", () => {
         tokensOutput: 100,
         tokensCacheRead: 400,
         tokensCacheWrite: null,
+        costUsd: null,
         ref: "opencode:ses_old:msg_old",
       },
     ]);

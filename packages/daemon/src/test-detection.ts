@@ -52,6 +52,7 @@ function fixtureReport(models: string[], harness: HarnessId): HarnessReport {
     modelSource: "probe",
     planVendor: planVendor(harness),
     limitSource: definition.limitSource,
+    usageSource: definition.usageSource?.kind ?? null,
     limitCapture: "none",
     plan:
       planVendor(harness) === "claude"
@@ -116,6 +117,7 @@ export function launchDetection(binDir: string, servers: LocalServer[]): Detecti
     modelSource: "none",
     planVendor: null,
     limitSource: null,
+    usageSource: harnessDefinition(harness).usageSource?.kind ?? null,
     plan: null,
     limitCapture: "none",
   });

@@ -12,6 +12,7 @@ const COLUMNS: Column<HarnessReport>[] = [
   { header: "login", value: (row) => (row.path === null ? "-" : row.login) },
   // full is status and usage, status is a live status with no token count, basic is launch only.
   { header: "support", value: (row) => row.support },
+  { header: "usage", value: usage },
   { header: "models", value: models },
   { header: "plan", value: planCell },
   { header: "path", value: (row) => row.path ?? NOT_INSTALLED },
@@ -145,6 +146,14 @@ function toolLine(tool: ToolReport): string {
     return `tools: ${tool.tool} ${NOT_INSTALLED}`;
   }
   return `tools: ${tool.tool} ${tool.version ?? "-"} (${tool.login})`;
+}
+
+/** Where this agent's tokens come from, or that nothing on the machine records them. */
+function usage(row: HarnessReport): string {
+  if (row.path === null) {
+    return "-";
+  }
+  return row.usageSource ?? "not available";
 }
 
 function models(row: HarnessReport): string {

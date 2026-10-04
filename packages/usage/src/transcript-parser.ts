@@ -1,4 +1,4 @@
-import type { HarnessId, LimitWindow, PlanLimit } from "@agnostic/core";
+import type { HarnessId, LimitWindow, PlanLimit, PlanLimitDetail } from "@agnostic/core";
 
 /** One priced unit of work as the harness recorded it: an assistant turn, or one API response. */
 export type TranscriptTurn = {
@@ -13,6 +13,8 @@ export type TranscriptTurn = {
   /** Null where the harness does not report the bucket at all, which is not zero tokens. */
   tokensCacheRead: number | null;
   tokensCacheWrite: number | null;
+  /** The cost the harness itself wrote for this turn; null where it writes none. */
+  costUsd: number | null;
   /**
    * The ledger's dedupe key. A rescan, and a resume or fork that copies earlier turns into a new
    * transcript file, produce the same ref, so the row is inserted once.
@@ -31,7 +33,21 @@ export type ObservedLimit = {
   week: LimitWindow | null;
   observedAt: string;
   source: PlanLimit["source"];
+  /** The figures the source carried beside its windows; every field null where it carried none. */
+  detail: PlanLimitDetail;
 };
+
+/** What pricing a turn needs, so a hook payload can be priced by the same rule a transcript is. */
+export type PriceableTurn = Pick<
+  TranscriptTurn,
+  | "harness"
+  | "model"
+  | "tokensInput"
+  | "tokensOutput"
+  | "tokensCacheRead"
+  | "tokensCacheWrite"
+  | "costUsd"
+>;
 
 export type ParsedTranscript = {
   turns: TranscriptTurn[];

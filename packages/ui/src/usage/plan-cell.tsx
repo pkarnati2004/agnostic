@@ -1,5 +1,5 @@
 import type { Plan, PlanLimit, PlanOption, PlanUsage, PlanVendor } from "@agnostic/core";
-import { formatAgo, formatTokens3 } from "@agnostic/core/browser";
+import { formatAgo, formatTokens3, limitDetailParts } from "@agnostic/core/browser";
 import type { ComponentProps } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
 import { NoticeLine } from "../notice/notice-line";
@@ -71,6 +71,9 @@ export function PlanCell(props: PlanCellProps) {
   const rows = limit === null ? [] : usageRows(limit, now);
   const tokens = tokensLine(day, week);
   const cost = costLine(vendor, day, week);
+  // What the limit source carried beside its windows: the account's credits and plan, or the
+  // reporting session's cost and context. Empty for a source that carried neither.
+  const detail = limit === null ? [] : limitDetailParts(limit.detail);
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -100,6 +103,11 @@ export function PlanCell(props: PlanCellProps) {
           {tokens !== null && (
             <span data-line="tokens" className="text-primary-foreground-muted">
               {tokens}
+            </span>
+          )}
+          {detail.length > 0 && (
+            <span data-line="detail" className="text-primary-foreground-muted">
+              {detail.join(" · ")}
             </span>
           )}
           {cost !== null && <span data-line="cost">{cost}</span>}

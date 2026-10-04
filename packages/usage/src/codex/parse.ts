@@ -1,5 +1,10 @@
 import { basename } from "node:path";
-import type { LimitWindow } from "@agnostic/core";
+import {
+  hasLimitDetail,
+  type LimitWindow,
+  NO_LIMIT_DETAIL,
+  type PlanLimitDetail,
+} from "@agnostic/core";
 import { z } from "zod";
 import { jsonlLines } from "../jsonl-lines.js";
 import type {
@@ -32,6 +37,16 @@ const RateLimitWindowSchema = z.object({
   resets_at: z.number(),
 });
 
+/**
+ * What the account carries beside the windows, in the same `rate_limits` object. `balance` is in
+ * dollars of credit, which Codex writes as a decimal string (`"0"`, `"12.5"`); `unlimited` says
+ * the balance has no ceiling, which is not a balance of zero.
+ */
+const CreditsSchema = z.object({
+  balance: z.union([z.number(), z.string()]).nullish(),
+  unlimited: z.boolean().nullish(),
+});
+
 const RolloutRecordSchema = z.object({
   timestamp: z.string().min(1),
   type: z.string().min(1),
@@ -46,6 +61,9 @@ const RolloutRecordSchema = z.object({
         .object({
           primary: RateLimitWindowSchema.nullish(),
           secondary: RateLimitWindowSchema.nullish(),
+          credits: CreditsSchema.nullish(),
+          plan_type: z.string().min(1).nullish(),
+          spend_control_reached: z.boolean().nullish(),
         })
         .nullish(),
     })
@@ -57,6 +75,8 @@ const FIVE_HOUR_MINUTES = 300;
 const WEEK_MINUTES = 10_080;
 
 type RolloutRecord = z.infer<typeof RolloutRecordSchema>;
+
+type RateLimits = NonNullable<RolloutRecord["payload"]>["rate_limits"];
 
 /** A rollout file is named for the session it holds, which is the id the hooks and `resume` use. */
 const SESSION_ID_IN_NAME = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -116,7 +136,7 @@ async function parseCodexRollout(path: string): Promise<ParsedTranscript> {
   return { turns, skipped, limit };
 }
 
-/** A `token_count` event with neither window agn knows carries no limit, not an empty one. */
+/** A `token_count` event with no window agn knows and no account figure carries no limit at all. */
 function toLimit(record: RolloutRecord): ObservedLimit | null {
   const limits = record.payload?.rate_limits;
   if (limits === null || limits === undefined) {
@@ -124,7 +144,8 @@ function toLimit(record: RolloutRecord): ObservedLimit | null {
   }
   const fiveHour = toWindow(limits.primary, FIVE_HOUR_MINUTES);
   const week = toWindow(limits.secondary, WEEK_MINUTES);
-  if (fiveHour === null && week === null) {
+  const detail = toDetail(limits);
+  if (fiveHour === null && week === null && !hasLimitDetail(detail)) {
     return null;
   }
   return {
@@ -133,7 +154,34 @@ function toLimit(record: RolloutRecord): ObservedLimit | null {
     week,
     observedAt: record.timestamp,
     source: "rollout",
+    detail,
   };
+}
+
+/** The account's own figures: credits left, the plan Codex names, and the spend control's state. */
+function toDetail(limits: NonNullable<RateLimits>): PlanLimitDetail {
+  return {
+    ...NO_LIMIT_DETAIL,
+    credits: credits(limits.credits),
+    planType: limits.plan_type ?? null,
+    spendControlReached: limits.spend_control_reached ?? null,
+  };
+}
+
+function credits(
+  raw: z.infer<typeof CreditsSchema> | null | undefined,
+): number | "unlimited" | null {
+  if (raw === null || raw === undefined) {
+    return null;
+  }
+  if (raw.unlimited === true) {
+    return "unlimited";
+  }
+  if (raw.balance === null || raw.balance === undefined || raw.balance === "") {
+    return null;
+  }
+  const balance = Number(raw.balance);
+  return Number.isFinite(balance) ? balance : null;
 }
 
 function toWindow(
@@ -181,6 +229,8 @@ function toTurn(
     tokensCacheRead: cached,
     // Codex reports no cache-write bucket of its own, and zero would claim it reported one.
     tokensCacheWrite: null,
+    // Codex writes no cost of its own; its tokens are priced from the catalog.
+    costUsd: null,
     ref: `codex:${thread.sessionId}:${thread.ordinal}`,
   };
 }

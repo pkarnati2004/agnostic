@@ -1,0 +1,17 @@
+{
+  "hook_event_name": "stop",
+  "conversation_id": "c7a1f0e2-5b39-4b1e-9f44-2d8c6a0b1e33",
+  "generation_id": "gen_01JD7Q3V9T",
+  "session_id": "c7a1f0e2-5b39-4b1e-9f44-2d8c6a0b1e33",
+  "model": "composer-2",
+  "status": "completed",
+  "loop_count": 3,
+  "input_tokens": 1200,
+  "output_tokens": 300,
+  "cache_read_tokens": 1000,
+  "cache_write_tokens": 50,
+  "cursor_version": "2026.10.01-14929f9",
+  "workspace_roots": ["/work/repo"],
+  "user_email": "redacted@example.invalid",
+  "transcript_path": "/tmp/cursor/transcript.json"
+}

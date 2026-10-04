@@ -267,6 +267,12 @@ export type UsageResponse = {
    * source. Each window carries the `freshness` the figure had at `scannedAt`.
    */
   limits: PlanLimit[];
+  /**
+   * The harnesses agn detected on this machine whose registry row names no usage source, in
+   * registry order. Nothing on the machine records their tokens, so the bar and `agn usage` name
+   * them rather than leave them out (ADR 029, 2026-09-30).
+   */
+  unavailable: HarnessId[];
   scannedAt: string;
 };
 

@@ -22,6 +22,7 @@ describe("the OpenCode hook parser", () => {
       status: null,
       sessionId: "ses_root",
       cwd: null,
+      usage: null,
     });
   });
 

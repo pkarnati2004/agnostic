@@ -242,6 +242,7 @@ function toReport(
     modelSource: status.models?.origin ?? "none",
     planVendor: planVendor(status.harness),
     limitSource: harnessDefinition(status.harness).limitSource,
+    usageSource: harnessDefinition(status.harness).usageSource?.kind ?? null,
     plan: planReport(status, plans, catalog),
   };
 }

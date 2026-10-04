@@ -186,7 +186,11 @@ function cache(turn: TranscriptTurn): number {
   return (turn.tokensCacheRead ?? 0) + (turn.tokensCacheWrite ?? 0);
 }
 
-/** Tokens a task does not own are never priced: agn does not know what they were billed under. */
+/**
+ * Tokens a task does not own are never priced: agn does not know what they were billed under. A
+ * cost the harness wrote for the turn is kept even then, because it is the figure the provider
+ * billed and not an estimate of agn's.
+ */
 function usageRow(turn: TranscriptTurn, billing: Billing | null, catalog: Catalog): UsageInput {
   return {
     ts: turn.ts,
@@ -197,7 +201,7 @@ function usageRow(turn: TranscriptTurn, billing: Billing | null, catalog: Catalo
     tokensOutput: turn.tokensOutput,
     tokensCacheRead: turn.tokensCacheRead,
     tokensCacheWrite: turn.tokensCacheWrite,
-    costUsd: billing === null ? null : costForTurn(turn, billing, catalog),
+    costUsd: billing === null ? turn.costUsd : costForTurn(turn, billing, catalog),
     source: "transcript",
     ref: turn.ref,
   };

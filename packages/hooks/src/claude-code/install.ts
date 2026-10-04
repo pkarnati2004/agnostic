@@ -1,6 +1,7 @@
 import type { HookInstaller } from "../hook-installer.js";
 import type { ManagedEvent } from "../hooks-json-file.js";
 import { type SettingsJsonMember, settingsJsonInstaller } from "../settings-json/member.js";
+import { claudeUserStatusLine } from "./user-statusline.js";
 
 /**
  * The events that say a turn started, a tool ran, or the agent is waiting for the user. A matcher
@@ -28,6 +29,7 @@ export const claudeCodeMember: SettingsJsonMember = {
   timeout: 5,
   reply: null,
   verify: null,
+  userStatusLine: claudeUserStatusLine,
 };
 
 export const claudeCodeInstaller: HookInstaller = settingsJsonInstaller(claudeCodeMember);

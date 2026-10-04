@@ -27,6 +27,7 @@ describe("claudeCodeParser", () => {
       tokensOutput: 45,
       tokensCacheRead: 1000,
       tokensCacheWrite: 500,
+      costUsd: null,
       ref: "claude-code:msg_a:req_a",
     });
   });
@@ -38,6 +39,7 @@ describe("claudeCodeParser", () => {
       tokensInput: 0,
       tokensOutput: 0,
       tokensCacheRead: 800,
+      costUsd: null,
       ref: "claude-code:msg_b:req_b",
     });
   });

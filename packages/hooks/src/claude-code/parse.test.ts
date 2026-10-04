@@ -16,7 +16,7 @@ describe("the Claude Code hook parser", () => {
     ["Notification", { notification_type: "agent_needs_input" }, "waiting"],
   ])("maps %s to %s", (event, extra, status) => {
     const parsed = claudeCodeParser.parse(payload({ hook_event_name: event, ...extra }));
-    expect(parsed).toEqual({ event, status, sessionId: "abc-123", cwd: "/repo" });
+    expect(parsed).toEqual({ event, status, sessionId: "abc-123", cwd: "/repo", usage: null });
   });
 
   it.each([
@@ -40,6 +40,7 @@ describe("the Claude Code hook parser", () => {
       status: "waiting",
       sessionId: null,
       cwd: null,
+      usage: null,
     });
   });
 

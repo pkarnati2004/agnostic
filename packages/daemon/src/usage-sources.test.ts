@@ -1,3 +1,4 @@
+import { hookInstaller, hookParser } from "@agnostic/hooks";
 import { harnesses } from "@agnostic/registry";
 import { statusLineParser, transcriptParser } from "@agnostic/usage";
 import { describe, expect, it } from "vitest";
@@ -33,6 +34,23 @@ describe("usage sources and their parsers", () => {
   it("leaves no status-line parser without a row that says the harness reports one", () => {
     for (const def of harnesses.filter((row) => statusLineParser(row.id) !== null)) {
       expect(def.limitSource, def.id).toBe("statusline");
+    }
+  });
+
+  it("gives every row that reports limits to a status line a writer for its own file", () => {
+    // A member without one would otherwise take another member's: the slot's path belongs to the
+    // harness, so the member brings the adapter that writes it.
+    for (const def of harnesses.filter((row) => row.limitSource === "statusline")) {
+      expect(hookInstaller(def.id)?.userStatusLine, def.id).toBeDefined();
+    }
+  });
+
+  it("gives every row whose tokens come from a hook a parser that reads that hook", () => {
+    const hooked = harnesses.filter((row) => row.usageSource?.kind === "hook");
+
+    expect(hooked.length).toBeGreaterThan(0);
+    for (const def of hooked) {
+      expect(hookParser(def.id), def.id).not.toBeNull();
     }
   });
 });

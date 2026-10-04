@@ -13,6 +13,7 @@ function turn(overrides: Partial<TranscriptTurn> = {}): TranscriptTurn {
     tokensOutput: 5,
     tokensCacheRead: 0,
     tokensCacheWrite: 0,
+    costUsd: null,
     ref: "claude-code:msg_a:req_a",
     ...overrides,
   };

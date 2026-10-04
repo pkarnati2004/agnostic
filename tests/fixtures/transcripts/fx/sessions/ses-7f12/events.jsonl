@@ -1,0 +1,5 @@
+{"ts":"2026-09-11T14:00:00.000Z","type":"session_started","model":"fx-sonnet"}
+{"ts":"2026-09-11T14:00:20.000Z","type":"usage_checkpointed","model":"fx-sonnet","usage":{"input":1000,"output":200,"cache_read":500,"cache_write":40},"cost":0.12}
+{"ts":"2026-09-11T14:01:20.000Z","type":"usage_checkpointed","model":"fx-sonnet","usage":{"input":1600,"output":260,"cache_read":900,"cache_write":40},"cost":0.3}
+{"ts":"2026-09-11T14:02:20.000Z","type":"usage_checkpointed","model":"fx-opus","usage":{"input":2000,"output":300,"cache_read":900,"cache_write":40},"cost":0.55}
+{"ts":"2026-09-11T14:03:20.000Z","type":"usage_checkpointed","model":"fx-opus","usage":{"input":120,"output":30,"cache_read":0,"cache_write":0},"cost":0.02}

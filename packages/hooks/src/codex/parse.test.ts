@@ -27,6 +27,7 @@ describe("the Codex hook parser", () => {
       status: null,
       sessionId: "01a092b5-cc6e-7510-b038-c4e0988a9493",
       cwd: "/repo",
+      usage: null,
     });
   });
 

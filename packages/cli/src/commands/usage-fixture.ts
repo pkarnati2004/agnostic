@@ -2,6 +2,7 @@
 import {
   agnosticPaths,
   type BudgetReport,
+  type HarnessId,
   type PlanLimit,
   type PlanUsage,
   type Task,
@@ -60,6 +61,7 @@ export function response(
   plans: PlanUsage[],
   budget: BudgetReport = NO_BUDGET,
   limits: PlanLimit[] = [],
+  unavailable: HarnessId[] = [],
 ): UsageResponse {
   return {
     // 2026-09-11 was a Friday; the week it is in starts on Monday the 7th.
@@ -67,6 +69,7 @@ export function response(
     week: { window: dayWindow("week", "2026-09-07T00:00:00"), plans },
     budget,
     limits,
+    unavailable,
     scannedAt: "2026-09-11T15:00:00.000Z",
   };
 }

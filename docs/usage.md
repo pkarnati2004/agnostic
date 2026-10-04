@@ -11,9 +11,31 @@ agn usage --json
 
 ## Where the numbers come from
 
-Agents write a transcript of every session on your machine: Claude Code under `~/.claude/projects`,
-Codex under `~/.codex/sessions`. agn reads those files, counts the tokens each turn reported, and
-stores one row per turn. Nothing is sent anywhere, and nothing is estimated.
+Agents write a record of every session on your machine. agn reads those files, counts the tokens
+each turn reported, and stores one row per turn. Nothing is sent anywhere, and nothing is
+estimated.
+
+| Agent | What agn reads |
+| --- | --- |
+| Claude Code | `~/.claude/projects/**/*.jsonl` |
+| Codex CLI | `~/.codex/sessions/**/rollout-*.jsonl` |
+| Gemini CLI | `~/.gemini/tmp/<project>/chats/session-*.json` |
+| GitHub Copilot CLI | `~/.copilot/session-store.db`, read-only |
+| Grok CLI | `~/.grok/logs/unified.jsonl`, and only that path: `$GROK_HOME` is not read |
+| OpenCode | `~/.local/share/opencode/opencode.db` |
+| Pi, OMP | `~/.pi/agent/sessions`, `~/.omp/agent/sessions` |
+| fx | `~/.fx/sessions/<id>/events.jsonl` |
+| Cursor Agent | Its `stop` hook payload: Cursor writes no tokens to disk |
+
+Pi, OMP, OpenCode and fx write a cost for each turn. agn stores that figure rather than pricing
+the tokens itself, so the cost you see is the agent's own. Every other agent's cost is agn's, from
+the catalog's API rates.
+
+Cursor names no model on a turn where the session pinned none. Those turns are counted and not
+priced, because there are no rates to price them at.
+
+fx reports a session's running totals rather than one turn at a time. agn stores the difference
+between one checkpoint and the last, so a turn is counted once.
 
 The files are read when you ask for usage and once when a task closes. A file agn has already read
 is not opened again unless its size or its modification time changed. On a machine with a long
@@ -49,8 +71,21 @@ endpoint for this, and there is nothing to configure.
 | --- | --- |
 | Codex CLI | Every rollout under `~/.codex/sessions` records the 5-hour and weekly percentages. agn reads them in the same pass that counts its tokens. |
 | Claude Code | The percentages arrive on the status line, not in a file. agn captures them (below). |
-| Gemini, Grok, Kimi, Cursor | Login and plan only. Tokens and cost. |
-| Pi, OpenCode | Billed per provider key, so there is no plan limit. Tokens and cost. |
+| Gemini, Grok, Cursor, Copilot | No percentage on this machine. Tokens, and cost where the agent writes one. |
+| Pi, OpenCode, fx | Billed per provider key, so there is no plan limit. Tokens and cost. |
+| Kimi | Nothing on this machine records its usage. See "Not available" below. |
+
+Codex and Claude Code report more than the two windows, and agn shows what they report:
+
+| Figure | Agent | Whose it is |
+| --- | --- | --- |
+| Credits left and the plan name Codex wrote | Codex CLI | The account's |
+| Whether the spend control has been reached | Codex CLI | The account's |
+| What this session has cost | Claude Code | The session that reported the figure |
+| How full this session's context window is | Claude Code | The session that reported the figure |
+
+The plan name Codex writes is shown as the agent wrote it. agn's own plan label still comes from
+detection or from `plans` in `~/.agnostic/config.yaml`.
 
 A figure has one of three states, and both `agn usage` and the usage bar work them out from the
 time the agent reported it:
@@ -101,7 +136,30 @@ codex  ~1% of the 5-hour window (resets 15:00) · ~17% of the week (resets Sun 0
 ```
 
 The tilde marks an approximate figure. `as of` is the age of the whole line: the agent reports both
-windows at once.
+windows at once. Under those lines come the extra figures the same files carried:
+
+```
+codex  credits $12.50 · plan plus
+claude-code  last session $0.84 (the agent's figure) · context 37% used
+```
+
+## Not available
+
+Some agents record no usage anywhere on your machine: no transcript with token counts, and no hook
+payload that carries them. Kimi CLI, Factory Droid, Devin CLI, Mimo Code, Command Code and
+OpenClaude are the ones agn knows of today. For those, `agn usage` prints a line of its own:
+
+```
+usage not available for kimi: nothing on this machine records it
+```
+
+The usage bar names them in one muted cell, `no usage: Kimi CLI, Factory Droid`, after the plan
+cells and before the budget. Only agents agn found installed are named; the rest are left out.
+
+The line is there so that an agent you ran reads as "nothing counts this" rather than as a day
+with no tokens. `agn doctor`'s `usage` column says the same thing per agent: `transcripts` for an
+agent whose files agn reads, `hook` for one whose tokens arrive on a hook payload, and
+`not available` for one that records none.
 
 ## Cost
 
@@ -118,7 +176,8 @@ A number is `-` when agn will not guess:
 - a bucket the agent does not report at all. Codex reports no cache-write bucket, so that column
   stays empty for it.
 
-Usage that no task owns is never priced: agn does not know which key or plan paid for it.
+Usage that no task owns is never priced by agn. A cost the agent wrote itself (Pi, OMP,
+OpenCode, fx) is kept, because the provider billed it, and it counts toward the budget.
 
 For a plan you pay a subscription for, the workspace also shows what the week's tokens would have
 cost at the catalog's API rates: `≈ $12.40 at API rates, not billed`. It is a comparison, not a

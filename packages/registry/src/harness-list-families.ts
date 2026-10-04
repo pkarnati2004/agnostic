@@ -61,6 +61,7 @@ export const familySources: FamilySource[] = [
     resume: resumesById("--resume"),
     sessionCapture: capturesId("session_id"),
     authFile: ".gemini/oauth_creds.json",
+    usageSource: { kind: "transcripts", dir: ".gemini/tmp" },
   },
   {
     id: "droid",
@@ -82,6 +83,8 @@ export const familySources: FamilySource[] = [
     resume: null,
     sessionCapture: null,
     authFile: ".cursor/auth.json",
+    // Cursor writes no tokens to disk; its `stop` payload is the only count there is.
+    usageSource: { kind: "hook", event: "stop" },
   },
   {
     id: "kimi",
@@ -141,6 +144,8 @@ export const familySources: FamilySource[] = [
     sessionCapture: capturesId("sessionId"),
     authFile: ".grok/auth.json",
     planSource: { file: ".grok/auth.json", parse: parseGrokPlan },
+    // One log for every session on the machine, under the fixed path; $GROK_HOME is not read.
+    usageSource: { kind: "transcripts", dir: ".grok/logs" },
   },
   {
     id: "copilot",
@@ -149,6 +154,7 @@ export const familySources: FamilySource[] = [
     // The joined form is the only one Copilot documents.
     resume: { args: (id) => [`--resume=${id}`], evidence: "unchecked" },
     sessionCapture: capturesId("session_id"),
+    usageSource: { kind: "transcripts", dir: ".copilot" },
   },
 ];
 
