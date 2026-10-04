@@ -117,7 +117,7 @@ function reader(
       throw fetchFailed(url, reason(cause), localVersion, cause);
     }
     if (!response.ok) {
-      throw fetchFailed(url, `HTTP ${response.status}`, localVersion, undefined);
+      throw fetchFailed(url, `HTTP ${response.status}`, localVersion, undefined, response.status);
     }
     const declared = Number(response.headers.get("content-length"));
     if (Number.isFinite(declared) && declared > maxBytes) {
@@ -162,10 +162,21 @@ async function readCapped(
   }
 }
 
-function fetchFailed(url: string, why: string, localVersion: number, cause: unknown): CatalogError {
+/**
+ * GitHub answers 404 for a private repo as well as a missing one, so that status names both: a
+ * catalog that was published but not made public reads the same as one that was never written.
+ */
+function fetchFailed(
+  url: string,
+  why: string,
+  localVersion: number,
+  cause: unknown,
+  status?: number,
+): CatalogError {
+  const kept = `The catalog on disk (${localVersion}) stays in use.`;
   return new CatalogError(`could not fetch ${url}: ${why}`, {
     code: "catalog-fetch-failed",
-    hint: `The catalog on disk (${localVersion}) stays in use.`,
+    hint: status === 404 ? `The catalog repo is missing or private. ${kept}` : kept,
     cause,
   });
 }

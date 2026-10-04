@@ -182,13 +182,28 @@ describe("updateCatalog", () => {
     expect(error.code).toBe("catalog-manifest-invalid");
   });
 
+  it("keeps the plain hint for a status other than 404, which says nothing about the repo", async () => {
+    const error = await failure(
+      updateCatalog({
+        source: SOURCE,
+        localVersion: 14,
+        downloaded,
+        fetch: () => Promise.resolve(new Response("down", { status: 503 })),
+      }),
+    );
+    expect(error.message).toBe(`could not fetch ${SOURCE.manifestUrl}: HTTP 503`);
+    expect(error.hint).toBe("The catalog on disk (14) stays in use.");
+  });
+
   it("reports a request that is answered with a status, and says which catalog stays in use", async () => {
     const error = await failure(
       updateCatalog({ source: SOURCE, localVersion: 14, downloaded, fetch: serving({}) }),
     );
     expect(error.code).toBe("catalog-fetch-failed");
     expect(error.message).toBe(`could not fetch ${SOURCE.manifestUrl}: HTTP 404`);
-    expect(error.hint).toBe("The catalog on disk (14) stays in use.");
+    expect(error.hint).toBe(
+      "The catalog repo is missing or private. The catalog on disk (14) stays in use.",
+    );
   });
 
   it("reports a request that timed out in the words the user reads", async () => {
