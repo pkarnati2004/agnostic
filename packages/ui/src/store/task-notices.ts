@@ -10,7 +10,9 @@ export type TaskAction =
   | "pr"
   | "update"
   | "commit"
-  | "pick";
+  | "pick"
+  | "archive"
+  | "delete";
 
 /** Where the click happened, which is where the answer shows. */
 export type NoticeHost = "header" | "overlay" | "dialog" | "panel" | "compare";
@@ -28,6 +30,8 @@ const LABEL: Record<TaskAction, string> = {
   update: "Bring up to date",
   commit: "Ask the agent to commit",
   pick: "Pick",
+  archive: "Archive",
+  delete: "Delete",
 };
 
 /** The task is named because the failure shows on a page that has several of them open. */

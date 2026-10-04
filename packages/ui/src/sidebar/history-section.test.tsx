@@ -3,6 +3,7 @@ import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "../components/tooltip";
 import { click, render } from "../test/render";
+import { WithRowActions } from "../test/workspace-fixture";
 import type { SidebarGroups, SidebarRow } from "./group-tasks";
 import { HistorySection } from "./history-section";
 import { Sidebar } from "./sidebar";
@@ -58,24 +59,26 @@ const GROUPS: SidebarGroups = {
 function sidebar(onSelect: (id: string) => void = vi.fn()) {
   return render(
     <TooltipProvider>
-      <Sidebar
-        groups={GROUPS}
-        repos={[REPO]}
-        selectedId={null}
-        collapsed={false}
-        onSearch={vi.fn()}
-        daemon={DAEMON}
-        now={NOW}
-        onSelect={onSelect}
-        onOpenCompare={vi.fn()}
-        onNewTask={vi.fn()}
-        onAddRepo={vi.fn()}
-        onCloseRepo={() => Promise.resolve()}
-        onReopenRepo={() => Promise.resolve()}
-        onRemoveRepo={vi.fn()}
-        repoNotices={{}}
-        onToggle={vi.fn()}
-      />
+      <WithRowActions>
+        <Sidebar
+          groups={GROUPS}
+          repos={[REPO]}
+          selectedId={null}
+          collapsed={false}
+          onSearch={vi.fn()}
+          daemon={DAEMON}
+          now={NOW}
+          onSelect={onSelect}
+          onOpenCompare={vi.fn()}
+          onNewTask={vi.fn()}
+          onAddRepo={vi.fn()}
+          onCloseRepo={() => Promise.resolve()}
+          onReopenRepo={() => Promise.resolve()}
+          onRemoveRepo={vi.fn()}
+          repoNotices={{}}
+          onToggle={vi.fn()}
+        />
+      </WithRowActions>
     </TooltipProvider>,
   );
 }
@@ -153,24 +156,26 @@ describe("HistorySection", () => {
     // `groups` object must not reset it the way a fresh mount would.
     update(
       <TooltipProvider>
-        <Sidebar
-          groups={{ ...GROUPS, repos: [...GROUPS.repos] }}
-          repos={[REPO]}
-          onAddRepo={vi.fn()}
-          onCloseRepo={() => Promise.resolve()}
-          onReopenRepo={() => Promise.resolve()}
-          onRemoveRepo={vi.fn()}
-          repoNotices={{}}
-          selectedId={null}
-          collapsed={false}
-          onSearch={vi.fn()}
-          daemon={DAEMON}
-          now={NOW}
-          onSelect={vi.fn()}
-          onOpenCompare={vi.fn()}
-          onNewTask={vi.fn()}
-          onToggle={vi.fn()}
-        />
+        <WithRowActions>
+          <Sidebar
+            groups={{ ...GROUPS, repos: [...GROUPS.repos] }}
+            repos={[REPO]}
+            onAddRepo={vi.fn()}
+            onCloseRepo={() => Promise.resolve()}
+            onReopenRepo={() => Promise.resolve()}
+            onRemoveRepo={vi.fn()}
+            repoNotices={{}}
+            selectedId={null}
+            collapsed={false}
+            onSearch={vi.fn()}
+            daemon={DAEMON}
+            now={NOW}
+            onSelect={vi.fn()}
+            onOpenCompare={vi.fn()}
+            onNewTask={vi.fn()}
+            onToggle={vi.fn()}
+          />
+        </WithRowActions>
       </TooltipProvider>,
     );
     expect(rowTitles(container)).toHaveLength(3);
@@ -195,24 +200,26 @@ describe("HistorySection", () => {
     };
     const { container, unmount } = render(
       <TooltipProvider>
-        <Sidebar
-          groups={groups}
-          repos={[REPO]}
-          selectedId={null}
-          collapsed={false}
-          onSearch={vi.fn()}
-          daemon={DAEMON}
-          now={NOW}
-          onSelect={vi.fn()}
-          onOpenCompare={vi.fn()}
-          onNewTask={vi.fn()}
-          onAddRepo={vi.fn()}
-          onCloseRepo={() => Promise.resolve()}
-          onReopenRepo={() => Promise.resolve()}
-          onRemoveRepo={vi.fn()}
-          repoNotices={{}}
-          onToggle={vi.fn()}
-        />
+        <WithRowActions>
+          <Sidebar
+            groups={groups}
+            repos={[REPO]}
+            selectedId={null}
+            collapsed={false}
+            onSearch={vi.fn()}
+            daemon={DAEMON}
+            now={NOW}
+            onSelect={vi.fn()}
+            onOpenCompare={vi.fn()}
+            onNewTask={vi.fn()}
+            onAddRepo={vi.fn()}
+            onCloseRepo={() => Promise.resolve()}
+            onReopenRepo={() => Promise.resolve()}
+            onRemoveRepo={vi.fn()}
+            repoNotices={{}}
+            onToggle={vi.fn()}
+          />
+        </WithRowActions>
       </TooltipProvider>,
     );
     // Two siblings, one row: the History count and the row both read as one.
@@ -227,24 +234,26 @@ describe("HistorySection", () => {
   it("shows the section the selected task is in, unopened", () => {
     const { container, unmount } = render(
       <TooltipProvider>
-        <Sidebar
-          groups={GROUPS}
-          repos={[REPO]}
-          onAddRepo={vi.fn()}
-          onCloseRepo={() => Promise.resolve()}
-          onReopenRepo={() => Promise.resolve()}
-          onRemoveRepo={vi.fn()}
-          repoNotices={{}}
-          selectedId="old-two"
-          collapsed={false}
-          onSearch={vi.fn()}
-          daemon={DAEMON}
-          now={NOW}
-          onSelect={vi.fn()}
-          onOpenCompare={vi.fn()}
-          onNewTask={vi.fn()}
-          onToggle={vi.fn()}
-        />
+        <WithRowActions>
+          <Sidebar
+            groups={GROUPS}
+            repos={[REPO]}
+            onAddRepo={vi.fn()}
+            onCloseRepo={() => Promise.resolve()}
+            onReopenRepo={() => Promise.resolve()}
+            onRemoveRepo={vi.fn()}
+            repoNotices={{}}
+            selectedId="old-two"
+            collapsed={false}
+            onSearch={vi.fn()}
+            daemon={DAEMON}
+            now={NOW}
+            onSelect={vi.fn()}
+            onOpenCompare={vi.fn()}
+            onNewTask={vi.fn()}
+            onToggle={vi.fn()}
+          />
+        </WithRowActions>
       </TooltipProvider>,
     );
     expect(rowTitles(container)).toHaveLength(3);

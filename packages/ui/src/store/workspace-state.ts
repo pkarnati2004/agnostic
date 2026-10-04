@@ -90,7 +90,17 @@ function applied(state: WorkspaceState, event: Event): WorkspaceState {
     return { ...state, tasks: { ...state.tasks, [task.id]: withPath(task) } };
   }
   if (isKind(event, "task.cleaned")) {
-    return patchTask(state, event.taskId, (task) => ({ ...task, worktreePresent: false }));
+    // `markCleaned` touches `updated_at`, so the row sorts to the top of History from the feed
+    // alone, which is where an archive the user just asked for belongs.
+    return patchTask(state, event.taskId, (task) => ({
+      ...task,
+      worktreePresent: false,
+      updatedAt: event.ts,
+    }));
+  }
+  if (isKind(event, "task.deleted")) {
+    // The one event that outlives its task: there is no row left to re-read, so the page drops it.
+    return withoutTask(state, event.taskId);
   }
   if (isKind(event, "session.captured")) {
     const session = event.payload.session;
@@ -147,6 +157,16 @@ function patchTask(
     return state;
   }
   return { ...state, tasks: { ...state.tasks, [id]: patch(task) } };
+}
+
+/** The rows left once one is gone, or the state itself when the page never had it. */
+function withoutTask(state: WorkspaceState, id: string | undefined): WorkspaceState {
+  if (id === undefined || state.tasks[id] === undefined) {
+    return state;
+  }
+  const tasks = { ...state.tasks };
+  delete tasks[id];
+  return { ...state, tasks };
 }
 
 /** The event carries the repo row, not the fields the list derives: those come from the list. */

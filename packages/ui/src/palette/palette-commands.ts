@@ -1,5 +1,6 @@
 import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
 import {
+  Archive,
   ArrowRightLeft,
   Coins,
   FolderPlus,
@@ -12,8 +13,10 @@ import {
   Sparkles,
   Square,
   SquareArrowOutUpRight,
+  Trash2,
 } from "lucide-react";
 import { canAskCommit } from "../changes/commit-result";
+import { ARCHIVE_TOOLTIP, canArchive, canDelete } from "../sidebar/task-menu-items";
 import { worktreeGone } from "../task/worktree-gone";
 import type { PaletteCommand, PaletteGroup } from "./palette-command";
 
@@ -39,6 +42,10 @@ export type PaletteHandlers = {
   createPr(taskId: string): void;
   update(taskId: string): void;
   commit(taskId: string): void;
+  /** Removes the task's worktree: the clean, under the name the page gives it. */
+  archive(taskId: string): void;
+  /** Opens the confirmation; nothing is deleted until the dialog is answered. */
+  delete(taskId: string): void;
   /** Scrolls the usage bar into view and flashes it. */
   showCost(): void;
   addRepo(): void;
@@ -60,6 +67,8 @@ const ICONS = {
   pr: GitPullRequest,
   commit: GitCommit,
   update: GitMerge,
+  archive: Archive,
+  delete: Trash2,
   cost: Coins,
   "add-repo": FolderPlus,
   sync: RefreshCw,
@@ -141,6 +150,12 @@ function taskCommands(
   }
   if (task.worktreePresent && task.branch !== null) {
     offer("update", `Bring ${task.title} up to date`, where, () => on.update(task.id));
+  }
+  if (canArchive(task)) {
+    offer("archive", "Archive task", ARCHIVE_TOOLTIP, () => on.archive(task.id));
+  }
+  if (canDelete(task)) {
+    offer("delete", "Delete task…", null, () => on.delete(task.id));
   }
   return rows;
 }

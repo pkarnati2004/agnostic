@@ -25,6 +25,8 @@ function handlers(): PaletteHandlers {
     createPr: vi.fn(),
     update: vi.fn(),
     commit: vi.fn(),
+    archive: vi.fn(),
+    delete: vi.fn(),
     showCost: vi.fn(),
     addRepo: vi.fn(),
     sync: vi.fn(),
@@ -67,6 +69,8 @@ describe("paletteCommands", () => {
       "open",
       "pr",
       "update",
+      "archive",
+      "delete",
       "cost",
       "add-repo",
       "sync",
@@ -77,14 +81,14 @@ describe("paletteCommands", () => {
     // The push reads the branch from the main checkout, so Create PR needs no worktree, and the
     // panel's own button is enabled here too. A resume rebuilds the worktree and the rest return.
     const rows = ids({ activeTask: taskRow({ status: "stopped", worktreePresent: false }) });
-    expect(rows).toEqual(["new-task", "resume", "pr", "cost", "add-repo", "sync"]);
+    expect(rows).toEqual(["new-task", "resume", "pr", "delete", "cost", "add-repo", "sync"]);
   });
 
   it("offers nothing about the branch for a cleaned worktree with no branch either", () => {
     const rows = ids({
       activeTask: taskRow({ status: "stopped", worktreePresent: false, branch: null }),
     });
-    expect(rows).toEqual(["new-task", "resume", "cost", "add-repo", "sync"]);
+    expect(rows).toEqual(["new-task", "resume", "delete", "cost", "add-repo", "sync"]);
   });
 
   it("keeps Hand off for a folder task and for an adopted one, which had no worktree", () => {
@@ -195,5 +199,50 @@ describe("paletteCommands", () => {
     expect(labels).toContain("Bring Add the invite links up to date");
     expect(labels).toContain("Ask Add the invite links to commit");
     expect(labels).toContain("Sync petal");
+  });
+});
+
+describe("the palette's Archive and Delete rows", () => {
+  function row(ctx: Partial<PaletteContext>, id: string) {
+    const full = { query: "", activeTask: null, repo: REPO, uncommitted: null, ...ctx };
+    return paletteCommands(full, handlers()).find((command) => command.id === id);
+  }
+
+  it("offers Archive with the sentence that says what it does", () => {
+    const archive = row({ activeTask: taskRow({ status: "done" }) }, "archive");
+    expect(archive?.label).toBe("Archive task");
+    expect(archive?.hint).toBe(
+      "Removes the worktree. The task moves to History; Resume rebuilds it from its branch.",
+    );
+  });
+
+  it("offers Archive only where there is a worktree of agn's and no agent in it", () => {
+    expect(row({ activeTask: taskRow({ status: "running" }) }, "archive")).toBeUndefined();
+    const gone = taskRow({ status: "done", worktreePresent: false });
+    expect(row({ activeTask: gone }, "archive")).toBeUndefined();
+  });
+
+  it("offers Delete with nothing beside it, and never while the task is live", () => {
+    const remove = row({ activeTask: taskRow({ status: "stopped" }) }, "delete");
+    expect(remove?.label).toBe("Delete task\u2026");
+    expect(remove?.hint).toBeNull();
+    for (const status of ["queued", "running", "waiting"] as const) {
+      expect(row({ activeTask: taskRow({ status }) }, "delete")).toBeUndefined();
+    }
+  });
+
+  it("runs the page's own handlers", () => {
+    const on = handlers();
+    const full = {
+      query: "",
+      activeTask: taskRow({ status: "done" }),
+      repo: REPO,
+      uncommitted: null,
+    };
+    const rows = paletteCommands(full, on);
+    rows.find((command) => command.id === "archive")?.run();
+    rows.find((command) => command.id === "delete")?.run();
+    expect(on.archive).toHaveBeenCalledWith("task1");
+    expect(on.delete).toHaveBeenCalledWith("task1");
   });
 });

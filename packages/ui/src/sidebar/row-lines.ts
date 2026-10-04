@@ -39,3 +39,8 @@ export function rowSecondLine(
 export function childLine(parentProfileId: string): RowLine {
   return { text: `From ${profileParts(parentProfileId).harness}`, mono: false, tone: "muted" };
 }
+
+/** What a row says for the ten seconds after you archive it, in place of its branch and status. */
+export function archivedLine(): RowLine {
+  return { text: "Archived just now", mono: false, tone: "muted" };
+}

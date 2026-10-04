@@ -1,4 +1,4 @@
-import type { Event, Repo, RepoListRow, Task, TaskListRow, TaskSession } from "@agnostic/core";
+import type { Event, Repo, Task } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_WORKSPACE,
@@ -6,64 +6,7 @@ import {
   type WorkspaceState,
   workspaceReducer,
 } from "./workspace-state";
-
-const REPO: RepoListRow = {
-  id: "repo1",
-  path: "/tmp/petal",
-  kind: "git",
-  name: "petal",
-  addedAt: "2026-09-01T00:00:00.000Z",
-  status: "active",
-  testCommand: "pnpm test",
-  pathPresent: true,
-};
-
-const TASK: Task = {
-  id: "task1",
-  repoId: "repo1",
-  title: "Fix the parser",
-  prompt: "fix the parser",
-  profileId: "claude-code:sonnet-4.5:native",
-  worktreePath: "/tmp/petal-wt",
-  branch: "agn/fix-the-parser",
-  status: "running",
-  origin: "agn",
-  baseCommit: null,
-  compareId: null,
-  createdAt: "2026-09-14T09:00:00.000Z",
-  updatedAt: "2026-09-14T09:00:00.000Z",
-};
-
-const SESSION: TaskSession = {
-  harness: "claude-code",
-  sessionId: null,
-  tmuxSession: "agn-task1",
-  tmuxSocket: "agn",
-  launchId: "launch1",
-  pid: null,
-  cwd: "/tmp/petal-wt",
-  lastSeenAt: "2026-09-14T09:05:00.000Z",
-};
-
-// The list route sends rows, not bare tasks: this one's worktree was on disk when it was read.
-const ROW: TaskListRow = { ...TASK, worktreePresent: true };
-
-function loaded(): WorkspaceState {
-  return workspaceReducer(EMPTY_WORKSPACE, {
-    type: "loaded",
-    repos: [REPO],
-    tasks: [ROW],
-    cursor: 12,
-  });
-}
-
-function event<K extends Event["kind"]>(id: number, kind: K, payload: Event<K>["payload"]): Event {
-  return { id, ts: "2026-09-14T10:00:00.000Z", taskId: TASK.id, kind, payload } as Event;
-}
-
-function apply(state: WorkspaceState, ...events: Event[]): WorkspaceState {
-  return events.reduce((next, one) => workspaceReducer(next, { type: "event", event: one }), state);
-}
+import { apply, event, loaded, REPO, ROW, SESSION, TASK } from "./workspace-state-fixture";
 
 describe("workspaceReducer", () => {
   it("loads repos and tasks with the cursor they were read at", () => {
@@ -224,6 +167,30 @@ describe("workspaceReducer", () => {
 
   it("refetches the rows an event does not carry", () => {
     expect([...REFETCH_KINDS].sort()).toEqual(["task.adopted", "task.cleaned", "task.handoff"]);
+  });
+});
+
+describe("a task that was archived or deleted", () => {
+  it("marks the worktree gone and moves the row's time to the event's", () => {
+    const cleaned = apply(loaded(), event(13, "task.cleaned", { deletedBranch: false }));
+    expect(cleaned.tasks.task1?.worktreePresent).toBe(false);
+    expect(cleaned.tasks.task1?.updatedAt).toBe("2026-09-14T10:00:00.000Z");
+  });
+
+  it("drops the row a delete took away, and still advances the cursor", () => {
+    const deleted = apply(loaded(), event(14, "task.deleted", { removedWorktree: true }));
+    expect(deleted.tasks).toEqual({});
+    expect(deleted.cursor).toBe(14);
+  });
+
+  it("leaves the rows alone when the deleted task was never on the page", () => {
+    const other: Event = {
+      ...event(15, "task.deleted", { removedWorktree: false }),
+      taskId: "task9",
+    };
+    const after = apply(loaded(), other);
+    expect(after.tasks).toEqual({ task1: ROW });
+    expect(after.cursor).toBe(15);
   });
 });
 

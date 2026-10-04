@@ -1,6 +1,6 @@
 import type { ChangesResponse, PickCompareResponse, RepoListRow } from "@agnostic/core";
-import { useEffect, useMemo, useReducer, useState } from "react";
-import { createClient, type WorkspaceClient } from "./api/client";
+import { useMemo, useReducer, useState } from "react";
+import { createClient } from "./api/client";
 import { browserTokenSources, readToken } from "./auth/token";
 import { Centre, Centred } from "./centre";
 import { ChangesPanel } from "./changes/changes-panel";
@@ -14,14 +14,19 @@ import { RemoveRepoDialog } from "./repo/remove-repo-dialog";
 import { useRepoActions } from "./repo/use-repo-actions";
 import { defaultRepoId, groupTasks } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
+import { TaskRowActionsProvider } from "./sidebar/task-row-actions";
 import type { NoticeHost } from "./store/task-notices";
+import { useDaemonVersion } from "./store/use-daemon-version";
 import { useProfiles } from "./store/use-profiles";
 import { useWorkspace } from "./store/use-workspace";
 import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
 import { compareTabId, NEW_TASK_TAB, readTabs, tabsReducer } from "./tabs/tabs-state";
 import { useTabsStorage } from "./tabs/use-tabs-storage";
+import { DeleteTaskDialog } from "./task/delete-task-dialog";
+import { useRowActions } from "./task/use-row-actions";
 import { useTaskActions } from "./task/use-task-actions";
 import { useTick } from "./time/use-tick";
+import { Toast } from "./toast/toast";
 import { lastResponse } from "./usage/usage-state";
 import { useTaskUsage } from "./usage/use-task-usage";
 import { useUsage } from "./usage/use-usage";
@@ -135,149 +140,153 @@ function Workspace({ token }: { token: string }) {
       return response.task;
     });
   };
+  // The pull request is opened in the Changes column, so asking for one opens the column first.
+  const askForPr = (taskId: string) => {
+    writePanelOpen(localStorage, true);
+    setChangesOpen(true);
+    setPrFor(taskId);
+  };
+  const rows = useRowActions({
+    client,
+    tasks: state.tasks,
+    act,
+    resume,
+    stop: (taskId) => void stop(taskId),
+    openInEditor: (taskId) => void openInEditor(taskId, null),
+    handoff: (taskId) => {
+      dispatchTabs({ type: "open", taskId });
+      setHandoffFor(taskId);
+    },
+    createPr: askForPr,
+  });
 
   return (
     <div className={cn("grid h-full", gridColumns(collapsed, showChanges))}>
-      <Sidebar
-        groups={groups}
-        repos={state.repos}
-        selectedId={tabs.active}
-        collapsed={collapsed}
-        onSelect={(taskId) => dispatchTabs({ type: "open", taskId })}
-        onOpenCompare={(compareId) =>
-          dispatchTabs({ type: "open", taskId: compareTabId(compareId) })
-        }
-        onNewTask={() => openNewTask(null)}
-        onSearch={() => setPaletteOpen(true)}
-        onAddRepo={() => setAddRepo(true)}
-        onCloseRepo={repoActions.close}
-        onReopenRepo={repoActions.reopen}
-        onRemoveRepo={(repoId) =>
-          setRemoving(state.repos.find((repo) => repo.id === repoId) ?? null)
-        }
-        repoNotices={repoActions.notices}
-        daemon={{ version, connection: state.connection }}
-        now={now}
-        onToggle={() => setCollapsed(!collapsed)}
-      />
-      <AddRepoDialog
-        open={addRepo}
-        onOpenChange={setAddRepo}
-        client={client}
-        onReopen={repoActions.reopen}
-      />
-      <RemoveRepoDialog
-        repo={removing}
-        onOpenChange={(open) => setRemoving(open ? removing : null)}
-        onRemove={repoActions.remove}
-      />
-      <Centre
-        tabs={tabs}
-        dispatchTabs={dispatchTabs}
-        repos={state.repos}
-        tasks={state.tasks}
-        loaded={state.loaded}
-        profiles={profiles}
-        token={token}
-        client={client}
-        usage={usage}
-        budget={budget}
-        taskUsage={taskUsage}
-        refreshUsage={refreshUsage}
-        files={ownRead?.files ?? null}
-        error={error}
-        connection={state.connection}
-        onRetry={retry}
-        now={now}
-        notices={notices}
-        resumed={resumed}
-        onResume={resume}
-        onStop={stop}
-        changesOpen={changesOpen}
-        onToggleChanges={toggleChanges}
-        onHandoff={handoff}
-        handoffFor={handoffFor}
-        onHandoffFor={setHandoffFor}
-        flash={flash}
-        usageStamp={state.usageStamp}
-        onPick={pick}
-        onNewTask={() => openNewTask(null)}
-        defaultRepoId={repo?.id ?? null}
-        seed={seed}
-        onStarted={started}
-        onAddRepo={() => setAddRepo(true)}
-      />
-      {showChanges && activeTask !== null && (
-        <ChangesPanel
-          task={activeTask}
-          client={client}
-          notice={notices[activeTask.id] ?? null}
-          onOpen={(editor) => openInEditor(activeTask.id, editor)}
-          onCreatePr={(body) => createPr(activeTask.id, body)}
-          onUpdate={() => update(activeTask.id)}
-          onAskCommit={() => askCommit(activeTask.id)}
-          onClose={toggleChanges}
-          onLoaded={(response: ChangesResponse) =>
-            setRead({
-              taskId: response.task.id,
-              uncommitted: response.uncommitted,
-              files: response.files.length,
-            })
+      <TaskRowActionsProvider value={rows.actions}>
+        <Sidebar
+          groups={groups}
+          repos={state.repos}
+          selectedId={tabs.active}
+          collapsed={collapsed}
+          onSelect={(taskId) => dispatchTabs({ type: "open", taskId })}
+          onOpenCompare={(compareId) =>
+            dispatchTabs({ type: "open", taskId: compareTabId(compareId) })
           }
-          prOpen={prFor === activeTask.id}
-          onPrOpenChange={(open) => setPrFor(open ? activeTask.id : null)}
+          onNewTask={() => openNewTask(null)}
+          onSearch={() => setPaletteOpen(true)}
+          onAddRepo={() => setAddRepo(true)}
+          onCloseRepo={repoActions.close}
+          onReopenRepo={repoActions.reopen}
+          onRemoveRepo={(repoId) =>
+            setRemoving(state.repos.find((repo) => repo.id === repoId) ?? null)
+          }
+          repoNotices={repoActions.notices}
+          daemon={{ version, connection: state.connection }}
+          now={now}
+          onToggle={() => setCollapsed(!collapsed)}
         />
-      )}
-      <WorkspacePalette
-        client={client}
-        open={paletteOpen}
-        onOpenChange={setPaletteOpen}
-        context={{ activeTask, repo, uncommitted: ownRead?.uncommitted ?? null }}
-        onStarted={started}
-        handlers={{
-          newTask: (prefill) => openNewTask(prefill?.prompt ?? null),
-          stop: (taskId) => void stop(taskId),
-          resume: (taskId) => void resume(taskId, "header"),
-          handoff: setHandoffFor,
-          openInEditor: (taskId) => void openInEditor(taskId, null),
-          createPr: (taskId) => {
-            writePanelOpen(localStorage, true);
-            setChangesOpen(true);
-            setPrFor(taskId);
-          },
-          update: (taskId) => void update(taskId),
-          commit: (taskId) => void askCommit(taskId),
-          showCost: () => setFlash((count) => count + 1),
-          addRepo: () => setAddRepo(true),
-          // The sidebar draws the failure under the repo's heading; a rejection here has no reader.
-          sync: (repoId) => void repoActions.sync(repoId).catch(() => undefined),
-        }}
-      />
+        <AddRepoDialog
+          open={addRepo}
+          onOpenChange={setAddRepo}
+          client={client}
+          onReopen={repoActions.reopen}
+        />
+        <RemoveRepoDialog
+          repo={removing}
+          onOpenChange={(open) => setRemoving(open ? removing : null)}
+          onRemove={repoActions.remove}
+        />
+        <DeleteTaskDialog
+          task={rows.deleting}
+          repo={state.repos.find((repo) => repo.id === rows.deleting?.repoId) ?? null}
+          client={client}
+          onOpenChange={rows.closeDelete}
+          onDelete={rows.onDelete}
+        />
+        <Centre
+          tabs={tabs}
+          dispatchTabs={dispatchTabs}
+          repos={state.repos}
+          tasks={state.tasks}
+          loaded={state.loaded}
+          profiles={profiles}
+          token={token}
+          client={client}
+          usage={usage}
+          budget={budget}
+          taskUsage={taskUsage}
+          refreshUsage={refreshUsage}
+          files={ownRead?.files ?? null}
+          error={error}
+          connection={state.connection}
+          onRetry={retry}
+          now={now}
+          notices={notices}
+          resumed={resumed}
+          onResume={resume}
+          onStop={stop}
+          changesOpen={changesOpen}
+          onToggleChanges={toggleChanges}
+          onHandoff={handoff}
+          handoffFor={handoffFor}
+          onHandoffFor={setHandoffFor}
+          flash={flash}
+          usageStamp={state.usageStamp}
+          onPick={pick}
+          onNewTask={() => openNewTask(null)}
+          defaultRepoId={repo?.id ?? null}
+          seed={seed}
+          onStarted={started}
+          onAddRepo={() => setAddRepo(true)}
+        />
+        {showChanges && activeTask !== null && (
+          <ChangesPanel
+            task={activeTask}
+            client={client}
+            notice={notices[activeTask.id] ?? null}
+            onOpen={(editor) => openInEditor(activeTask.id, editor)}
+            onCreatePr={(body) => createPr(activeTask.id, body)}
+            onUpdate={() => update(activeTask.id)}
+            onAskCommit={() => askCommit(activeTask.id)}
+            onClose={toggleChanges}
+            onLoaded={(response: ChangesResponse) =>
+              setRead({
+                taskId: response.task.id,
+                uncommitted: response.uncommitted,
+                files: response.files.length,
+              })
+            }
+            prOpen={prFor === activeTask.id}
+            onPrOpenChange={(open) => setPrFor(open ? activeTask.id : null)}
+          />
+        )}
+        <WorkspacePalette
+          client={client}
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+          context={{ activeTask, repo, uncommitted: ownRead?.uncommitted ?? null }}
+          onStarted={started}
+          handlers={{
+            newTask: (prefill) => openNewTask(prefill?.prompt ?? null),
+            stop: (taskId) => void stop(taskId),
+            resume: (taskId) => void resume(taskId, "header"),
+            handoff: setHandoffFor,
+            openInEditor: (taskId) => void openInEditor(taskId, null),
+            createPr: askForPr,
+            archive: (taskId) => void rows.actions.archive(taskId),
+            delete: rows.actions.requestDelete,
+            update: (taskId) => void update(taskId),
+            commit: (taskId) => void askCommit(taskId),
+            showCost: () => setFlash((count) => count + 1),
+            addRepo: () => setAddRepo(true),
+            // The sidebar draws the failure under the repo's heading; a rejection here has no reader.
+            sync: (repoId) => void repoActions.sync(repoId).catch(() => undefined),
+          }}
+        />
+        <Toast toast={rows.toast} onDismiss={rows.dismissToast} />
+      </TaskRowActionsProvider>
     </div>
   );
-}
-
-/**
- * The daemon's version, read once per page load for the sidebar footer. A read that fails leaves the
- * footer without a version; whether agnd is answering is the feed's answer, not this one's.
- */
-function useDaemonVersion(client: WorkspaceClient): string | null {
-  const [version, setVersion] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    void client.health().then(
-      (response) => {
-        if (live) {
-          setVersion(response.version);
-        }
-      },
-      () => undefined,
-    );
-    return () => {
-      live = false;
-    };
-  }, [client]);
-  return version;
 }
 
 /** The Changes column takes its 360 px from the centre, which keeps its own 640 px minimum. */
