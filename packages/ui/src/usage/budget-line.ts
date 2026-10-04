@@ -2,10 +2,21 @@ import type { Billing, BudgetReport, BudgetState, BudgetWindow } from "@agnostic
 
 const WORSE: Record<BudgetState, number> = { ok: 0, warn: 1, exceeded: 2 };
 
-/** `$4.10 / $5.00 today`, or `$18 / $20 wk` when both figures are whole: the cell stays short. */
-export function budgetLine(window: BudgetWindow, when: "today" | "wk"): string {
-  const whole = Number.isInteger(window.spentUsd) && Number.isInteger(window.limitUsd);
-  return `${money(window.spentUsd, whole)} / ${money(window.limitUsd, whole)} ${when}`;
+/** `today $4.10 of $5`: cents only where a figure has them, because the cell is one line of 28 px. */
+export function budgetLine(window: BudgetWindow, when: "today" | "week"): string {
+  return `${when} ${money(window.spentUsd)} of ${money(window.limitUsd)}`;
+}
+
+/** What the cell says about the worse window; ok says nothing, because the figures already do. */
+export function budgetNotice(state: BudgetState): string | null {
+  switch (state) {
+    case "ok":
+      return null;
+    case "warn":
+      return "Past your 80% budget";
+    case "exceeded":
+      return "Over budget";
+  }
 }
 
 export function budgetPercent(window: BudgetWindow): number {
@@ -29,6 +40,6 @@ export function countsAgainstBudget(billing: Billing): boolean {
   return billing === "api-key" || billing === "credits";
 }
 
-function money(usd: number, whole: boolean): string {
-  return `$${whole ? usd.toFixed(0) : usd.toFixed(2)}`;
+function money(usd: number): string {
+  return `$${Number.isInteger(usd) ? usd.toFixed(0) : usd.toFixed(2)}`;
 }

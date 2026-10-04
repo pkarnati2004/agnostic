@@ -27,6 +27,11 @@ vendor meters them the same way. They appear in the per-plan totals and never on
 Desktop sessions are the exception: they report a total with no per-bucket split, so they do not
 appear in `agn usage` at all, while Codex CLI sessions do.
 
+The plan each vendor bills you on comes from a file on your machine, or from `plans` in
+`~/.agnostic/config.yaml` where no file says: see [Plans](models.md#plans). When nothing says, the
+workspace asks once in the usage bar, and the chip you pick writes the same `plans` entry
+`agn doctor --plan` writes.
+
 ## Windows
 
 "Today" is the calendar day in your own time zone. "This week" starts on Monday. The vendors meter

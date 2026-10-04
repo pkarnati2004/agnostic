@@ -1,16 +1,34 @@
 import type { Billing, BudgetWindow } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
-import { budgetLine, budgetPercent, budgetTone, countsAgainstBudget } from "./budget-line";
+import {
+  budgetLine,
+  budgetNotice,
+  budgetPercent,
+  budgetTone,
+  countsAgainstBudget,
+} from "./budget-line";
 
 function window(spentUsd: number, limitUsd: number, state: BudgetWindow["state"]): BudgetWindow {
   return { spentUsd, limitUsd, state };
 }
 
 describe("budgetLine", () => {
-  it("prints cents, and drops them when both figures are whole dollars", () => {
-    expect(budgetLine(window(4.1, 5, "warn"), "today")).toBe("$4.10 / $5.00 today");
-    expect(budgetLine(window(18, 20, "warn"), "wk")).toBe("$18 / $20 wk");
-    expect(budgetLine(window(18.4, 20, "warn"), "wk")).toBe("$18.40 / $20.00 wk");
+  it("names the window, then the spend against the ceiling", () => {
+    expect(budgetLine(window(4.1, 5, "warn"), "today")).toBe("today $4.10 of $5");
+    expect(budgetLine(window(16.4, 20, "warn"), "week")).toBe("week $16.40 of $20");
+  });
+
+  it("prints cents only where a figure has them", () => {
+    expect(budgetLine(window(18, 20, "warn"), "week")).toBe("week $18 of $20");
+    expect(budgetLine(window(4.1, 5.5, "warn"), "today")).toBe("today $4.10 of $5.50");
+  });
+});
+
+describe("budgetNotice", () => {
+  it("says what the tone means, and says nothing while the spend is fine", () => {
+    expect(budgetNotice("ok")).toBe(null);
+    expect(budgetNotice("warn")).toBe("Past your 80% budget");
+    expect(budgetNotice("exceeded")).toBe("Over budget");
   });
 });
 

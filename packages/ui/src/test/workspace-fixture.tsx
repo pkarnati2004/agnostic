@@ -55,6 +55,7 @@ export function stubClient(overrides: Partial<WorkspaceClient> = {}): WorkspaceC
     syncRepo: () => Promise.reject(new Error("unused")),
     health: () => Promise.reject(new Error("unused")),
     catalog: () => Promise.reject(new Error("unused")),
+    doctor: () => Promise.reject(new Error("unused")),
     updateCatalog: () => Promise.reject(new Error("unused")),
     compare: () => Promise.reject(new Error("unused")),
     pickCompare: () => Promise.reject(new Error("unused")),

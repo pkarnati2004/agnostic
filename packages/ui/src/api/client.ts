@@ -7,6 +7,8 @@ import type {
   CreatePrRequest,
   CreatePrResponse,
   DiffResponse,
+  DoctorRequest,
+  DoctorResponse,
   EditorsResponse,
   Event,
   HandoffTaskRequest,
@@ -77,6 +79,11 @@ export type WorkspaceClient = {
   compare(id: string): Promise<CompareResponse>;
   /** Keeps one sibling and cleans the rest; their branches stay. */
   pickCompare(id: string, body: PickCompareRequest): Promise<PickCompareResponse>;
+  /**
+   * Re-detects every harness. An empty body changes nothing and answers with what agn found,
+   * including the plans the catalog knows; `{plans}` writes them to config.yaml first (ADR 016).
+   */
+  doctor(body: DoctorRequest): Promise<DoctorResponse>;
   /** The editors on this machine and the configured one, for the Open in editor control. */
   editors(): Promise<EditorsResponse>;
   /** The daemon spawns the editor itself: the page has no terminal to run one in (ADR 036 Q4). */
@@ -177,6 +184,7 @@ export function createClient(opts: {
     compare: (id) => json<CompareResponse>("GET", `/compares/${encodeURIComponent(id)}`),
     pickCompare: (id, body) =>
       json<PickCompareResponse>("POST", `/compares/${encodeURIComponent(id)}/pick`, body),
+    doctor: (body) => json<DoctorResponse>("POST", "/doctor", body),
     editors: () => json<EditorsResponse>("GET", "/editors"),
     openTask: (id, body) =>
       json<OpenedTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/open`, body),

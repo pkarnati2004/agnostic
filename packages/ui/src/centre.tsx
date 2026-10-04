@@ -6,8 +6,9 @@ import type {
   RepoListRow,
   Task,
   TaskListRow,
+  TaskUsageResponse,
 } from "@agnostic/core";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
 import { CompareView } from "./compare/compare-view";
@@ -39,7 +40,9 @@ type CentreProps = {
   /** The ceilings from config.yaml, read with the usage the bar draws; null until one arrives. */
   budget: BudgetReport | null;
   /** What the tab in front has spent; the page holds the hook that reads it. */
-  cost: ReactNode;
+  taskUsage: TaskUsageResponse | null;
+  /** Re-reads `GET /usage` at once: the usage bar asks for it after it writes a plan. */
+  refreshUsage: () => void;
   /** How many files the Changes panel found on its last read of the tab in front; null before one. */
   files: number | null;
   /** The bootstrap failure, and only that: every other failure is in `notices`. */
@@ -114,7 +117,6 @@ export function Centre(props: CentreProps) {
           repo={props.repos.find((repo) => repo.id === active.repoId) ?? null}
           profiles={props.profiles}
           budget={props.budget}
-          cost={props.cost}
           files={props.files}
           notice={props.notices[active.id] ?? null}
           onStop={() => props.onStop(active.id).then(() => undefined)}
@@ -176,7 +178,14 @@ export function Centre(props: CentreProps) {
         onResume={(taskId) => props.onResume(taskId, "overlay")}
         onHandoff={props.onHandoffFor}
       />
-      <UsageBar state={props.usage} flash={props.flash} />
+      <UsageBar
+        state={props.usage}
+        flash={props.flash}
+        taskUsage={props.taskUsage}
+        showTask={active !== undefined}
+        client={client}
+        refresh={props.refreshUsage}
+      />
     </main>
   );
 }

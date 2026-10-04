@@ -18,6 +18,7 @@ export function render(node: ReactNode): Rendered {
   act(() => root.render(node));
   return {
     container,
+    // `update` runs inside `act` itself; wrapping a call in another `act` corrupts React's act queue.
     update: (next) => act(() => root.render(next)),
     unmount: () => {
       act(() => root.unmount());

@@ -70,7 +70,8 @@ function centre(tabs: TabsState, extra: Extra = {}) {
         client={stubClient({ compare: () => new Promise(() => undefined) })}
         usage={IDLE_USAGE}
         budget={null}
-        cost={null}
+        taskUsage={null}
+        refreshUsage={vi.fn()}
         files={null}
         error={extra.error ?? null}
         connection={extra.connection ?? "live"}

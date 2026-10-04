@@ -23,7 +23,7 @@ than the page.
 - **New task:** the row in the sidebar, and the "+" at the end of the tab strip, open the New task tab: describe the work, see agn's pick, keep it or change it, start.
 - **Right:** what the selected task has changed, with the patch of the file you click. "Changes" in the task header opens and closes it.
 - **Compare:** `agn compare` runs one prompt on several agents at once. The siblings are one row in the sidebar, and the row opens a Compare view with a column per agent.
-- **Bottom:** tokens and cost per plan, for today and for this week.
+- **Bottom:** the usage bar: one cell per plan with its rate-limit percent or its tokens, the budget, and what the task in front has spent. See [The usage bar](#the-usage-bar).
 
 Everything the workspace shows comes from the local daemon; closing the tab loses nothing.
 
@@ -369,18 +369,26 @@ check is turned off in `config.yaml`, the page says nothing about it.
 
 ## The usage bar
 
-Along the bottom there is one cell per plan. Each cell starts with the mark of the harness the plan
-is billed through: C for claude-code, X for codex, O for opencode, π for pi, G for gemini, and the
-first two letters of the name for any other harness (Gr for grok, Ki for kimi, Cu for cursor-agent).
-A plan agn has no vendor for reads `?`.
+Along the bottom there is one cell per plan, each 28 px tall and separated by a hairline. A cell
+starts with the mark of the harness the plan is billed through: C for claude-code, X for codex, O
+for opencode, π for pi, G for gemini, and the first two letters of the name for any other harness
+(Gr for grok, Ki for kimi, Cu for cursor-agent). A plan agn has no vendor for reads `?`. Then comes
+the plan's name, `Claude max20`, and its figures.
 
-Where a file on this machine says how much of the plan's rate limit is spent, the cell shows a bar
-for the 5-hour window and the two percentages: `58% 5h · 41% wk`. The bar turns amber at 80% and
-red at 95%. A figure older than two hours reads `~58%`, dimmed. A window past its reset reads `–`.
-See [Limits](usage.md#limits) for which agents report this and how agn reads it.
+Where a file on this machine says how much of the plan's rate limit is spent, the figures are a bar
+for the 5-hour window and the percentages: `5h 58% week 41%`. The bar turns yellow at 80% and red at
+95%. A figure older than two hours reads `~58%`, dimmed, and dims the bar with it. A window past its
+reset reads `–`. See [Limits](usage.md#limits) for which agents report a limit and how agn reads it.
 
-Where nothing on this machine reports a limit, the cell shows tokens and cost for today and for
-this week, the figures `agn usage` prints from the same scan.
+Where nothing on this machine reports a limit, the figures are tokens for today and for this week,
+shortened to fit: `today 2.1M tok week 9.8M tok`. A window agn could price carries the price after
+the tokens, `184k tok · $1.92`; a plan that priced nothing reads `included in plan`.
+
+When agn cannot tell which plan you are on, the cell asks instead of showing figures: **Which Claude
+plan are you on?** followed by a chip per plan the catalog knows. One click writes the plan and the
+cell turns into its figures on the next read. **Other** replies with the command for a plan the
+catalog does not list. It is one line in the bar, never a dialog, and the workspace asks once per
+page load.
 
 Hover a cell for the plan's usage panel:
 
@@ -398,16 +406,19 @@ Hover a cell for the plan's usage panel:
   the token, the real cost: `$1.92 this week · $0.40 today`.
 
 The token windows are calendar windows in your own time zone: today is today, and the week starts
-on Monday. The rate-limit windows are the vendor's own rolling ones, so the two sets of figures
-count different spans.
+on Monday. The rate-limit windows are the vendor's own rolling
+ones, so the two sets of figures count different spans.
 
-The selected task's own tokens and cost sit in its header, at the end of the line under the title.
-A task billed to a subscription reads `included in plan` rather than a price.
+If `~/.agnostic/config.yaml` sets a `budget`, a cell after the plans shows what this machine has
+spent against it: `today $4.10 of $5` and the week beside it. Past 80% of a ceiling the cell is
+yellow and says **Past your 80% budget**; at 100% it is red and says **Over budget**. Hover it for
+the percentage and for what is counted - API-key and credits runs, never subscription runs. A
+subscription plan's own cell never mentions a budget, because those runs are not counted against
+one. See [Budgets](usage.md#budgets).
 
-If `~/.agnostic/config.yaml` sets a `budget`, a last cell shows what this machine has spent against
-it: `$4.10 / $5.00 today` and the week beside it. The cell turns amber at 80% of a ceiling and red
-at 100%. Hover it for the percentage and for what is counted - API-key and credits runs, never
-subscription runs. See [Budgets](usage.md#budgets).
+At the right end, **This task** is what the task in front has spent: its tokens and its cost, or
+`included in plan` for a task billed to a subscription, or `no usage yet` before anything is
+recorded. The Compare tab and the New task tab have no task of their own, so they show no such cell.
 
 ## The spec step
 

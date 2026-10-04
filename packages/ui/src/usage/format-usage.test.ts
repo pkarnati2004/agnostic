@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatCompact,
   formatCount,
   formatMoney,
   formatPercent,
@@ -38,17 +39,40 @@ describe("formatShare", () => {
   });
 });
 
+describe("formatCompact", () => {
+  it("shortens the figure to what fits one cell", () => {
+    expect(formatCompact(2_100_000)).toBe("2.1M");
+    expect(formatCompact(184_000)).toBe("184k");
+    expect(formatCompact(640)).toBe("640");
+    expect(formatCompact(null)).toBe("-");
+  });
+
+  it("drops a trailing zero rather than printing one", () => {
+    expect(formatCompact(2_000_000)).toBe("2M");
+    expect(formatCompact(1_234_567)).toBe("1.2M");
+  });
+
+  it("switches units right at each threshold, not one figure early or late", () => {
+    expect(formatCompact(999)).toBe("999");
+    expect(formatCompact(1_000)).toBe("1k");
+    expect(formatCompact(1_050_000)).toBe("1.1M");
+  });
+});
+
 describe("planLabel", () => {
-  it("names the vendor and the plan", () => {
-    expect(planLabel(claudePlan())).toBe("claude max20");
+  it("names the vendor as the vendor names itself, then the plan agn stores", () => {
+    expect(planLabel(claudePlan())).toBe("Claude max20");
+    expect(planLabel(claudePlan({ vendor: "chatgpt", plan: "plus" }))).toBe("ChatGPT plus");
   });
 
-  it("falls back to the plan alone when no vendor owns it", () => {
-    expect(planLabel(claudePlan({ vendor: null, plan: "x" }))).toBe("x");
+  it("names the vendor alone while its plan is unknown", () => {
+    expect(planLabel(claudePlan({ plan: null }))).toBe("Claude");
   });
 
-  it("says a plan agn does not know", () => {
-    expect(planLabel(claudePlan({ plan: null }))).toBe("unknown plan");
+  it("names the harness where no vendor bills it", () => {
+    expect(planLabel(claudePlan({ harness: "opencode", vendor: null, plan: null }))).toBe(
+      "opencode",
+    );
   });
 });
 

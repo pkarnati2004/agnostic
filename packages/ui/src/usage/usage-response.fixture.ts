@@ -1,6 +1,8 @@
 import type {
   BudgetReport,
+  DoctorResponse,
   PlanLimit,
+  PlanOption,
   PlanUsage,
   Task,
   TaskUsageResponse,
@@ -32,6 +34,32 @@ export function claudePlan(over: Partial<PlanUsage> = {}): PlanUsage {
     unattributedTokens: 1_700,
     fableShare: 0.25,
     apiRateUsd: 12.4,
+    ...over,
+  };
+}
+
+/** The catalog rows `POST /doctor` answers with, which is all the plan question ever offers. */
+export function planOptions(): PlanOption[] {
+  return [
+    { vendor: "claude", id: "pro", displayName: "Pro" },
+    { vendor: "claude", id: "max5", displayName: "Max 5x" },
+    { vendor: "claude", id: "max20", displayName: "Max 20x" },
+    { vendor: "chatgpt", id: "plus", displayName: "Plus" },
+  ];
+}
+
+/** Only the fields the workspace reads: the rest of the report belongs to `agn doctor`. */
+export function doctorResponse(over: Partial<DoctorResponse> = {}): DoctorResponse {
+  return {
+    harnesses: [],
+    profiles: [],
+    tools: [],
+    detectedAt: new Date(SCANNED_AT).toISOString(),
+    pathVar: "/usr/bin",
+    plans: {},
+    named: [],
+    planOptions: planOptions(),
+    tmuxConfigStale: false,
     ...over,
   };
 }

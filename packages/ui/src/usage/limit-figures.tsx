@@ -7,8 +7,8 @@ import { formatPercent } from "./format-usage";
 const WARN_PERCENT = 80;
 const OVER_PERCENT = 95;
 
-const BAR_WIDTH_PX = 48;
-const BAR_HEIGHT_PX = 6;
+const BAR_WIDTH_PX = 36;
+const BAR_HEIGHT_PX = 4;
 
 /** A figure the account has had two hours to move is drawn, but not at full strength. */
 const APPROXIMATE_OPACITY = 0.5;
@@ -18,7 +18,7 @@ const STALE = "–";
 
 /**
  * What the plan's own meter says: a bar for the 5-hour window, which is the one that moves within
- * a sitting, and the week beside it as text. ADR 029, amended 2026-09-30: no Fable figure here,
+ * a sitting, then the week beside it as text. ADR 029, amended 2026-09-30: no Fable figure here,
  * because the status-line payload carries no Fable window to draw one from.
  */
 export function LimitFigures({ limit, now }: { limit: PlanLimit; now: number }) {
@@ -27,7 +27,8 @@ export function LimitFigures({ limit, now }: { limit: PlanLimit; now: number }) 
   const percent =
     limit.fiveHour === null || fiveHour === "stale" ? null : limit.fiveHour.usedPercent;
   return (
-    <span className="flex shrink-0 items-center gap-1.5">
+    <>
+      <span>5h</span>
       <span
         className="shrink-0 overflow-hidden rounded-full bg-border"
         style={{ width: BAR_WIDTH_PX, height: BAR_HEIGHT_PX }}
@@ -42,11 +43,10 @@ export function LimitFigures({ limit, now }: { limit: PlanLimit; now: number }) 
           }}
         />
       </span>
-      <span className="tabular-nums text-foreground">
-        <Figure window={limit.fiveHour} named="five-hour" freshness={fiveHour} /> 5h ·{" "}
-        <Figure window={limit.week} named="week" freshness={week} /> wk
-      </span>
-    </span>
+      <Figure window={limit.fiveHour} named="five-hour" freshness={fiveHour} lead />
+      <span>week</span>
+      <Figure window={limit.week} named="week" freshness={week} />
+    </>
   );
 }
 
@@ -58,6 +58,17 @@ export function hasFigure(limit: PlanLimit, now: number): boolean {
   );
 }
 
+/**
+ * The budget cell's colours, so a plan near its ceiling reads the same as a budget near one. A
+ * caller on another surface passes the colour its own text is drawn in as `base`.
+ */
+export function barFill(usedPercent: number, base = "var(--muted-foreground)"): string {
+  if (usedPercent >= OVER_PERCENT) {
+    return "var(--destructive)";
+  }
+  return usedPercent >= WARN_PERCENT ? "var(--warning)" : base;
+}
+
 /** A window the harness never reported has no figure at all, fresh or stale. */
 function windowFreshness(
   window: LimitWindow | null,
@@ -67,25 +78,16 @@ function windowFreshness(
   return window === null ? "stale" : limitFreshness(window, observedAt, new Date(now));
 }
 
-/**
- * The budget cell's colours, so a plan near its ceiling reads the same as a budget near one. A
- * caller on another surface passes the colour its own text is drawn in as `base`.
- */
-export function barFill(usedPercent: number, base = "var(--foreground)"): string {
-  if (usedPercent >= OVER_PERCENT) {
-    return "var(--destructive)";
-  }
-  return usedPercent >= WARN_PERCENT ? "var(--warning)" : base;
-}
-
 type FigureProps = {
   window: LimitWindow | null;
   named: "five-hour" | "week";
   freshness: LimitFreshness;
+  /** The five-hour figure is the one being spent now, so it reads first; the week's stays quieter. */
+  lead?: boolean;
 };
 
 /** The tilde is text, not a glyph or a colour, so it reads the same here and in `agn usage`. */
-function Figure({ window, named, freshness }: FigureProps) {
+function Figure({ window, named, freshness, lead }: FigureProps) {
   const text =
     window === null || freshness === "stale"
       ? STALE
@@ -94,7 +96,11 @@ function Figure({ window, named, freshness }: FigureProps) {
     <span
       data-window={named}
       data-freshness={freshness}
-      className={cn(freshness === "approximate" && "text-muted-foreground")}
+      className={cn(
+        "type-mono tabular-nums",
+        lead === true && freshness !== "approximate" && "text-foreground",
+        freshness === "approximate" && "text-muted-foreground",
+      )}
     >
       {text}
     </span>

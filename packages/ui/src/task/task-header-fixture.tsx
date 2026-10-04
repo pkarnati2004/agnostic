@@ -35,7 +35,6 @@ export function renderHeader(task: TaskListRow, files: number | null = null) {
       repo={REPO}
       profiles={[PROFILE]}
       budget={null}
-      cost={null}
       client={stubClient()}
       files={files}
       notice={null}
