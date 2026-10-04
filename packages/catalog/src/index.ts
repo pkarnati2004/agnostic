@@ -11,6 +11,7 @@ export {
   type PricingRow,
   parseCatalog,
   type SourceRow,
+  type VendorOf,
 } from "./catalog-schema.js";
 export { CATALOG_BASE_URL, type CatalogSource, catalogSource } from "./catalog-source.js";
 export { CatalogError } from "./error.js";

@@ -3,7 +3,7 @@
 // data (ADR 011), so there is no table and no override precedence here.
 import type { Catalog, ModelRow, PricingRow } from "@agnostic/catalog";
 import type { Billing, HarnessId } from "@agnostic/core";
-import type { TranscriptTurn } from "./transcript-parser.js";
+import type { PriceableTurn } from "./transcript-parser.js";
 
 export type TokenBuckets = {
   input: number;
@@ -68,14 +68,21 @@ export function priceTokens(buckets: TokenBuckets, row: PricingRow): number | nu
 /**
  * What one turn cost the user. A model on a subscription costs nothing extra however many tokens
  * it used; credits and API keys are metered, and `unknown` is priced like a key so that a cost
- * agn cannot rule out is shown rather than hidden.
+ * agn cannot rule out is shown rather than hidden. A cost the harness wrote itself beats agn's
+ * estimate, because it is the figure the provider billed.
  */
 export function costForTurn(
-  turn: TranscriptTurn,
+  turn: PriceableTurn,
   billing: Billing | null,
   catalog: Catalog,
 ): number | null {
-  if (billing === null || INCLUDED.includes(billing) || turn.model === null) {
+  if (billing === null || INCLUDED.includes(billing)) {
+    return null;
+  }
+  if (turn.costUsd !== null) {
+    return turn.costUsd;
+  }
+  if (turn.model === null) {
     return null;
   }
   const row = pricingRow(turn.harness, turn.model, catalog.models, catalog.pricing);

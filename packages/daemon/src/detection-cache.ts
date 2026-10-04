@@ -21,32 +21,48 @@ export type DetectionCache = {
   refresh(): Promise<Detection>;
 };
 
+/** What a cached detection goes stale on, each stamped once per run and again on every read. */
+export type StaleWhen = {
+  /** The harness auth files change: a re-login or a plan change rewrites one of them. */
+  authFiles?: () => Promise<string>;
+  /** A harness binary changes: the detection's own paths, stat'd as of that run. */
+  binaries?: (detection: Detection) => Promise<string>;
+};
+
 /**
  * Detection shells out to every installed harness and asks each for its model list, so it runs at
- * start and on `agn doctor`, never per request. Nothing here is persisted: a model list is only
- * true for as long as the harness that answered stays installed.
+ * start, on the daily catalog tick, when a stamped file changes and on `agn doctor`, never per
+ * request. Nothing here is persisted: a model list is only true for as long as the harness that
+ * answered stays installed.
  */
 export function createDetectionCache(
   detect: () => Promise<Detection>,
   ledger: Ledger,
-  /** A fingerprint of the harness auth files; a change in it makes the cached answer stale. */
-  stamp: () => Promise<string> = () => Promise.resolve(""),
+  stale: StaleWhen = {},
 ): DetectionCache {
+  const authFiles = stale.authFiles ?? nothing;
+  const binaries = stale.binaries ?? nothing;
   let latest: Detection | null = null;
-  // Taken when the run starts and kept unawaited, so a file that changes while detection is
-  // running is seen as a change, and so a run finishes as soon as detection does.
   let latestStamp: Promise<string> = Promise.resolve("");
   let inFlight: Promise<Detection> | null = null;
   let queued: Promise<Detection> | null = null;
   const announced = new Set<string>();
 
+  // The auth files are stamped as the run starts, so one rewritten while detection is running is
+  // seen as a change. The binaries are stamped from the detection itself, which is what resolved
+  // their paths, so the first read after a run does not find its own stamp stale.
+  // Each half has one `|`-separated segment per registry entry, a count that does not change
+  // between runs, so joining the two on `|` cannot read as a different split of the same string.
+  const stampOf = async (auth: Promise<string>, detection: Detection): Promise<string> =>
+    `${await auth}|${await binaries(detection)}`;
+
   const run = async (): Promise<Detection> => {
-    const taken = stamp();
+    const taken = authFiles();
     const detection = await detect();
     announce(ledger, detection, announced);
     announcePlans(ledger, latest, detection);
     latest = detection;
-    latestStamp = taken;
+    latestStamp = stampOf(taken, detection);
     return detection;
   };
 
@@ -78,10 +94,16 @@ export function createDetectionCache(
     if (latest === null) {
       return refresh();
     }
-    return (await stamp()) === (await latestStamp) ? latest : refresh();
+    const now = stampOf(authFiles(), latest);
+    return (await now) === (await latestStamp) ? latest : refresh();
   };
 
   return { current, refresh };
+}
+
+/** A cache given no stamp never goes stale on a file; the daemon always gives it both. */
+function nothing(): Promise<string> {
+  return Promise.resolve("");
 }
 
 /** A failed run is the caller's to handle; the run queued behind it still has to start. */

@@ -7,9 +7,9 @@ import {
   withManagedStatusLine,
   withoutManagedStatusLine,
 } from "../claude-code/statusline.js";
-import { claudeUserStatusLine, readUserStatusLine } from "../claude-code/user-statusline.js";
+import { readUserStatusLine } from "../claude-code/user-statusline.js";
 import { HooksError } from "../error.js";
-import type { HookInstaller, HookInstallInput } from "../hook-installer.js";
+import type { HookInstaller, HookInstallInput, UserStatusLine } from "../hook-installer.js";
 import { hookCommand, hookScriptMarker, quoted, statusLineScriptPath } from "../hook-script.js";
 import {
   type HookLayout,
@@ -40,10 +40,11 @@ export type SettingsJsonMember = {
   /** The one step of the install agn cannot do itself, or null when there is none. */
   verify: string | null;
   /**
-   * Whether agn also owns this harness's status-line slot, which is where Claude Code reports the
-   * plan's rate limits. True for Claude Code only; no other member has such a slot.
+   * This member's own writer for the status-line slot in its own user-scope settings file, or null
+   * when it has none. Each member brings its own: the slot's path and the file agn records the
+   * user's line in belong to the harness, so one member's adapter must never write another's file.
    */
-  statusLine: boolean;
+  userStatusLine: UserStatusLine | null;
 };
 
 /** A status line the user wrote is theirs; agn captures no rate limits for that file. */
@@ -52,15 +53,16 @@ function userStatusLineVerify(file: string): string {
 }
 
 export function settingsJsonInstaller(member: SettingsJsonMember): HookInstaller {
+  const slot = statusLineSlotOwner(member);
   return {
     harness: member.harness,
     // The same slot in the user's own settings file, so every session of that harness reports.
-    ...(member.statusLine ? { userStatusLine: claudeUserStatusLine } : {}),
+    ...(slot === null ? {} : { userStatusLine: slot }),
 
     async install(input: HookInstallInput): Promise<HookInstallResult> {
       const mechanism = settingsJson(member.harness);
       const file = settingsFile(mechanism, input);
-      const status = member.statusLine ? await statusLineFor(input) : null;
+      const status = slot === null ? null : await statusLineFor(input);
       let verify = member.verify;
       const changed = await updateHooksJson(file, (config) => {
         const withHooks = withManagedHooks(
@@ -96,11 +98,21 @@ export function settingsJsonInstaller(member: SettingsJsonMember): HookInstaller
       const file = settingsFile(settingsJson(member.harness), input);
       const changed = await updateHooksJson(file, (config) => {
         const swept = withoutManagedHooks(config, hookScriptMarker(input.paths));
-        return member.statusLine ? withoutManagedStatusLine(swept, statusLineMarker(input)) : swept;
+        return slot === null ? swept : withoutManagedStatusLine(swept, statusLineMarker(input));
       });
       return { harness: member.harness, file, changed, verify: null };
     },
   };
+}
+
+/**
+ * agn owns this harness's status-line slot only when its row says that is where the harness
+ * reports its plan's own meter and the member brought a writer for its own file. For every other
+ * member the slot stays the user's.
+ */
+function statusLineSlotOwner(member: SettingsJsonMember): UserStatusLine | null {
+  const reports = harnessDefinition(member.harness).limitSource === "statusline";
+  return reports ? member.userStatusLine : null;
 }
 
 /** agn's own status-line entries carry the script path, as its hook entries do. */

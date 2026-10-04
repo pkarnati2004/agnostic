@@ -104,7 +104,13 @@ describe("the Grok hook parser", () => {
 
   it("names the event it read, and keeps no session id it could not pass as an argument", () => {
     const parsed = grokParser.parse({ hookEventName: "Stop", sessionId: "--rm -rf" });
-    expect(parsed).toEqual({ event: "Stop", status: "waiting", sessionId: null, cwd: null });
+    expect(parsed).toEqual({
+      event: "Stop",
+      status: "waiting",
+      sessionId: null,
+      cwd: null,
+      usage: null,
+    });
   });
 
   it("treats a non-string toolName as no tool named, not a crash", () => {

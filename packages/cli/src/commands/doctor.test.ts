@@ -17,6 +17,8 @@ function report(over: Partial<HarnessReport>): HarnessReport {
     models: ["sonnet-4.5"],
     modelSource: "probe",
     planVendor: "claude",
+    limitSource: "statusline",
+    usageSource: "transcripts",
     plan: { value: "max20", source: "detected", known: true, confirmed: true, overridden: null },
     limitCapture: "all-sessions",
     ...over,
@@ -87,8 +89,8 @@ describe("agn doctor", () => {
     ]);
     await done();
     expect(cli.out).toEqual([
-      "harness      version  login      support  models      plan   path",
-      "claude-code  2.0.1    logged-in  full     1 (probed)  max20  /opt/bin/claude",
+      "harness      version  login      support  usage        models      plan   path",
+      "claude-code  2.0.1    logged-in  full     transcripts  1 (probed)  max20  /opt/bin/claude",
       "not installed: codex, gemini (2)",
       "claude-code status-line capture: all sessions",
       "profiles: 1 available (agn profiles)",
@@ -145,8 +147,8 @@ describe("agn doctor", () => {
     );
     await done();
     expect(cli.out.slice(0, 3)).toEqual([
-      "harness  version  login  support  models      plan  path",
-      "gemini   -        -      status   1 (probed)  -     not installed",
+      "harness  version  login  support  usage  models      plan  path",
+      "gemini   -        -      status   -      1 (probed)  -     not installed",
       "not installed: codex (1)",
     ]);
   });
@@ -168,18 +170,21 @@ describe("agn doctor", () => {
         models: ["a", "b"],
         version: "0.9",
         planVendor: null,
+        limitSource: null,
         plan: null,
       }),
       report({
-        harness: "gemini",
-        support: "status",
-        binary: "gemini",
-        path: "/opt/bin/gemini",
+        harness: "cursor-agent",
+        support: "full",
+        binary: "cursor-agent",
+        path: "/opt/bin/cursor-agent",
         version: "0.4",
         login: "logged-in",
         models: [],
         modelSource: "none",
         planVendor: null,
+        limitSource: null,
+        usageSource: "hook",
         plan: null,
       }),
       report({
@@ -193,15 +198,17 @@ describe("agn doctor", () => {
         models: [],
         modelSource: "none",
         planVendor: null,
+        limitSource: null,
+        usageSource: null,
         plan: null,
       }),
     ]);
     await done();
     expect(cli.out.slice(1, 5)).toEqual([
-      "claude-code  2.0.1    logged-in  full     1 (probed)     max20  /opt/bin/claude",
-      "pi           0.9      logged-in  full     2 (seed list)  -      /opt/bin/pi",
-      "gemini       0.4      logged-in  status   none           -      /opt/bin/gemini",
-      "aider        0.1      unknown    basic    none           -      /opt/bin/aider",
+      "claude-code   2.0.1    logged-in  full     transcripts    1 (probed)     max20  /opt/bin/claude",
+      "pi            0.9      logged-in  full     transcripts    2 (seed list)  -      /opt/bin/pi",
+      "cursor-agent  0.4      logged-in  full     hook           none           -      /opt/bin/cursor-agent",
+      "aider         0.1      unknown    basic    not available  none           -      /opt/bin/aider",
     ]);
   });
 
@@ -242,7 +249,7 @@ describe("agn doctor", () => {
     expect(JSON.parse(cli.out.join("\n"))).toEqual(response);
   });
 
-  it("names which Claude Code sessions report their limits, in each of its three states", async () => {
+  it("names which sessions of a status-line harness report their limits, in all three states", async () => {
     const all = run([report({ limitCapture: "all-sessions" })]);
     await all.done();
     expect(all.cli.out).toContain("claude-code status-line capture: all sessions");
@@ -260,8 +267,11 @@ describe("agn doctor", () => {
     );
   });
 
-  it("says nothing about the status line when Claude Code is not in the table", async () => {
-    const { cli, done } = run([report({ harness: "codex", planVendor: null, plan: null })]);
+  it("says nothing about a status line for a harness that reports its limits elsewhere", async () => {
+    const { cli, done } = run([
+      report({ harness: "codex", planVendor: null, plan: null, limitSource: "rollout" }),
+      report({ harness: "pi", planVendor: null, plan: null, limitSource: null }),
+    ]);
     await done();
     expect(cli.out.some((line) => line.includes("status-line capture"))).toBe(false);
   });
@@ -272,5 +282,18 @@ describe("agn doctor", () => {
     await done();
     const body = JSON.parse(cli.out.join("\n")) as { harnesses: { limitCapture: string }[] };
     expect(body.harnesses[0]?.limitCapture).toBe("all-sessions");
+  });
+
+  it("carries each harness's limit source in --json, so a script can see what agn can read", async () => {
+    const { cli, done } = run([report({}), report({ harness: "pi", limitSource: null })]);
+    cli.ctx.json = true;
+    await done();
+    const body = JSON.parse(cli.out.join("\n")) as {
+      harnesses: { harness: string; limitSource: string | null }[];
+    };
+    expect(body.harnesses.map((row) => [row.harness, row.limitSource])).toEqual([
+      ["claude-code", "statusline"],
+      ["pi", null],
+    ]);
   });
 });

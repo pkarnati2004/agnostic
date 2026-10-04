@@ -12,6 +12,7 @@ const COLUMNS: Column<HarnessReport>[] = [
   { header: "login", value: (row) => (row.path === null ? "-" : row.login) },
   // full is status and usage, status is a live status with no token count, basic is launch only.
   { header: "support", value: (row) => row.support },
+  { header: "usage", value: usage },
   { header: "models", value: models },
   { header: "plan", value: planCell },
   { header: "path", value: (row) => row.path ?? NOT_INSTALLED },
@@ -54,9 +55,8 @@ function report(ctx: CliContext, response: DoctorResponse, verbose: boolean): vo
   if (missing !== null) {
     ctx.io.out(missing);
   }
-  const capture = captureLine(reported(response));
-  if (capture !== null) {
-    ctx.io.out(capture);
+  for (const line of captureLines(reported(response))) {
+    ctx.io.out(line);
   }
   for (const tool of response.tools) {
     ctx.io.out(toolLine(tool));
@@ -120,15 +120,13 @@ function pathExplainsAGap(response: DoctorResponse): boolean {
 }
 
 /**
- * Which Claude Code sessions report their plan's rate limit. It is the one harness whose limits
- * come from a status line agn installs; the others report in files they write themselves.
+ * Which of a harness's sessions report its plan's rate limit. One line per harness whose limits
+ * come from a status line agn installs; the rest report in files they write themselves.
  */
-function captureLine(rows: HarnessReport[]): string | null {
-  const row = rows.find((candidate) => candidate.harness === "claude-code");
-  if (row === undefined) {
-    return null;
-  }
-  return `claude-code status-line capture: ${captureState(row.limitCapture)}`;
+function captureLines(rows: HarnessReport[]): string[] {
+  return rows
+    .filter((row) => row.limitSource === "statusline")
+    .map((row) => `${row.harness} status-line capture: ${captureState(row.limitCapture)}`);
 }
 
 function captureState(capture: LimitCapture): string {
@@ -148,6 +146,14 @@ function toolLine(tool: ToolReport): string {
     return `tools: ${tool.tool} ${NOT_INSTALLED}`;
   }
   return `tools: ${tool.tool} ${tool.version ?? "-"} (${tool.login})`;
+}
+
+/** Where this agent's tokens come from, or that nothing on the machine records them. */
+function usage(row: HarnessReport): string {
+  if (row.path === null) {
+    return "-";
+  }
+  return row.usageSource ?? "not available";
 }
 
 function models(row: HarnessReport): string {

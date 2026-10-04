@@ -9,6 +9,7 @@ import {
   type CatalogUpdate,
   CoreError,
 } from "@agnostic/core";
+import { planVendor } from "@agnostic/registry";
 import type { CatalogStore } from "./catalog-store.js";
 import type { Logger } from "./log.js";
 
@@ -30,8 +31,8 @@ type CheckerDeps = {
   paths: AgnosticPaths;
   log: Logger;
   enabled: boolean;
-  /** Run after a download landed: the model lists and entitlements it reads may have moved. */
-  onUpdated: () => Promise<void>;
+  /** Run once per check, after a download that landed has been reloaded. */
+  onChecked: () => Promise<void>;
   fetch?: typeof fetch;
   now?: () => Date;
   intervalMs?: number;
@@ -95,12 +96,17 @@ async function check(deps: CheckerDeps, record: RecordCheck): Promise<CatalogUpd
       source: deps.source,
       localVersion,
       downloaded: deps.paths.catalog,
+      vendorOf: planVendor,
       ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }),
     });
     if (update.outcome === "updated") {
       deps.log.info("catalog updated", { from: localVersion, to: update.remoteVersion });
       await deps.store.reload();
-      await deps.onUpdated();
+      // The only outcome a caller waits on the probe for: the new catalog can move the
+      // entitlements detection reads, so `agn catalog update` answers from the fresh detection.
+      await probe(deps);
+    } else {
+      void probe(deps);
     }
     await record({
       outcome: update.outcome,
@@ -116,8 +122,24 @@ async function check(deps: CheckerDeps, record: RecordCheck): Promise<CatalogUpd
       message,
     });
     await record({ outcome: "failed", localVersion, remoteVersion: null, message });
+    void probe(deps);
     throw cause;
   }
+}
+
+/**
+ * Every check re-probes the harnesses, whether or not a new catalog landed and whether or not the
+ * check itself failed (tech lead, 2026-10-01): a harness can change the models it offers without a
+ * catalog release. Nothing the check returns depends on the probe except after a download, so it is
+ * started and left to run - the probe shells out to every harness, and no response waits for that.
+ * A probe that fails is logged here and never reported as the check's own failure.
+ */
+function probe(deps: CheckerDeps): Promise<void> {
+  return deps.onChecked().catch((cause: unknown) => {
+    deps.log.warn("re-probe after catalog check failed", {
+      message: cause instanceof Error ? cause.message : String(cause),
+    });
+  });
 }
 
 /** Unref'd: a pending check never keeps the process, or a test, alive. */

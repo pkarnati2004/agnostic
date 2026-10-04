@@ -23,6 +23,8 @@ const MessageDataSchema = z.object({
     })
     .nullish(),
   time: z.object({ created: z.number().optional(), completed: z.number().optional() }).nullish(),
+  /** What OpenCode says the message cost; agn uses it instead of pricing the tokens itself. */
+  cost: z.number().nonnegative().optional(),
 });
 
 type MessageData = z.infer<typeof MessageDataSchema>;
@@ -30,7 +32,6 @@ type MessageData = z.infer<typeof MessageDataSchema>;
 /** A live OpenCode writes to `opencode.db`; a sibling `opencode-*.db` is a copy of older turns. */
 export const opencodeParser: TranscriptParser = {
   harness: "opencode",
-  reportsLimits: false,
   isTranscript: (path) => basename(path) === "opencode.db",
   parse: parseOpenCodeDatabase,
 };
@@ -91,6 +92,7 @@ function toTurn(row: MessageRow): TranscriptTurn | null {
     tokensOutput: output + reasoning,
     tokensCacheRead,
     tokensCacheWrite,
+    costUsd: data.cost ?? null,
     ref: `opencode:${data.sessionID ?? row.session_id}:${row.id}`,
   };
 }

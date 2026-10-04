@@ -1,10 +1,15 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { NO_LIMIT_DETAIL } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { parseStatusLinePayload } from "./statusline.js";
 
 const FIXTURE = fileURLToPath(
   new URL("../../../../tests/fixtures/usage/claude-statusline.json", import.meta.url),
+);
+
+const COST_FIXTURE = fileURLToPath(
+  new URL("../../../../tests/fixtures/usage/claude-statusline-cost.json", import.meta.url),
 );
 
 const OBSERVED_AT = "2026-09-24T12:00:00.000Z";
@@ -20,7 +25,29 @@ describe("parseStatusLinePayload", () => {
       fiveHour: { usedPercent: 58, resetsAt: "2026-09-24T14:05:00.000Z" },
       week: { usedPercent: 41, resetsAt: "2026-09-28T09:00:00.000Z" },
       observedAt: OBSERVED_AT,
-      source: "claude-statusline",
+      source: "statusline",
+      // The fixture carries the windows alone: no session cost, no context figure.
+      detail: NO_LIMIT_DETAIL,
+    });
+  });
+
+  it("reads this session's cost and context beside the account's windows", async () => {
+    const text = await readFile(COST_FIXTURE, "utf8");
+
+    expect(parseStatusLinePayload(text, OBSERVED_AT)?.detail).toEqual({
+      ...NO_LIMIT_DETAIL,
+      sessionCostUsd: 0.8412,
+      contextUsedPercent: 37.4,
+    });
+  });
+
+  it("reports a cost and a context figure even when the payload carries no windows", () => {
+    const text = payload({ cost: { total_cost_usd: 0.25 } });
+
+    expect(parseStatusLinePayload(text, OBSERVED_AT)).toMatchObject({
+      fiveHour: null,
+      week: null,
+      detail: { ...NO_LIMIT_DETAIL, sessionCostUsd: 0.25 },
     });
   });
 

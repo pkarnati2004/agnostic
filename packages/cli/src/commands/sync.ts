@@ -1,4 +1,4 @@
-import type { McpSyncRow, McpTarget, SyncWrite } from "@agnostic/core";
+import type { McpSyncRow, SyncWrite } from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
 import { resolveRepo } from "../resolve-repo.js";
@@ -59,13 +59,6 @@ function conflict(write: SyncWrite): string {
   return `conflict ${write.file}: ${write.reason ?? "written by hand"}`;
 }
 
-/** Where each server went. The Codex file is outside the repo, so it is named, not counted. */
-const MCP_FILES: Record<McpTarget, string> = {
-  "claude-code": ".mcp.json",
-  opencode: "opencode.json",
-  codex: "~/.codex/config.toml",
-};
-
 function mcpLines(rows: McpSyncRow[]): string[] {
   const servers = [...new Set(rows.map((row) => row.server))];
   return servers.map((server) =>
@@ -84,10 +77,11 @@ function mcpLine(server: string, rows: McpSyncRow[]): string {
   return `mcp ${server}: ${rows.map(mcpTarget).join(", ")}`;
 }
 
+/** Where this server went. A file outside the repo is named with `~/`, not counted. */
 function mcpTarget(row: McpSyncRow): string {
   return row.action === "skipped"
     ? `${row.target} skipped (${row.reason ?? "no reason given"})`
-    : MCP_FILES[row.target];
+    : row.file;
 }
 
 function reason(write: SyncWrite): string {

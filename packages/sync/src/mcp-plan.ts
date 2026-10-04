@@ -1,140 +1,118 @@
 import {
+  type HarnessId,
   looksLikeSecret,
   type McpConfig,
   type McpServer,
   type McpSyncRow,
+  type McpTargetFile,
   type McpValue,
   type SyncWrite,
 } from "@agnostic/core";
-import { claudeEntry, claudeServers, MCP_JSON, withClaudeServers } from "./mcp-claude.js";
-import { codexBlockBody, codexTable, withCodexTables } from "./mcp-codex.js";
-import type { JsonEntries } from "./mcp-json.js";
-import {
-  OPENCODE_JSON,
-  OPENCODE_JSONC,
-  opencodeEntry,
-  opencodeServers,
-  withOpencodeServers,
-} from "./mcp-opencode.js";
+import { SyncError } from "./error.js";
+import type { McpExisting } from "./mcp-files.js";
+import { type McpExistingTarget, type McpSyntaxRow, mcpSyntaxes } from "./mcp-syntax.js";
 
-export type McpExisting = {
-  mcpJson: string | null;
-  opencodeJson: string | null;
-  /** An `opencode.jsonc` beside a missing `opencode.json`: the comments are the user's. */
-  opencodeJsonc: boolean;
-  codexToml: string;
-};
+/** A file outside the repo that this sync would write; `file` is absolute. */
+export type McpUserWrite = { harness: HarnessId; file: string; text: string };
 
-export type McpSyncInputs = { config: McpConfig | null; repoId: string; existing: McpExisting };
-
-/** `codex` is the whole config file as it should be, or null when this sync would not touch it. */
 export type McpSyncPlan = {
   writes: SyncWrite[];
-  codex: { text: string } | null;
+  userWrites: McpUserWrite[];
   rows: McpSyncRow[];
 };
 
-const TARGETS = ["claude-code", "opencode", "codex"] as const;
+export type McpSyncInputs = {
+  config: McpConfig | null;
+  repoId: string;
+  targets: McpTargetFile[];
+  existing: McpExisting;
+};
 
-const JSONC_SKIP = `${OPENCODE_JSONC} is JSONC, which agn does not edit; add the entries by hand`;
+/** One target, the file behind it, and what this sync makes of it. */
+type Planned = {
+  target: McpTargetFile;
+  existing: McpExistingTarget;
+  text: string | null;
+  rows: McpSyntaxRow[];
+};
 
 /**
  * What one sync makes of `.ag/mcp.yaml`. Secrets first: a value that looks like a credential is
- * never written to any of the three targets, and the other servers still go out.
+ * never written to any target, and the other servers still go out.
  */
 export function planMcpSync(inputs: McpSyncInputs): McpSyncPlan {
-  const { config, repoId, existing } = inputs;
-  if (config === null) {
-    const cleared = withCodexTables(existing.codexToml, repoId, []);
-    return {
-      writes: [],
-      rows: [],
-      codex: cleared === existing.codexToml ? null : { text: cleared },
-    };
-  }
-  const written = config.servers.filter((server) => secretIn(server) === null);
-  const tables = written.flatMap((server) => {
-    const table = codexTable(server);
-    return "table" in table ? [table.table] : [];
-  });
+  const { config, repoId, targets, existing } = inputs;
+  const servers = config === null ? null : config.servers.filter((s) => secretIn(s) === null);
+  const planned = inRepoFirst(targets).map((target) => plan(target, existing, repoId, servers));
   return {
-    writes: jsonWrites(written, existing),
-    codex: { text: withCodexTables(existing.codexToml, repoId, tables) },
-    rows: config.servers.flatMap((server) => serverRows(server, repoId, existing)),
+    writes: planned.flatMap(repoWrite),
+    userWrites: planned.flatMap(userWrite),
+    rows: config === null ? [] : config.servers.flatMap((server) => rowsFor(server, planned)),
   };
 }
 
-function serverRows(server: McpServer, repoId: string, existing: McpExisting): McpSyncRow[] {
-  const secret = secretIn(server);
-  if (secret !== null) {
-    const reason = `${secret} looks like a secret; write $NAME and set NAME in your shell`;
-    return TARGETS.map((target) => ({ server: server.name, target, action: "skipped", reason }));
-  }
+/** The order the sync works in and reports in: the repo's own files, then the files outside it. */
+function inRepoFirst(targets: McpTargetFile[]): McpTargetFile[] {
   return [
-    entryRow(server.name, "claude-code", claudeServers(existing.mcpJson), claudeEntry(server)),
-    opencodeRow(server, existing),
-    codexRow(server, repoId, existing),
+    ...targets.filter((t) => t.scope === "repo"),
+    ...targets.filter((t) => t.scope === "user"),
   ];
 }
 
-function opencodeRow(server: McpServer, existing: McpExisting): McpSyncRow {
-  if (existing.opencodeJsonc) {
-    return { server: server.name, target: "opencode", action: "skipped", reason: JSONC_SKIP };
+function plan(
+  target: McpTargetFile,
+  existing: McpExisting,
+  repoId: string,
+  servers: McpServer[] | null,
+): Planned {
+  const file = existing.get(target.harness);
+  if (file === undefined) {
+    throw new SyncError(`agn read no MCP config for ${target.harness}`, {
+      code: "mcp-target-unread",
+      hint: "Run `agn sync` again; if it persists, report it.",
+    });
   }
-  const entries = opencodeServers(existing.opencodeJson);
-  return entryRow(server.name, "opencode", entries, opencodeEntry(server));
-}
-
-function codexRow(server: McpServer, repoId: string, existing: McpExisting): McpSyncRow {
-  const table = codexTable(server);
-  if ("skipped" in table) {
-    return { server: server.name, target: "codex", action: "skipped", reason: table.skipped };
-  }
-  const there = codexBlockBody(existing.codexToml, repoId).includes(table.table.text);
-  return {
-    server: server.name,
-    target: "codex",
-    action: there ? "unchanged" : "written",
-    reason: null,
-  };
-}
-
-function entryRow(
-  server: string,
-  target: McpSyncRow["target"],
-  entries: JsonEntries,
-  entry: Record<string, unknown>,
-): McpSyncRow {
-  const there = JSON.stringify(entries[server]) === JSON.stringify(entry);
-  return { server, target, action: there ? "unchanged" : "written", reason: null };
-}
-
-/** No entry to write is no write at all: a repo whose servers were all skipped keeps its files. */
-function jsonWrites(servers: McpServer[], existing: McpExisting): SyncWrite[] {
-  if (servers.length === 0) {
-    return [];
-  }
-  const writes = [
-    jsonWrite(MCP_JSON, existing.mcpJson, withClaudeServers(existing.mcpJson, servers)),
-  ];
-  if (!existing.opencodeJsonc) {
-    const content = withOpencodeServers(existing.opencodeJson, servers);
-    writes.push(jsonWrite(OPENCODE_JSON, existing.opencodeJson, content));
-  }
-  return writes;
+  return { target, existing: file, ...mcpSyntaxes[target.syntax].plan(file, repoId, servers) };
 }
 
 /** Never a conflict: agn owns the entries it names in these files and not the files themselves. */
-function jsonWrite(file: string, existing: string | null, content: string): SyncWrite {
-  if (existing === null) {
-    return { file, action: "create", content, reason: null };
+function repoWrite(planned: Planned): SyncWrite[] {
+  const { existing, text } = planned;
+  if (planned.target.scope !== "repo" || text === null) {
+    return [];
   }
-  return {
-    file,
-    action: existing === content ? "unchanged" : "update",
-    content,
-    reason: null,
-  };
+  if (existing.text === null) {
+    return [{ file: existing.file, action: "create", content: text, reason: null }];
+  }
+  const action = existing.text === text ? "unchanged" : "update";
+  return [{ file: existing.file, action, content: text, reason: null }];
+}
+
+function userWrite(planned: Planned): McpUserWrite[] {
+  if (planned.target.scope !== "user" || planned.text === null) {
+    return [];
+  }
+  return [{ harness: planned.target.harness, file: planned.existing.path, text: planned.text }];
+}
+
+/** One row per target for this server, the repo's files first, whatever each target made of it. */
+function rowsFor(server: McpServer, planned: Planned[]): McpSyncRow[] {
+  const secret = secretIn(server);
+  if (secret !== null) {
+    const reason = `${secret} looks like a secret; write $NAME and set NAME in your shell`;
+    return planned.map((target) => ({
+      server: server.name,
+      action: "skipped",
+      reason,
+      target: target.target.harness,
+      file: target.existing.file,
+    }));
+  }
+  return planned.flatMap((target) =>
+    target.rows
+      .filter((row) => row.server === server.name)
+      .map((row) => ({ ...row, target: target.target.harness, file: target.existing.file })),
+  );
 }
 
 /** The key or header whose literal value must not be copied into a config file, or null. */

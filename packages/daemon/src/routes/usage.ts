@@ -1,4 +1,5 @@
 import {
+  type HarnessId,
   type LimitWindow,
   type LimitWindowReport,
   limitFreshness,
@@ -9,7 +10,7 @@ import {
   type UsageResponse,
   type UsageWindow,
 } from "@agnostic/core";
-import { planVendor } from "@agnostic/registry";
+import { harnesses, planVendor } from "@agnostic/registry";
 import { type ObservedLimit, summarizePlans, usageWindow } from "@agnostic/usage";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
@@ -51,6 +52,7 @@ export function usageRoutes(ctx: DaemonContext): Hono {
         week: { window: week.window, plans: week.plans },
         budget: budgetReport(config.budget, { day: day.spent, week: week.spent }),
         limits: await planLimits(ctx, scannedAt),
+        unavailable: await unavailableHarnesses(ctx),
         scannedAt: scannedAt.toISOString(),
       };
       return c.json(body);
@@ -68,15 +70,17 @@ export function usageRoutes(ctx: DaemonContext): Hono {
 }
 
 /**
- * What the harnesses last said about their plans' own meters, from the two sources this machine
- * has: Codex's rollouts, which the scan above already read, and the file agn's status-line command
- * writes for Claude Code. One row per harness, the newer observation winning.
+ * What the harnesses last said about their plans' own meters, from the two sources a registry row
+ * can name: a rollout record, which the scan above already read, and the file agn's status-line
+ * script writes. One row per harness, the newer observation winning.
  */
 async function planLimits(ctx: DaemonContext, scannedAt: Date): Promise<PlanLimit[]> {
   const observed: ObservedLimit[] = [...ctx.usage.limits()];
-  const claude = await readRateLimitsFile(ctx.paths, "claude-code", ctx.log);
-  if (claude !== null) {
-    observed.push(claude);
+  for (const row of harnesses.filter((def) => def.limitSource === "statusline")) {
+    const limit = await readRateLimitsFile(ctx.paths, row.id, ctx.log);
+    if (limit !== null) {
+      observed.push(limit);
+    }
   }
   const newest = new Map<string, ObservedLimit>();
   for (const limit of observed) {
@@ -92,7 +96,25 @@ async function planLimits(ctx: DaemonContext, scannedAt: Date): Promise<PlanLimi
     week: report(limit.week, limit.observedAt, scannedAt),
     observedAt: limit.observedAt,
     source: limit.source,
+    detail: limit.detail,
   }));
+}
+
+/**
+ * The harnesses on this machine that record no usage anywhere agn can read. The bar and
+ * `agn usage` name them rather than leave them out, so a missing agent reads as "nothing on this
+ * machine counts it" instead of as zero tokens (ADR 029). A harness that is not installed is
+ * never named.
+ */
+async function unavailableHarnesses(ctx: DaemonContext): Promise<HarnessId[]> {
+  const installed = new Set(
+    (await ctx.detection.current()).harnesses
+      .filter((report) => report.path !== null)
+      .map((report) => report.harness),
+  );
+  return harnesses
+    .filter((def) => def.usageSource === null && installed.has(def.id))
+    .map((def) => def.id);
 }
 
 /**

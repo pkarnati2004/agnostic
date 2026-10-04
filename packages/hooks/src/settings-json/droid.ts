@@ -35,7 +35,7 @@ const droidMember: SettingsJsonMember = {
   timeout: 5,
   reply: null,
   verify: null,
-  statusLine: false,
+  userStatusLine: null,
 };
 
 const settings = settingsJsonInstaller(droidMember);

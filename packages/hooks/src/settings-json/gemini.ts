@@ -31,7 +31,7 @@ const geminiMember: SettingsJsonMember = {
   timeout: TIMEOUT_MILLISECONDS,
   reply: "{}",
   verify: VERIFY,
-  statusLine: false,
+  userStatusLine: null,
 };
 
 export const geminiInstaller: HookInstaller = settingsJsonInstaller(geminiMember);

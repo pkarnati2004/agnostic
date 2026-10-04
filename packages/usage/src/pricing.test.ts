@@ -44,6 +44,7 @@ function turn(overrides: Partial<TranscriptTurn> = {}): TranscriptTurn {
     tokensOutput: 1_000_000,
     tokensCacheRead: 0,
     tokensCacheWrite: 0,
+    costUsd: null,
     ref: "claude-code:msg_a:req_a",
     ...overrides,
   };
@@ -113,6 +114,16 @@ describe("costForTurn", () => {
     expect(costForTurn(turn(), "api-key", catalog)).toBe(18);
     expect(costForTurn(turn(), "credits", catalog)).toBe(18);
     expect(costForTurn(turn(), "unknown", catalog)).toBe(18);
+  });
+
+  it("takes the cost the harness reported over its own estimate", () => {
+    expect(costForTurn(turn({ costUsd: 0.42 }), "api-key", catalog)).toBe(0.42);
+    // A model the catalog has no row for still has the cost the harness wrote for it.
+    expect(costForTurn(turn({ model: null, costUsd: 0.42 }), "api-key", catalog)).toBe(0.42);
+  });
+
+  it("charges nothing for a subscription, whatever cost the harness reported", () => {
+    expect(costForTurn(turn({ costUsd: 0.42 }), "subscription", catalog)).toBeNull();
   });
 
   it("charges nothing for a subscription or a local model", () => {

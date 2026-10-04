@@ -42,7 +42,10 @@ describe("isHeadlessInvocation", () => {
     expect(isHeadlessInvocation("opencode", ["opencode"])).toBe(false);
   });
 
-  it("knows no headless form for a tier-2 harness", () => {
+  it("knows no headless form for a row that names none", () => {
+    // Tier 2 and the hook families alike: a row with no `headlessDetect` is never a headless run.
     expect(isHeadlessInvocation("aider", ["aider", "--message", "x"])).toBe(false);
+    expect(isHeadlessInvocation("grok", ["grok", "-p", "x"])).toBe(false);
+    expect(isHeadlessInvocation("other:mytool", ["mytool", "exec", "-p"])).toBe(false);
   });
 });

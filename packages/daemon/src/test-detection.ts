@@ -9,7 +9,12 @@ import {
   type HarnessReport,
   type Profile,
 } from "@agnostic/core";
-import { harnessDefinition, harnessSupport, type LocalServer } from "@agnostic/registry";
+import {
+  harnessDefinition,
+  harnessSupport,
+  type LocalServer,
+  planVendor,
+} from "@agnostic/registry";
 import type { CatalogStore } from "./catalog-store.js";
 import type { Detection } from "./detection-cache.js";
 
@@ -45,10 +50,12 @@ function fixtureReport(models: string[], harness: HarnessId): HarnessReport {
     support: harnessSupport(definition),
     models,
     modelSource: "probe",
-    planVendor: harness === "claude-code" ? "claude" : null,
+    planVendor: planVendor(harness),
+    limitSource: definition.limitSource,
+    usageSource: definition.usageSource?.kind ?? null,
     limitCapture: "none",
     plan:
-      harness === "claude-code"
+      planVendor(harness) === "claude"
         ? { value: "max20", source: "detected", known: true, confirmed: true, overridden: null }
         : null,
   };
@@ -62,7 +69,7 @@ export function fixtureCatalogPath(): string {
 /** The catalog every daemon test runs against, so nothing here depends on the shipped snapshot. */
 export async function fixtureCatalog(): Promise<Catalog> {
   const file = fixtureCatalogPath();
-  const catalog = await readCatalogFile(file);
+  const catalog = await readCatalogFile(file, { vendorOf: planVendor });
   if (catalog === null) {
     throw new Error(`the fixture catalog is missing: ${file}`);
   }
@@ -109,6 +116,8 @@ export function launchDetection(binDir: string, servers: LocalServer[]): Detecti
     models: [],
     modelSource: "none",
     planVendor: null,
+    limitSource: null,
+    usageSource: harnessDefinition(harness).usageSource?.kind ?? null,
     plan: null,
     limitCapture: "none",
   });

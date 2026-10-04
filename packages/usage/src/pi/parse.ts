@@ -14,6 +14,8 @@ const UsageSchema = z.object({
   cacheRead: Tokens.optional(),
   cacheWrite: Tokens.optional(),
   totalTokens: Tokens.optional(),
+  /** What Pi and OMP say the turn cost; agn uses it instead of pricing the tokens itself. */
+  cost: z.number().nonnegative().optional(),
 });
 
 const RecordSchema = z.object({
@@ -42,7 +44,6 @@ type Session = { id: string; path: string; cwd: string | null; model: string | n
 export function piFamilyParser(harness: "pi" | "omp"): TranscriptParser {
   return {
     harness,
-    reportsLimits: false,
     isTranscript: (path) => path.endsWith(".jsonl"),
     parse: (path) => parseMessageGraph(harness, path),
   };
@@ -130,6 +131,7 @@ function toTurn(
     tokensOutput,
     tokensCacheRead,
     tokensCacheWrite,
+    costUsd: usage?.cost ?? null,
     // The line number keeps the ref stable across rescans of a file that is only appended to.
     ref: `${harness}:${session.id}:${record.id ?? line}`,
   };

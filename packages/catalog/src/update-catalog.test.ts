@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CatalogManifest } from "./catalog-manifest.js";
 import type { CatalogSource } from "./catalog-source.js";
 import { CatalogError } from "./error.js";
+import { testVendorOf } from "./test-vendors.js";
 import { updateCatalog } from "./update-catalog.js";
 
 const REMOTE = fileURLToPath(new URL("../../../tests/fixtures/catalog/remote", import.meta.url));
@@ -67,6 +68,7 @@ describe("updateCatalog", () => {
   it("downloads a newer catalog and replaces the file on disk", async () => {
     const body = await remoteCatalog();
     const update = await updateCatalog({
+      vendorOf: testVendorOf,
       source: SOURCE,
       localVersion: 1,
       downloaded,
@@ -88,6 +90,7 @@ describe("updateCatalog", () => {
   it("updates when there is no catalog on disk at all", async () => {
     const body = await remoteCatalog();
     const update = await updateCatalog({
+      vendorOf: testVendorOf,
       source: SOURCE,
       localVersion: 0,
       downloaded,
@@ -98,6 +101,7 @@ describe("updateCatalog", () => {
 
   it("stops at the manifest when nothing newer was published", async () => {
     const update = await updateCatalog({
+      vendorOf: testVendorOf,
       source: SOURCE,
       localVersion: 2,
       downloaded,
@@ -110,6 +114,7 @@ describe("updateCatalog", () => {
 
   it("downloads nothing when the published catalog needs a newer agn", async () => {
     const update = await updateCatalog({
+      vendorOf: testVendorOf,
       source: SOURCE,
       localVersion: 1,
       downloaded,
@@ -128,6 +133,7 @@ describe("updateCatalog", () => {
     const body = await remoteCatalog();
     const error = await failure(
       updateCatalog({
+        vendorOf: testVendorOf,
         source: SOURCE,
         localVersion: 1,
         downloaded,
@@ -146,6 +152,7 @@ describe("updateCatalog", () => {
     const body = "not json at all";
     const error = await failure(
       updateCatalog({
+        vendorOf: testVendorOf,
         source: SOURCE,
         localVersion: 1,
         downloaded,
@@ -160,6 +167,7 @@ describe("updateCatalog", () => {
     const body = await remoteCatalog("catalog-wrong-version.json");
     const error = await failure(
       updateCatalog({
+        vendorOf: testVendorOf,
         source: SOURCE,
         localVersion: 1,
         downloaded,
@@ -173,6 +181,7 @@ describe("updateCatalog", () => {
   it("reports a manifest that is not a manifest", async () => {
     const error = await failure(
       updateCatalog({
+        vendorOf: testVendorOf,
         source: SOURCE,
         localVersion: 1,
         downloaded,
@@ -197,7 +206,13 @@ describe("updateCatalog", () => {
 
   it("reports a request that is answered with a status, and says which catalog stays in use", async () => {
     const error = await failure(
-      updateCatalog({ source: SOURCE, localVersion: 14, downloaded, fetch: serving({}) }),
+      updateCatalog({
+        vendorOf: testVendorOf,
+        source: SOURCE,
+        localVersion: 14,
+        downloaded,
+        fetch: serving({}),
+      }),
     );
     expect(error.code).toBe("catalog-fetch-failed");
     expect(error.message).toBe(`could not fetch ${SOURCE.manifestUrl}: HTTP 404`);
@@ -213,7 +228,13 @@ describe("updateCatalog", () => {
       return Promise.reject(error);
     };
     const error = await failure(
-      updateCatalog({ source: SOURCE, localVersion: 1, downloaded, fetch: timedOut }),
+      updateCatalog({
+        vendorOf: testVendorOf,
+        source: SOURCE,
+        localVersion: 1,
+        downloaded,
+        fetch: timedOut,
+      }),
     );
     expect(error.code).toBe("catalog-fetch-failed");
     expect(error.message).toContain("timed out");
@@ -230,7 +251,9 @@ describe("updateCatalog", () => {
       manifestUrl: `http://127.0.0.1:${port}/manifest.json`,
       fileUrl: `http://127.0.0.1:${port}/catalog.json`,
     };
-    const error = await failure(updateCatalog({ source: closed, localVersion: 1, downloaded }));
+    const error = await failure(
+      updateCatalog({ vendorOf: testVendorOf, source: closed, localVersion: 1, downloaded }),
+    );
     expect(error.code).toBe("catalog-fetch-failed");
     expect(await readFile(downloaded, "utf8")).toBe(ON_DISK);
   });
@@ -248,7 +271,7 @@ describe("updateCatalog", () => {
       fileUrl: `http://127.0.0.1:${port}/catalog.json`,
     };
     const error = await failure(
-      updateCatalog({ source: redirecting, localVersion: 1, downloaded }),
+      updateCatalog({ vendorOf: testVendorOf, source: redirecting, localVersion: 1, downloaded }),
     );
     await new Promise<void>((done) => server.close(() => done()));
     expect(error.code).toBe("catalog-fetch-failed");

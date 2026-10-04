@@ -1,7 +1,9 @@
 import {
   formatAgo,
   formatReset,
+  type HarnessId,
   type LimitWindow,
+  limitDetailParts,
   limitFreshness,
   type PlanLimit,
   type PlanUsage,
@@ -38,6 +40,9 @@ async function showWindows(ctx: CliContext): Promise<void> {
   ctx.io.out("");
   print(ctx, response.week, "this week");
   for (const line of limitLines(response.limits, new Date())) {
+    ctx.io.out(line);
+  }
+  for (const line of unavailableLines(response.unavailable)) {
     ctx.io.out(line);
   }
   const budget = budgetSummary(response.budget);
@@ -81,7 +86,30 @@ function limitLines(limits: PlanLimit[], now: Date): string[] {
       lines.push(`${limit.harness}  ${dated}`);
     }
   }
+  // Under the windows: the credits, plan, session cost and context a source also carried.
+  for (const limit of limits) {
+    const parts = limitDetailParts(limit.detail);
+    if (parts.length > 0) {
+      lines.push(`${limit.harness}  ${parts.join(" · ")}`);
+    }
+  }
   return lines.length === 0 ? lines : ["", ...lines];
+}
+
+/**
+ * The agents on this machine that count nothing agn can read. Named rather than left out, so a
+ * missing row reads as what it is instead of as a day with no tokens.
+ */
+function unavailableLines(unavailable: HarnessId[]): string[] {
+  if (unavailable.length === 0) {
+    return [];
+  }
+  return [
+    "",
+    ...unavailable.map(
+      (harness) => `usage not available for ${harness}: nothing on this machine records it`,
+    ),
+  ];
 }
 
 function phrase(

@@ -34,10 +34,10 @@ type EvidenceInput = {
 export async function sessionEvidence(input: EvidenceInput): Promise<SessionEvidence> {
   const def = harnessDefinition(input.harness);
   const evidence = def.resume?.evidence ?? "unchecked";
-  if (evidence === "unchecked" || def.transcriptsDir === null) {
+  if (evidence === "unchecked" || def.usageSource?.kind !== "transcripts") {
     return "unreadable";
   }
-  const root = join(input.home, def.transcriptsDir);
+  const root = join(input.home, def.usageSource.dir);
   return evidence === "transcript-path"
     ? insideTranscripts(root, input.sessionId)
     : namedTranscript(root, input.sessionId);

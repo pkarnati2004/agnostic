@@ -1,293 +1,112 @@
-import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { catalogSource, type LoadedCatalog, readCatalogFile } from "@agnostic/catalog";
-import { type AgnosticPaths, agnosticPaths, type CatalogCheckState } from "@agnostic/core";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type CatalogChecker, createCatalogChecker } from "./catalog-check.js";
-import type { CatalogStore } from "./catalog-store.js";
-import type { Logger } from "./log.js";
+import { writeFile } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  type CheckerFixture,
+  createCheckerFixture,
+  drain,
+  published,
+} from "./test-catalog-checker.js";
 
-const REMOTE = fileURLToPath(new URL("../../../tests/fixtures/catalog/remote", import.meta.url));
-const SOURCE = catalogSource({ AGNOSTIC_CATALOG_URL: "http://catalog.test" });
-const HOUR_MS = 60 * 60 * 1000;
-const NOW = new Date("2026-09-12T09:00:00.000Z");
-
-let home: string;
-let paths: AgnosticPaths;
-let warnings: string[];
-let log: Logger;
-let reloads: number;
-let updated: number;
-let store: CatalogStore;
-let checker: CatalogChecker | null;
-
-/** The fixture catalog, served as the published one, with a manifest that matches its bytes. */
-async function published(version = 2): Promise<typeof fetch> {
-  const body = await readFile(join(REMOTE, "catalog.json"), "utf8");
-  const manifest = JSON.stringify({
-    schemaVersion: 1,
-    version,
-    generatedAt: "2026-09-08T00:00:00Z",
-    sha256: createHash("sha256").update(body).digest("hex"),
-  });
-  return (input) =>
-    Promise.resolve(new Response(String(input) === SOURCE.manifestUrl ? manifest : body));
-}
-
-function loaded(version: number): LoadedCatalog {
-  return {
-    catalog: { ...empty, version },
-    origin: "bundled",
-    path: null,
-    problems: [],
-  };
-}
-
-const empty = {
-  schemaVersion: 1 as const,
-  version: 1,
-  generatedAt: "2026-09-01T00:00:00Z",
-  sources: [],
-  benchmarks: [],
-  models: [],
-  plans: [],
-  entitlements: [],
-  pricing: [],
-};
-
-function create(over: {
-  enabled?: boolean;
-  fetch?: typeof fetch;
-  startDelayMs?: number;
-  intervalMs?: number;
-}): CatalogChecker {
-  checker = createCatalogChecker({
-    store,
-    source: SOURCE,
-    paths,
-    log,
-    enabled: over.enabled ?? true,
-    onUpdated: () => {
-      updated += 1;
-      return Promise.resolve();
-    },
-    now: () => NOW,
-    intervalMs: over.intervalMs ?? 24 * HOUR_MS,
-    startDelayMs: over.startDelayMs ?? 5_000,
-    ...(over.fetch === undefined ? {} : { fetch: over.fetch }),
-  });
-  return checker;
-}
-
-async function writeState(over: Partial<CatalogCheckState>): Promise<void> {
-  const state: CatalogCheckState = {
-    checkedAt: NOW.toISOString(),
-    outcome: "current",
-    localVersion: 1,
-    remoteVersion: 1,
-    message: null,
-    ...over,
-  };
-  await writeFile(paths.catalogCheck, JSON.stringify(state), "utf8");
-}
-
-/** Only the timers are faked, so the file writes a check makes still happen on their own. */
-function fakeTimers(): void {
-  vi.useFakeTimers({ toFake: ["setTimeout", "setInterval", "clearTimeout", "clearInterval"] });
-}
-
-/** Rounds of the event loop with nothing to wait for, so whatever is queued gets to run. */
-async function drain(rounds = 20): Promise<void> {
-  for (let round = 0; round < rounds; round += 1) {
-    await new Promise((done) => setImmediate(done));
-  }
-}
-
-/**
- * Drains the I/O a check queues; a faked clock does not move file writes along. The wait is on the
- * real clock, not on a count of event-loop turns: a loaded machine runs through a thousand of them
- * while one write is still in flight. The extra rounds after the condition holds let the check
- * finish, not just reach the point being waited for.
- */
-async function settle(until: () => boolean): Promise<void> {
-  const deadline = Date.now() + 10_000;
-  while (!until() && Date.now() < deadline) {
-    await new Promise((done) => setImmediate(done));
-  }
-  await drain();
-}
-
-/**
- * Waits until a check has been recorded and is no longer in flight. The state file is written last,
- * so a run that reloaded the store may still be inside `record`; advancing the clock then would
- * hand the timer the check already running instead of starting the next one.
- */
-async function settleCheck(outcome: CatalogCheckState["outcome"]): Promise<void> {
-  const deadline = Date.now() + 10_000;
-  while (Date.now() < deadline) {
-    const recorded = await readState().catch(() => null);
-    if (recorded?.outcome === outcome) {
-      // Only microtasks stand between the written file and the checker releasing its slot.
-      await drain();
-      return;
-    }
-    await new Promise((done) => setImmediate(done));
-  }
-  throw new Error(`no ${outcome} check was recorded within 10 s`);
-}
-
-async function readState(): Promise<CatalogCheckState> {
-  return JSON.parse(await readFile(paths.catalogCheck, "utf8")) as CatalogCheckState;
-}
+let fixture: CheckerFixture;
 
 beforeEach(async () => {
-  home = await mkdtemp(join(tmpdir(), "agn-check-"));
-  paths = agnosticPaths(home);
-  warnings = [];
-  reloads = 0;
-  updated = 0;
-  checker = null;
-  log = {
-    info: () => undefined,
-    debug: () => undefined,
-    warn: (msg) => warnings.push(msg),
-    error: () => undefined,
-    close: () => undefined,
-  };
-  let current = loaded(1);
-  store = {
-    current: () => current,
-    reload: async () => {
-      reloads += 1;
-      const catalog = await readCatalogFile(paths.catalog);
-      current = catalog === null ? current : { ...current, catalog, origin: "downloaded" };
-      return current;
-    },
-  };
+  fixture = await createCheckerFixture();
 });
 
-afterEach(async () => {
-  checker?.close();
-  vi.useRealTimers();
-  await rm(home, { recursive: true, force: true });
-});
+afterEach(() => fixture.close());
 
-describe("createCatalogChecker", () => {
+describe("one catalog check", () => {
   it("downloads a newer catalog, reloads the store and says so once", async () => {
-    const update = await create({ fetch: await published() }).update();
+    const update = await fixture.create({ fetch: await published() }).update();
     expect(update.outcome).toBe("updated");
-    expect(reloads).toBe(1);
-    expect(updated).toBe(1);
-    expect(await readState()).toMatchObject({ outcome: "updated", remoteVersion: 2 });
+    expect(fixture.counts.reloads).toBe(1);
+    // No drain: the update path waits for the probe, so the response reflects the fresh detection.
+    expect(fixture.counts.probes).toBe(1);
+    expect(await fixture.readState()).toMatchObject({ outcome: "updated", remoteVersion: 2 });
   });
 
   it("records a check that found nothing newer", async () => {
-    const update = await create({ fetch: await published(1) }).update();
+    const update = await fixture.create({ fetch: await published(1) }).update();
     expect(update.outcome).toBe("current");
-    expect(reloads).toBe(0);
-    expect(await readState()).toMatchObject({ outcome: "current", localVersion: 1 });
+    expect(fixture.counts.reloads).toBe(0);
+    expect(await fixture.readState()).toMatchObject({ outcome: "current", localVersion: 1 });
+    // Every check re-probes the harnesses, updated or not (tech lead, 2026-10-01). Nothing in the
+    // response waits for it, so the count is read after the turn the un-awaited call needs.
+    await drain(1);
+    expect(fixture.counts.probes).toBe(1);
   });
 
   it("records a failure as a warning, never as an error the user sees", async () => {
     const refused: typeof fetch = () => Promise.reject(new Error("connect ECONNREFUSED"));
-    await expect(create({ fetch: refused }).update()).rejects.toThrowError(
+    await expect(fixture.create({ fetch: refused }).update()).rejects.toThrowError(
       expect.objectContaining({ code: "catalog-fetch-failed" }),
     );
-    expect(warnings).toEqual(["catalog check failed"]);
-    expect(await readState()).toMatchObject({ outcome: "failed", remoteVersion: null });
+    expect(fixture.warnings).toEqual(["catalog check failed"]);
+    expect(await fixture.readState()).toMatchObject({ outcome: "failed", remoteVersion: null });
+    await drain(1);
+    expect(fixture.counts.probes).toBe(1);
+  });
+
+  it("answers a check that found nothing newer without waiting for the probe", async () => {
+    let released: () => void = () => undefined;
+    const probing = new Promise<void>((resolve) => {
+      released = resolve;
+    });
+    const checker = fixture.create({ fetch: await published(1), probe: () => probing });
+    expect((await checker.update()).outcome).toBe("current");
+    released();
+    await drain(1);
+    expect(fixture.counts.probes).toBe(1);
+  });
+
+  it("keeps a check's result when the probe it triggers rejects", async () => {
+    const update = await fixture
+      .create({
+        fetch: await published(),
+        probe: () => Promise.reject(new Error("harness probe timed out")),
+      })
+      .update();
+    expect(update.outcome).toBe("updated");
+    expect(fixture.counts.reloads).toBe(1);
+    expect(await fixture.readState()).toMatchObject({ outcome: "updated", remoteVersion: 2 });
+    expect(fixture.warnings).toEqual(["re-probe after catalog check failed"]);
+  });
+
+  it("keeps a failed check's own error when the probe rejects too", async () => {
+    const refused: typeof fetch = () => Promise.reject(new Error("connect ECONNREFUSED"));
+    const failing = fixture.create({
+      fetch: refused,
+      probe: () => Promise.reject(new Error("harness probe timed out")),
+    });
+    await expect(failing.update()).rejects.toThrowError(
+      expect.objectContaining({ code: "catalog-fetch-failed" }),
+    );
+    await drain(1);
+    expect(fixture.warnings).toEqual([
+      "catalog check failed",
+      "re-probe after catalog check failed",
+    ]);
   });
 
   it("shares one check between the timer and a caller", async () => {
     let calls = 0;
     const counting = await published();
-    const checkerUnderTest = create({
+    const checker = fixture.create({
       fetch: (input, init) => {
         calls += 1;
         return counting(input, init);
       },
     });
-    const [first, second] = await Promise.all([
-      checkerUnderTest.update(),
-      checkerUnderTest.update(),
-    ]);
+    const [first, second] = await Promise.all([checker.update(), checker.update()]);
     expect(first).toEqual(second);
     // Two requests, not four: one manifest and one file for the pair of calls.
     expect(calls).toBe(2);
   });
 
-  it("checks at start when nothing was ever recorded", async () => {
-    fakeTimers();
-    create({ fetch: await published(), startDelayMs: 5_000 });
-    expect(checker?.lastCheck()).toBeNull();
-    await vi.advanceTimersByTimeAsync(5_000);
-    await settleCheck("updated");
-    expect(checker?.lastCheck()).toMatchObject({ outcome: "updated" });
-  });
-
-  it("does not check at start when the last check was an hour ago", async () => {
-    await writeState({ checkedAt: new Date(NOW.getTime() - HOUR_MS).toISOString() });
-    fakeTimers();
-    create({ fetch: await published() });
-    await vi.advanceTimersByTimeAsync(60_000);
-    await drain(500);
-    // The state file is the one from an hour ago, untouched: no check ran.
-    expect(checker?.lastCheck()?.remoteVersion).toBe(1);
-    expect(reloads).toBe(0);
-  });
-
-  it("checks at start when the last check was more than a day ago, and again a day later", async () => {
-    await writeState({ checkedAt: new Date(NOW.getTime() - 25 * HOUR_MS).toISOString() });
-    const serve = await published();
-    let manifests = 0;
-    fakeTimers();
-    create({
-      intervalMs: 24 * HOUR_MS,
-      fetch: (input, init) => {
-        manifests += Number(String(input) === SOURCE.manifestUrl);
-        return serve(input, init);
-      },
-    });
-    await vi.advanceTimersByTimeAsync(5_000);
-    await settleCheck("updated");
-    expect(reloads).toBe(1);
-    expect(manifests).toBe(1);
-    await vi.advanceTimersByTimeAsync(24 * HOUR_MS);
-    await settle(() => manifests === 2);
-    // The second check finds the version it just downloaded, so there is nothing to reload.
-    expect(manifests).toBe(2);
-    expect(reloads).toBe(1);
-  });
-
-  it("runs no timer when the daily check is off, and still updates when asked", async () => {
-    fakeTimers();
-    const off = create({ enabled: false, fetch: await published() });
-    await vi.advanceTimersByTimeAsync(48 * HOUR_MS);
-    await drain(500);
-    expect(reloads).toBe(0);
-    expect(await readFile(paths.catalogCheck, "utf8").catch(() => null)).toBeNull();
-
-    vi.useRealTimers();
-    expect((await off.update()).outcome).toBe("updated");
-    expect(reloads).toBe(1);
-  });
-
   it("treats an unreadable state file as never having checked", async () => {
-    await writeFile(paths.catalogCheck, "{not json", "utf8");
-    const withBadState = create({ fetch: await published() });
+    await writeFile(fixture.paths.catalogCheck, "{not json", "utf8");
+    const withBadState = fixture.create({ fetch: await published() });
     expect(withBadState.lastCheck()).toBeNull();
-    expect(warnings).toEqual(["catalog check state unreadable"]);
-  });
-
-  it("unrefs its timers so a pending check never keeps a process running", async () => {
-    // setTimeout and setInterval share one Timeout prototype in Node; spying there catches both.
-    const probe = setTimeout(() => undefined, 0);
-    clearTimeout(probe);
-    const unref = vi.spyOn(Object.getPrototypeOf(probe) as { unref(): void }, "unref");
-    create({ fetch: await published(), startDelayMs: 100_000, intervalMs: 100_000 });
-    expect(unref).toHaveBeenCalled();
-    unref.mockRestore();
+    expect(fixture.warnings).toEqual(["catalog check state unreadable"]);
   });
 });

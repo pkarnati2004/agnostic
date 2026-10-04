@@ -1,4 +1,5 @@
 import { type LoadedCatalog, loadCatalog } from "@agnostic/catalog";
+import { planVendor } from "@agnostic/registry";
 import type { Logger } from "./log.js";
 
 /**
@@ -24,6 +25,7 @@ export function createCatalogStore(opts: {
       // loadCatalog never throws: a download that stopped parsing is a log line and the bundle.
       loaded = await loadCatalog({
         downloaded: opts.downloaded,
+        vendorOf: planVendor,
         ...(opts.bundled === undefined ? {} : { bundled: opts.bundled }),
       });
       report(opts.log, loaded);

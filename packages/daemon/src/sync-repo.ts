@@ -8,10 +8,9 @@ import {
   type SyncResponse,
   type SyncWrite,
 } from "@agnostic/core";
+import { mcpTargets } from "@agnostic/registry";
 import {
   applySyncPlan,
-  codexConfigPath,
-  type McpExisting,
   type McpSyncPlan,
   planMcpSync,
   planSync,
@@ -24,7 +23,7 @@ import type { DaemonContext } from "./app.js";
 /**
  * Everything one sync writes into `dir`: the two instruction files and the servers of
  * `.ag/mcp.yaml`. All or nothing across the lists, so one file written by hand leaves the whole
- * set as it was. Codex's config is the one target outside the repo, and it is written last.
+ * set as it was. A target whose file is per user sits outside the repo, and those are written last.
  */
 export async function syncRepo(
   ctx: DaemonContext,
@@ -36,31 +35,25 @@ export async function syncRepo(
   const config = await readMcpConfig(dir);
   const instructions = await planInstructions(dir, config !== null, opts);
   const home = ctx.env.HOME ?? homedir();
-  const mcpExisting = await readMcpExisting(dir, home);
+  const targets = mcpTargets();
+  const mcpExisting = await readMcpExisting(targets, dir, home);
   // Thrown here, before anything is written: a duplicate Codex table, or a target agn cannot read.
-  const mcp = planMcpSync({ config, repoId: repo.id, existing: mcpExisting });
+  const mcp = planMcpSync({ config, repoId: repo.id, targets, existing: mcpExisting });
   const writes = [...instructions, ...mcp.writes];
   if (req.dryRun === true) {
     return { writes, mcp: mcp.rows, applied: false };
   }
   await applySyncPlan(dir, writes);
-  await writeCodexConfig(repo, home, mcpExisting, mcp);
+  await writeUserMcpFiles(repo, mcp);
   return { writes, mcp: mcp.rows, applied: true };
 }
 
-/** Codex's config is per user, so agn says out loud what it wrote outside the repo. */
-async function writeCodexConfig(
-  repo: Repo,
-  home: string,
-  existing: McpExisting,
-  mcp: McpSyncPlan,
-): Promise<void> {
-  if (mcp.codex === null || mcp.codex.text === existing.codexToml) {
-    return;
+/** A per-user MCP config is outside the repo, so agn says out loud what it wrote. */
+async function writeUserMcpFiles(repo: Repo, mcp: McpSyncPlan): Promise<void> {
+  for (const write of mcp.userWrites) {
+    await writeTextFile(write.file, write.text);
+    process.stderr.write(`agn wrote its MCP servers for ${repo.name} to ${write.file}\n`);
   }
-  const file = codexConfigPath(home);
-  await writeTextFile(file, mcp.codex.text);
-  process.stderr.write(`agn wrote its MCP servers for ${repo.name} to ${file}\n`);
 }
 
 /**

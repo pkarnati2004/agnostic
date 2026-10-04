@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { catalogSource } from "./catalog-source.js";
 import { CatalogError } from "./error.js";
+import { testVendorOf } from "./test-vendors.js";
 import { updateCatalog } from "./update-catalog.js";
 
 const KB = 1024;
@@ -88,6 +89,7 @@ function manifestFor(body: string): string {
 
 async function refused(url: string): Promise<CatalogError> {
   const caught = await updateCatalog({
+    vendorOf: testVendorOf,
     source: catalogSource({ AGNOSTIC_CATALOG_URL: url }),
     localVersion: 1,
     downloaded,

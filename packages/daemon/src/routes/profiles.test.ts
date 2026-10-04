@@ -50,14 +50,24 @@ describe("POST /doctor", () => {
     expect(doctor.named).toEqual([]);
   });
 
-  it("labels Grok and Copilot status: each installs a hook, neither is read for tokens", async () => {
+  it("labels Grok and Copilot full: each installs a hook and agn reads its tokens", async () => {
     daemon = await createTestDaemon({
       detect: () => Promise.resolve(fixtureDetection([], ["grok", "copilot"])),
     });
     const doctor = await body<DoctorResponse>(await daemon.request("/doctor", { method: "POST" }));
-    expect(doctor.harnesses.map((row) => [row.harness, row.support])).toEqual([
-      ["grok", "status"],
-      ["copilot", "status"],
+    expect(doctor.harnesses.map((row) => [row.harness, row.support, row.usageSource])).toEqual([
+      ["grok", "full", "transcripts"],
+      ["copilot", "full", "transcripts"],
+    ]);
+  });
+
+  it("labels a hooked agent agn counts nothing for status, and says so per agent", async () => {
+    daemon = await createTestDaemon({
+      detect: () => Promise.resolve(fixtureDetection([], ["kimi"])),
+    });
+    const doctor = await body<DoctorResponse>(await daemon.request("/doctor", { method: "POST" }));
+    expect(doctor.harnesses.map((row) => [row.harness, row.support, row.usageSource])).toEqual([
+      ["kimi", "status", null],
     ]);
   });
 

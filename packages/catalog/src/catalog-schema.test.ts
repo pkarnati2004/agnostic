@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import type { CoreError } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { parseCatalog } from "./catalog-schema.js";
+import { testVendorOf } from "./test-vendors.js";
 
 const FIXTURES = fileURLToPath(new URL("../../../tests/fixtures/catalog", import.meta.url));
 
@@ -12,7 +13,7 @@ async function fixture(name: string): Promise<unknown> {
 
 function failure(raw: unknown): CoreError {
   try {
-    parseCatalog(raw);
+    parseCatalog(raw, { vendorOf: testVendorOf });
   } catch (cause) {
     return cause as CoreError;
   }
@@ -21,11 +22,11 @@ function failure(raw: unknown): CoreError {
 
 describe("parseCatalog", () => {
   it("reads a complete catalog and an empty one", async () => {
-    const complete = parseCatalog(await fixture("complete"));
+    const complete = parseCatalog(await fixture("complete"), { vendorOf: testVendorOf });
     expect(complete.version).toBe(2);
     expect(complete.models).toHaveLength(6);
     expect(complete.plans.map((plan) => plan.id)).toEqual(["pro", "max5", "max20", "plus"]);
-    const empty = parseCatalog(await fixture("empty"));
+    const empty = parseCatalog(await fixture("empty"), { vendorOf: testVendorOf });
     expect(empty.benchmarks).toEqual([]);
     expect(empty.entitlements).toEqual([]);
   });
@@ -48,7 +49,7 @@ describe("parseCatalog", () => {
   });
 
   it("refuses an entitlement row whose vendor is not its harness's", async () => {
-    const catalog = parseCatalog(await fixture("complete"));
+    const catalog = parseCatalog(await fixture("complete"), { vendorOf: testVendorOf });
     const wrongVendor = {
       ...catalog,
       entitlements: [
@@ -81,7 +82,7 @@ describe("parseCatalog", () => {
   });
 
   it("takes an entitlement for any vendor that bills a CLI by plan", async () => {
-    const catalog = parseCatalog(await fixture("complete"));
+    const catalog = parseCatalog(await fixture("complete"), { vendorOf: testVendorOf });
     const google = {
       ...catalog,
       plans: [
@@ -98,7 +99,7 @@ describe("parseCatalog", () => {
         },
       ],
     };
-    expect(parseCatalog(google).entitlements[0]?.vendor).toBe("google");
+    expect(parseCatalog(google, { vendorOf: testVendorOf }).entitlements[0]?.vendor).toBe("google");
     // Gemini bills on Google's plans; a Claude plan on the same row is a mistake in the data.
     const wrongVendor = {
       ...google,
@@ -113,8 +114,19 @@ describe("parseCatalog", () => {
     expect(failure(noSuchPlan).message).toContain('no plan row "google/nope"');
   });
 
+  it("refuses an entitlement for a harness the injected lookup gives no vendor", async () => {
+    const catalog = parseCatalog(await fixture("complete"), { vendorOf: testVendorOf });
+    const noVendor = {
+      ...catalog,
+      entitlements: [
+        { harness: "kiro", model: "kiro-1", vendor: "claude", plan: "max20", access: "included" },
+      ],
+    };
+    expect(failure(noVendor).message).toContain("entitlements[0].vendor: kiro has no plan");
+  });
+
   it("takes an entitlement for grok, kimi and cursor-agent on their own vendors, and rejects a swap", async () => {
-    const catalog = parseCatalog(await fixture("complete"));
+    const catalog = parseCatalog(await fixture("complete"), { vendorOf: testVendorOf });
     const rows: [string, string][] = [
       ["grok", "xai"],
       ["kimi", "moonshot"],
@@ -131,7 +143,10 @@ describe("parseCatalog", () => {
           { harness, model: `${harness}-flagship`, vendor, plan: "pro", access: "included" },
         ],
       };
-      expect(parseCatalog(withPlan).entitlements[0]).toMatchObject({ harness, vendor });
+      expect(parseCatalog(withPlan, { vendorOf: testVendorOf }).entitlements[0]).toMatchObject({
+        harness,
+        vendor,
+      });
       // Claude's own plan exists in the fixture, so this is a vendor mismatch, not a dangling one.
       const wrongVendor = {
         ...withPlan,
@@ -143,7 +158,7 @@ describe("parseCatalog", () => {
   });
 
   it("refuses a row that points at a plan or a source no table has", async () => {
-    const catalog = parseCatalog(await fixture("complete"));
+    const catalog = parseCatalog(await fixture("complete"), { vendorOf: testVendorOf });
     const orphan = {
       ...catalog,
       entitlements: [

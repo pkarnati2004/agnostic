@@ -31,16 +31,24 @@ describe("HarnessMark", () => {
     const { container, unmount } = render(<HarnessMark harness="pi" size="card" />);
     const mark = find<HTMLElement>(container, "span");
     expect(mark.getAttribute("aria-label")).toBe("pi");
-    expect(mark.style.backgroundColor).toBe("var(--mark-pi)");
+    expect(mark.style.backgroundColor).toBe("var(--mark-pi, var(--secondary))");
     expect(mark.style.width).toBe("18px");
     unmount();
   });
 
-  it("draws an unlisted harness on the neutral surface", () => {
+  it("falls back to the neutral surface for a harness with no colour token", () => {
     const { container, unmount } = render(<HarnessMark harness="droid" dim />);
     const mark = find<HTMLElement>(container, "span");
-    expect(mark.className).toContain("bg-secondary");
+    expect(mark.style.backgroundColor).toBe("var(--mark-droid, var(--secondary))");
     expect(mark.style.opacity).toBe("0.6");
+    unmount();
+  });
+
+  it("draws an executable agn knows nothing about on the neutral surface", () => {
+    const { container, unmount } = render(<HarnessMark harness="other:ralph" />);
+    const mark = find<HTMLElement>(container, "span");
+    expect(mark.className).toContain("bg-secondary");
+    expect(mark.style.backgroundColor).toBe("");
     unmount();
   });
 });

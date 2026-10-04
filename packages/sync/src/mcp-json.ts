@@ -1,4 +1,6 @@
+import type { McpServer } from "@agnostic/core";
 import { SyncError } from "./error.js";
+import type { McpSyntaxAdapter, McpSyntaxRow } from "./mcp-syntax.js";
 
 /** One harness's MCP entries, by server name, exactly as its config file holds them. */
 export type JsonEntries = Record<string, unknown>;
@@ -52,4 +54,42 @@ function unreadable(file: string, because: string, cause?: unknown): SyncError {
     hint: `Fix ${file}, or move it aside and run \`agn sync\` again.`,
     ...(cause === undefined ? {} : { cause }),
   });
+}
+
+/** How one JSON MCP config reads its servers, writes them back, and shapes a single entry. */
+export type JsonShape = {
+  entry: (server: McpServer) => Record<string, unknown>;
+  /** The entries the file holds now, agn's and everyone else's. */
+  entries: (existing: string | null) => JsonEntries;
+  /** The whole file with agn's entries merged into whatever else it holds. */
+  merged: (existing: string | null, servers: McpServer[]) => string;
+};
+
+/**
+ * The plan for a JSON MCP config: the file as it should be, and a verdict per server. Both JSON
+ * targets differ only in `shape`, so this is the whole of their planning.
+ */
+export function planJson(shape: JsonShape): McpSyntaxAdapter["plan"] {
+  return (existing, _repoId, servers) => {
+    const blocked = existing.blocked;
+    if (blocked !== null) {
+      return { text: null, rows: (servers ?? []).map((server) => skipped(server.name, blocked)) };
+    }
+    if (servers === null) {
+      return { text: null, rows: [] };
+    }
+    const entries = shape.entries(existing.text);
+    // No entry to write is no write at all: a repo whose servers were all skipped keeps its file.
+    const text = servers.length === 0 ? null : shape.merged(existing.text, servers);
+    return { text, rows: servers.map((server) => verdict(server, entries, shape)) };
+  };
+}
+
+function verdict(server: McpServer, entries: JsonEntries, shape: JsonShape): McpSyntaxRow {
+  const there = JSON.stringify(entries[server.name]) === JSON.stringify(shape.entry(server));
+  return { server: server.name, action: there ? "unchanged" : "written", reason: null };
+}
+
+function skipped(server: string, reason: string): McpSyntaxRow {
+  return { server, action: "skipped", reason };
 }

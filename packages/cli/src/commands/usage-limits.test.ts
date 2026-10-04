@@ -1,4 +1,4 @@
-import type { PlanLimit } from "@agnostic/core";
+import { NO_LIMIT_DETAIL, type PlanLimit } from "@agnostic/core";
 import { describe, expect, it, vi } from "vitest";
 import { usageCommand } from "./usage.js";
 import { cli, NO_BUDGET, plan, response } from "./usage-fixture.js";
@@ -27,7 +27,8 @@ describe("agn usage and the plan's own meter", () => {
       fiveHour: { usedPercent: 58, resetsAt: "2026-09-11T14:05:00", freshness: "current" },
       week: { usedPercent: 41, resetsAt: "2026-09-14T09:00:00", freshness: "current" },
       observedAt: observed(12),
-      source: "claude-statusline",
+      source: "statusline",
+      detail: NO_LIMIT_DETAIL,
       ...over,
     };
   }
@@ -41,6 +42,45 @@ describe("agn usage and the plan's own meter", () => {
       expect(test.out.at(-1)).toBe(
         "claude-code  58% of the 5-hour window (resets 14:05) · 41% of the week (resets Mon 09:00) · as of 12 min ago",
       );
+    });
+  });
+
+  it("prints the account's credits and plan under the window lines", async () => {
+    await withClock("2026-09-11T13:00:00", async () => {
+      const detail = { ...NO_LIMIT_DETAIL, credits: 12.5, planType: "plus" };
+      const test = cli({
+        usage: response([plan()], NO_BUDGET, [limit({ harness: "codex", detail })]),
+      });
+
+      await parse(test.ctx, []);
+
+      expect(test.out.at(-1)).toBe("codex  credits $12.50 · plan plus");
+    });
+  });
+
+  it("prints the session cost and context a status line reported", async () => {
+    await withClock("2026-09-11T13:00:00", async () => {
+      const detail = { ...NO_LIMIT_DETAIL, sessionCostUsd: 0.8412, contextUsedPercent: 37.4 };
+      const test = cli({ usage: response([plan()], NO_BUDGET, [limit({ detail })]) });
+
+      await parse(test.ctx, []);
+
+      expect(test.out.at(-1)).toBe(
+        "claude-code  last session $0.84 (the agent's figure) · context 37% used",
+      );
+    });
+  });
+
+  it("names every installed agent that records no usage, over the budget lines", async () => {
+    await withClock("2026-09-11T13:00:00", async () => {
+      const test = cli({ usage: response([plan()], NO_BUDGET, [], ["kimi", "droid"]) });
+
+      await parse(test.ctx, []);
+
+      expect(test.out.slice(-2)).toEqual([
+        "usage not available for kimi: nothing on this machine records it",
+        "usage not available for droid: nothing on this machine records it",
+      ]);
     });
   });
 

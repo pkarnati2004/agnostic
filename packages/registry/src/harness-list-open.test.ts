@@ -35,6 +35,8 @@ describe("an open harness id", () => {
     expect(harnessDefinition("other:mytool")).toEqual({
       id: "other:mytool",
       name: "mytool",
+      mark: "My",
+      vendor: null,
       binary: "mytool",
       aliases: [],
       processNames: ["mytool"],
@@ -49,7 +51,11 @@ describe("an open harness id", () => {
       sessionCapture: null,
       hooks: null,
       authFile: null,
-      transcriptsDir: null,
+      usageSource: null,
+      limitSource: null,
+      worktreeTrust: null,
+      mcp: null,
+      headlessDetect: null,
       tier: 2,
     });
   });

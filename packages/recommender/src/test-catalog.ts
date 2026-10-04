@@ -15,7 +15,8 @@ export async function fixtureCatalog(): Promise<Catalog> {
   const file = fileURLToPath(
     new URL("../../../tests/fixtures/catalog/recommender.json", import.meta.url),
   );
-  const catalog = await readCatalogFile(file);
+  // The recommender does not import the registry, so its fixture says which vendor bills what.
+  const catalog = await readCatalogFile(file, { vendorOf: () => "claude" });
   if (catalog === null) {
     throw new Error(`the recommender fixture catalog is missing: ${file}`);
   }

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { type Plan, type Plans, PlansSchema, type PlanVendor } from "./plans.js";
 import type { Billing, Profile } from "./profile.js";
 import type { HarnessId } from "./profile-id.js";
+import type { LimitSource } from "./usage.js";
 
 export type ModelSource = "probe" | "seed" | "none";
 
@@ -51,6 +52,10 @@ export type HarnessReport = {
   modelSource: ModelSource;
   /** null for a harness billed per provider key, which has no plan to be on. */
   planVendor: PlanVendor | null;
+  /** Where the harness's own rate-limit figure comes from; null for one that reports none. */
+  limitSource: LimitSource | null;
+  /** Where its token counts come from: files it writes, its hook payload, or nowhere. */
+  usageSource: "transcripts" | "hook" | null;
   /** null when nothing said which plan: not logged in, no plan source, no config entry. */
   plan: PlanReport | null;
   /** `none` for every harness that reports no rate limit agn can read on this machine. */

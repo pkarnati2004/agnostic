@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { agnosticPaths } from "@agnostic/core";
+import { agnosticPaths, NO_LIMIT_DETAIL } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Logger } from "./log.js";
 import { readRateLimitsFile } from "./rate-limits-file.js";
@@ -47,7 +47,8 @@ describe("readRateLimitsFile", () => {
       fiveHour: { usedPercent: 58, resetsAt: "2026-09-24T14:05:00.000Z" },
       week: null,
       observedAt: mtime.toISOString(),
-      source: "claude-statusline",
+      source: "statusline",
+      detail: NO_LIMIT_DETAIL,
     });
   });
 

@@ -16,8 +16,8 @@ import { openClaudeInstaller } from "./openclaude.js";
 /**
  * Every member but Claude Code is unverified live: the events and layouts below come from Orca's
  * per-agent installers (`src/main/<agent>/hook-service.ts`) and the fixtures from their tests.
- * Cursor's payload keys are not in Orca at all; they are inferred from the handoff and stay
- * unverified until someone runs cursor-agent.
+ * Cursor's payload keys are not in Orca at all; they come from a live `stop` payload captured
+ * 2026-10-01 from cursor-agent 2026.10.01-14929f9.
  */
 const FIXTURES = fileURLToPath(new URL("../../../../tests/fixtures/hooks/", import.meta.url));
 

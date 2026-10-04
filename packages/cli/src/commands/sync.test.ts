@@ -41,7 +41,14 @@ function write(over: Partial<SyncWrite> = {}): SyncWrite {
 }
 
 function mcp(over: Partial<McpSyncRow> = {}): McpSyncRow {
-  return { server: "db", target: "claude-code", action: "written", reason: null, ...over };
+  return {
+    server: "db",
+    target: "claude-code",
+    file: ".mcp.json",
+    action: "written",
+    reason: null,
+    ...over,
+  };
 }
 
 describe("agn sync", () => {
@@ -119,7 +126,11 @@ describe("agn sync", () => {
     const test = cli({
       applied: true,
       writes: [write({ file: ".mcp.json" })],
-      mcp: [mcp(), mcp({ target: "opencode" }), mcp({ target: "codex", action: "unchanged" })],
+      mcp: [
+        mcp(),
+        mcp({ target: "opencode", file: "opencode.json" }),
+        mcp({ target: "codex", file: "~/.codex/config.toml", action: "unchanged" }),
+      ],
     });
     await syncCommand(test.ctx).parseAsync(["--repo", REPO.id], { from: "user" });
     expect(test.out).toEqual([
@@ -134,9 +145,10 @@ describe("agn sync", () => {
       writes: [],
       mcp: [
         mcp(),
-        mcp({ target: "opencode" }),
+        mcp({ target: "opencode", file: "opencode.json" }),
         mcp({
           target: "codex",
+          file: "~/.codex/config.toml",
           action: "skipped",
           reason: "Codex forwards a variable only under its own name",
         }),

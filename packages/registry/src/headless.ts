@@ -3,28 +3,21 @@ import type { HarnessId } from "@agnostic/core";
 import { harnessDefinition } from "./harness-list.js";
 
 /**
- * A harness asked to answer once and exit: a script's `claude -p`, not a session anyone works in.
- * `agn adopt` drops these, because adopting one would register a task that is already over.
- * Harness knowledge belongs in the registry, so this is a function over argv rather than a field
- * on `HarnessDefinition` that every tier-2 entry would have to carry.
+ * A harness asked to answer once and exit: a script's one-shot run, not a session anyone works in.
+ * `agn adopt` drops these, because adopting one would register a task that is already over. The
+ * row says what the form looks like, so a harness agn knows no headless form for is never one.
  */
 export function isHeadlessInvocation(harness: HarnessId, args: string[]): boolean {
-  const rest = argsAfterBinary(harness, args);
-  switch (harness) {
-    case "claude-code":
-      return beforeSeparator(rest).some(
-        (arg) => arg === "-p" || arg === "--print" || flag(arg) === "--output-format",
-      );
-    case "codex":
-      return firstOperand(rest) === "exec";
-    case "pi":
-      return rest.some((arg) => arg === "-p" || arg === "--print");
-    case "opencode":
-      return firstOperand(rest) === "run";
-    default:
-      // A tier-2 harness is launch and attach only: agn knows no headless form to recognise.
-      return false;
+  const detect = harnessDefinition(harness).headlessDetect;
+  if (detect === null) {
+    return false;
   }
+  const rest = argsAfterBinary(harness, args);
+  if (detect.kind === "subcommand") {
+    return firstOperand(rest) === detect.name;
+  }
+  const searched = detect.beforeSeparator ? beforeSeparator(rest) : rest;
+  return searched.some((arg) => detect.flags.includes(flag(arg)));
 }
 
 /**

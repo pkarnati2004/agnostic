@@ -42,7 +42,7 @@ const devinMember: SettingsJsonMember = {
   timeout: 5,
   reply: null,
   verify: VERIFY,
-  statusLine: false,
+  userStatusLine: null,
 };
 
 const settings = settingsJsonInstaller(devinMember);

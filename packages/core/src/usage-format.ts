@@ -1,4 +1,4 @@
-import type { UsageWindow } from "./usage.js";
+import type { PlanLimitDetail, UsageWindow } from "./usage.js";
 
 /** The scales a token count is read at; anything smaller is printed as it is. */
 const UNITS = [
@@ -11,6 +11,35 @@ const SIGNIFICANT = 3;
 
 // Named in English rather than by locale, so `agn usage` and the page read the same wherever agn runs.
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * The figures a limit source carried beside its windows, in the order they are read in: what the
+ * account has left, then what the session that reported them has spent. One function, so
+ * `agn usage` and the plan cell's tooltip say the same words about the same figure.
+ */
+export function limitDetailParts(detail: PlanLimitDetail): string[] {
+  const parts: string[] = [];
+  if (detail.credits !== null) {
+    parts.push(`credits ${detail.credits === "unlimited" ? "unlimited" : money(detail.credits)}`);
+  }
+  if (detail.planType !== null) {
+    parts.push(`plan ${detail.planType}`);
+  }
+  if (detail.spendControlReached === true) {
+    parts.push("spend control reached");
+  }
+  if (detail.sessionCostUsd !== null) {
+    parts.push(`last session ${money(detail.sessionCostUsd)} (the agent's figure)`);
+  }
+  if (detail.contextUsedPercent !== null) {
+    parts.push(`context ${Math.round(detail.contextUsedPercent)}% used`);
+  }
+  return parts;
+}
+
+function money(value: number): string {
+  return `$${value.toFixed(2)}`;
+}
 
 /** How old a figure is, in the one unit the reader needs: minutes, then hours, then days. */
 export function formatAgo(iso: string, now: Date): string {

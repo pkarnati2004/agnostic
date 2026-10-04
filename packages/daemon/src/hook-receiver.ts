@@ -10,6 +10,7 @@ import {
 import { hookParser, type ParsedHook } from "@agnostic/hooks";
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
+import { recordHookUsage } from "./hook-usage.js";
 import { syncTaskNote } from "./task-note-sync.js";
 
 /** Only a task that is live can be moved by a hook: queued has not launched, terminal is decided. */
@@ -41,6 +42,8 @@ export async function receiveHook(
   // Any hook at all proves the harness came up, whatever the event is and whoever sends it first.
   ctx.resumeWatch.hookSeen(task.id);
   const withSession = captureSession(ctx, task, parsed);
+  // After the session is captured, so the row lands on the task the hook just identified itself as.
+  await recordHookUsage(ctx, withSession, parsed);
   return applyStatus(ctx, withSession, parsed, harness);
 }
 

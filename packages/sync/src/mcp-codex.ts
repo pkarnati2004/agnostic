@@ -3,10 +3,12 @@ import {
   type MarkedBlock,
   type McpServer,
   type McpValue,
+  readTextFile,
   withMarkedBlock,
   withoutMarkedBlock,
 } from "@agnostic/core";
 import { SyncError } from "./error.js";
+import type { McpSyntaxAdapter, McpSyntaxRow } from "./mcp-syntax.js";
 
 /**
  * Codex keeps its MCP servers in the user's own config, so agn owns one marked block per repo:
@@ -24,13 +26,49 @@ function codexBlock(repoId: string): MarkedBlock {
   };
 }
 
-export type CodexTable = { server: string; text: string };
+/**
+ * Codex's config is the user's own file, so agn writes it whole from the block it owns: the servers
+ * of `.ag/mcp.yaml` that have a form here, and nothing else. A server agn cannot express is left to
+ * the user with a reason rather than written wrong.
+ */
+export const codexSyntax: McpSyntaxAdapter = {
+  read: async (path) => ({ text: await readTextFile(path), blocked: null }),
+  plan(existing, repoId, servers) {
+    const current = existing.text ?? "";
+    if (servers === null) {
+      const cleared = withCodexTables(current, repoId, []);
+      return { text: cleared === current ? null : cleared, rows: [] };
+    }
+    const planned = servers.map((server) => ({ server, table: codexTable(server) }));
+    const tables = planned.flatMap((row) => ("table" in row.table ? [row.table.table] : []));
+    const next = withCodexTables(current, repoId, tables);
+    return {
+      text: next === current ? null : next,
+      rows: planned.map((row) => codexRow(row.server, row.table, current, repoId)),
+    };
+  },
+};
+
+function codexRow(
+  server: McpServer,
+  table: { table: CodexTable } | { skipped: string },
+  current: string,
+  repoId: string,
+): McpSyntaxRow {
+  if ("skipped" in table) {
+    return { server: server.name, action: "skipped", reason: table.skipped };
+  }
+  const there = codexBlockBody(current, repoId).includes(table.table.text);
+  return { server: server.name, action: there ? "unchanged" : "written", reason: null };
+}
+
+type CodexTable = { server: string; text: string };
 
 /**
  * Codex forwards a variable only under its own name (`env_vars` is a list of names, not a map),
  * so an env key that renames the variable has no form here and the server is left to the user.
  */
-export function codexTable(server: McpServer): { table: CodexTable } | { skipped: string } {
+function codexTable(server: McpServer): { table: CodexTable } | { skipped: string } {
   // The marker tells a later sync its own table from one `codex mcp add` appended into the block.
   const lines = [`[mcp_servers.${server.name}]`, AGN_TABLE_MARKER];
   if (server.kind === "stdio") {
@@ -52,14 +90,14 @@ export function codexTable(server: McpServer): { table: CodexTable } | { skipped
 }
 
 /** The block this repo owns, rebuilt whole: an entry dropped from `.ag/mcp.yaml` leaves with it. */
-export function withCodexTables(text: string, repoId: string, tables: CodexTable[]): string {
+function withCodexTables(text: string, repoId: string, tables: CodexTable[]): string {
   const block = codexBlock(repoId);
   assertNoStrayTables(withoutMarkedBlock(text, block), tables, repoId);
   return withMarkedBlock(text, block, tables.map((table) => table.text).join("\n"));
 }
 
 /** What this repo's block holds now, so a sync can tell an entry it would rewrite from one it wrote. */
-export function codexBlockBody(text: string, repoId: string): string {
+function codexBlockBody(text: string, repoId: string): string {
   const block = codexBlock(repoId);
   const begin = text.indexOf(`${block.begin}\n`);
   const end = text.indexOf(`${block.end}\n`, begin);
