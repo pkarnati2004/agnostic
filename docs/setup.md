@@ -108,6 +108,10 @@ means agnostic couldn't verify login - start the agent once by hand and re-run. 
 --verbose` adds the PATH agnostic searched, which the plain command prints only when an agent you
 named is missing.
 
+agnostic asks each agent for its model list when the daemon starts, on every catalog check -
+the daily one and `agn catalog update` run by hand - when the agent's own binary or login file
+changes, and on every `agn doctor`.
+
 ## The daemon
 
 One local daemon owns the task database, detection and the running sessions. The first `agn`

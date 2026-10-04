@@ -1,8 +1,10 @@
 import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { HarnessReport } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { authFilesStamp } from "./auth-files.js";
+import { authFilesStamp, harnessBinariesStamp } from "./detection-stamp.js";
+import { fixtureDetection } from "./test-detection.js";
 
 let home: string;
 
@@ -58,7 +60,54 @@ describe("authFilesStamp", () => {
 
   it("covers each tracked file once even though claude-code names it as both login and plan source", async () => {
     const stamp = await authFilesStamp(home);
-    const occurrences = stamp.split("|").filter((entry) => entry.startsWith(".claude.json:"));
+    const occurrences = stamp
+      .split("|")
+      .filter((entry: string) => entry.startsWith(".claude.json:"));
     expect(occurrences).toHaveLength(1);
+  });
+});
+
+describe("harnessBinariesStamp", () => {
+  /** The fixture's first harness report, pointed at a file this test owns. */
+  function reportFor(path: string | null): HarnessReport[] {
+    const [first] = fixtureDetection().harnesses;
+    if (first === undefined) {
+      throw new Error("the fixture detection has no harnesses");
+    }
+    return [{ ...first, path }];
+  }
+
+  async function binary(name: string): Promise<string> {
+    const path = join(home, name);
+    await writeFile(path, "#!/bin/sh\n");
+    return path;
+  }
+
+  it("is stable while the binary is untouched", async () => {
+    const reports = reportFor(await binary("claude"));
+    expect(await harnessBinariesStamp(reports)).toBe(await harnessBinariesStamp(reports));
+  });
+
+  it("changes when the binary is replaced with one of the same size", async () => {
+    const path = await binary("claude");
+    const before = await harnessBinariesStamp(reportFor(path));
+    // An upgrade can write the same number of bytes; it always moves mtime.
+    const bumped = new Date(Date.now() + 60_000);
+    await utimes(path, bumped, bumped);
+    expect(await harnessBinariesStamp(reportFor(path))).not.toBe(before);
+  });
+
+  it("changes when the harness is found at another path", async () => {
+    const before = await harnessBinariesStamp(reportFor(await binary("claude")));
+    expect(await harnessBinariesStamp(reportFor(await binary("claude-2")))).not.toBe(before);
+  });
+
+  it("reads a harness installed nowhere as absent, with no path to stat", async () => {
+    expect(await harnessBinariesStamp(reportFor(null))).toBe("claude-code:-");
+  });
+
+  it("reads a path that no longer exists as absent", async () => {
+    const stamp = await harnessBinariesStamp(reportFor(join(home, "removed")));
+    expect(stamp).toBe(`claude-code:${join(home, "removed")}:-`);
   });
 });
