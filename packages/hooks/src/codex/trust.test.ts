@@ -44,7 +44,8 @@ describe("Codex hook trust", () => {
     const original = 'notify = ["x"]\n\n[projects."/x"]\ntrust_level = "trusted"\n';
     const updated = withTrustBlock(original, [{ key: "k", hash: "sha256:abc" }]);
     expect(updated.startsWith(original)).toBe(true);
-    expect(updated).toContain('[hooks.state."k"]\ntrusted_hash = "sha256:abc"');
+    // Every table agn writes carries its marker, so a later install knows it wrote this one.
+    expect(updated).toContain('[hooks.state."k"]\n# agn\ntrusted_hash = "sha256:abc"');
   });
 
   it("replaces the block it wrote before, in place", () => {

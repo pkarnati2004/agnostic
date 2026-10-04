@@ -1,10 +1,15 @@
-import { type MarkedBlock, withMarkedBlock, withoutMarkedBlock } from "@agnostic/core";
+import {
+  AGN_TABLE_MARKER,
+  type MarkedBlock,
+  withMarkedBlock,
+  withoutMarkedBlock,
+} from "@agnostic/core";
 import { HooksError } from "../error.js";
 
 /**
- * Codex's trust entries go in the user's own `config.toml`, so agn writes them in a marked block
- * and never touches a line outside it. One of agn's tables somewhere else in the file is refused
- * rather than merged: two tables of the same name would make the config unparsable.
+ * Codex's trust entries go in the user's own `config.toml`, so agn writes them between these two
+ * lines and never touches a line outside them. One of agn's tables somewhere else in the file is
+ * refused rather than merged: two tables of the same name would make the config unparsable.
  */
 const BLOCK: MarkedBlock = {
   begin: "# >>> agn hooks: managed block, edits here are replaced >>>",
@@ -19,10 +24,18 @@ export function withTrustBlock(text: string, tables: TrustTable[]): string {
   return withMarkedBlock(text, BLOCK, tables.length === 0 ? "" : blockBody(tables));
 }
 
+/**
+ * Each table carries agn's marker, so the next install replaces its own tables and keeps the one
+ * Codex appends after the last `hooks.state` table in the file when the user trusts a hook.
+ */
 function blockBody(tables: TrustTable[]): string {
   return tables
-    .map((table) => `[hooks.state."${table.key}"]\ntrusted_hash = "${table.hash}"\n`)
+    .map((table) => `${header(table.key)}\n${AGN_TABLE_MARKER}\ntrusted_hash = "${table.hash}"\n`)
     .join("\n");
+}
+
+function header(key: string): string {
+  return `[hooks.state."${key}"]`;
 }
 
 /**
@@ -30,9 +43,9 @@ function blockBody(tables: TrustTable[]): string {
  * user approves a hook in `/hooks` - would be a duplicate table and make the file unparsable.
  */
 function assertNoStrayTables(text: string, tables: TrustTable[]): void {
-  const stray = tables.find((table) => text.includes(`[hooks.state."${table.key}"]`));
+  const stray = tables.find((table) => text.includes(header(table.key)));
   if (stray !== undefined) {
-    throw refuse(`it already holds a [hooks.state."${stray.key}"] table outside the agn block`);
+    throw refuse(`it already holds a ${header(stray.key)} table outside the agn block`);
   }
 }
 

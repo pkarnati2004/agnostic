@@ -112,6 +112,7 @@ Codex has one config for the whole machine, so agn owns one marked block in it p
 ```toml
 # >>> agn mcp for r7k2m4pqrs: managed block, edits here are replaced >>>
 [mcp_servers.db]
+# agn
 command = "npx"
 args = ["-y", "@acme/db-mcp"]
 env = { "LOG_LEVEL" = "info" }
@@ -119,7 +120,7 @@ env_vars = ["DATABASE_URL"]
 # <<< agn mcp for r7k2m4pqrs <<<
 ```
 
-Nothing outside the markers is touched, and the block is rebuilt whole on every sync. Two `[mcp_servers.db]` tables would make the file unparsable, so a name already used outside this repo's block - by another repo, or by you - stops the sync and says so. Rename the server in `.ag/mcp.yaml`, or remove the other table.
+Nothing outside the markers is touched, and the block is rebuilt whole on every sync. agn marks each table it writes with a `# agn` comment line and leaves an unmarked table alone: a server you add with `codex mcp add` lands inside the block, and the next sync moves it below the block instead of deleting it. Two `[mcp_servers.db]` tables would make the file unparsable, so a name already used outside this repo's block - by another repo, or by you - stops the sync and says so. Rename the server in `.ag/mcp.yaml`, or remove the other table.
 
 That check reads table headers written as a bare key, which is the form agn writes. A table you wrote as `[mcp_servers."db"]`, with the name in quotes, is not seen, so declaring `db` in `.ag/mcp.yaml` would leave Codex with two tables of one name; quote a table header only for a name that needs it, and give agn's servers names that do not.
 

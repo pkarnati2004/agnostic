@@ -1,4 +1,5 @@
 import {
+  AGN_TABLE_MARKER,
   type MarkedBlock,
   type McpServer,
   type McpValue,
@@ -30,7 +31,8 @@ export type CodexTable = { server: string; text: string };
  * so an env key that renames the variable has no form here and the server is left to the user.
  */
 export function codexTable(server: McpServer): { table: CodexTable } | { skipped: string } {
-  const lines = [`[mcp_servers.${server.name}]`];
+  // The marker tells a later sync its own table from one `codex mcp add` appended into the block.
+  const lines = [`[mcp_servers.${server.name}]`, AGN_TABLE_MARKER];
   if (server.kind === "stdio") {
     for (const [key, value] of Object.entries(server.env)) {
       if (value.kind === "env" && value.name !== key) {
