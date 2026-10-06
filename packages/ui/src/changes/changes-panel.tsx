@@ -11,6 +11,8 @@ import type {
 import { useEffect, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { DiffView } from "../diff/diff-view";
+import { PaneHandle } from "../layout/pane-handle";
+import type { PaneColumn } from "../layout/workspace-columns";
 import type { TaskAction, TaskNotice } from "../store/task-notices";
 import { TaskNoticeLine } from "../task/task-notice-line";
 import { worktreeGone } from "../task/worktree-gone";
@@ -46,6 +48,8 @@ type ChangesPanelProps = {
   onLoaded: (response: ChangesResponse) => void;
   /** Closes the column: the same toggle the task header's Changes button calls. */
   onClose: () => void;
+  /** The page's column for this pane; absent, no handle is drawn. */
+  column?: PaneColumn;
   /** Given when the command palette opened the Create PR dialog rather than its button. */
   prOpen?: boolean;
   onPrOpenChange?: (open: boolean) => void;
@@ -97,7 +101,10 @@ export function ChangesPanel(props: ChangesPanelProps) {
   };
 
   return (
-    <aside className="flex min-w-0 flex-col overflow-hidden border-border border-l">
+    <aside className="relative flex min-w-0 flex-col overflow-hidden border-border border-l">
+      {props.column !== undefined && (
+        <PaneHandle edge="left" label="Resize Changes" column={props.column} />
+      )}
       <ChangesHeader
         task={task}
         response={view.kind === "changes" ? view.response : null}

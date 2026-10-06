@@ -4,6 +4,7 @@ import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/error";
 import { TooltipProvider } from "../components/tooltip";
+import type { PaneColumn } from "../layout/workspace-columns";
 import type { RepoNotices } from "../repo/repo-notices";
 import { EMPTY_WORKSPACE, type WorkspaceState, workspaceReducer } from "../store/workspace-state";
 import { click, find, render } from "../test/render";
@@ -65,7 +66,12 @@ function statusEvent(id: number, status: "active" | "archived"): Event {
   } as Event;
 }
 
+/** The page's column, which only the handle tests pass. */
+const COLUMN: PaneColumn = { width: 240, min: 200, max: 400, set: vi.fn(), reset: vi.fn() };
+
 type Handlers = {
+  collapsed?: boolean;
+  column?: PaneColumn;
   onAddRepo?: () => void;
   onCloseRepo?: (repoId: string) => Promise<void>;
   onReopenRepo?: (repoId: string) => Promise<void>;
@@ -82,7 +88,8 @@ function sidebar(state: WorkspaceState, handlers: Handlers = {}) {
           groups={groups}
           repos={state.repos}
           selectedId={null}
-          collapsed={false}
+          collapsed={handlers.collapsed ?? false}
+          column={handlers.column}
           onSearch={vi.fn()}
           daemon={DAEMON}
           now={NOW}
@@ -256,6 +263,24 @@ describe("managing repos from the sidebar", () => {
     page.update(sidebar(opened, { repoNotices }));
     expect(headings(page.container)).toEqual(["Needs you", "Repos", "katha", "petal"]);
     expect(page.container.textContent).toContain("Reopen failed for petal: no repo matches r1");
+    page.unmount();
+  });
+});
+
+describe("the sidebar's resize handle", () => {
+  it("sits on the expanded sidebar's right edge", () => {
+    const page = render(sidebar(loaded(), { column: COLUMN }));
+    const handles = page.container.querySelectorAll('[role="separator"]');
+
+    expect(handles.length).toBe(1);
+    expect(handles[0]?.getAttribute("aria-label")).toBe("Resize sidebar");
+    page.unmount();
+  });
+
+  it("is not drawn on the rail", () => {
+    const page = render(sidebar(loaded(), { column: COLUMN, collapsed: true }));
+
+    expect(page.container.querySelectorAll('[role="separator"]').length).toBe(0);
     page.unmount();
   });
 });

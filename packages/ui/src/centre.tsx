@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import type { WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
 import { CompareView } from "./compare/compare-view";
+import { CENTRE_MIN_PX } from "./layout/pane-width";
 import { Notice } from "./notice";
 import { CatalogNotice } from "./notice/catalog-notice";
 import { DaemonBanner } from "./notice/daemon-banner";
@@ -99,7 +100,7 @@ export function Centre(props: CentreProps) {
   const dropped = useDropped(props.connection);
 
   return (
-    <main className="flex min-w-[640px] flex-col overflow-hidden">
+    <main className="flex flex-col overflow-hidden" style={{ minWidth: CENTRE_MIN_PX }}>
       {/* With no repo yet there is nothing to start a task in, so the strip stays away entirely. */}
       {(items.length > 0 || activeRepos(props.repos).length > 0) && (
         <TabStrip

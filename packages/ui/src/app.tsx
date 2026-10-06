@@ -6,8 +6,8 @@ import { Centre, Centred } from "./centre";
 import { ChangesPanel } from "./changes/changes-panel";
 import { readPanelOpen, writePanelOpen } from "./changes/panel-open";
 import { useChangesActions } from "./changes/use-changes-actions";
-import { cn } from "./class-names";
 import { TooltipProvider } from "./components/tooltip";
+import { useWorkspaceColumns } from "./layout/workspace-columns";
 import { WorkspacePalette } from "./palette/workspace-palette";
 import { AddRepoDialog } from "./repo/add-repo-dialog";
 import { RemoveRepoDialog } from "./repo/remove-repo-dialog";
@@ -101,6 +101,7 @@ function Workspace({ token }: { token: string }) {
   // Recommend and Sync rows act on.
   const repo = state.repos.find((row) => row.id === defaultRepoId(state, activeId)) ?? null;
   const showChanges = changesOpen && activeTask !== null;
+  const columns = useWorkspaceColumns({ collapsed, changesShown: showChanges });
   // The sidebar's New task and the tab strip's "+" are the same click with no prompt behind it, so
   // they leave whatever is typed in the tab alone; the palette's Run row replaces it.
   const openNewTask = (prompt: string | null) => {
@@ -161,9 +162,10 @@ function Workspace({ token }: { token: string }) {
   });
 
   return (
-    <div className={cn("grid h-full", gridColumns(collapsed, showChanges))}>
+    <div className="grid h-full" style={{ gridTemplateColumns: columns.template }}>
       <TaskRowActionsProvider value={rows.actions}>
         <Sidebar
+          column={columns.sidebar}
           groups={groups}
           repos={state.repos}
           selectedId={tabs.active}
@@ -241,6 +243,7 @@ function Workspace({ token }: { token: string }) {
         />
         {showChanges && activeTask !== null && (
           <ChangesPanel
+            column={columns.changes}
             task={activeTask}
             client={client}
             notice={notices[activeTask.id] ?? null}
@@ -287,12 +290,4 @@ function Workspace({ token }: { token: string }) {
       </TaskRowActionsProvider>
     </div>
   );
-}
-
-/** The Changes column takes its 360 px from the centre, which keeps its own 640 px minimum. */
-function gridColumns(collapsed: boolean, changes: boolean): string {
-  if (collapsed) {
-    return changes ? "grid-cols-[52px_1fr_360px]" : "grid-cols-[52px_1fr]";
-  }
-  return changes ? "grid-cols-[240px_1fr_360px]" : "grid-cols-[240px_1fr]";
 }

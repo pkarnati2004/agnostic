@@ -1,6 +1,8 @@
 import type { RepoListRow } from "@agnostic/core";
 import { FolderPlus, Plus } from "lucide-react";
 import { useState } from "react";
+import { PaneHandle } from "../layout/pane-handle";
+import type { PaneColumn } from "../layout/workspace-columns";
 import type { RepoNotices } from "../repo/repo-notices";
 import { ClosedSection } from "./closed-section";
 import { DaemonFooter, type DaemonState } from "./daemon-footer";
@@ -35,6 +37,8 @@ type SidebarProps = {
   /** Asks the page for the confirmation: the sidebar never removes a repo itself. */
   onRemoveRepo: (repoId: string) => void;
   repoNotices: RepoNotices;
+  /** The page's column for this pane; absent, no handle is drawn. */
+  column?: PaneColumn;
   onToggle: () => void;
 };
 
@@ -60,7 +64,10 @@ export function Sidebar(props: SidebarProps) {
   }
   const repoNames = new Map(groups.repos.map((group) => [group.repo.id, group.repo.name]));
   return (
-    <aside className="flex min-h-0 flex-col border-sidebar-border border-r bg-sidebar">
+    <aside className="relative flex min-h-0 flex-col border-sidebar-border border-r bg-sidebar">
+      {props.column !== undefined && (
+        <PaneHandle edge="right" label="Resize sidebar" column={props.column} />
+      )}
       <SidebarHeader
         onNewTask={props.onNewTask}
         onSearch={props.onSearch}
