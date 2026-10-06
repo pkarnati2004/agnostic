@@ -2,7 +2,7 @@
 
 Applies to README, docs, the site, changelog, PR descriptions, and anything a person reads. Agent-facing files can be as prescriptive as they need to be.
 
-Say what you mean. When a literal phrase is available, use it. Mannered prose substitutes metaphor and flourish for direct statement - "a dial worth turning" for "a parameter worth varying," "earns its keep" for "still matters." The phrases display the writer instead of conveying the idea, they make the reader work harder, and they drag in connotations the writer didn't choose.
+Use the plain term for the thing. Write "a setting," not "a knob"; "still useful," not "earns its keep"; "the daemon restarts," not "the daemon comes back to life." A figure of speech asks the reader to translate it back, and it carries meanings you did not pick.
 
 - Short sentences. One idea each.
 - Sentence case. No exclamation marks in system copy.

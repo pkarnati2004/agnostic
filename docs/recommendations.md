@@ -60,7 +60,7 @@ The weights come from `optimize` in `.ag/preferences.yaml`:
 | `speed` | 1.0 | 0.3 | 1.0 |
 
 A risk rule's `min_evidence` filters first. If no profile clears it, the ranking stands and the risk
-line says so, because refusing to answer helps nobody.
+line says so.
 
 ## Evidence labels
 

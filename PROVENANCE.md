@@ -39,7 +39,7 @@ Files we intend to copy or port. Names are provisional until the file lands. Not
 
 ## Ideas, no code
 
-Superset (workspace layout, PTY daemon design), Orca (hook-based status), Agent Deck (tmux sessions, budgets, supervising agent), Omnigent (meta-harness framing).
+Superset (workspace layout, PTY-over-daemon terminal), Orca (hook-based status), Agent Deck (tmux sessions, budgets).
 
 ## Catalog data
 
