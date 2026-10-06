@@ -1,7 +1,8 @@
 /*
  * The token names follow shadcn's convention, so the copied components read them unchanged. Every
- * value is agnostic's own design system (2026-09-24): a warm near-black dark theme and a warm
- * light one, with a value for every name in both so a theme switch is a class and nothing else.
+ * value is agnostic's own design system (2026-09-24): `:root` is Claudette dark, the base with no
+ * JavaScript behind it. `themes/*.css` holds the other seven dark blocks and all eight light ones,
+ * each selected by `[data-theme]` and the scheme class on `<html>`.
  *
  * This file is the only place the page writes a colour, a radius or a font stack. A component reads
  * a token; it never writes a hex. Terminal content is the agent's own and is never restyled, so
@@ -44,15 +45,13 @@
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
-  /* Declared here, not in a theme block, so `font-mono` and `var(--font-mono)` are one stack. The
-     mono is the user's: JetBrains Mono is named first and no font file is fetched or bundled. */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono:
-    "JetBrains Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  /* One indirection, so `font-mono` and `var(--font-mono)` are the stack the theme names. A theme
+     puts its own family in front of the base stack below; no font file is fetched or bundled. */
+  --font-sans: var(--font-stack-sans);
+  --font-mono: var(--font-stack-mono);
 }
 
-:root,
-.dark {
+:root {
   --background: #141211;
   --foreground: #e8e4df;
   --card: #1a1816;
@@ -99,52 +98,10 @@
   --diff-del-fg: #f0c0b6;
   --radius: 0.625rem;
   --shadow-floating: 0 24px 64px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.03);
-}
-
-.light {
-  --background: #fbfaf8;
-  --foreground: #1c1917;
-  --card: #ffffff;
-  --card-foreground: #1c1917;
-  --popover: #ffffff;
-  --popover-foreground: #1c1917;
-  --primary: #1c1917;
-  --primary-foreground: #fbfaf8;
-  /* 5.2:1 on #1c1917. */
-  --primary-foreground-muted: #918b85;
-  --secondary: #f1efec;
-  --secondary-foreground: #1c1917;
-  --muted: #f1efec;
-  --muted-foreground: #6f6a64;
-  --accent: #ebe8e4;
-  --accent-foreground: #1c1917;
-  --destructive: #c8412f;
-  --destructive-foreground: #fbfaf8;
-  --border: #e4e0db;
-  --input: #d9d4ce;
-  --ring: #3f6fb0;
-  --sidebar: #f5f3f0;
-  --sidebar-foreground: #292524;
-  --sidebar-primary: #1c1917;
-  --sidebar-primary-foreground: #fbfaf8;
-  --sidebar-accent: #ebe8e4;
-  --sidebar-accent-foreground: #1c1917;
-  --sidebar-border: #e7e3de;
-  --sidebar-ring: #3f6fb0;
-  --status-waiting: #d4731c;
-  --status-running: #2f9a57;
-  --status-queued: #6b7788;
-  --status-done: #9a948e;
-  --status-failed: #c8412f;
-  --status-stopped: #8a847e;
-  --warning: #a87f12;
-  --terminal: #ffffff;
-  --diff-add-bg: #e8f6ec;
-  --diff-add-fg: #2f9a57;
-  --diff-del-bg: #fdeceb;
-  --diff-del-fg: #c8412f;
-  --radius: 0.625rem;
-  --shadow-floating: 0 24px 64px -12px rgb(28 25 23 / 0.18), 0 0 0 1px rgb(28 25 23 / 0.06);
+  /* The base stacks every theme falls back to. The mono is the user's: JetBrains Mono is first. */
+  --font-stack-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-stack-mono:
+    "JetBrains Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
 }
 
 /*

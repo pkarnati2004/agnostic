@@ -1,0 +1,100 @@
+/*
+ * Claudette, the design's first theme and the one tokens.css carries in `:root`. The dark block
+ * here repeats `:root` so a theme card's swatch can select it on a page drawn in another theme;
+ * the light block holds the hand-tuned values the design wrote on 2026-09-24. Hand-maintained:
+ * the generator skips this theme. Keep the dark block equal to `:root`; tokens.test.ts checks.
+ */
+[data-theme="claudette"].dark {
+  --background: #141211;
+  --foreground: #e8e4df;
+  --card: #1a1816;
+  --card-foreground: #e8e4df;
+  --popover: #1e1b19;
+  --popover-foreground: #e8e4df;
+  --primary: #e8e4df;
+  --primary-foreground: #161412;
+  /* The tooltip's own muted lines, on a --primary surface: --muted-foreground is read against
+     --background and reaches only 2.8:1 here. 5.4:1 on #e8e4df. */
+  --primary-foreground-muted: #5f5a55;
+  --secondary: #2a2623;
+  --secondary-foreground: #f2eee9;
+  --muted: #211e1c;
+  --muted-foreground: #8e8781;
+  --accent: #24211e;
+  --accent-foreground: #f2eee9;
+  --destructive: #e0604e;
+  /* Text on a destructive surface. The design gives no value; this is its light background. */
+  --destructive-foreground: #fbfaf8;
+  --border: #2a2624;
+  --input: #332f2c;
+  --ring: #7fa3cf;
+  --sidebar: #171514;
+  --sidebar-foreground: #d9d4ce;
+  --sidebar-primary: #e8e4df;
+  --sidebar-primary-foreground: #161412;
+  --sidebar-accent: #24211e;
+  --sidebar-accent-foreground: #f2eee9;
+  --sidebar-border: #252220;
+  --sidebar-ring: #7fa3cf;
+  --status-waiting: #f09a4a;
+  --status-running: #5fbf7f;
+  --status-queued: #8a96a8;
+  --status-done: #6d6863;
+  --status-failed: #e0604e;
+  --status-stopped: #4b4744;
+  /* Budget, risk and behind. The waiting orange means "the agent asked you something" and nothing else. */
+  --warning: #d9b24c;
+  --terminal: #121010;
+  --diff-add-bg: rgb(95 191 127 / 0.1);
+  --diff-add-fg: #b9dcc0;
+  --diff-del-bg: rgb(224 96 78 / 0.1);
+  --diff-del-fg: #f0c0b6;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.03);
+}
+
+[data-theme="claudette"].light {
+  --background: #fbfaf8;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+  --primary: #1c1917;
+  --primary-foreground: #fbfaf8;
+  /* 5.2:1 on #1c1917. */
+  --primary-foreground-muted: #918b85;
+  --secondary: #f1efec;
+  --secondary-foreground: #1c1917;
+  --muted: #f1efec;
+  --muted-foreground: #6f6a64;
+  --accent: #ebe8e4;
+  --accent-foreground: #1c1917;
+  --destructive: #c8412f;
+  --destructive-foreground: #fbfaf8;
+  --border: #e4e0db;
+  --input: #d9d4ce;
+  --ring: #3f6fb0;
+  --sidebar: #f5f3f0;
+  --sidebar-foreground: #292524;
+  --sidebar-primary: #1c1917;
+  --sidebar-primary-foreground: #fbfaf8;
+  --sidebar-accent: #ebe8e4;
+  --sidebar-accent-foreground: #1c1917;
+  --sidebar-border: #e7e3de;
+  --sidebar-ring: #3f6fb0;
+  --status-waiting: #d4731c;
+  --status-running: #2f9a57;
+  --status-queued: #6b7788;
+  --status-done: #9a948e;
+  --status-failed: #c8412f;
+  --status-stopped: #8a847e;
+  --warning: #a87f12;
+  --terminal: #ffffff;
+  --diff-add-bg: #e8f6ec;
+  --diff-add-fg: #2f9a57;
+  --diff-del-bg: #fdeceb;
+  --diff-del-fg: #c8412f;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(28 25 23 / 0.18), 0 0 0 1px rgb(28 25 23 / 0.06);
+}

@@ -1,0 +1,94 @@
+/*
+ * Rosewood, generated from the design's remap of the token values in tokens.css (2026-10-06).
+ * Neutrals take hue 350 at saturation 0.07; waiting h345 s0.42, running h140, failed h14, queued h330, ring h340 s0.38, warning h40.
+ * Edit the generator, not this file - except to hand-tune a value the design asks for.
+ */
+[data-theme="rosewood"].dark {
+  --background: #141112;
+  --foreground: #e4e3e3;
+  --card: #1a1617;
+  --card-foreground: #e4e3e3;
+  --popover: #1d1a1a;
+  --popover-foreground: #e4e3e3;
+  --primary: #e4e3e3;
+  --primary-foreground: #151313;
+  --primary-foreground-muted: #605456;
+  --secondary: #292425;
+  --secondary-foreground: #eeeded;
+  --muted: #211c1d;
+  --muted-foreground: #907f82;
+  --accent: #231f1f;
+  --accent-foreground: #eeeded;
+  --destructive: #e0704e;
+  --destructive-foreground: #faf9f9;
+  --border: #2a2425;
+  --input: #332c2d;
+  --ring: #cf7f9a;
+  --sidebar: #171414;
+  --sidebar-foreground: #d5d2d2;
+  --sidebar-primary: #e4e3e3;
+  --sidebar-primary-foreground: #151313;
+  --sidebar-accent: #231f1f;
+  --sidebar-accent-foreground: #eeeded;
+  --sidebar-border: #252021;
+  --sidebar-ring: #cf7f9a;
+  --status-waiting: #f04a73;
+  --status-running: #5fbf7f;
+  --status-queued: #a88a99;
+  --status-done: #6f6163;
+  --status-failed: #e0704e;
+  --status-stopped: #4d4244;
+  --warning: #d9aa4c;
+  --terminal: #121010;
+  --diff-add-bg: rgb(95 191 127 / 0.1);
+  --diff-add-fg: #b9dcc5;
+  --diff-del-bg: rgb(224 112 78 / 0.1);
+  --diff-del-fg: #f0c4b6;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.03);
+}
+
+[data-theme="rosewood"].light {
+  --background: #f9f8f8;
+  --foreground: #201d1e;
+  --card: #f3f2f2;
+  --card-foreground: #201d1e;
+  --popover: #efedee;
+  --popover-foreground: #201d1e;
+  --primary: #201d1e;
+  --primary-foreground: #f7f6f6;
+  --primary-foreground-muted: #aca5a6;
+  --secondary: #e3e0e1;
+  --secondary-foreground: #171515;
+  --muted: #eceaea;
+  --muted-foreground: #7d7374;
+  --accent: #e9e7e7;
+  --accent-foreground: #171515;
+  --destructive: #c04722;
+  --destructive-foreground: #0d0c0c;
+  --border: #e2e0e0;
+  --input: #d9d6d6;
+  --ring: #b8456b;
+  --sidebar: #f5f5f5;
+  --sidebar-foreground: #2f2b2c;
+  --sidebar-primary: #201d1e;
+  --sidebar-primary-foreground: #f7f6f6;
+  --sidebar-accent: #e9e7e7;
+  --sidebar-accent-foreground: #171515;
+  --sidebar-border: #e7e5e5;
+  --sidebar-ring: #b8456b;
+  --status-waiting: #da1244;
+  --status-running: #317b4a;
+  --status-queued: #876475;
+  --status-done: #9d9596;
+  --status-failed: #c04722;
+  --status-stopped: #bfbabb;
+  --warning: #8e691e;
+  --terminal: #fafafa;
+  --diff-add-bg: rgb(49 123 74 / 0.1);
+  --diff-add-fg: #3d7a51;
+  --diff-del-bg: rgb(192 71 34 / 0.1);
+  --diff-del-fg: #ab4323;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(28 25 23 / 0.18), 0 0 0 1px rgb(28 25 23 / 0.06);
+}

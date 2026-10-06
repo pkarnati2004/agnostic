@@ -78,6 +78,25 @@ curl -fsS "http://127.0.0.1:$PORT/health" > /dev/null
 curl -fsS -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/repos" > /dev/null
 curl -fsS -X POST -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:$PORT/doctor" > /dev/null
 
+echo "smoke: the config route reads and writes ~/.agnostic/config.yaml"
+CONFIG_URL="http://127.0.0.1:$PORT/config"
+patch_config() {
+  curl -fsS -X PATCH -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" \
+    -d "$1" "$CONFIG_URL"
+}
+patch_config '{"appearance":{"theme":"ink"},"terminal":{"size":14}}' | grep -q '"theme":"ink"'
+patch_config '{"appearance":{"theme":"ink"},"terminal":{"size":14}}' | grep -q '"size":14'
+curl -fsS -H "Authorization: Bearer $TOKEN" "$CONFIG_URL" | grep -q '"theme":"ink"'
+curl -fsS -H "Authorization: Bearer $TOKEN" "$CONFIG_URL" | grep -q '"size":14'
+curl -fsS -H "Authorization: Bearer $TOKEN" "$CONFIG_URL" | grep -q '"file"'
+grep -q 'theme: ink' "$AGNOSTIC_HOME/config.yaml"
+# A patch of another key keeps the theme: the file is merged, never replaced.
+patch_config '{"editor":"cursor"}' > /dev/null
+curl -fsS -H "Authorization: Bearer $TOKEN" "$CONFIG_URL" | grep -q '"theme":"ink"'
+test "$(curl -s -o /dev/null -w "%{http_code}" -X PATCH -H "Authorization: Bearer $TOKEN" \
+  -H "content-type: application/json" -d '{"theme":"x"}' "$CONFIG_URL")" = "400"
+test "$(curl -s -o /dev/null -w "%{http_code}" "$CONFIG_URL")" = "401"
+
 PATH="$(dirname "$(command -v node)")" "${AGND[@]}" stop
 test ! -f "$AGNOSTIC_HOME/daemon.json"
 

@@ -31,6 +31,7 @@ describe("daemonProxy", () => {
       "/health",
       "/editors",
       "/doctor",
+      "/config",
     ]);
     expect(entries["/ui"]).toBeUndefined();
   });

@@ -23,7 +23,13 @@ const KATHA: RepoListRow = { ...PETAL, id: "repo2", name: "katha", path: "/tmp/k
 const CLOSED: RepoListRow = { ...PETAL, id: "repo3", name: "zed", status: "archived" };
 
 function rail(tasks: TaskListRow[], repos: RepoListRow[] = [PETAL, KATHA, CLOSED]) {
-  const on = { onToggle: vi.fn(), onNewTask: vi.fn(), onSearch: vi.fn(), onSelect: vi.fn() };
+  const on = {
+    onToggle: vi.fn(),
+    onNewTask: vi.fn(),
+    onSearch: vi.fn(),
+    onSelect: vi.fn(),
+    onSettings: vi.fn(),
+  };
   return {
     ...on,
     ...render(
@@ -95,6 +101,13 @@ describe("Rail", () => {
   it("leaves the Needs-you square out while nothing waits", () => {
     const { container, unmount } = rail([taskRow({ id: "t1", repoId: "repo1" })]);
     expect(container.querySelector('button[aria-label="1 waiting for you"]')).toBeNull();
+    unmount();
+  });
+
+  it("opens Settings from the gear over the daemon's dot", () => {
+    const { container, onSettings, unmount } = rail([]);
+    click(square(container, "Settings"));
+    expect(onSettings).toHaveBeenCalledOnce();
     unmount();
   });
 

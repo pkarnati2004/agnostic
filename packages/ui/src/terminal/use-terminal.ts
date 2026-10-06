@@ -1,17 +1,20 @@
 import type { TerminalSize } from "@agnostic/core";
+import { DEFAULT_TERMINAL_SIZE } from "@agnostic/core/browser";
 import { FitAddon } from "@xterm/addon-fit";
 import { type ITheme, Terminal } from "@xterm/xterm";
 import { useMemo } from "react";
+import { MONO_STACK } from "./terminal-theme";
 
 // tmux holds the session's whole history; this is what one tab can scroll back through (ADR 025).
 const SCROLLBACK_LINES = 5000;
 
-const FONT_SIZE = 13;
-
-const FONT_FAMILY = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace';
+/** What the page's theme and its terminal settings say the pane should be drawn with. */
+export type TerminalStyle = { theme: ITheme; fontFamily: string; fontSize: number };
 
 export type TerminalHandle = {
   attach(el: HTMLElement): void;
+  /** Takes the page's current style; before the first attach it is what the terminal is built with. */
+  restyle(style: TerminalStyle): void;
   /** Null while the pane has no usable size; the socket waits for a real one (ADR 025). */
   fit(): TerminalSize | null;
   focus(): void;
@@ -21,15 +24,17 @@ export type TerminalHandle = {
 };
 
 /** One terminal for the life of a tab: it keeps its buffer while the tab is hidden. */
-export function useTerminal(theme: ITheme): TerminalHandle {
-  return useMemo(() => createTerminalHandle(theme), [theme]);
+export function useTerminal(): TerminalHandle {
+  return useMemo(createTerminalHandle, []);
 }
 
-function createTerminalHandle(theme: ITheme): TerminalHandle {
+function createTerminalHandle(): TerminalHandle {
   const listeners = new Set<(bytes: Uint8Array) => void>();
   const encoder = new TextEncoder();
   let terminal: Terminal | null = null;
   let fitAddon: FitAddon | null = null;
+  // Set before the first attach by the pane, and again on every theme or font change after it.
+  let style: TerminalStyle | null = null;
 
   const emit = (bytes: Uint8Array) => {
     for (const listener of listeners) {
@@ -43,9 +48,9 @@ function createTerminalHandle(theme: ITheme): TerminalHandle {
     const term = new Terminal({
       scrollback: SCROLLBACK_LINES,
       cursorBlink: true,
-      fontSize: FONT_SIZE,
-      fontFamily: FONT_FAMILY,
-      theme,
+      fontSize: style?.fontSize ?? DEFAULT_TERMINAL_SIZE,
+      fontFamily: style?.fontFamily ?? MONO_STACK,
+      theme: style?.theme,
       allowProposedApi: false,
       // tmux runs with `mouse on` and takes every drag, so Option+drag is what is left for
       // selecting text. xterm.js ignores that modifier on macOS unless this option is set.
@@ -65,6 +70,15 @@ function createTerminalHandle(theme: ITheme): TerminalHandle {
       if (terminal === null) {
         create(element);
       }
+    },
+    restyle: (next) => {
+      style = next;
+      if (terminal === null) {
+        return;
+      }
+      terminal.options.theme = next.theme;
+      terminal.options.fontFamily = next.fontFamily;
+      terminal.options.fontSize = next.fontSize;
     },
     fit: () => (terminal === null || fitAddon === null ? null : fitTo(terminal, fitAddon)),
     focus: () => terminal?.focus(),

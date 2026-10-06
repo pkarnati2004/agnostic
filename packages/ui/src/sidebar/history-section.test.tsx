@@ -77,6 +77,7 @@ function sidebar(onSelect: (id: string) => void = vi.fn()) {
           onRemoveRepo={vi.fn()}
           repoNotices={{}}
           onToggle={vi.fn()}
+          onSettings={vi.fn()}
         />
       </WithRowActions>
     </TooltipProvider>,
@@ -174,6 +175,7 @@ describe("HistorySection", () => {
             onOpenCompare={vi.fn()}
             onNewTask={vi.fn()}
             onToggle={vi.fn()}
+            onSettings={vi.fn()}
           />
         </WithRowActions>
       </TooltipProvider>,
@@ -218,6 +220,7 @@ describe("HistorySection", () => {
             onRemoveRepo={vi.fn()}
             repoNotices={{}}
             onToggle={vi.fn()}
+            onSettings={vi.fn()}
           />
         </WithRowActions>
       </TooltipProvider>,
@@ -252,6 +255,7 @@ describe("HistorySection", () => {
             onOpenCompare={vi.fn()}
             onNewTask={vi.fn()}
             onToggle={vi.fn()}
+            onSettings={vi.fn()}
           />
         </WithRowActions>
       </TooltipProvider>,

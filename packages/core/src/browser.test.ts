@@ -33,6 +33,7 @@ describe("@agnostic/core/browser", () => {
   // Guards the guard: a regex that matched nothing would make the assertion above vacuous.
   it("walks every module the subpath re-exports", () => {
     expect([...graph().keys()].sort()).toEqual([
+      "./appearance.js",
       "./browser.js",
       "./error.js",
       "./is-kind.js",

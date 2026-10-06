@@ -1,6 +1,6 @@
 import { newId, type Repo } from "@agnostic/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { writeDaemonConfigPlans } from "./daemon-config.js";
+import { writeDaemonConfig } from "./daemon-config-write.js";
 import type { Detection } from "./detection-cache.js";
 import { buildRecommendInput } from "./recommend-input.js";
 import { fixtureCatalog, fixtureDetection } from "./test-detection.js";
@@ -110,7 +110,7 @@ describe("buildRecommendInput", () => {
     // The stub detection reports claude-code on max20, which already includes fable.
     const { ctx, repo, close } = await recommendContext(fixtureDetection(), catalog);
     cleanup = close;
-    await writeDaemonConfigPlans(ctx.paths, { claude: "pro" });
+    await writeDaemonConfig(ctx.paths, { plans: { claude: "pro" } });
     const input = await buildRecommendInput(ctx, repo, "ship it");
     expect(
       input.candidates.some((candidate) => candidate.profile.id === "claude-code:fable:native"),
@@ -130,7 +130,7 @@ describe("buildRecommendInput", () => {
     };
     const { ctx, repo, close } = await recommendContext(undetected, catalog);
     cleanup = close;
-    await writeDaemonConfigPlans(ctx.paths, { claude: "pro" });
+    await writeDaemonConfig(ctx.paths, { plans: { claude: "pro" } });
     const input = await buildRecommendInput(ctx, repo, "ship it");
     const fable = input.candidates.find(
       (candidate) => candidate.profile.id === "claude-code:fable:native",

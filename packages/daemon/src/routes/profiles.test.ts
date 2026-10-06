@@ -172,6 +172,24 @@ describe("POST /doctor with a plan", () => {
     expect(config).toContain("port: 7500");
   });
 
+  it("keeps the appearance and terminal settings through a plan write", async () => {
+    daemon = await createTestDaemon();
+    await writeFile(
+      daemon.paths.config,
+      "appearance:\n  theme: ink\n  mode: light\nterminal:\n  font: Menlo\n  size: 15\n",
+    );
+    const response = await daemon.request("/doctor", {
+      method: "POST",
+      body: JSON.stringify({ plans: { claude: "pro" } }),
+    });
+    expect(response.status).toBe(200);
+    const config = await readFile(daemon.paths.config, "utf8");
+    expect(config).toContain("theme: ink");
+    expect(config).toContain("mode: light");
+    expect(config).toContain("font: Menlo");
+    expect(config).toContain("size: 15");
+  });
+
   it("takes a plan the catalog has never heard of", async () => {
     daemon = await createTestDaemon();
     const response = await daemon.request("/doctor", {
