@@ -26,6 +26,7 @@ import { runCommand } from "./commands/run.js";
 import { statusCommand } from "./commands/status.js";
 import { stopCommand } from "./commands/stop.js";
 import { syncCommand } from "./commands/sync.js";
+import { taskCommand } from "./commands/task.js";
 import { uiCommand } from "./commands/ui.js";
 import { updateCommand } from "./commands/update.js";
 import { usageCommand } from "./commands/usage.js";
@@ -65,6 +66,7 @@ export function createProgram(ctx: CliContext, version: string): Command {
     resumeCommand(ctx),
     stopCommand(ctx),
     cleanCommand(ctx),
+    taskCommand(ctx),
     adoptCommand(ctx),
     handoffCommand(ctx),
     hooksCommand(ctx),

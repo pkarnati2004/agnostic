@@ -2,6 +2,7 @@ import {
   type AttachResponse,
   CleanTaskRequestSchema,
   type CleanTaskResponse,
+  type DeleteTaskResponse,
   HandoffTaskRequestSchema,
   type HandoffTaskResponse,
   isDirectory,
@@ -12,6 +13,7 @@ import {
 } from "@agnostic/core";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
+import { deleteTask } from "../delete-task.js";
 import { DaemonError, requestInvalid } from "../error.js";
 import { handoffTask } from "../handoff-task.js";
 import { requestBody } from "../request-body.js";
@@ -20,7 +22,7 @@ import { resumeTask } from "../resume-task.js";
 import { attachableHandle } from "../task-session.js";
 import { unsavedWork } from "../worktree-unsaved.js";
 
-/** What `agn attach`, `agn resume`, `agn handoff`, `agn stop` and `agn clean` do to a task. */
+/** What `agn attach`, `agn resume`, `agn handoff`, `agn stop`, `agn clean` and `agn task delete` do. */
 export function taskActionRoutes(ctx: DaemonContext): Hono {
   return new Hono()
     .get("/tasks/:id/attach", async (c) => {
@@ -62,6 +64,11 @@ export function taskActionRoutes(ctx: DaemonContext): Hono {
         force: parsed.data.force === true,
       });
       return c.json(response);
+    })
+    .delete("/tasks/:id", async (c) => {
+      const task = await ctx.lifecycle.reconcile(resolveTaskId(ctx.ledger, c.req.param("id")));
+      const body: DeleteTaskResponse = await deleteTask(ctx, task);
+      return c.json(body);
     });
 }
 

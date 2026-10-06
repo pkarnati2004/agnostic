@@ -120,7 +120,7 @@ reporting (Option in iTerm2, Shift in most Linux terminals). If the wheel does n
 tmux server predates this setting; troubleshooting says how to restart it.
 
 The open tabs and the one in front are remembered per daemon address, so a reload comes back to
-the same tabs. A task you clean loses its tab.
+the same tabs. A task you delete loses its tab.
 
 When a session is over the tab says "Session ended" and offers two things. **Resume session**
 starts the agent again in the same worktree, naming the harness and the branch it reopens in, and
@@ -160,7 +160,8 @@ Typing a prompt adds two more rows:
   prompt on it at once, with no title and no spec.
 
 The rest of the rows act on the tab in front: "Stop", "Resume", "Hand off", "Open in editor",
-"Create PR for", "Ask <task> to commit" and "Bring up to date", each named after the task. A row
+"Create PR for", "Ask <task> to commit", "Bring up to date", "Archive task" and "Delete task…".
+The first seven are named after the task. A row
 appears only when the button it stands for would work, as far as the palette can tell without
 reading the branch, so a finished task offers Resume and not Stop. A task whose worktree has been
 cleaned offers none of "Hand off", "Open in editor" and "Bring up to date" until you resume it;
@@ -327,13 +328,56 @@ repo's other tasks. The row counts them at its right. History is collapsed when 
 loads; click the heading to list them, newest first. A row there opens in a tab like any other.
 The section holding the task you have open shows its rows without being clicked.
 
-Tasks reach History when `agn clean` removes their worktree, when the sweep does, and when you
-delete the directory yourself. A task that ran in a folder workspace never had a worktree of agn's,
+Tasks reach History when you archive them, when `agn clean` removes their worktree, when the
+sweep does, and when you delete the directory yourself. A task that ran in a folder workspace never had a worktree of agn's,
 so it stays under its repo.
 
 Hand off is not offered for a task whose worktree is gone: the next agent would have nowhere to
 work. Resume rebuilds the worktree from the task's branch and the button comes back. `agn handoff`
 still accepts the task.
+
+## Archive and delete
+
+Every task row carries a menu. Right-click anywhere on the row, or press Shift+F10 with the row
+focused. The task header has the same menu under its own "…", and the command palette
+offers the two rows this section is about.
+
+The menu holds: **Copy branch name**, **Copy task id** and, while an agent is running,
+**Copy attach command** (`agn attach <task>`, to paste into a terminal); **Open in editor**;
+then what can still be done with the task - **Stop** or **Resume**, **Hand off** and
+**Create PR** - and last **Archive** and **Delete…**. A row you cannot use is left out, except
+Delete, which stays and reads "Stop the task first" while the task is queued, running or waiting.
+
+**Archive** is `agn clean` from the page. It is offered on a finished task that still has a
+worktree of agn's, and it removes that worktree: "Removes the worktree. The task moves to History;
+Resume rebuilds it from its branch." The branch is never deleted from the page; `agn clean
+<task> --delete-branch` is the only way to do that.
+
+If the worktree still holds work no commit has, the daemon refuses and the menu answers in place:
+"3 files are not committed. Archive anyway?", with **Keep** and **Archive anyway**. Archive anyway
+removes the worktree and the uncommitted work with it. Asked for from the task header or the
+palette, the same question appears under the header.
+
+After an archive the row lands in History, highlighted, reading "Archived just now" for ten
+seconds, and a line at the foot of the page says "<title> moved to History" with **Resume** beside
+it. Resume rebuilds the worktree from the branch and starts the agent again.
+
+**Delete…** removes the task from agn. It is offered on any task that is not queued, running or
+waiting, and it asks first:
+
+> Delete <title>? This removes the task's worktree and every agn record for it: the task, its
+> events and its outcome. The branch `<branch>` stays in <repo>. The tokens this task used stay in
+> the usage totals.
+
+With uncommitted work in the worktree the dialog adds "3 uncommitted files in the worktree will be
+lost." and names the first two. For a task in History there is no worktree left, so the dialog says
+the records alone are going.
+
+What a delete leaves behind: the branch, the usage totals (the tokens are still counted, with no
+task to count them against), the task's note in `.ag/tasks/<task>.md`, and any task handed off from
+this one, which becomes a task of its own. What it takes: the worktree, the task's row, its events
+and its outcome. `agn outcomes` and `agn status` no longer know the task. The task's tab closes
+with it, and `agn task delete <task>` does the same thing from a terminal.
 
 ## Hand off
 
@@ -352,6 +396,9 @@ overlay, or in the handoff dialog, which stays open so you can change the profil
 The line names the task and repeats the daemon's message and hint. It clears itself after a few
 seconds, or sooner if the next action on that task works. The only message across the whole page
 is the one for a workspace that could not load.
+
+Archive and Delete answer where they were asked for too: Archive in the menu or under the header,
+Delete in its own dialog, which stays open so you can read what the daemon said.
 
 ## When the daemon is down
 

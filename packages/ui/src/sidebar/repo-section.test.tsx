@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import type { RepoListRow } from "@agnostic/core";
 import { describe, expect, it, vi } from "vitest";
+import { taskRow } from "../changes/changes-fixture";
 import { TooltipProvider } from "../components/tooltip";
 import { find, render } from "../test/render";
+import { WithRowActions } from "../test/workspace-fixture";
 import type { RepoGroup } from "./group-tasks";
 import { RepoSection } from "./repo-section";
 
@@ -20,22 +22,24 @@ const REPO: RepoListRow = {
 
 const GROUP: RepoGroup = { repo: REPO, rows: [], history: [] };
 
-function section() {
+function section(over: { group?: RepoGroup; justArchived?: string | null } = {}) {
   return render(
     <TooltipProvider>
-      <RepoSection
-        group={GROUP}
-        selectedId={null}
-        expanded={false}
-        notice={null}
-        onToggle={vi.fn()}
-        onSelect={vi.fn()}
-        onClose={() => Promise.resolve()}
-        onRemove={vi.fn()}
-        openCompares={new Map()}
-        onToggleCompare={vi.fn()}
-        onOpenCompare={vi.fn()}
-      />
+      <WithRowActions actions={{ justArchived: over.justArchived ?? null }}>
+        <RepoSection
+          group={over.group ?? GROUP}
+          selectedId={null}
+          expanded={false}
+          notice={null}
+          onToggle={vi.fn()}
+          onSelect={vi.fn()}
+          onClose={() => Promise.resolve()}
+          onRemove={vi.fn()}
+          openCompares={new Map()}
+          onToggleCompare={vi.fn()}
+          onOpenCompare={vi.fn()}
+        />
+      </WithRowActions>
     </TooltipProvider>,
   );
 }
@@ -66,23 +70,47 @@ describe("RepoSection heading", () => {
     const present: RepoGroup = { ...GROUP, repo: { ...REPO, pathPresent: true } };
     const { container, unmount } = render(
       <TooltipProvider>
-        <RepoSection
-          group={present}
-          selectedId={null}
-          expanded={false}
-          notice={null}
-          onToggle={vi.fn()}
-          onSelect={vi.fn()}
-          onClose={() => Promise.resolve()}
-          onRemove={vi.fn()}
-          openCompares={new Map()}
-          onToggleCompare={vi.fn()}
-          onOpenCompare={vi.fn()}
-        />
+        <WithRowActions>
+          <RepoSection
+            group={present}
+            selectedId={null}
+            expanded={false}
+            notice={null}
+            onToggle={vi.fn()}
+            onSelect={vi.fn()}
+            onClose={() => Promise.resolve()}
+            onRemove={vi.fn()}
+            openCompares={new Map()}
+            onToggleCompare={vi.fn()}
+            onOpenCompare={vi.fn()}
+          />
+        </WithRowActions>
       </TooltipProvider>,
     );
     expect(container.querySelector("[aria-label='Remove petal']")).toBeNull();
     expect(container.querySelector("[aria-label='Close petal']")).not.toBeNull();
+    unmount();
+  });
+});
+
+describe("RepoSection History", () => {
+  const archived = taskRow({ id: "task7", status: "done", worktreePresent: false });
+  const withHistory: RepoGroup = {
+    repo: REPO,
+    rows: [],
+    history: [{ kind: "task", task: archived, child: null }],
+  };
+
+  it("keeps History folded away when nothing in it is being looked at", () => {
+    const { container, unmount } = section({ group: withHistory });
+    expect(container.textContent).not.toContain(archived.title);
+    unmount();
+  });
+
+  it("shows the row a user has just archived without being opened", () => {
+    const { container, unmount } = section({ group: withHistory, justArchived: "task7" });
+    expect(container.textContent).toContain(archived.title);
+    expect(container.textContent).toContain("Archived just now");
     unmount();
   });
 });

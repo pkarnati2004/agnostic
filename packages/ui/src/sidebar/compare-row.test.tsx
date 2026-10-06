@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { taskRow } from "../changes/changes-fixture";
 import { TooltipProvider } from "../components/tooltip";
 import { click, find, render } from "../test/render";
+import { WithRowActions } from "../test/workspace-fixture";
 import { CompareRow } from "./compare-row";
 import type { CompareGroup } from "./group-tasks";
 
@@ -25,14 +26,16 @@ function row(props: Partial<Parameters<typeof CompareRow>[0]> = {}) {
   };
   const rendered = render(
     <TooltipProvider>
-      <CompareRow
-        group={GROUP}
-        repo={null}
-        selectedId={null}
-        expanded={false}
-        {...handlers}
-        {...props}
-      />
+      <WithRowActions>
+        <CompareRow
+          group={GROUP}
+          repo={null}
+          selectedId={null}
+          expanded={false}
+          {...handlers}
+          {...props}
+        />
+      </WithRowActions>
     </TooltipProvider>,
   );
   return { ...rendered, ...handlers };
@@ -81,6 +84,7 @@ describe("CompareRow", () => {
 
     const open = row({ expanded: true });
     expect(open.container.querySelector('[aria-label="codex"]')).not.toBeNull();
+    // The chevron, the title, and each sibling's own row: its select button and its overflow.
     expect(open.container.querySelectorAll("button")).toHaveLength(4);
     open.unmount();
   });

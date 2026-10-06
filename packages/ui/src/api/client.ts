@@ -3,9 +3,12 @@ import type {
   CatalogResponse,
   CatalogUpdateResponse,
   ChangesResponse,
+  CleanTaskRequest,
+  CleanTaskResponse,
   CompareResponse,
   CreatePrRequest,
   CreatePrResponse,
+  DeleteTaskResponse,
   DiffResponse,
   DoctorRequest,
   DoctorResponse,
@@ -57,6 +60,10 @@ export type WorkspaceClient = {
   stopTask(id: string): Promise<TaskResponse>;
   resumeTask(id: string): Promise<ResumeTaskResponse>;
   handoffTask(id: string, body: HandoffTaskRequest): Promise<HandoffTaskResponse>;
+  /** Archive: removes the worktree and leaves the branch. `force` discards uncommitted work. */
+  cleanTask(id: string, body: CleanTaskRequest): Promise<CleanTaskResponse>;
+  /** Removes the worktree and every row of the task; its usage rows stay with no task id (ADR 037). */
+  deleteTask(id: string): Promise<DeleteTaskResponse>;
   /** The pick for a prompt, with nothing started; `signal` aborts the call the next keystroke replaces. */
   recommend(body: RecommendRequest, signal: AbortSignal): Promise<RecommendResponse>;
   runTask(repoId: string, body: RunTaskRequest): Promise<TaskResponse>;
@@ -164,6 +171,9 @@ export function createClient(opts: {
     resumeTask: (id) => json<ResumeTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/resume`),
     handoffTask: (id, body) =>
       json<HandoffTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/handoff`, body),
+    cleanTask: (id, body) =>
+      json<CleanTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/clean`, body),
+    deleteTask: (id) => json<DeleteTaskResponse>("DELETE", `/tasks/${encodeURIComponent(id)}`),
     recommend: (body, signal) => json<RecommendResponse>("POST", "/recommend", body, signal),
     runTask: (repoId, body) =>
       json<TaskResponse>("POST", `/repos/${encodeURIComponent(repoId)}/tasks`, body),

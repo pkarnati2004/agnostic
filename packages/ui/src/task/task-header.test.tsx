@@ -7,8 +7,8 @@ import { CHANGES_KEY, readPanelOpen, writePanelOpen } from "../changes/panel-ope
 import type { TaskNotice } from "../store/task-notices";
 import { selectModifier } from "../terminal/select-modifier";
 import { click, render } from "../test/render";
-import { PROFILE, stubClient } from "../test/workspace-fixture";
-import { TaskHeader } from "./task-header";
+import { PROFILE } from "../test/workspace-fixture";
+import { headerTree } from "./task-header-fixture";
 
 const REPO: RepoListRow = {
   id: "r1",
@@ -55,22 +55,7 @@ function header(
   taskNotice: TaskNotice | null,
   files: number | null = null,
 ) {
-  return render(
-    <TaskHeader
-      task={activeTask}
-      repo={REPO}
-      profiles={[PROFILE]}
-      budget={null}
-      client={stubClient()}
-      files={files}
-      notice={taskNotice}
-      changesOpen={false}
-      onToggleChanges={() => undefined}
-      onStop={() => Promise.resolve()}
-      onResume={() => Promise.resolve()}
-      onHandoff={() => Promise.resolve(true)}
-    />,
-  );
+  return render(headerTree(activeTask, { repo: REPO, notice: taskNotice, files }));
 }
 
 describe("TaskHeader notice", () => {
@@ -104,22 +89,7 @@ describe("TaskHeader notice", () => {
     const { container, update, unmount } = header(first, notice("task1"));
     expect(container.textContent).toContain("stop refused for task1");
 
-    update(
-      <TaskHeader
-        task={second}
-        repo={REPO}
-        profiles={[PROFILE]}
-        budget={null}
-        client={stubClient()}
-        files={null}
-        notice={null}
-        changesOpen={false}
-        onToggleChanges={() => undefined}
-        onStop={() => Promise.resolve()}
-        onResume={() => Promise.resolve()}
-        onHandoff={() => Promise.resolve(true)}
-      />,
-    );
+    update(headerTree(second, { repo: REPO }));
     expect(container.textContent).not.toContain("stop refused for task1");
     unmount();
   });
@@ -188,22 +158,7 @@ describe("TaskHeader and a closed repo", () => {
   it("still names the repo of a tab left open after its repo closed", () => {
     const closed: RepoListRow = { ...REPO, status: "archived" };
     const active = task("task1", "Port the parser");
-    const { container, unmount } = render(
-      <TaskHeader
-        task={active}
-        repo={closed}
-        profiles={[PROFILE]}
-        budget={null}
-        client={stubClient()}
-        files={null}
-        notice={null}
-        changesOpen={false}
-        onToggleChanges={() => undefined}
-        onStop={() => Promise.resolve()}
-        onResume={() => Promise.resolve()}
-        onHandoff={() => Promise.resolve(true)}
-      />,
-    );
+    const { container, unmount } = render(headerTree(active, { repo: closed }));
     expect(container.textContent).toContain("petal");
     unmount();
   });
@@ -229,25 +184,16 @@ describe("TaskHeader terminal hint", () => {
  * the real `localStorage`, not a fixture, so the test also proves the two agree on the key. */
 function ChangesToggleHarness({ width }: { width: number }) {
   const [open, setOpen] = useState(() => readPanelOpen(window.localStorage, width));
-  return (
-    <TaskHeader
-      task={task("task1", "Port the parser")}
-      repo={REPO}
-      profiles={[PROFILE]}
-      budget={null}
-      client={stubClient()}
-      files={null}
-      notice={null}
-      changesOpen={open}
-      onToggleChanges={() => {
+  return headerTree(task("task1", "Port the parser"), {
+    repo: REPO,
+    changes: {
+      open,
+      onToggle: () => {
         writePanelOpen(window.localStorage, !open);
         setOpen(!open);
-      }}
-      onStop={() => Promise.resolve()}
-      onResume={() => Promise.resolve()}
-      onHandoff={() => Promise.resolve(true)}
-    />
-  );
+      },
+    },
+  });
 }
 
 function changesButton(container: HTMLElement): HTMLButtonElement {

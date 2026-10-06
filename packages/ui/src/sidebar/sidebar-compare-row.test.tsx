@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "../components/tooltip";
 import { EMPTY_WORKSPACE, type WorkspaceState, workspaceReducer } from "../store/workspace-state";
 import { click, find, render } from "../test/render";
+import { WithRowActions } from "../test/workspace-fixture";
 import { groupTasks } from "./group-tasks";
 import { Sidebar } from "./sidebar";
 
@@ -63,24 +64,26 @@ function sidebar(state: WorkspaceState) {
   const groups = groupTasks(state.repos, Object.values(state.tasks));
   return (
     <TooltipProvider>
-      <Sidebar
-        groups={groups}
-        repos={state.repos}
-        selectedId={null}
-        collapsed={false}
-        onSearch={vi.fn()}
-        daemon={DAEMON}
-        now={NOW}
-        onSelect={vi.fn()}
-        onOpenCompare={vi.fn()}
-        onNewTask={vi.fn()}
-        onAddRepo={vi.fn()}
-        onCloseRepo={() => Promise.resolve()}
-        onReopenRepo={() => Promise.resolve()}
-        onRemoveRepo={vi.fn()}
-        repoNotices={{}}
-        onToggle={vi.fn()}
-      />
+      <WithRowActions>
+        <Sidebar
+          groups={groups}
+          repos={state.repos}
+          selectedId={null}
+          collapsed={false}
+          onSearch={vi.fn()}
+          daemon={DAEMON}
+          now={NOW}
+          onSelect={vi.fn()}
+          onOpenCompare={vi.fn()}
+          onNewTask={vi.fn()}
+          onAddRepo={vi.fn()}
+          onCloseRepo={() => Promise.resolve()}
+          onReopenRepo={() => Promise.resolve()}
+          onRemoveRepo={vi.fn()}
+          repoNotices={{}}
+          onToggle={vi.fn()}
+        />
+      </WithRowActions>
     </TooltipProvider>
   );
 }

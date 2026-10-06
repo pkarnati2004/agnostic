@@ -48,6 +48,8 @@ export function handlers(): Omit<PaletteHandlers, "recommend"> {
     createPr: vi.fn(),
     update: vi.fn(),
     commit: vi.fn(),
+    archive: vi.fn(),
+    delete: vi.fn(),
     showCost: vi.fn(),
     addRepo: vi.fn(),
     sync: vi.fn(),

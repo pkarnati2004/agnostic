@@ -228,4 +228,28 @@ describe("the verdict of a closed task", () => {
     await daemon.verdicts.runOnce();
     expect(daemon.ledger.outcomes.get(task.id)).toEqual(outcome);
   });
+
+  it("logs a task deleted out from under the sweep and still sweeps the rest", async () => {
+    const repo = await repoWithConfig(daemon, { cleanAfterMerge: true });
+    const gone = await closedTask(daemon, repo, 10);
+    const rest = await closedTask(daemon, repo, 10);
+    for (const { task } of [gone, rest]) {
+      await gitIn(repo.path, ["merge", "--no-ff", "-q", "-m", "merge", task.branch ?? ""]);
+    }
+    // A delete that lands between the sweep's pending list and its `tasks.clean` write: the
+    // worktree removal above already ran, so this is the write racing the row going away.
+    const clean = daemon.ledger.tasks.clean.bind(daemon.ledger.tasks);
+    daemon.ledger.tasks.clean = (id: string, deletedBranch: boolean) => {
+      if (id === gone.task.id) {
+        daemon.ledger.tasks.delete(id, { removedWorktree: false });
+      }
+      return clean(id, deletedBranch);
+    };
+
+    await daemon.verdicts.runOnce();
+
+    expect(await daemon.readLog()).toContain("outcome not recorded");
+    expect(daemon.ledger.tasks.get(gone.task.id)).toBeNull();
+    expect(cleanedEvents(rest.task.id)).toHaveLength(1);
+  });
 });

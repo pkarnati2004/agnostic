@@ -5,29 +5,25 @@ import type {
   Profile,
   RepoListRow,
   TaskListRow,
-  TaskStatus,
 } from "@agnostic/core";
-import { GitBranch, PanelRight, Play, Square } from "lucide-react";
+import { GitBranch } from "lucide-react";
 import { useState } from "react";
 import type { WorkspaceClient } from "../api/client";
-import { Button } from "../components/button";
 import { NoticeLine } from "../notice/notice-line";
 import { ProfileChip } from "../profile/profile-chip";
+import { useTaskRowActions } from "../sidebar/task-row-actions";
 import { StatusPill } from "../status/status-pill";
 import type { TaskNotice } from "../store/task-notices";
 import { selectModifier } from "../terminal/select-modifier";
 import { sessionTarget } from "../terminal/terminal-phase";
 import { formatElapsed } from "../time/elapsed";
 import { useTick } from "../time/use-tick";
-import { HandoffDialog } from "./handoff-dialog";
+import { ArchiveWarningCard } from "./archive-warning";
+import { HeaderActions } from "./task-header-actions";
 import { TaskNoticeLine } from "./task-notice-line";
-import { worktreeGone } from "./worktree-gone";
 
 // The elapsed time is minutes old at worst; a render every half minute keeps it honest.
 const TICK_MS = 30_000;
-
-const STOPPABLE: TaskStatus[] = ["running", "waiting"];
-const RESUMABLE: TaskStatus[] = ["done", "failed", "stopped"];
 
 export type TaskHeaderProps = {
   task: TaskListRow;
@@ -53,9 +49,10 @@ export type TaskHeaderProps = {
   onHandoffOpenChange?: (open: boolean) => void;
 };
 
-/** What the task in front is, what it is doing, and the three things you can do about it. */
+/** What the task in front is, what it is doing, and the things you can do about it. */
 export function TaskHeader(props: TaskHeaderProps) {
   const { task, notice } = props;
+  const actions = useTaskRowActions();
   const [busy, setBusy] = useState(false);
   const now = useTick(TICK_MS);
   const run = (action: () => Promise<void>) => {
@@ -65,13 +62,15 @@ export function TaskHeader(props: TaskHeaderProps) {
       () => setBusy(false),
     );
   };
+  const asked = actions.warning;
+  const warning = asked?.taskId === task.id && asked.host === "header" ? asked : null;
 
   return (
     <>
       <header className="flex shrink-0 flex-col gap-[7px] border-border border-b px-4 pt-3 pb-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <h1 className="min-w-0 flex-1 truncate type-heading">{task.title}</h1>
-          <Actions {...props} busy={busy} onRun={run} />
+          <HeaderActions {...props} busy={busy} onRun={run} />
         </div>
         <Facts {...props} now={now} />
       </header>
@@ -80,54 +79,21 @@ export function TaskHeader(props: TaskHeaderProps) {
           The agent asked a question. Answer in the terminal below.
         </NoticeLine>
       )}
+      {/* The archive the daemon held back: an answer to the click, not a failure, so it is drawn
+          here rather than as one of the page's notices. */}
+      {warning !== null && (
+        <div className="shrink-0 border-border border-b px-1.5 py-1">
+          <ArchiveWarningCard
+            warning={warning.warning}
+            busy={warning.busy}
+            onKeep={actions.keep}
+            onArchiveAnyway={() => void actions.archiveAnyway(task.id)}
+          />
+        </div>
+      )}
       {notice !== null && notice.host === "header" && (
         <TaskNoticeLine notice={notice} task={task} />
       )}
-    </>
-  );
-}
-
-/** Stop or Resume by status, because the daemon refuses whichever of the two does not apply. */
-function Actions({
-  task,
-  profiles,
-  busy,
-  onRun,
-  ...props
-}: TaskHeaderProps & { busy: boolean; onRun: (action: () => Promise<void>) => void }) {
-  return (
-    <>
-      {STOPPABLE.includes(task.status) && (
-        <Button variant="outline" size="sm" disabled={busy} onClick={() => onRun(props.onStop)}>
-          <Square />
-          Stop
-        </Button>
-      )}
-      {RESUMABLE.includes(task.status) && (
-        <Button variant="outline" size="sm" disabled={busy} onClick={() => onRun(props.onResume)}>
-          <Play />
-          Resume
-        </Button>
-      )}
-      {/* A worktree agn made and no longer has is nothing to hand off: the next agent would have
-          nowhere to work until a resume rebuilds it. */}
-      {!worktreeGone(task) && (
-        <HandoffDialog
-          task={task}
-          profiles={profiles}
-          budget={props.budget}
-          notice={props.notice}
-          client={props.client}
-          onSubmit={props.onHandoff}
-          open={props.handoffOpen}
-          onOpenChange={props.onHandoffOpenChange}
-        />
-      )}
-      <ChangesToggle
-        open={props.changesOpen}
-        files={props.files}
-        onToggle={props.onToggleChanges}
-      />
     </>
   );
 }
@@ -153,38 +119,6 @@ function Facts({ task, repo, profiles, now }: TaskHeaderProps & { now: number })
         <span className="whitespace-nowrap">Wheel scrolls · {selectModifier()}+drag selects</span>
       )}
     </div>
-  );
-}
-
-/** Open, the toggle is the icon alone: the column beside it says what it opened. */
-function ChangesToggle({
-  open,
-  files,
-  onToggle,
-}: {
-  open: boolean;
-  files: number | null;
-  onToggle: () => void;
-}) {
-  if (open) {
-    return (
-      <Button
-        variant="secondary"
-        size="icon-sm"
-        aria-label="Changes"
-        aria-pressed
-        onClick={onToggle}
-      >
-        <PanelRight />
-      </Button>
-    );
-  }
-  return (
-    <Button variant="outline" size="sm" aria-pressed={false} onClick={onToggle}>
-      <PanelRight />
-      Changes
-      {files !== null && <span className="text-muted-foreground type-mono">{files}</span>}
-    </Button>
   );
 }
 

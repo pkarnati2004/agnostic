@@ -18,6 +18,7 @@ import type {
   AttachResponse,
   CleanTaskRequest,
   CleanTaskResponse,
+  DeleteTaskResponse,
   EditorsResponse,
   HandoffTaskRequest,
   HandoffTaskResponse,
@@ -71,6 +72,8 @@ export type DaemonClient = {
   attachInfo(id: string): Promise<AttachResponse>;
   stopTask(id: string): Promise<TaskResponse>;
   cleanTask(id: string, body: CleanTaskRequest): Promise<CleanTaskResponse>;
+  /** Removes the worktree and every row of the task; its usage rows stay with no task id (ADR 037). */
+  deleteTask(id: string): Promise<DeleteTaskResponse>;
   resumeTask(id: string): Promise<ResumeTaskResponse>;
   /** Hands the task to another profile: the parent is stopped, the child starts from the note. */
   handoffTask(id: string, body: HandoffTaskRequest): Promise<HandoffTaskResponse>;
@@ -174,6 +177,7 @@ export function createDaemonClient(opts: {
     stopTask: (id) => json<TaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/stop`),
     cleanTask: (id, body) =>
       json<CleanTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/clean`, body),
+    deleteTask: (id) => json<DeleteTaskResponse>("DELETE", `/tasks/${encodeURIComponent(id)}`),
     resumeTask: (id) => json<ResumeTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/resume`),
     handoffTask: (id, body) =>
       json<HandoffTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/handoff`, body),

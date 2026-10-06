@@ -100,6 +100,18 @@ describe("EventInputSchema", () => {
     expect(EventInputSchema.safeParse({ ...cleaned, payload: {} }).success).toBe(false);
   });
 
+  it("parses task.deleted and rejects one with no removedWorktree", () => {
+    const deleted: EventInput<"task.deleted"> = {
+      ts: "2026-09-10T12:35:00.000Z",
+      taskId: "t3n9v2wxyz",
+      repoId: "r7k2m4pqrs",
+      kind: "task.deleted",
+      payload: { removedWorktree: true },
+    };
+    expect(EventInputSchema.parse(deleted)).toEqual(deleted);
+    expect(EventInputSchema.safeParse({ ...deleted, payload: {} }).success).toBe(false);
+  });
+
   it("tells repo.registered and repo.updated apart", () => {
     const updated = { ...repoInput, kind: "repo.updated" as const };
     expect(EventInputSchema.parse(updated)).toEqual(updated);

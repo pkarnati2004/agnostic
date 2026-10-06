@@ -2,6 +2,7 @@ import type { Task, TaskSession, TaskStatus } from "@agnostic/core";
 import type { Database } from "better-sqlite3";
 import { LedgerError, writeFailure } from "./error.js";
 import type { EventQueries } from "./event-queries.js";
+import { deleteTaskRows } from "./task-delete.js";
 import { COLUMNS, filterSql, type TaskRow, toTask } from "./task-row.js";
 
 export type TaskFilter = {
@@ -30,6 +31,11 @@ export type TaskQueries = {
   start(id: string, started: StartedTask): Task;
   /** The worktree agn removed; the row keeps its path and branch as the record of what ran. */
   clean(id: string, deletedBranch: boolean): Task;
+  /**
+   * One transaction: the outcome row is deleted, the usage rows keep their tokens with no task id,
+   * the events are deleted and the row goes, then one `task.deleted` event records it (ADR 037).
+   */
+  delete(id: string, input: { removedWorktree: boolean }): void;
   get(id: string): Task | null;
   list(filter?: TaskFilter): Task[];
   /** Distinct compare ids starting with `prefix`, for the daemon's prefix resolution (ADR 004). */
@@ -62,6 +68,7 @@ export function createTaskQueries(db: Database, events: EventQueries): TaskQueri
     setSession: setTaskSession(db, events, requireTask),
     start: markStarted(db, events, requireTask),
     clean: markCleaned(db, events, requireTask),
+    delete: deleteTaskRows(db, events, requireTask),
     get,
     list(filter: TaskFilter = {}): Task[] {
       const { where, values } = filterSql(filter);

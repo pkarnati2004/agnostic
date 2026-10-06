@@ -159,6 +159,17 @@ export type CleanTaskRequest = z.infer<typeof CleanTaskRequestSchema>;
 /** `removed` is false when there was nothing to remove: a folder task, or a worktree already gone. */
 export type CleanTaskResponse = { task: Task; removed: boolean };
 
+/**
+ * The answer to DELETE /tasks/:id. The row is gone, so what it said travels in its place.
+ * `removedWorktree` is false for a folder task or a worktree already gone.
+ */
+export type DeleteTaskResponse = {
+  deleted: true;
+  taskId: string;
+  branch: string | null;
+  removedWorktree: boolean;
+};
+
 export type AttachResponse = { task: Task; attach: AttachInfo };
 
 /** `via` is the branch of the resume tree that was taken, which the CLI tells the user about. */

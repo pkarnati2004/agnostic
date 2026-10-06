@@ -25,6 +25,12 @@ describe("noticeLine", () => {
     expect(noticeLine(notice({ action: "update" }), task)).toContain("Bring up to date failed");
   });
 
+  it("names Archive and Delete as the menu and the dialog do", () => {
+    const task = { title: "Add invite links" };
+    expect(noticeLine(notice({ action: "archive" }), task)).toContain("Archive failed");
+    expect(noticeLine(notice({ action: "delete" }), task)).toContain("Delete failed");
+  });
+
   it("says Hand off the way the button does", () => {
     expect(noticeLine(notice({ action: "handoff" }), { title: "Cache rows" })).toContain(
       "Hand off failed for Cache rows",

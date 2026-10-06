@@ -9,7 +9,7 @@ import { TooltipProvider } from "./components/tooltip";
 import type { ConnectionState } from "./store/workspace-state";
 import type { TabsState } from "./tabs/tabs-state";
 import { render } from "./test/render";
-import { setValue, stubClient } from "./test/workspace-fixture";
+import { setValue, stubClient, WithRowActions } from "./test/workspace-fixture";
 import { IDLE_USAGE } from "./usage/usage-state";
 
 // TerminalView owns a real xterm terminal and a tmux socket, neither of which happy-dom can run.
@@ -59,42 +59,44 @@ type Extra = {
 function centre(tabs: TabsState, extra: Extra = {}) {
   return (
     <TooltipProvider>
-      <Centre
-        tabs={tabs}
-        dispatchTabs={vi.fn()}
-        repos={extra.repos ?? []}
-        tasks={TASKS}
-        loaded={extra.loaded ?? true}
-        profiles={[]}
-        token="tok"
-        client={stubClient({ compare: () => new Promise(() => undefined) })}
-        usage={IDLE_USAGE}
-        budget={null}
-        taskUsage={null}
-        refreshUsage={vi.fn()}
-        files={null}
-        error={extra.error ?? null}
-        connection={extra.connection ?? "live"}
-        onRetry={extra.onRetry ?? vi.fn()}
-        now={NOW}
-        resumed={null}
-        notices={{}}
-        changesOpen={false}
-        onToggleChanges={vi.fn()}
-        onResume={() => Promise.resolve()}
-        onStop={() => Promise.resolve()}
-        onHandoff={() => Promise.resolve(true)}
-        flash={0}
-        handoffFor={null}
-        onHandoffFor={vi.fn()}
-        onNewTask={vi.fn()}
-        defaultRepoId={null}
-        seed={null}
-        onStarted={vi.fn()}
-        onAddRepo={vi.fn()}
-        usageStamp={{ plans: 0, byTask: {} }}
-        onPick={() => Promise.resolve(null)}
-      />
+      <WithRowActions>
+        <Centre
+          tabs={tabs}
+          dispatchTabs={vi.fn()}
+          repos={extra.repos ?? []}
+          tasks={TASKS}
+          loaded={extra.loaded ?? true}
+          profiles={[]}
+          token="tok"
+          client={stubClient({ compare: () => new Promise(() => undefined) })}
+          usage={IDLE_USAGE}
+          budget={null}
+          taskUsage={null}
+          refreshUsage={vi.fn()}
+          files={null}
+          error={extra.error ?? null}
+          connection={extra.connection ?? "live"}
+          onRetry={extra.onRetry ?? vi.fn()}
+          now={NOW}
+          resumed={null}
+          notices={{}}
+          changesOpen={false}
+          onToggleChanges={vi.fn()}
+          onResume={() => Promise.resolve()}
+          onStop={() => Promise.resolve()}
+          onHandoff={() => Promise.resolve(true)}
+          flash={0}
+          handoffFor={null}
+          onHandoffFor={vi.fn()}
+          onNewTask={vi.fn()}
+          defaultRepoId={null}
+          seed={null}
+          onStarted={vi.fn()}
+          onAddRepo={vi.fn()}
+          usageStamp={{ plans: 0, byTask: {} }}
+          onPick={() => Promise.resolve(null)}
+        />
+      </WithRowActions>
     </TooltipProvider>
   );
 }

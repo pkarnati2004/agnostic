@@ -10,6 +10,7 @@ import { HistorySection } from "./history-section";
 import { IconAction } from "./icon-action";
 import { removeTooltip } from "./remove-tooltip";
 import { type CompareRowsProps, SidebarRows } from "./sidebar-rows";
+import { useTaskRowActions } from "./task-row-actions";
 
 type RepoSectionProps = CompareRowsProps & {
   group: RepoGroup;
@@ -27,9 +28,12 @@ type RepoSectionProps = CompareRowsProps & {
 /** One repo: its live tasks, then whatever it has already finished and cleaned up after. */
 export function RepoSection({ group, selectedId, expanded, notice, ...on }: RepoSectionProps) {
   const repo = group.repo;
+  const { justArchived } = useTaskRowActions();
   const empty = group.rows.length === 0 && group.history.length === 0;
-  // A section nobody opened still shows its rows while the task in front is one of them.
-  const showing = expanded || group.history.some((row) => holds(row, selectedId));
+  // A section nobody opened still shows its rows while the task in front is one of them, and
+  // while a task the user has just archived has landed in it.
+  const showing =
+    expanded || group.history.some((row) => holds(row, selectedId) || holds(row, justArchived));
   return (
     <section className="px-2 pt-3">
       <div className="group flex h-7 items-center gap-2 px-2">

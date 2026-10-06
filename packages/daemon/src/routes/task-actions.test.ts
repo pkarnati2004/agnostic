@@ -201,3 +201,18 @@ describe("POST /tasks/:id/clean", () => {
     expect(await exists(folder.path)).toBe(true);
   });
 });
+
+describe("DELETE /tasks/:id", () => {
+  it("takes an id prefix the way every other task route does", async () => {
+    const task = await stop(await start());
+    const response = await daemon.request(`/tasks/${task.id.slice(0, 4)}`, { method: "DELETE" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ deleted: true, taskId: task.id });
+  });
+
+  it("answers 404 for an id no task has", async () => {
+    const response = await daemon.request("/tasks/zzzzzzzzzz", { method: "DELETE" });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ error: { code: "task-not-found" } });
+  });
+});

@@ -158,6 +158,29 @@ describe("createDaemonClient", () => {
     await daemon.close();
   });
 
+  it("sends deleteTask as a DELETE to the task's own url", async () => {
+    let seenUrl = "";
+    let seenMethod = "";
+    const daemon = await stubDaemon((url, _headers, method) => {
+      seenUrl = url;
+      seenMethod = method ?? "";
+      return {
+        status: 200,
+        body: { deleted: true, taskId: "t3n9v2wxyz", branch: "agn/flag", removedWorktree: true },
+      };
+    });
+    const client = createDaemonClient({ baseUrl: daemon.baseUrl, token: "sekrit" });
+    expect(await client.deleteTask("t3n9v2wxyz")).toEqual({
+      deleted: true,
+      taskId: "t3n9v2wxyz",
+      branch: "agn/flag",
+      removedWorktree: true,
+    });
+    expect(seenUrl).toBe("/tasks/t3n9v2wxyz");
+    expect(seenMethod).toBe("DELETE");
+    await daemon.close();
+  });
+
   it("builds the open url with and without an editor override", async () => {
     const seen: string[] = [];
     const daemon = await stubDaemon((url) => {

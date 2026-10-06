@@ -1,5 +1,7 @@
 import type { Profile, RepoListRow } from "@agnostic/core";
+import type { ReactNode } from "react";
 import type { WorkspaceClient } from "../api/client";
+import { type TaskRowActions, TaskRowActionsProvider } from "../sidebar/task-row-actions";
 
 /** One repo, two profiles and a client that answers nothing: what a component test needs to render. */
 export const REPO: RepoListRow = {
@@ -44,6 +46,8 @@ export function stubClient(overrides: Partial<WorkspaceClient> = {}): WorkspaceC
     stopTask: () => Promise.reject(new Error("unused")),
     resumeTask: () => Promise.reject(new Error("unused")),
     handoffTask: () => Promise.reject(new Error("unused")),
+    cleanTask: () => Promise.reject(new Error("unused")),
+    deleteTask: () => Promise.reject(new Error("unused")),
     writeSpec: () => new Promise(() => undefined),
     usage: () => Promise.reject(new Error("unused")),
     taskUsage: () => Promise.reject(new Error("unused")),
@@ -67,6 +71,36 @@ export function stubClient(overrides: Partial<WorkspaceClient> = {}): WorkspaceC
     events: () => (async function* () {})(),
     ...overrides,
   };
+}
+
+/** The ten handlers a task menu reads, each one a spy, for a component rendered on its own. */
+function rowActions(overrides: Partial<TaskRowActions> = {}): TaskRowActions {
+  return {
+    copy: () => Promise.resolve(),
+    openInEditor: () => undefined,
+    stop: () => undefined,
+    resume: () => undefined,
+    handoff: () => undefined,
+    createPr: () => undefined,
+    archive: () => Promise.resolve({ kind: "archived" }),
+    archiveAnyway: () => Promise.resolve(),
+    requestDelete: () => undefined,
+    justArchived: null,
+    warning: null,
+    keep: () => undefined,
+    ...overrides,
+  };
+}
+
+/** A component that reads the row actions needs the provider the page mounts around them. */
+export function WithRowActions({
+  actions,
+  children,
+}: {
+  actions?: Partial<TaskRowActions>;
+  children: ReactNode;
+}) {
+  return <TaskRowActionsProvider value={rowActions(actions)}>{children}</TaskRowActionsProvider>;
 }
 
 /** React's controlled-input setter, bypassed so the `input` event carries a real value change. */

@@ -12,6 +12,7 @@ export const EventKindSchema = z.enum([
   "task.status",
   "task.adopted",
   "task.cleaned",
+  "task.deleted",
   "task.handoff",
   "session.captured",
   "repo.registered",
@@ -30,6 +31,9 @@ const payloadSchemas = {
   "task.adopted": z.object({ pid: z.number().int().positive(), cwd: z.string().min(1) }),
   // A worktree agn removed. Chunk 15 reads this: a worktree gone without one was removed by hand.
   "task.cleaned": z.object({ deletedBranch: z.boolean() }),
+  // The one event that outlives the task: it is appended after the task's own events are deleted,
+  // so the live feed and the cursor see the deletion the row cannot report itself.
+  "task.deleted": z.object({ removedWorktree: z.boolean() }),
   "task.handoff": z.object({
     fromProfileId: z.string().min(1),
     toProfileId: z.string().min(1),
@@ -93,6 +97,7 @@ function members<S extends z.core.$ZodLooseShape>(shape: S) {
     member(shape, "task.status"),
     member(shape, "task.adopted"),
     member(shape, "task.cleaned"),
+    member(shape, "task.deleted"),
     member(shape, "task.handoff"),
     member(shape, "session.captured"),
     member(shape, "repo.registered"),
