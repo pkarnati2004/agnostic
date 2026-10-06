@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, CoreError, DaemonApiError, ProcessError } from "./error.js";
+import { ConfigError, CoreError, DaemonApiError, errorMessage, ProcessError } from "./error.js";
+
+describe("errorMessage", () => {
+  it("reads the message of a thrown Error", () => {
+    expect(errorMessage(new CoreError("boom", { code: "boom" }))).toBe("boom");
+  });
+
+  it("falls back to the string form of anything else thrown", () => {
+    expect(errorMessage("not an error")).toBe("not an error");
+    expect(errorMessage(undefined)).toBe("undefined");
+    expect(errorMessage({ code: 7 })).toBe("[object Object]");
+  });
+});
 
 describe("CoreError", () => {
   it("keeps code, hint and cause", () => {

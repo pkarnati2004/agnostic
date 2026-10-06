@@ -3,6 +3,7 @@ import {
   CoreError,
   type HarnessId,
   type HookInstallResult,
+  LIVE_STATUSES,
   type Repo,
   type StatusLineInstall,
 } from "@agnostic/core";
@@ -118,7 +119,7 @@ function warn(ctx: DaemonContext, harness: HarnessId, cause: unknown): void {
 
 function liveWorktrees(ctx: DaemonContext, repo: Repo): string[] {
   return ctx.ledger.tasks
-    .list({ repoId: repo.id, status: ["running", "waiting"] })
+    .list({ repoId: repo.id, status: LIVE_STATUSES })
     .flatMap((task) => (task.session === undefined ? [] : [task.session.cwd]));
 }
 

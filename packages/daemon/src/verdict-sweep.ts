@@ -1,11 +1,13 @@
 import {
+  CLOSED_STATUSES,
+  errorMessage,
+  isClosed,
   isDirectory,
   type Outcome,
   type Repo,
   type RepoConfig,
   readRepoConfig,
   type Task,
-  type TaskStatus,
 } from "@agnostic/core";
 import type { DaemonContext } from "./app.js";
 import {
@@ -26,8 +28,6 @@ export type VerdictSweep = {
   close(): void;
 };
 
-const TERMINAL: TaskStatus[] = ["done", "failed", "stopped"];
-
 /**
  * Rereads one task's branch and records what it finds. Accepted is final; a branch that is merged
  * after it was cleaned flips from reverted to accepted the next time this runs (ADR 022).
@@ -36,7 +36,7 @@ export async function refreshVerdict(deps: VerdictDeps, task: Task): Promise<Out
   const outcome = deps.ledger.outcomes.get(task.id);
   // A live task has no verdict to read yet: its tests-before row is a baseline, not a result. It
   // is also why the sweep never cleans a worktree a resume rebuilt from under its agent (ADR 031).
-  if (!TERMINAL.includes(task.status)) {
+  if (!isClosed(task.status)) {
     return outcome;
   }
   if (outcome === null || task.branch === null || task.baseCommit === null) {
@@ -69,7 +69,7 @@ export function createVerdictSweep(deps: VerdictDeps, intervalMs: number | null)
     for (const task of pending(deps)) {
       // One unreadable repo must not stop the sweep over the others.
       await refreshVerdict(deps, task).catch((cause: unknown) => {
-        deps.log.error("outcome not recorded", { taskId: task.id, message: reason(cause) });
+        deps.log.error("outcome not recorded", { taskId: task.id, message: errorMessage(cause) });
       });
     }
   };
@@ -93,7 +93,7 @@ export function createVerdictSweep(deps: VerdictDeps, intervalMs: number | null)
 /** Tasks that ran on a branch, have closed, and have no final verdict yet. */
 function pending(deps: VerdictDeps): Task[] {
   return deps.ledger.tasks
-    .list({ status: TERMINAL })
+    .list({ status: CLOSED_STATUSES })
     .filter((task) => task.branch !== null && task.baseCommit !== null)
     .filter((task) => deps.ledger.outcomes.get(task.id)?.accepted === false);
 }
@@ -152,8 +152,4 @@ function same(before: Outcome, after: Outcome): boolean {
     before.humanChangedLines === after.humanChangedLines &&
     before.humanEditRatio === after.humanEditRatio
   );
-}
-
-function reason(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

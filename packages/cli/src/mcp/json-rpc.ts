@@ -69,7 +69,7 @@ export function resultMessage(id: JsonRpcId, result: unknown): string {
   return JSON.stringify({ jsonrpc: "2.0", id, result });
 }
 
-export function errorMessage(
+export function errorFrame(
   id: JsonRpcId | null,
   code: number,
   message: string,

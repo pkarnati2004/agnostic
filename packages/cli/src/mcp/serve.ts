@@ -4,7 +4,7 @@ import { describeIssues } from "@agnostic/core";
 import { z } from "zod";
 import type { CliContext } from "../context.js";
 import {
-  errorMessage,
+  errorFrame,
   INTERNAL_ERROR,
   INVALID_PARAMS,
   type JsonRpcId,
@@ -60,7 +60,7 @@ async function answer(
 ): Promise<void> {
   const incoming = parseIncoming(line);
   if (incoming.kind === "invalid") {
-    write(output, errorMessage(incoming.id, incoming.code, incoming.message));
+    write(output, errorFrame(incoming.id, incoming.code, incoming.message));
     return;
   }
   // A notification is never answered, and neither is a response to a request agn never sent.
@@ -88,7 +88,7 @@ async function dispatch(
     case "tools/call":
       return await call(ctx, id, params);
     default:
-      return errorMessage(id, METHOD_NOT_FOUND, `method not found: ${method}`);
+      return errorFrame(id, METHOD_NOT_FOUND, `method not found: ${method}`);
   }
 }
 
@@ -108,16 +108,16 @@ async function call(
 ): Promise<string> {
   const parsed = CallParamsSchema.safeParse(params);
   if (!parsed.success) {
-    return errorMessage(id, INVALID_PARAMS, "invalid params", describeIssues(parsed.error));
+    return errorFrame(id, INVALID_PARAMS, "invalid params", describeIssues(parsed.error));
   }
   const tool = findTool(parsed.data.name);
   if (tool === null) {
-    return errorMessage(id, INVALID_PARAMS, `unknown tool: ${parsed.data.name}`);
+    return errorFrame(id, INVALID_PARAMS, `unknown tool: ${parsed.data.name}`);
   }
   const args = tool.schema.safeParse(parsed.data.arguments ?? {});
   if (!args.success) {
     const message = `invalid arguments for ${tool.name}`;
-    return errorMessage(id, INVALID_PARAMS, message, describeIssues(args.error));
+    return errorFrame(id, INVALID_PARAMS, message, describeIssues(args.error));
   }
   return await invoke(ctx, id, tool, args.data);
 }
@@ -133,7 +133,7 @@ async function invoke(
   } catch (cause) {
     // Nothing agn has a code for: a bug here, said on stderr because stdout is the protocol.
     ctx.io.err(`agn mcp: ${tool.name} failed: ${cause instanceof Error ? cause.message : cause}`);
-    return errorMessage(id, INTERNAL_ERROR, "internal error");
+    return errorFrame(id, INTERNAL_ERROR, "internal error");
   }
 }
 

@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import {
   CoreError,
+  errorMessage,
   type Repo,
   readAgText,
   readMcpConfig,
@@ -88,7 +89,7 @@ export async function ensureSynced(ctx: DaemonContext, repo: Repo, cwd: string):
     ctx.log.warn("sync skipped", {
       cwd,
       code: cause instanceof CoreError ? cause.code : "unknown",
-      message: cause instanceof Error ? cause.message : String(cause),
+      message: errorMessage(cause),
     });
   }
 }

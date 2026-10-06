@@ -11,7 +11,7 @@ import type { DaemonContext } from "./app.js";
 import { refCommit, repoBaseRef } from "./base-ref.js";
 import { branchExists } from "./branch-verdict.js";
 import { DaemonError } from "./error.js";
-import { gitLines, gitResult, gitStdout } from "./git-read.js";
+import { gitLines, gitResult, gitStdout, originUrl } from "./git-read.js";
 import { resolveTaskBase } from "./task-base.js";
 import { taskDir } from "./task-dir.js";
 
@@ -46,7 +46,7 @@ export async function taskChanges(
     behind: refHead === null ? null : await countCommits(at.dir, `${tip}..${refHead}`),
     uncommitted: states?.size ?? 0,
     pushed: (await branchUpstream(at.dir, task.branch ?? "HEAD")) !== null,
-    remote: gitLines(await gitStdout(at.dir, ["remote", "get-url", "origin"]))[0] ?? null,
+    remote: await originUrl(at.dir),
     files: (await changedFiles(at.dir, base.commit, tip, states)).map(listed),
   };
 }
@@ -275,7 +275,7 @@ async function nothingYet(repo: Repo, task: Task): Promise<ChangesResponse> {
     behind: null,
     uncommitted: 0,
     pushed: false,
-    remote: gitLines(await gitStdout(repo.path, ["remote", "get-url", "origin"]))[0] ?? null,
+    remote: await originUrl(repo.path),
     files: [],
   };
 }

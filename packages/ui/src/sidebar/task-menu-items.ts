@@ -1,4 +1,5 @@
 import type { TaskListRow, TaskStatus } from "@agnostic/core";
+import { isClosed, isLive } from "@agnostic/core/browser";
 import { worktreeGone } from "../task/worktree-gone";
 import { inHistory } from "./group-tasks";
 
@@ -32,8 +33,6 @@ export type MenuSection = {
 };
 
 const ACTIVE: TaskStatus[] = ["queued", "running", "waiting"];
-const LIVE: TaskStatus[] = ["running", "waiting"];
-const FINISHED: TaskStatus[] = ["done", "failed", "stopped"];
 
 export const ARCHIVE_TOOLTIP =
   "Removes the worktree. The task moves to History; Resume rebuilds it from its branch.";
@@ -58,7 +57,7 @@ function copyItems(task: TaskListRow): MenuItem[] {
     items.push(item("copy-branch", "Copy branch name"));
   }
   items.push({ ...item("copy-id", "Copy task id"), meta: task.id });
-  if (LIVE.includes(task.status)) {
+  if (isLive(task.status)) {
     items.push(item("copy-attach", "Copy attach command"));
   }
   return items;
@@ -80,10 +79,10 @@ function lifecycleItems(task: TaskListRow): MenuItem[] {
   if (inHistory(task)) {
     return [{ ...item("resume", "Resume"), tooltip: HISTORY_RESUME }];
   }
-  if (LIVE.includes(task.status)) {
+  if (isLive(task.status)) {
     return [item("stop", "Stop"), item("handoff", "Hand off"), ...prItem(task)];
   }
-  if (FINISHED.includes(task.status) && !worktreeGone(task)) {
+  if (isClosed(task.status) && !worktreeGone(task)) {
     return [item("resume", "Resume"), item("handoff", "Hand off"), ...prItem(task)];
   }
   return [];
@@ -95,7 +94,7 @@ function prItem(task: TaskListRow): MenuItem[] {
 
 /** Archive is offered where agn has a worktree to remove and no agent is in it. */
 export function canArchive(task: TaskListRow): boolean {
-  return FINISHED.includes(task.status) && task.worktreePresent;
+  return isClosed(task.status) && task.worktreePresent;
 }
 
 /** The daemon refuses a delete while the task is queued, running or waiting. */

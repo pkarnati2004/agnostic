@@ -1,3 +1,8 @@
+/** What a thrown value says. A `catch` binds `unknown`, and only an `Error` carries a message. */
+export function errorMessage(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
 export type CoreErrorOptions = {
   code: string;
   hint?: string;

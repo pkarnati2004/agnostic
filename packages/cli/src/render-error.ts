@@ -1,4 +1,4 @@
-import { type ApiErrorBody, CoreError, DaemonApiError } from "@agnostic/core";
+import { type ApiErrorBody, CoreError, DaemonApiError, errorMessage } from "@agnostic/core";
 import { CommanderError } from "commander";
 
 type RenderedError = { lines: string[]; exitCode: 1 | 2; body: ApiErrorBody };
@@ -15,7 +15,7 @@ export function renderError(err: unknown): RenderedError {
       body: body(err.code, err.message, err.hint),
     };
   }
-  const message = err instanceof Error ? err.message : String(err);
+  const message = errorMessage(err);
   return {
     lines: [`agn: unexpected error: ${message}`],
     exitCode: 1,

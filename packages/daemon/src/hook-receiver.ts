@@ -4,17 +4,15 @@ import {
   HarnessIdSchema,
   type HookResponse,
   type HookStatus,
+  isLive,
+  LIVE_STATUSES,
   type Task,
-  type TaskStatus,
 } from "@agnostic/core";
 import { hookParser, type ParsedHook } from "@agnostic/hooks";
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 import { recordHookUsage } from "./hook-usage.js";
 import { syncTaskNote } from "./task-note-sync.js";
-
-/** Only a task that is live can be moved by a hook: queued has not launched, terminal is decided. */
-const LIVE: TaskStatus[] = ["running", "waiting"];
 
 /**
  * One hook payload, from the harness that sent it to the row it changes. The harness knows its own
@@ -73,7 +71,7 @@ async function resolveTask(
     return task;
   }
   const live = ctx.ledger.tasks
-    .list({ status: LIVE })
+    .list({ status: LIVE_STATUSES })
     .filter((task) => task.session?.harness === harness);
   const bySession =
     parsed.sessionId === null
@@ -149,8 +147,9 @@ async function applyStatus(
   return { task: updated, applied: to };
 }
 
+/** Only a task that is live can be moved by a hook: queued has not launched, terminal is decided. */
 function transition(task: Task, status: HookStatus | null): HookStatus | null {
-  if (status === null || !LIVE.includes(task.status) || task.status === status) {
+  if (status === null || !isLive(task.status) || task.status === status) {
     return null;
   }
   return status;

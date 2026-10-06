@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@agnostic/core";
+import { isClosed, isLive } from "@agnostic/core/browser";
 import { Archive, MoreHorizontal, PanelRight, Play, Square } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/button";
@@ -9,9 +9,6 @@ import { useTaskRowActions } from "../sidebar/task-row-actions";
 import { HandoffDialog } from "./handoff-dialog";
 import type { TaskHeaderProps } from "./task-header";
 import { worktreeGone } from "./worktree-gone";
-
-const STOPPABLE: TaskStatus[] = ["running", "waiting"];
-const RESUMABLE: TaskStatus[] = ["done", "failed", "stopped"];
 
 type ActionsProps = TaskHeaderProps & {
   busy: boolean;
@@ -24,13 +21,13 @@ export function HeaderActions({ task, profiles, busy, onRun, ...props }: Actions
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <>
-      {STOPPABLE.includes(task.status) && (
+      {isLive(task.status) && (
         <Button variant="outline" size="sm" disabled={busy} onClick={() => onRun(props.onStop)}>
           <Square />
           Stop
         </Button>
       )}
-      {RESUMABLE.includes(task.status) && (
+      {isClosed(task.status) && (
         <Button variant="outline" size="sm" disabled={busy} onClick={() => onRun(props.onResume)}>
           <Play />
           Resume

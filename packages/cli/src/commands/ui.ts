@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { launchDetached, readAuthToken, readDaemonInfo } from "@agnostic/core";
+import { errorMessage, launchDetached, readAuthToken, readDaemonInfo } from "@agnostic/core";
 import { Command } from "commander";
 import type { CliContext } from "../context.js";
 import { CliError } from "../error.js";
@@ -78,6 +78,6 @@ async function openBrowser(
 
 /** A failing child quotes the command line it was given, and that line carries the token. */
 function redact(cause: unknown, token: string): string {
-  const detail = cause instanceof Error ? cause.message : String(cause);
+  const detail = errorMessage(cause);
   return detail.replaceAll(token, "…");
 }

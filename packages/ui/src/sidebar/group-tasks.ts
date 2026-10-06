@@ -1,4 +1,5 @@
 import type { RepoListRow, Task, TaskListRow, TaskStatus } from "@agnostic/core";
+import { isClosed } from "@agnostic/core/browser";
 import { worktreeGone } from "../task/worktree-gone";
 
 /** The siblings of one compare, oldest first, which is the order the profiles were given in. */
@@ -17,7 +18,6 @@ export type RepoGroup = { repo: RepoListRow; rows: SidebarRow[]; history: Sideba
 export type SidebarGroups = { needsYou: TaskListRow[]; repos: RepoGroup[] };
 
 const OPEN: TaskStatus[] = ["queued", "running", "waiting"];
-const FINISHED: TaskStatus[] = ["done", "failed", "stopped"];
 
 /**
  * The sidebar in one pass: the tasks asking for an answer first, oldest question at the top, then
@@ -134,7 +134,7 @@ function max(a: string, b: string): string {
  * checks the worktree per list; the page keeps the flag up to date from the feed.
  */
 export function inHistory(task: TaskListRow): boolean {
-  return FINISHED.includes(task.status) && worktreeGone(task);
+  return isClosed(task.status) && worktreeGone(task);
 }
 
 /**

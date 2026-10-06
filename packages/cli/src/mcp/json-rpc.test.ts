@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { errorMessage, parseIncoming, resultMessage } from "./json-rpc.js";
+import { errorFrame, parseIncoming, resultMessage } from "./json-rpc.js";
 
 describe("parseIncoming", () => {
   it("reads a request, id and params included", () => {
@@ -78,9 +78,9 @@ describe("resultMessage", () => {
   });
 });
 
-describe("errorMessage", () => {
+describe("errorFrame", () => {
   it("leaves data out when there is none", () => {
-    expect(JSON.parse(errorMessage(2, -32601, "method not found: x"))).toEqual({
+    expect(JSON.parse(errorFrame(2, -32601, "method not found: x"))).toEqual({
       jsonrpc: "2.0",
       id: 2,
       error: { code: -32601, message: "method not found: x" },
@@ -88,7 +88,7 @@ describe("errorMessage", () => {
   });
 
   it("carries data and a null id", () => {
-    expect(JSON.parse(errorMessage(null, -32602, "invalid params", "name: required"))).toEqual({
+    expect(JSON.parse(errorFrame(null, -32602, "invalid params", "name: required"))).toEqual({
       jsonrpc: "2.0",
       id: null,
       error: { code: -32602, message: "invalid params", data: "name: required" },

@@ -121,6 +121,7 @@ async function exists(path: string): Promise<boolean> {
     await stat(path);
     return true;
   } catch {
+    // A path agn cannot stat counts as gone, so the row follows the clone that moved.
     return false;
   }
 }

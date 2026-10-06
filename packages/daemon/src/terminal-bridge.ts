@@ -145,6 +145,7 @@ function parse(text: string): unknown {
   try {
     return JSON.parse(text) as unknown;
   } catch {
+    // A frame that is not JSON fails the schema below, which closes the socket.
     return null;
   }
 }

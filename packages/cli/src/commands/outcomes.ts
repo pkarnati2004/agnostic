@@ -1,9 +1,4 @@
-import {
-  type Outcome,
-  type OutcomeResponse,
-  outcomeVerdict,
-  type TaskStatus,
-} from "@agnostic/core";
+import { isClosed, type Outcome, type OutcomeResponse, outcomeVerdict } from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
 import { renderFields } from "../fields.js";
@@ -26,11 +21,9 @@ export function outcomesCommand(ctx: CliContext): Command {
     });
 }
 
-const TERMINAL: TaskStatus[] = ["done", "failed", "stopped"];
-
 /** A task that is still going can already hold a tests-before row; the outcome is what close writes. */
 function render({ task, outcome }: OutcomeResponse): string[] {
-  if (outcome === null || !TERMINAL.includes(task.status)) {
+  if (outcome === null || !isClosed(task.status)) {
     return [`outcome: not yet (task is ${task.status})`];
   }
   return renderFields([

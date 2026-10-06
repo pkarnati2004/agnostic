@@ -25,6 +25,7 @@ export async function detectPlan(def: HarnessDefinition, home: string): Promise<
   try {
     text = await readFile(join(home, source.file), "utf8");
   } catch {
+    // No auth file is a harness the user has not signed into; the plan is unknown, not free.
     return null;
   }
   try {

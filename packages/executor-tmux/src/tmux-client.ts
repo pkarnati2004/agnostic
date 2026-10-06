@@ -1,5 +1,5 @@
 // Adapted from asheshgoplani/agent-deck (MIT © Ashesh Goplani).
-import { ProcessError, type RunResult, run, scrubEnv } from "@agnostic/core";
+import { errorMessage, ProcessError, type RunResult, run, scrubEnv } from "@agnostic/core";
 import { ExecutorError } from "./error.js";
 
 /** agn's own socket, so `tmux kill-server` on the user's default server never ends a task. */
@@ -111,7 +111,7 @@ function toExecutorError(argv: string[], cause: unknown): ExecutorError {
       cause,
     });
   }
-  const detail = cause instanceof Error ? cause.message : String(cause);
+  const detail = errorMessage(cause);
   return new ExecutorError(`tmux ${argv.join(" ")} failed: ${detail}`, {
     code: "tmux-failed",
     hint: "Run the command by hand to see what the tmux server says.",

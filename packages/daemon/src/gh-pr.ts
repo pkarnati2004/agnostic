@@ -59,6 +59,7 @@ function viewedUrl(stdout: string): string | null {
     const parsed = PrViewSchema.safeParse(JSON.parse(stdout) as unknown);
     return parsed.success ? parsed.data.url : null;
   } catch {
+    // gh printed something that is not JSON: there is no PR to reuse, so one is opened.
     return null;
   }
 }

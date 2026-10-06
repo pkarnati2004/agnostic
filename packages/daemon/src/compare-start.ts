@@ -1,4 +1,5 @@
 import {
+  errorMessage,
   newId,
   type Profile,
   type Repo,
@@ -99,11 +100,7 @@ async function resolveDistinct(
 async function stopStarted(ctx: DaemonContext, tasks: Task[]): Promise<void> {
   for (const task of tasks) {
     await ctx.lifecycle.stop(ctx.ledger.tasks.get(task.id) ?? task).catch((cause: unknown) => {
-      ctx.log.error("sibling not stopped", { taskId: task.id, message: reason(cause) });
+      ctx.log.error("sibling not stopped", { taskId: task.id, message: errorMessage(cause) });
     });
   }
-}
-
-function reason(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

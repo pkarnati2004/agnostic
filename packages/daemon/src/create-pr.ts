@@ -8,7 +8,7 @@ import {
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 import { openPr, usableGh } from "./gh-pr.js";
-import { gitLines, gitStdout } from "./git-read.js";
+import { originUrl } from "./git-read.js";
 import { compareUrl, type GithubRepo, parseGithubRemote } from "./github-remote.js";
 import { initialTaskNote } from "./initial-task-note.js";
 import { composePrBody } from "./pr-body.js";
@@ -34,7 +34,7 @@ export async function createPr(
   if (branch === null) {
     throw noBranch(task);
   }
-  const remote = origin(await gitStdout(at.dir, ["remote", "get-url", "origin"]), repo);
+  const remote = origin(await originUrl(at.dir), repo);
   const base = await resolveTaskBase(ctx, repo, task, at);
   if (base.ref === branch) {
     throw branchIsBase(branch);
@@ -71,8 +71,8 @@ async function isEmpty(at: TaskDir, base: string | null, branch: string): Promis
   return (await countCommits(at.dir, `${base}..${tip}`)) === 0;
 }
 
-function origin(stdout: string | null, repo: Repo): GithubRepo {
-  const url = gitLines(stdout)[0]?.trim() ?? null;
+function origin(remote: string | null, repo: Repo): GithubRepo {
+  const url = remote?.trim() ?? null;
   if (url === null) {
     throw new DaemonError(`${repo.name} has no origin remote`, {
       code: "remote-missing",

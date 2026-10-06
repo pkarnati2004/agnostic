@@ -1,12 +1,5 @@
-import type {
-  Event,
-  EventKind,
-  Repo,
-  RepoListRow,
-  Task,
-  TaskListRow,
-  TaskStatus,
-} from "@agnostic/core";
+import type { Event, EventKind, Repo, RepoListRow, Task, TaskListRow } from "@agnostic/core";
+import { isKind, isLive } from "@agnostic/core/browser";
 
 /**
  * How many `usage.recorded` events have landed, in total and per task. The figures themselves come
@@ -142,10 +135,6 @@ function withPath(task: Task): TaskListRow {
   return { ...task, worktreePresent: task.worktreePath !== null };
 }
 
-function isLive(status: TaskStatus): boolean {
-  return status === "running" || status === "waiting";
-}
-
 /** A task the page has never seen is not invented from a patch: the feed refetches it instead. */
 function patchTask(
   state: WorkspaceState,
@@ -186,9 +175,4 @@ function upsertRepo(repos: RepoListRow[], repo: Repo): RepoListRow[] {
 
 function byId(tasks: TaskListRow[]): Record<string, TaskListRow> {
   return Object.fromEntries(tasks.map((task) => [task.id, task]));
-}
-
-/** `Event` is a union over its kinds; this is what narrows one to the payload of the kind read. */
-function isKind<K extends EventKind>(event: Event, kind: K): event is Event<K> {
-  return event.kind === kind;
 }

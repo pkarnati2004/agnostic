@@ -159,6 +159,7 @@ async function exists(path: string): Promise<boolean> {
     await stat(path);
     return true;
   } catch {
+    // Nothing agn can stat is nothing in the way: the worktree path is free to use.
     return false;
   }
 }

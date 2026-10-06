@@ -8,6 +8,7 @@ import type {
   PlanOption,
   Plans,
 } from "@agnostic/core";
+import { errorMessage } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
 import {
   detectEditors,
@@ -150,7 +151,7 @@ export function createApp(deps: DaemonDeps): {
     const { status, body } = errorBody(err);
     if (status >= 500) {
       // The client is told "internal error"; the only place the real one exists is this line.
-      deps.log.error(`unhandled ${c.req.method} ${c.req.path}`, { message: reason(err) });
+      deps.log.error(`unhandled ${c.req.method} ${c.req.path}`, { message: errorMessage(err) });
     }
     return c.json(body, status as ContentfulStatusCode);
   });
@@ -270,8 +271,4 @@ function contradicts(status: HarnessStatus, plan: Plan, catalog: Catalog): boole
   return (status.models?.models ?? []).some(
     (model) => entitlement(catalog, status.harness, model, plan) === "unavailable",
   );
-}
-
-function reason(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

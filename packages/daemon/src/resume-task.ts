@@ -1,4 +1,6 @@
 import {
+  errorMessage,
+  isClosed,
   type LaunchCommand,
   type Profile,
   type Repo,
@@ -18,8 +20,6 @@ import { assertDirectory, ensureWorktree } from "./resume-worktree.js";
 import { sessionEvidence } from "./session-evidence.js";
 import { ensureSynced } from "./sync-repo.js";
 import { launchedSession } from "./task-session.js";
-
-const TERMINAL: Task["status"][] = ["done", "failed", "stopped"];
 
 /**
  * ADR 014's three-way tree, and the daemon owns it: a session still running is attached to, a
@@ -119,7 +119,7 @@ async function nativeResume(
 
 /** A live session that the ledger had already written off; nothing about it is re-recorded. */
 function running(ctx: DaemonContext, task: Task): Task {
-  return TERMINAL.includes(task.status) ? ctx.ledger.tasks.setStatus(task.id, "running") : task;
+  return isClosed(task.status) ? ctx.ledger.tasks.setStatus(task.id, "running") : task;
 }
 
 type Relaunch = {
@@ -157,7 +157,7 @@ async function relaunched(
     await ctx.executor.stop(at.handle).catch((failure: unknown) => {
       ctx.log.error("session not stopped after a refused resume", {
         taskId: task.id,
-        message: failure instanceof Error ? failure.message : String(failure),
+        message: errorMessage(failure),
       });
     });
     throw cause;

@@ -1,4 +1,4 @@
-import { ProcessError, run } from "@agnostic/core";
+import { errorMessage, ProcessError, run } from "@agnostic/core";
 import { DaemonError } from "./error.js";
 
 // A push over ssh or https can be slow on a large branch, and there is nothing to fall back on.
@@ -46,7 +46,7 @@ export async function pushBranch(
 function refused(branch: string, cwd: string, cause: unknown): DaemonError {
   const error = cause instanceof ProcessError ? cause : null;
   const porcelain = summaryOf(error?.stdout ?? "");
-  const said = error?.stderr || porcelain || reason(cause);
+  const said = error?.stderr || porcelain || errorMessage(cause);
   return new DaemonError(`git refused to push ${branch}: ${said}`, {
     code: "push-rejected",
     hint: BEHIND.test(`${error?.stderr ?? ""} ${porcelain}`)
@@ -72,8 +72,4 @@ function refLine(stdout: string): RegExpExecArray | null {
     }
   }
   return null;
-}
-
-function reason(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
