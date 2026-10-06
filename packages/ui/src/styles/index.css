@@ -17,3 +17,9 @@ body {
   /* The workspace is one screen: the sidebar and the centre scroll, the page does not. */
   overflow: hidden;
 }
+
+/* A pane drag runs from the handle, so the whole page holds the cursor and drops the selection. */
+body.pane-dragging {
+  cursor: col-resize;
+  user-select: none;
+}

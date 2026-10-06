@@ -8,7 +8,9 @@ import { type SessionPhase, startSession, type TerminalSession } from "./termina
 import { xtermTheme } from "./terminal-theme";
 import { type TerminalHandle, useTerminal } from "./use-terminal";
 
-// Long enough that a drag of the window sends one resize frame and not thirty.
+// Long enough that a drag of the window sends one resize frame and not thirty. A fit is not only
+// `fitAddon.fit()`: it sends the size to the daemon, which resizes the PTY and makes the harness
+// redraw its whole TUI, so a pane drag waits for the pointer to pause rather than fitting a frame.
 const FIT_DEBOUNCE_MS = 100;
 
 type TerminalViewProps = {
