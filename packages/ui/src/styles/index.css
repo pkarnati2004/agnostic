@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "@xterm/xterm/css/xterm.css";
+/* Before the tokens that name the families: every face the themes and the Font select can ask for. */
+@import "./fonts.css";
 @import "./tokens.css";
 /* After tokens.css: each of these beats `:root` on specificity, which is how a theme is chosen. */
 @import "./themes/carbon.css";

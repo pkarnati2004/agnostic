@@ -1,0 +1,155 @@
+/*
+ * The thirteen families the themes and the Font select name, loaded from files in this repo. The
+ * page makes no font request to anyone: `./fonts/<family>/` holds the woff2 the family's own
+ * release publishes, next to that family's OFL text (PROVENANCE.md, Fonts).
+ *
+ * One face per family per file. A mono is the regular weight only, which is the one weight a
+ * terminal and the mono type steps ask for. A sans is the family's variable file where its release
+ * ships one, which covers the 400, 500 and 600 the type scale uses in a single file; IBM Plex Sans
+ * has no variable release of its own, so its three weights are three faces. No italic ships: the
+ * page sets none, and a browser slants the upright if some text ever asks.
+ */
+
+/* Monospace, in the order the Font select lists them. */
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/jetbrains-mono/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono/IBMPlexMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/geist-mono/GeistMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/fira-code/FiraCode-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Red Hat Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/red-hat-mono/RedHatMono-Regular.woff2") format("woff2");
+}
+
+/*
+ * DM Mono is published as two files, one per character range, and the whole family is the two
+ * together. Each face carries the range its file covers, which is what keeps the second from
+ * replacing the first; a character in neither range is drawn by the next family in the stack.
+ */
+@font-face {
+  font-family: "DM Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/dm-mono/DMMono-Regular-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "DM Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/dm-mono/DMMono-Regular-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Spline Sans Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/spline-sans-mono/SplineSansMono-Regular.woff2") format("woff2");
+}
+
+/* Interface sans, in the order the theme cards list them. Each weight range is the font's own. */
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans/IBMPlexSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans/IBMPlexSans-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans/IBMPlexSans-SemiBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/geist/Geist-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("./fonts/schibsted-grotesk/SchibstedGrotesk-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Red Hat Text";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./fonts/red-hat-text/RedHatText-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./fonts/instrument-sans/InstrumentSans-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("./fonts/figtree/Figtree-Variable.woff2") format("woff2");
+}

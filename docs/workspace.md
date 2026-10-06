@@ -185,8 +185,8 @@ shows the path of `~/.agnostic/config.yaml` with a button that copies it.
 
 Eight themes: Rosewood, Claudette, Slate, Paper, Ink, Moss, Carbon and Dusk. Each card shows a
 swatch of the theme's page, text, waiting and running colours, and the two fonts it asks for.
-Rosewood is the default. A theme's interface fonts are used where they are installed on this
-machine; where they are not, the system font is used instead. agn never downloads a font.
+Rosewood is the default. Every font a theme or the terminal names ships inside agn, so a theme
+looks the same on any machine and nothing is fetched to draw it.
 
 Mode is Dark, Light or System. System follows macOS, and the page changes with it without a reload.
 
