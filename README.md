@@ -8,11 +8,10 @@ Agent-agnostic development. Use Claude Code, Codex, Pi - and know which one to u
 
 - **Bring your own agent / subscription.** Claude Code, Codex, Pi, OpenCode, Kimi, local models - anything with a CLI. Your logins, your keys, your plans. Nothing is proxied.
 - **Recommendations, not leaderboards.** Describe the task; get a pick with a reason, a confidence label, and the benchmarks behind it - limited to agents you can actually run.
-- **Isolation.** One worktree per task. No stepping on each other's changes.
+- **Isolation.** One worktree per task: two tasks on one repo never share a working tree.
 - **Native sessions.** Plan mode, tool approvals, permissions, subagents all happen in the agent's own UI. `agnostic` renders it; it doesn't replace it.
 - **Portable project context.** `.ag/instructions.md` is the one file you maintain; `agn sync` generates `CLAUDE.md` and `AGENTS.md` from it. Claude Code reads CLAUDE.md; Codex, OpenCode and Pi read AGENTS.md.
-- **Open anywhere.** VS Code, Cursor, Zed, JetBrains, Xcode, or a terminal - one click.
-- **Workflows (optional).** Declare roles (plan, implement, test, review) once; agnostic generates each agent's native subagent config with the right model per role. Off unless you turn it on. *(soon)*
+- **Open in your editor.** `agn open` and the workspace button open a task's worktree in VS Code, Cursor, Zed, a JetBrains IDE, Xcode or a terminal.
 - **Usage and cost.** Per-task tokens and cost, per-plan usage at a glance.
 - **Local. Free. MIT.** No server, no account, no telemetry. agnostic makes one outbound call: a
   daily check for a newer benchmark catalog. Put `catalog_check: false` in `~/.agnostic/config.yaml`
@@ -21,7 +20,7 @@ Agent-agnostic development. Use Claude Code, Codex, Pi - and know which one to u
 ## How it works
 
 1. **Start with the work.** `agn run "add invitation links"` - or press **+ Task** in the workspace. agnostic creates a worktree and a branch.
-2. **Pick the best agent, or let us.** The recommendation card shows the pick, an alternative, and something worth trying if you don't have it yet.
+2. **Pick an agent, or take agn's recommendation.** The card shows the pick, an alternative, and something worth trying if you don't have it yet.
 3. **Review and merge.** Watch the session, jump in when it asks, open the diff in your editor, merge when you're ready.
 
 ## Install
@@ -84,9 +83,9 @@ Any command starts the daemon if it is not already running, except `agn daemon s
 
 ## Supported agents
 
-Full support (status, usage, recommendations): **Claude Code, Codex, Pi, OpenCode.**
-Status hook, no token count: Gemini CLI, Cursor Agent, Kimi CLI, Factory Droid, Devin CLI, OpenClaude, Command Code (see [docs/setup.md](docs/setup.md)).
-Launch and attach: any other CLI agent - Copilot CLI, Aider, Goose, Amp, Qwen Code, and more.
+Full support (status, usage, recommendations): **Claude Code, Codex, Pi, OpenCode, OMP.**
+Status hook: Gemini CLI, Cursor Agent, Copilot CLI, Kimi CLI, Factory Droid, Devin CLI, Grok CLI, Mimo Code, OpenClaude, Command Code; some of these also count tokens (see [docs/setup.md](docs/setup.md)).
+Launch and attach: any other CLI agent - Aider, Goose, Amp, Qwen Code, Kiro, Crush, and more.
 
 Model overrides (Kimi in Claude Code, a local model in Codex, anything via OpenRouter) go through each agent's own mechanism with your own keys. See [docs/models](docs/models.md).
 

@@ -1,6 +1,6 @@
 # Workspace
 
-`agn ui` opens the workspace in your browser (a desktop app is planned). It starts the daemon if
+`agn ui` opens the workspace in your browser. It starts the daemon if
 none is running, then opens `http://127.0.0.1:<port>/ui`. The daemon serves the page; nothing
 leaves this machine.
 
@@ -104,7 +104,7 @@ Clicking a task opens it in a tab in the centre. The tab holds the agent's own s
 type goes to the agent, and tool approvals, plan mode and model switches work as they do in a
 terminal. Closing a tab leaves the task running; it only drops the view of it.
 
-The close button is on the tab in front only, so the strip holds still as the pointer crosses it.
+The close button is on the tab in front only.
 The "+" at the end starts a task. A tab whose task is waiting for an answer keeps an orange top
 edge whichever tab is in front; the tab in front has a blue one.
 
@@ -196,8 +196,8 @@ agent to commit" would commit. Untracked files are unstaged.
 The panel re-reads itself when the task changes status and when you click Refresh; nothing watches
 the files, so Refresh is how you see what the agent wrote a moment ago. **Open in editor** opens
 the task's worktree in the editor agn is configured for, and the chevron beside it lists the other
-editors on this machine. The daemon starts the editor, so a daemon running over ssh cannot: it
-says so, and `agn open <task>` from your own terminal does it instead.
+editors on this machine. The daemon starts the editor on the machine it runs on; `agn open <task>`
+does the same from a terminal.
 
 Some tasks have no file list to show:
 
