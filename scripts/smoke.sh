@@ -889,6 +889,23 @@ chmod +x "$FAKEBIN/kimi"
 agx doctor | grep -q "not available"
 agx usage | grep -q "usage not available for kimi: nothing on this machine records it"
 agx usage --json | grep -q '"kimi"'
+# Every installed agent that records usage keeps a row, whether or not a window counted it.
+agx usage --json | "$NODE" -e "
+const read = require('node:fs').readFileSync(0, 'utf8');
+const { present } = JSON.parse(read);
+const named = present.map((row) => row.harness);
+if (!named.includes('claude-code')) {
+  throw new Error('usage left out an installed agent that records usage');
+}
+if (named.includes('kimi')) {
+  throw new Error('usage called an agent that records nothing present');
+}
+for (const row of present) {
+  for (const key of ['harness', 'vendor', 'plan']) {
+    if (!(key in row)) { throw new Error(\`a present row carries no \${key}\`); }
+  }
+}
+"
 rm -f "$FAKEBIN/kimi"
 agx daemon stop | grep -q "^agnd stopped"
 echo "smoke: agn catalog update against a loopback catalog server"

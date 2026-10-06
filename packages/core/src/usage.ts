@@ -28,13 +28,38 @@ export type UsageBreakdown = UsageSum & {
 /** Half-open `[since, until)` in UTC; the boundaries are computed in the daemon's local zone. */
 export type UsageWindow = { kind: "day" | "week"; since: string; until: string };
 
-/** What one harness spent in a window, against the plan it is billed on. */
-export type PlanUsage = {
+/**
+ * A harness agn found installed whose registry row names a usage source, with the plan its rows
+ * are labelled with. Every window's rows carry these three fields, counted or not.
+ */
+export type PlanPresent = {
   harness: HarnessId;
   /** null for a harness billed per provider key, which has no plan to spend against. */
   vendor: PlanVendor | null;
   /** Detected where the harness exposes it, else declared in config.yaml, else null. */
   plan: Plan | null;
+};
+
+/**
+ * The present harnesses no window counted, alphabetical by id: the empty rows the bar and
+ * `agn usage` draw after the counted ones (ADR 029, amended 2026-10-06). One rule for both, so a
+ * Monday morning reads the same way in the page and in the terminal.
+ */
+export function emptyPlans(present: PlanPresent[], counted: Iterable<HarnessId>): PlanPresent[] {
+  const shown = new Set(counted);
+  return present.filter((row) => !shown.has(row.harness)).sort(byHarnessId);
+}
+
+// Code-point order, not the locale's: the rows read the same wherever agn runs.
+function byHarnessId(a: PlanPresent, b: PlanPresent): number {
+  if (a.harness === b.harness) {
+    return 0;
+  }
+  return a.harness < b.harness ? -1 : 1;
+}
+
+/** What one harness spent in a window, against the plan it is billed on. */
+export type PlanUsage = PlanPresent & {
   usage: UsageSum;
   /** Tokens from sessions agn did not start: the plan's meter counts them and agn cannot price them. */
   unattributedTokens: number;

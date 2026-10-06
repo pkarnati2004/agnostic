@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { usageCommand } from "./usage.js";
-import { cli, plan, response, sum, task } from "./usage-fixture.js";
+import { cli, NO_BUDGET, plan, presentPlan, response, sum, task } from "./usage-fixture.js";
 
 function parse(ctx: ReturnType<typeof cli>["ctx"], args: string[]): Promise<unknown> {
   return usageCommand(ctx).parseAsync(args, { from: "user" });
@@ -34,6 +34,52 @@ describe("agn usage", () => {
       "",
       "this week (from Mon 2026-09-07)",
       "no usage this week",
+    ]);
+  });
+
+  it("keeps a row for an installed agent the window counted nothing for", async () => {
+    const test = cli({ usage: response([], NO_BUDGET, [], [], [presentPlan()]) });
+
+    await parse(test.ctx, []);
+
+    expect(test.out[1]).toContain("tokens");
+    expect(test.out[2]?.split(/\s+/)).toEqual([
+      "chatgpt",
+      "plus",
+      "codex",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+    ]);
+    expect(test.out.join("\n")).not.toContain("no usage today");
+  });
+
+  it("prints an agent that both spent and is installed once", async () => {
+    const codex = plan({ harness: "codex", vendor: "chatgpt", plan: "plus" });
+    const test = cli({ usage: response([codex], NO_BUDGET, [], [], [presentPlan()]) });
+
+    await parse(test.ctx, []);
+
+    expect(test.out.filter((line) => line.includes("codex")).length).toBe(2);
+  });
+
+  it("prints the agents that spent first, then the empty rows by id", async () => {
+    const present = [
+      presentPlan({ harness: "cursor-agent", vendor: "cursor", plan: "pro" }),
+      presentPlan(),
+    ];
+    const test = cli({ usage: response([plan()], NO_BUDGET, [], [], present) });
+
+    await parse(test.ctx, []);
+
+    expect(test.out.slice(2, 5).map((line) => line.split(/\s+/)[2])).toEqual([
+      "claude-code",
+      "codex",
+      "cursor-agent",
     ]);
   });
 

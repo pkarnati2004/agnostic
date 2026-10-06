@@ -30,3 +30,8 @@ export const PlansSchema = z.strictObject({
   cursor: PlanSchema.optional(),
 });
 export type Plans = z.infer<typeof PlansSchema>;
+
+/** The plan a vendor's rows are labelled with, or null where none is declared or the vendor is unknown. */
+export function planFor(vendor: PlanVendor | null, plans: Plans): Plan | null {
+  return (vendor === null ? undefined : plans[vendor]) ?? null;
+}

@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import type { PlanLimit } from "@agnostic/core";
+import type { PlanLimit, PlanUsage } from "@agnostic/core";
+import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "../components/tooltip";
 import { find, render } from "../test/render";
@@ -15,24 +16,46 @@ const QUESTION: PlanCellQuestion = {
   onPick: vi.fn(),
 };
 
-/** The cell itself, without its tooltip: which of the three states it draws. */
-function cell(
-  over: { limit?: PlanLimit | null; plan?: string | null; question?: PlanCellQuestion | null } = {},
-) {
+type CellOptions = {
+  limit?: PlanLimit | null;
+  plan?: string | null;
+  question?: PlanCellQuestion | null;
+  /** Null for a window that counted nothing for this plan, which is not a window of zero tokens. */
+  day?: PlanUsage | null;
+  week?: PlanUsage | null;
+};
+
+/** The cell itself, without its tooltip: which of the four states it draws. */
+function cell(over: CellOptions = {}) {
   return render(
-    <TooltipProvider>
+    <TooltipProvider delayDuration={0}>
       <PlanCell
         label="Claude max20"
         vendor="claude"
         plan={over.plan === undefined ? "max20" : over.plan}
         limit={over.limit ?? null}
-        day={claudePlan()}
-        week={claudePlan()}
+        day={over.day === undefined ? claudePlan() : over.day}
+        week={over.week === undefined ? claudePlan() : over.week}
         now={NOW}
         question={over.question ?? null}
       />
     </TooltipProvider>,
   );
+}
+
+/** Opens a Radix tooltip: a real hover needs the pointer events its trigger listens for. */
+async function hover(element: Element): Promise<void> {
+  await act(async () => {
+    element.dispatchEvent(
+      new PointerEvent("pointerenter", { bubbles: true, pointerType: "mouse" }),
+    );
+    element.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerType: "mouse" }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  });
+}
+
+function panel(): Element | null {
+  return document.body.querySelector('[data-slot="tooltip-content"]');
 }
 
 function state(container: HTMLElement): string | null {
@@ -97,6 +120,38 @@ describe("PlanCell", () => {
     });
 
     expect(container.querySelectorAll("button").length).toBe(4);
+    unmount();
+  });
+
+  it("keeps the percentages for a plan neither window counted", async () => {
+    const { container, unmount } = cell({ limit: claudeLimit(), day: null, week: null });
+
+    expect(state(container)).toBe("percent");
+    await hover(find(container, '[data-cell="plan"]'));
+
+    expect(panel()?.querySelector('[data-line="rows"]')).not.toBeNull();
+    expect(panel()?.querySelector('[data-line="tokens"]')).toBeNull();
+    unmount();
+  });
+
+  it("says the week counted nothing, with no panel, when no file reports a limit either", async () => {
+    const { container, unmount } = cell({ day: null, week: null });
+
+    expect(state(container)).toBe("empty");
+    expect(container.textContent).toContain("nothing this week");
+    await hover(find(container, '[data-cell="plan"]'));
+
+    expect(panel()).toBeNull();
+    unmount();
+  });
+
+  it("keeps the stale windows in the panel of a cell with nothing counted", async () => {
+    const { container, unmount } = cell({ limit: ALL_STALE, day: null, week: null });
+
+    expect(state(container)).toBe("empty");
+    await hover(find(container, '[data-cell="plan"]'));
+
+    expect(panel()?.querySelector('[data-line="rows"]')?.textContent).toContain("\u2013");
     unmount();
   });
 

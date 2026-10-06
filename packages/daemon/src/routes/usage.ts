@@ -1,10 +1,13 @@
 import {
   type HarnessId,
+  type HarnessReport,
   type LimitWindow,
   type LimitWindowReport,
   limitFreshness,
   type PlanLimit,
+  type PlanPresent,
   type Plans,
+  planFor,
   type TaskUsageResponse,
   type UsageBreakdown,
   type UsageResponse,
@@ -33,7 +36,10 @@ export function usageRoutes(ctx: DaemonContext): Hono {
       // the window the answer reports, and the window is half-open on `until`.
       const scannedAt = new Date();
       const config = await readDaemonConfig(ctx.paths);
-      const plans = await plansInUse(ctx, config.plans);
+      // One probe per request, outside the scan's snapshot: three readers below share these rows.
+      const reports = (await ctx.detection.current()).harnesses;
+      const plans = plansInUse(reports, config.plans);
+      const installed = installedHarnesses(reports);
       const { catalog } = ctx.catalog.current();
       const read = (kind: "day" | "week") => {
         const bounds: UsageWindow = usageWindow(kind, scannedAt);
@@ -52,7 +58,8 @@ export function usageRoutes(ctx: DaemonContext): Hono {
         week: { window: week.window, plans: week.plans },
         budget: budgetReport(config.budget, { day: day.spent, week: week.spent }),
         limits: await planLimits(ctx, scannedAt),
-        unavailable: await unavailableHarnesses(ctx),
+        present: presentPlans(installed, plans),
+        unavailable: unavailableHarnesses(installed),
         scannedAt: scannedAt.toISOString(),
       };
       return c.json(body);
@@ -100,18 +107,37 @@ async function planLimits(ctx: DaemonContext, scannedAt: Date): Promise<PlanLimi
   }));
 }
 
+/** The harnesses detection found a binary for; a row with no path is one this machine lacks. */
+function installedHarnesses(reports: HarnessReport[]): Set<HarnessId> {
+  return new Set(reports.filter((report) => report.path !== null).map((report) => report.harness));
+}
+
+/**
+ * The installed harnesses something on this machine counts tokens for, labelled with the plan
+ * `summarizePlans` labels their rows with. The bar and `agn usage` keep a row for each one through
+ * a window that counted nothing, so the Monday after a Saturday turn reads as an empty week and
+ * not as a missing agent (ADR 029, amended 2026-10-06).
+ */
+function presentPlans(installed: Set<HarnessId>, plans: Plans): PlanPresent[] {
+  return harnesses
+    .filter((def) => def.usageSource !== null && installed.has(def.id))
+    .map((def) => {
+      const vendor = planVendor(def.id);
+      return {
+        harness: def.id,
+        vendor,
+        plan: planFor(vendor, plans),
+      };
+    });
+}
+
 /**
  * The harnesses on this machine that record no usage anywhere agn can read. The bar and
  * `agn usage` name them rather than leave them out, so a missing agent reads as "nothing on this
  * machine counts it" instead of as zero tokens (ADR 029). A harness that is not installed is
  * never named.
  */
-async function unavailableHarnesses(ctx: DaemonContext): Promise<HarnessId[]> {
-  const installed = new Set(
-    (await ctx.detection.current()).harnesses
-      .filter((report) => report.path !== null)
-      .map((report) => report.harness),
-  );
+function unavailableHarnesses(installed: Set<HarnessId>): HarnessId[] {
   return harnesses
     .filter((def) => def.usageSource === null && installed.has(def.id))
     .map((def) => def.id);
@@ -133,10 +159,9 @@ function report(
 }
 
 /** The plan each vendor's rows are labelled with: what detection read, else what the user wrote. */
-async function plansInUse(ctx: DaemonContext, configured: Plans): Promise<Plans> {
+function plansInUse(reports: HarnessReport[], configured: Plans): Plans {
   const detected: Plans = { ...configured };
-  // One probe per request, outside the scan's snapshot: the label is the plan detection reads now.
-  for (const report of (await ctx.detection.current()).harnesses) {
+  for (const report of reports) {
     if (report.planVendor !== null && report.plan !== null) {
       detected[report.planVendor] = report.plan.value;
     }

@@ -6,6 +6,7 @@ import type {
   TaskUsageResponse,
   UsageResponse,
 } from "@agnostic/core";
+import { emptyPlans } from "@agnostic/core/browser";
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { cn } from "../class-names";
@@ -149,7 +150,11 @@ function useFlash(flash: number) {
   return { bar, lit };
 }
 
-/** Day order first, because that is what the user is spending now; a week-only plan follows. */
+/**
+ * Day order first, because that is what the user is spending now; a week-only plan follows, and an
+ * installed agent neither window counted follows both. A limit attaches to a row and never makes
+ * one, so it cannot promote an empty row past a counted one.
+ */
 function planRows(response: UsageResponse): Row[] {
   const week = new Map(response.week.plans.map((plan) => [plan.harness, plan]));
   const limits = new Map(response.limits.map((limit) => [limit.harness, limit]));
@@ -167,7 +172,19 @@ function planRows(response: UsageResponse): Row[] {
   for (const plan of response.week.plans) {
     if (!shown.has(plan.harness)) {
       rows.push(row(plan, null));
+      shown.add(plan.harness);
     }
+  }
+  for (const present of emptyPlans(response.present, shown)) {
+    rows.push({
+      harness: present.harness,
+      label: planLabel(present),
+      vendor: present.vendor,
+      plan: present.plan,
+      limit: limits.get(present.harness) ?? null,
+      day: null,
+      week: null,
+    });
   }
   return rows;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { limitFreshness } from "./usage.js";
+import { planFor } from "./plans.js";
+import { emptyPlans, limitFreshness, type PlanPresent } from "./usage.js";
 
 const NOW = new Date("2026-09-24T12:00:00.000Z");
 
@@ -42,5 +43,40 @@ describe("limitFreshness", () => {
 
   it("drops a window whose observation time cannot be read", () => {
     expect(limitFreshness(ahead, "not a time", NOW)).toBe("stale");
+  });
+});
+
+describe("emptyPlans", () => {
+  const present = (harness: string): PlanPresent => ({ harness, vendor: null, plan: null });
+
+  it("leaves out every harness a window already counted", () => {
+    const rows = emptyPlans([present("codex"), present("claude-code")], ["claude-code"]);
+
+    expect(rows.map((row) => row.harness)).toEqual(["codex"]);
+  });
+
+  it("sorts what is left by harness id, so the empty rows read the same everywhere", () => {
+    const rows = emptyPlans([present("opencode"), present("codex"), present("cursor-agent")], []);
+
+    expect(rows.map((row) => row.harness)).toEqual(["codex", "cursor-agent", "opencode"]);
+  });
+
+  it("keeps the plan each present row is labelled with", () => {
+    const rows = emptyPlans([{ harness: "codex", vendor: "chatgpt", plan: "plus" }], []);
+
+    expect(rows).toEqual([{ harness: "codex", vendor: "chatgpt", plan: "plus" }]);
+  });
+
+  it("answers with nothing when every present harness was counted, and for an empty list", () => {
+    expect(emptyPlans([present("codex")], ["codex"])).toEqual([]);
+    expect(emptyPlans([], ["codex"])).toEqual([]);
+  });
+});
+
+describe("planFor", () => {
+  it("labels a vendor with its declared plan and anything else with null", () => {
+    expect(planFor("chatgpt", { chatgpt: "plus" })).toBe("plus");
+    expect(planFor("claude", { chatgpt: "plus" })).toBeNull();
+    expect(planFor(null, { chatgpt: "plus" })).toBeNull();
   });
 });

@@ -10,6 +10,7 @@ import {
   claudeLimit,
   claudePlan,
   doctorResponse,
+  presentPlan,
   subscriptionTaskUsage,
   usageResponse,
 } from "./usage-response.fixture";
@@ -201,6 +202,73 @@ describe("UsageBar cells", () => {
 
     expect(calls).toEqual([{}, { plans: { claude: "max20" } }]);
     expect(refresh).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  /**
+   * The Monday after a Saturday Codex turn: the week window counted only Claude, and Codex and
+   * Cursor Agent are still installed. Codex's rollout reported its percentages; nothing reports
+   * Cursor's.
+   */
+  function mondayMorning(): UsageResponse {
+    const day = [claudePlan()];
+    const present = [
+      presentPlan({ harness: "cursor-agent", vendor: "cursor", plan: "pro" }),
+      presentPlan(),
+      presentPlan({ harness: "claude-code", vendor: "claude", plan: "max20" }),
+    ];
+    return usageResponse(
+      day,
+      day,
+      { day: null, week: null },
+      [claudeLimit(), claudeLimit({ harness: "codex", vendor: "chatgpt" })],
+      [],
+      present,
+    );
+  }
+
+  function planCells(container: HTMLElement): Element[] {
+    return [...footer(container).querySelectorAll('[data-cell="plan"]')];
+  }
+
+  it("keeps a cell for an installed agent neither window counted, after the ones that spent", () => {
+    const { container, unmount } = bar(loaded(mondayMorning()));
+
+    expect(planCells(container).map((node) => node.getAttribute("data-vendor"))).toEqual([
+      "claude",
+      "chatgpt",
+      "cursor",
+    ]);
+    unmount();
+  });
+
+  it("shows a present agent's percentages where a file reports them, and no tokens", () => {
+    const { container, unmount } = bar(loaded(mondayMorning()));
+    const codex = planCells(container)[1];
+
+    expect(codex?.getAttribute("data-state")).toBe("percent");
+    expect(codex?.textContent).toContain("58%");
+    expect(codex?.textContent).not.toContain("tok");
+    unmount();
+  });
+
+  it("says a present agent with nothing to report counted nothing this week", () => {
+    const { container, unmount } = bar(loaded(mondayMorning()));
+    const cursor = planCells(container)[2];
+
+    expect(cursor?.getAttribute("data-state")).toBe("empty");
+    expect(cursor?.textContent).toContain("nothing this week");
+    unmount();
+  });
+
+  it("leaves an agent with no usage source in the unavailable cell and out of the plan cells", () => {
+    const day = [claudePlan()];
+    const present = [presentPlan({ harness: "claude-code", vendor: "claude", plan: "max20" })];
+    const response = usageResponse(day, day, { day: null, week: null }, [], ["kimi"], present);
+    const { container, unmount } = bar(loaded(response));
+
+    expect(planCells(container).length).toBe(1);
+    expect(footer(container).textContent).toContain("no usage: Kimi CLI");
     unmount();
   });
 

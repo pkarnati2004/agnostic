@@ -44,8 +44,6 @@ import type {
   TaskListQuery,
   TaskListResponse,
   TaskResponse,
-  TaskUsageResponse,
-  UsageResponse,
 } from "./daemon-api.js";
 import { apiError, unreachable } from "./daemon-errors.js";
 import type { DoctorRequest, DoctorResponse } from "./doctor-api.js";
@@ -54,6 +52,7 @@ import type { Event } from "./event.js";
 import { streamEvents } from "./event-stream.js";
 import type { SpecRequest, SpecResponse } from "./spec-api.js";
 import type { SyncRequest, SyncResponse } from "./sync-api.js";
+import type { TaskUsageResponse, UsageResponse } from "./usage-api.js";
 
 export type DaemonClient = {
   health(): Promise<HealthResponse>;

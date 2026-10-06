@@ -1,11 +1,12 @@
 import type { Catalog } from "@agnostic/catalog";
-import type {
-  HarnessId,
-  Plans,
-  PlanUsage,
-  PlanVendor,
-  UsageBreakdown,
-  UsageSum,
+import {
+  type HarnessId,
+  type Plans,
+  type PlanUsage,
+  type PlanVendor,
+  planFor,
+  type UsageBreakdown,
+  type UsageSum,
 } from "@agnostic/core";
 import { priceTokens, pricingRow } from "./pricing.js";
 
@@ -41,7 +42,7 @@ export function summarizePlans(
     return {
       harness,
       vendor,
-      plan: (vendor === null ? undefined : plans[vendor]) ?? null,
+      plan: planFor(vendor, plans),
       usage,
       unattributedTokens: group
         .filter((row) => !row.attributed)
