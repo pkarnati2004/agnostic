@@ -2,7 +2,6 @@ import type { RepoListRow, TaskListRow } from "@agnostic/core";
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../class-names";
-import { Button } from "../components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/tooltip";
 import { HarnessMark } from "../profile/harness-mark";
 import { profileParts } from "../profile/profile-parts";
@@ -47,14 +46,21 @@ export function TaskRow({ task, repo, selected, parent, onSelect }: TaskRowProps
   const archived = task.id === actions.justArchived;
   const warning = actions.warning?.taskId === task.id ? actions.warning : null;
   return (
-    <div className="group relative flex items-center gap-0.5">
+    <div className="relative flex items-center">
       <button
         type="button"
         onClick={() => onSelect(task.id)}
-        // A right-click anywhere on the row opens the same menu the overflow control does.
+        // The row's menu opens on a right-click, or from the keyboard with Shift+F10 or the
+        // context-menu key; there is no control for it in the row.
         onContextMenu={(event) => {
           event.preventDefault();
           setOpen(true);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+            event.preventDefault();
+            setOpen(true);
+          }
         }}
         data-status={task.status}
         data-selected={selected}
@@ -87,15 +93,24 @@ export function TaskRow({ task, repo, selected, parent, onSelect }: TaskRowProps
           <span className="min-w-0 flex-1 truncate text-sidebar-foreground text-[13px]">
             {task.title}
           </span>
-          <HarnessMark
-            harness={profileParts(task.profileId).harness}
-            dim={DIM.includes(task.status)}
-          />
+          {open ? (
+            // While the menu is open the mark's place says so, as the design draws it.
+            <span
+              aria-hidden
+              className="inline-flex h-[18px] w-5 shrink-0 items-center justify-center rounded-[5px] bg-sidebar-accent text-sidebar-foreground"
+            >
+              <MoreHorizontal className="size-[13px]" />
+            </span>
+          ) : (
+            <HarnessMark
+              harness={profileParts(task.profileId).harness}
+              dim={DIM.includes(task.status)}
+            />
+          )}
         </span>
         <SecondLine line={secondLine(task, repo, parent ?? null, archived)} />
       </button>
-      {/* In the DOM and in the tab order whether or not it is visible, the way the repo heading's
-          controls are: the row stays quiet until the pointer or the keyboard is on it. */}
+      {/* The menu anchors to the row's right edge; nothing in the row opens it on a left click. */}
       <TaskMenu
         task={task}
         placement="row"
@@ -111,19 +126,7 @@ export function TaskRow({ task, repo, selected, parent, onSelect }: TaskRowProps
         warning={warning?.warning ?? null}
         busy={warning?.busy ?? false}
         onKeep={actions.keep}
-        trigger={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Actions for ${task.title}`}
-            className={cn(
-              "shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
-              open && "opacity-100",
-            )}
-          >
-            <MoreHorizontal />
-          </Button>
-        }
+        trigger={<span aria-hidden className="absolute top-1/2 right-0 h-0 w-0" />}
       />
     </div>
   );

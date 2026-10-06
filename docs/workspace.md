@@ -338,8 +338,8 @@ still accepts the task.
 
 ## Archive and delete
 
-Every task row carries a menu. Hover the row and click the "…" at its right, or right-click
-anywhere on the row. The task header has the same menu under its own "…", and the command palette
+Every task row carries a menu. Right-click anywhere on the row, or press Shift+F10 with the row
+focused. The task header has the same menu under its own "…", and the command palette
 offers the two rows this section is about.
 
 The menu holds: **Copy branch name**, **Copy task id** and, while an agent is running,

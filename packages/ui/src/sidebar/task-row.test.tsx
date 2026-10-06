@@ -72,15 +72,6 @@ describe("TaskRow", () => {
   });
 });
 
-/** Radix opens a menu on the pointer going down, not on the click that follows it. */
-function pointerDown(element: Element): void {
-  act(() => {
-    element.dispatchEvent(
-      new window.MouseEvent("pointerdown", { bubbles: true, button: 0, detail: 1 }),
-    );
-  });
-}
-
 function rightClick(element: Element): void {
   act(() => {
     element.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
@@ -92,13 +83,16 @@ function menuItems(): HTMLElement[] {
 }
 
 describe("TaskRow menu", () => {
-  it("keeps the overflow control in the DOM and opens the menu from it", () => {
+  it("has no control of its own; Shift+F10 on the focused row opens the menu", () => {
     const { container, onSelect, unmount } = row({ task: taskRow({ status: "done" }) });
-    const control = find(container, '[aria-label="Actions for Add the invite links"]');
-    expect(control.className).toContain("opacity-0");
+    expect(container.querySelector('[aria-label^="Actions for"]')).toBeNull();
     expect(menuItems()).toHaveLength(0);
 
-    pointerDown(control);
+    act(() => {
+      find(container, "button").dispatchEvent(
+        new KeyboardEvent("keydown", { key: "F10", shiftKey: true, bubbles: true }),
+      );
+    });
     expect(menuItems().length).toBeGreaterThan(0);
     expect(onSelect).not.toHaveBeenCalled();
     unmount();
@@ -108,6 +102,8 @@ describe("TaskRow menu", () => {
     const { container, unmount } = row({ task: taskRow({ status: "done" }) });
     rightClick(find(container, "button"));
     expect(menuItems().map((one) => one.textContent)).toContain("Archive");
+    // The mark's place says the menu is open.
+    expect(container.querySelector("svg.lucide-ellipsis")).not.toBeNull();
     unmount();
   });
 

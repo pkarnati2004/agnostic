@@ -85,7 +85,7 @@ describe("CompareRow", () => {
     const open = row({ expanded: true });
     expect(open.container.querySelector('[aria-label="codex"]')).not.toBeNull();
     // The chevron, the title, and each sibling's own row: its select button and its overflow.
-    expect(open.container.querySelectorAll("button")).toHaveLength(6);
+    expect(open.container.querySelectorAll("button")).toHaveLength(4);
     open.unmount();
   });
 
