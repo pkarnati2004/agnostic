@@ -78,7 +78,7 @@ describe("useArchiveDelete archive", () => {
     const page = harness(
       stubClient({ cleanTask: () => Promise.resolve({ task: TASK, removed: true }) }),
     );
-    const outcome = await run(() => page.api().archive("task1"));
+    const outcome = await run(() => page.api().archive("task1", "header"));
     expect(outcome).toEqual({ kind: "archived" });
     expect(page.api().justArchived).toBe("task1");
     expect(page.api().toast?.message).toBe("Add the invite links moved to History");
@@ -95,7 +95,7 @@ describe("useArchiveDelete archive", () => {
         changes: () => Promise.resolve(changesResponse({ uncommitted: 3 })),
       }),
     );
-    const outcome = await run(() => page.api().archive("task1"));
+    const outcome = await run(() => page.api().archive("task1", "header"));
     expect(outcome).toEqual({
       kind: "unsaved",
       reason: "it has uncommitted changes",
@@ -115,7 +115,7 @@ describe("useArchiveDelete archive", () => {
         changes: () => Promise.reject(refused("repo-not-git", "not a git repo")),
       }),
     );
-    const outcome = await run(() => page.api().archive("task1"));
+    const outcome = await run(() => page.api().archive("task1", "header"));
     expect(outcome).toEqual({ kind: "unsaved", reason: "no colon here", uncommitted: null });
     expect(page.api().warning?.warning.title).toBe("No colon here. Archive anyway?");
     page.unmount();
@@ -127,7 +127,7 @@ describe("useArchiveDelete archive", () => {
         cleanTask: () => Promise.reject(refused("task-active", "it is still running")),
       }),
     );
-    const outcome = await run(() => page.api().archive("task1"));
+    const outcome = await run(() => page.api().archive("task1", "header"));
     expect(outcome).toEqual({ kind: "failed" });
     expect(page.recorded).toEqual([{ taskId: "task1", action: "archive", host: "header" }]);
     expect(page.api().toast).toEqual({
@@ -162,7 +162,7 @@ describe("useArchiveDelete archive", () => {
       }),
     );
     page.notices.set("task1", HANDOFF_FAILED);
-    await run(() => page.api().archive("task1"));
+    await run(() => page.api().archive("task1", "header"));
     // The refusal never reaches `act`, so it neither records a notice nor clears the one there.
     expect(page.notices.get("task1")).toEqual(HANDOFF_FAILED);
     expect(page.stored).toEqual([]);
@@ -174,7 +174,7 @@ describe("useArchiveDelete archive", () => {
       stubClient({ cleanTask: () => Promise.resolve({ task: TASK, removed: true }) }),
     );
     page.notices.set("task1", HANDOFF_FAILED);
-    await run(() => page.api().archive("task1"));
+    await run(() => page.api().archive("task1", "header"));
     expect(page.notices.has("task1")).toBe(false);
     expect(page.stored).toEqual([TASK]);
     page.unmount();
@@ -185,7 +185,7 @@ describe("useArchiveDelete archive", () => {
     const page = harness(
       stubClient({ cleanTask: () => Promise.resolve({ task: TASK, removed: true }) }),
     );
-    await run(() => page.api().archive("task1"));
+    await run(() => page.api().archive("task1", "header"));
     expect(page.api().justArchived).toBe("task1");
     reactAct(() => vi.advanceTimersByTime(10_000));
     expect(page.api().justArchived).toBeNull();

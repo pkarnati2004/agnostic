@@ -7,14 +7,22 @@ import type { Workspace } from "../store/use-workspace";
 import { type ToastState, useToast } from "../toast/use-toast";
 import { type ArchiveOutcome, type ArchiveWarning, archiveWarning } from "./archive-copy";
 
+/** Where an archive was asked for, which is the one place its question is drawn. */
+export type ArchiveHost = "row" | "header";
+
 /** The archive one task's menu or header is still asking about, and whether the retry is running. */
-export type ArchiveNotice = { taskId: string; warning: ArchiveWarning; busy: boolean };
+export type ArchiveNotice = {
+  taskId: string;
+  host: ArchiveHost;
+  warning: ArchiveWarning;
+  busy: boolean;
+};
 
 /** How long the archived row stays highlighted in History, which is the toast's own lifetime. */
 const ARCHIVED_MS = 10_000;
 
 export type ArchiveDelete = {
-  archive(taskId: string): Promise<ArchiveOutcome>;
+  archive(taskId: string, host: ArchiveHost): Promise<ArchiveOutcome>;
   archiveAnyway(taskId: string): Promise<void>;
   deleteTask(taskId: string): Promise<void>;
   /** The task the delete dialog is about; null while it is closed, and once the row has gone. */
@@ -48,7 +56,11 @@ export function useArchiveDelete(
     run: () => void resume(taskId, "header"),
   });
 
-  const attempt = async (taskId: string, force: boolean): Promise<ArchiveOutcome> => {
+  const attempt = async (
+    taskId: string,
+    host: ArchiveHost,
+    force: boolean,
+  ): Promise<ArchiveOutcome> => {
     const task = tasks[taskId] ?? null;
     const title = task?.title ?? taskId;
     const error = await cleanOnce(client, act, taskId, force);
@@ -62,7 +74,7 @@ export function useArchiveDelete(
       const uncommitted = await uncommittedCount(client, taskId);
       const reason = reasonOf(error);
       const text = archiveWarning(reason, uncommitted, task?.branch ?? null);
-      setWarning({ taskId, warning: text, busy: false });
+      setWarning({ taskId, host, warning: text, busy: false });
       return { kind: "unsaved", reason, uncommitted };
     }
     setWarning(null);
@@ -88,10 +100,11 @@ export function useArchiveDelete(
   };
 
   return {
-    archive: (taskId) => attempt(taskId, false),
+    archive: (taskId, host) => attempt(taskId, host, false),
     archiveAnyway: async (taskId) => {
+      const host = warning?.host ?? "header";
       setWarning((current) => (current === null ? null : { ...current, busy: true }));
-      await attempt(taskId, true);
+      await attempt(taskId, host, true);
     },
     deleteTask,
     deleting: deletingId === null ? null : (tasks[deletingId] ?? null),

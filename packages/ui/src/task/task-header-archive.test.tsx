@@ -26,9 +26,10 @@ function openMenu(container: HTMLElement): string[] {
   return [...document.querySelectorAll('[role="menuitem"]')].map((one) => one.textContent ?? "");
 }
 
-function warning(taskId: string): ArchiveNotice {
+function warning(taskId: string, host: ArchiveNotice["host"] = "header"): ArchiveNotice {
   return {
     taskId,
+    host,
     warning: { title: "3 files are not committed. Archive anyway?", body: "Archiving deletes …" },
     busy: false,
   };
@@ -77,6 +78,12 @@ describe("TaskHeader archive warning", () => {
 
   it("leaves another task's refused archive alone", () => {
     const { container, unmount } = header({ status: "done" }, { warning: warning("task9") });
+    expect(container.textContent).not.toContain("Archive anyway?");
+    unmount();
+  });
+
+  it("leaves a question asked from the row to the row", () => {
+    const { container, unmount } = header({ status: "done" }, { warning: warning("task1", "row") });
     expect(container.textContent).not.toContain("Archive anyway?");
     unmount();
   });

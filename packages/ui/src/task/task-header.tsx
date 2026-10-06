@@ -62,7 +62,8 @@ export function TaskHeader(props: TaskHeaderProps) {
       () => setBusy(false),
     );
   };
-  const warning = actions.warning?.taskId === task.id ? actions.warning : null;
+  const asked = actions.warning;
+  const warning = asked?.taskId === task.id && asked.host === "header" ? asked : null;
 
   return (
     <>

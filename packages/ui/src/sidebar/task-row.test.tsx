@@ -118,6 +118,23 @@ describe("TaskRow menu", () => {
 });
 
 describe("TaskRow with the Archive anyway card up", () => {
+  it("leaves a question asked from the header to the header", () => {
+    const { container, unmount } = row(
+      { task: taskRow({ status: "done" }) },
+      {
+        warning: {
+          taskId: "task1",
+          host: "header",
+          warning: { title: "3 files are not committed. Archive anyway?", body: "Archiving …" },
+          busy: false,
+        },
+      },
+    );
+    rightClick(find(container, "button"));
+    expect(document.body.textContent).not.toContain("Archive anyway?");
+    unmount();
+  });
+
   it("treats closing the menu as Keep", () => {
     const keep = vi.fn();
     const { container, unmount } = row(
@@ -125,6 +142,7 @@ describe("TaskRow with the Archive anyway card up", () => {
       {
         warning: {
           taskId: "task1",
+          host: "row",
           warning: { title: "3 files are not committed. Archive anyway?", body: "Archiving …" },
           busy: false,
         },

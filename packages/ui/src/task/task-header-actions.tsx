@@ -57,7 +57,7 @@ export function HeaderActions({ task, profiles, busy, onRun, ...props }: Actions
               variant="outline"
               size="sm"
               disabled={busy}
-              onClick={() => onRun(() => actions.archive(task.id).then(() => undefined))}
+              onClick={() => onRun(() => actions.archive(task.id, "header").then(() => undefined))}
             >
               <Archive />
               Archive

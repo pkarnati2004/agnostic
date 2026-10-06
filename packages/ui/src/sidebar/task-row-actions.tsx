@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext } from "react";
 import type { ArchiveOutcome } from "../task/archive-copy";
-import type { ArchiveNotice } from "../task/use-archive-delete";
+import type { ArchiveHost, ArchiveNotice } from "../task/use-archive-delete";
 
 /**
  * Everything a task's own menu can ask for, wherever the menu is drawn. Every row in the sidebar
@@ -14,7 +14,7 @@ export type TaskRowActions = {
   resume(taskId: string): void;
   handoff(taskId: string): void;
   createPr(taskId: string): void;
-  archive(taskId: string): Promise<ArchiveOutcome>;
+  archive(taskId: string, host: ArchiveHost): Promise<ArchiveOutcome>;
   archiveAnyway(taskId: string): Promise<void>;
   /** Opens the confirmation; nothing is deleted until the dialog is answered. */
   requestDelete(taskId: string): void;

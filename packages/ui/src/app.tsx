@@ -273,7 +273,7 @@ function Workspace({ token }: { token: string }) {
             handoff: setHandoffFor,
             openInEditor: (taskId) => void openInEditor(taskId, null),
             createPr: askForPr,
-            archive: (taskId) => void rows.actions.archive(taskId),
+            archive: (taskId) => void rows.actions.archive(taskId, "header"),
             delete: rows.actions.requestDelete,
             update: (taskId) => void update(taskId),
             commit: (taskId) => void askCommit(taskId),

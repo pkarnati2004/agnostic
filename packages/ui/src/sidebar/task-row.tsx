@@ -44,7 +44,8 @@ export function TaskRow({ task, repo, selected, parent, onSelect }: TaskRowProps
   const waiting = task.status === "waiting";
   const child = parent != null;
   const archived = task.id === actions.justArchived;
-  const warning = actions.warning?.taskId === task.id ? actions.warning : null;
+  const asked = actions.warning;
+  const warning = asked?.taskId === task.id && asked.host === "row" ? asked : null;
   return (
     <div className="relative flex items-center">
       <button

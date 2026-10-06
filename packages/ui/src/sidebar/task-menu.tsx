@@ -135,7 +135,7 @@ function run(id: MenuItem["id"], task: TaskListRow, actions: TaskRowActions): vo
       actions.createPr(task.id);
       break;
     case "archive":
-      void actions.archive(task.id);
+      void actions.archive(task.id, "row");
       break;
     case "delete":
       actions.requestDelete(task.id);
