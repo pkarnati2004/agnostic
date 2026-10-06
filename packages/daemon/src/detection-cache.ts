@@ -10,7 +10,7 @@ import type { LocalServer } from "@agnostic/registry";
  */
 export type Detection = Omit<
   DoctorResponse,
-  "plans" | "planOptions" | "tmuxConfigStale" | "named"
+  "plans" | "planOptions" | "tmuxConfigStale" | "named" | "keys" | "tmux"
 > & {
   servers: LocalServer[];
 };

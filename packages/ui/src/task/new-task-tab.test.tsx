@@ -9,6 +9,7 @@ import { KEYED_PROFILE, PROFILE, REPO, stubClient } from "../test/workspace-fixt
 import {
   arrow,
   CODEX,
+  flipSpecSwitch,
   press,
   prompt,
   recommendation,
@@ -205,6 +206,35 @@ describe("NewTaskTab", () => {
     expect(asked).toHaveLength(2);
     expect(container.textContent).toContain("codex");
     expect(container.textContent).not.toContain("claude-code · opus");
+    unmount();
+  });
+});
+
+describe("the spec toggle's starting value", () => {
+  const specSwitch = (container: HTMLElement) =>
+    container.querySelector('[role="switch"]') as HTMLButtonElement;
+
+  it("starts on when config.yaml says to write the spec first", () => {
+    const { container, unmount } = tab(stubClient({}), { specFirst: true });
+    expect(specSwitch(container).getAttribute("aria-checked")).toBe("true");
+    unmount();
+  });
+
+  it("starts off by default", () => {
+    const { container, unmount } = tab(stubClient({}));
+    expect(specSwitch(container).getAttribute("aria-checked")).toBe("false");
+    unmount();
+  });
+
+  it("follows the setting until the user touches it, then stays where they put it", () => {
+    const { container, setSpecFirst, unmount } = tab(stubClient({}));
+    setSpecFirst(true);
+    expect(specSwitch(container).getAttribute("aria-checked")).toBe("true");
+    flipSpecSwitch(container);
+    expect(specSwitch(container).getAttribute("aria-checked")).toBe("false");
+    setSpecFirst(false);
+    setSpecFirst(true);
+    expect(specSwitch(container).getAttribute("aria-checked")).toBe("false");
     unmount();
   });
 });

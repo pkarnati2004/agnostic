@@ -49,28 +49,41 @@ type TabOptions = {
   seed?: { prompt: string; at: number } | null;
   budget?: BudgetReport | null;
   onStarted?: (task: Task) => void;
+  /** config.yaml's `spec_first`, which the tab's toggle starts from. */
+  specFirst?: boolean;
 };
 
 export function tab(client: WorkspaceClient, opts: TabOptions = {}) {
   const repos = opts.repos ?? [REPO];
-  const draw = (seed: { prompt: string; at: number } | null) => (
+  let seeded = opts.seed ?? null;
+  let specFirst = opts.specFirst ?? false;
+  const draw = () => (
     <NewTaskTab
+      specFirst={specFirst}
       mode={opts.mode ?? "tab"}
       active
       repos={repos}
       defaultRepoId={repos[0]?.id ?? null}
       profiles={opts.profiles ?? [PROFILE]}
       budget={opts.budget ?? null}
-      seed={seed}
+      seed={seeded}
       client={client}
       onStarted={opts.onStarted ?? vi.fn()}
       onAddRepo={vi.fn()}
     />
   );
-  const rendered = render(draw(opts.seed ?? null));
+  const rendered = render(draw());
   return {
     ...rendered,
-    reseed: (seed: { prompt: string; at: number }) => rendered.update(draw(seed)),
+    reseed: (seed: { prompt: string; at: number }) => {
+      seeded = seed;
+      rendered.update(draw());
+    },
+    /** A change in Settings reaches an open tab as a new prop, not as a remount. */
+    setSpecFirst: (on: boolean) => {
+      specFirst = on;
+      rendered.update(draw());
+    },
   };
 }
 

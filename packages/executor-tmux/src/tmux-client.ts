@@ -1,6 +1,7 @@
 // Adapted from asheshgoplani/agent-deck (MIT © Ashesh Goplani).
 import { ProcessError, type RunResult, run, scrubEnv } from "@agnostic/core";
 import { ExecutorError } from "./error.js";
+import { isTmuxVersion, parseTmuxVersion, tmuxVersionAtLeast } from "./tmux-version.js";
 
 /** agn's own socket, so `tmux kill-server` on the user's default server never ends a task. */
 export const AGN_SOCKET = "agn";
@@ -130,35 +131,27 @@ export function taskIdFromSession(session: string): string | null {
 
 export async function tmuxVersion(client: TmuxClient): Promise<string> {
   const result = await client.run(["-V"]);
-  const match = /^tmux\s+(\S+)/.exec(result.stdout.trim());
-  if (match?.[1] === undefined) {
+  const version = parseTmuxVersion(result.stdout);
+  if (version === null) {
     throw new ExecutorError(`could not read a version from \`tmux -V\` (${result.stdout.trim()})`, {
       code: "tmux-failed",
       hint: "Check that `tmux` on PATH is really tmux.",
     });
   }
-  return match[1];
+  return version;
 }
 
 /** Throws unless the installed tmux is 3.2 or newer; `next` and `master` are builds ahead of it. */
 export async function assertUsableVersion(client: TmuxClient): Promise<string> {
   const version = await tmuxVersion(client);
-  if (version === "next" || version === "master") {
-    return version;
-  }
-  const parts = /^(\d+)\.(\d+)/.exec(version);
-  const major = Number(parts?.[1]);
-  const minor = Number(parts?.[2]);
-  if (Number.isNaN(major) || Number.isNaN(minor)) {
+  // A word with no number in it is not an old tmux, it is another program answering to the name.
+  if (!isTmuxVersion(version)) {
     throw new ExecutorError(`could not read a version number from \`tmux -V\` (${version})`, {
       code: "tmux-failed",
       hint: "Check that `tmux` on PATH is really tmux.",
     });
   }
-  if (
-    major < MINIMUM_VERSION.major ||
-    (major === MINIMUM_VERSION.major && minor < MINIMUM_VERSION.minor)
-  ) {
+  if (!tmuxVersionAtLeast(version, MINIMUM_VERSION)) {
     throw new ExecutorError(`tmux ${version} is too old for agn`, {
       code: "tmux-too-old",
       hint: "agn needs tmux 3.2 or newer; upgrade with `brew install tmux`.",

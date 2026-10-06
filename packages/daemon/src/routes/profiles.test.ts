@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import type { DoctorResponse, ProfilesResponse } from "@agnostic/core";
+import { apiKeyVars } from "@agnostic/registry";
 import { afterEach, describe, expect, it } from "vitest";
 import { createTestDaemon, type TestDaemon } from "../test-daemon.js";
 import { fixtureDetection } from "../test-detection.js";
@@ -48,6 +49,50 @@ describe("POST /doctor", () => {
     // Doctor prints support, not tier: hooks and a transcript reader are what the user gets.
     expect(doctor.harnesses[0]?.support).toBe("full");
     expect(doctor.named).toEqual([]);
+  });
+
+  it("says which key variables are set, and never carries one's value", async () => {
+    daemon = await createTestDaemon({ env: { OPENROUTER_API_KEY: "or-secret" } });
+    const response = await daemon.request("/doctor", { method: "POST" });
+    const doctor = await body<DoctorResponse>(response);
+    expect(doctor.keys).toContainEqual({
+      name: "OPENROUTER_API_KEY",
+      set: true,
+      usedBy: ["pi", "opencode"],
+    });
+    expect(doctor.keys).toContainEqual({
+      name: "GEMINI_API_KEY",
+      set: false,
+      usedBy: ["gemini"],
+    });
+    expect(JSON.stringify(doctor)).not.toContain("or-secret");
+  });
+
+  it("never carries the value of a set variable, under a sentinel only this test's env has", async () => {
+    const sentinel = "agn-test-sentinel-9f3a1c";
+    daemon = await createTestDaemon({ env: { ANTHROPIC_API_KEY: sentinel } });
+    const response = await daemon.request("/doctor", { method: "POST" });
+    const text = await response.clone().text();
+    const doctor = await body<DoctorResponse>(response);
+    const row = doctor.keys.find((key) => key.name === "ANTHROPIC_API_KEY");
+    expect(row?.set).toBe(true);
+    expect(text).not.toContain(sentinel);
+    expect(JSON.stringify(doctor)).not.toContain(sentinel);
+  });
+
+  it("answers set as a boolean, with one row per registry variable and nothing else", async () => {
+    daemon = await createTestDaemon({ env: { OPENROUTER_API_KEY: "or-secret" } });
+    const doctor = await body<DoctorResponse>(await daemon.request("/doctor", { method: "POST" }));
+    for (const key of doctor.keys) {
+      expect(typeof key.set).toBe("boolean");
+    }
+    expect(doctor.keys.map((key) => key.name)).toEqual(apiKeyVars().map((row) => row.name));
+  });
+
+  it("reports the tmux this machine has, for the row that says reattach needs 3.3", async () => {
+    daemon = await createTestDaemon();
+    const doctor = await body<DoctorResponse>(await daemon.request("/doctor", { method: "POST" }));
+    expect(doctor.tmux).toEqual({ version: "3.4", ok: true });
   });
 
   it("labels Grok and Copilot full: each installs a hook and agn reads its tokens", async () => {

@@ -28,7 +28,7 @@ export function SettingsGroupHeading({
   description,
 }: {
   title: string;
-  description?: string;
+  description?: ReactNode;
 }) {
   return (
     <div className="mt-7 flex flex-col gap-1">

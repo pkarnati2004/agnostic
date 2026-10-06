@@ -33,6 +33,8 @@ export type NewTaskTabProps = {
   client: WorkspaceClient;
   onStarted: (task: Task) => void;
   onAddRepo: () => void;
+  /** config.yaml's `spec_first`: what the spec toggle starts as, until the user touches it. */
+  specFirst: boolean;
   /** "empty" draws the display heading and the first-run actions; "tab" is the New task tab. */
   mode: "empty" | "tab";
   /** False while another tab is in front: the tab stays mounted, so the draft survives the switch. */
@@ -150,7 +152,10 @@ type NewTask = ReturnType<typeof useNewTask>;
 function useNewTask(props: NewTaskTabProps) {
   const { form, setForm, touched, setTouched } = useNewTaskForm(props.defaultRepoId, props.seed);
   const [step, setStep] = useState<"compose" | "spec">("compose");
-  const [writeSpec, setWriteSpec] = useState(false);
+  // Null is "the user has not said": the setting still decides, so a change in Settings reaches
+  // a tab that is already open. The first click pins the toggle where they put it.
+  const [writeSpec, setWriteSpec] = useState<boolean | null>(null);
+  const writing = writeSpec ?? props.specFirst;
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const state = useRecommendation(props.client, recommendRequest(form));
   const profileId = followRecommendation(
@@ -177,7 +182,7 @@ function useNewTask(props: NewTaskTabProps) {
     setForm,
     step,
     setStep,
-    writeSpec,
+    writeSpec: writing,
     setWriteSpec,
     promptRef,
     state,
@@ -186,7 +191,7 @@ function useNewTask(props: NewTaskTabProps) {
     busy,
     error,
     writer,
-    canStart: !busy && !writer.busy && (writeSpec ? spec !== null : body !== null),
+    canStart: !busy && !writer.busy && (writing ? spec !== null : body !== null),
     run,
     // The step is entered before the answer lands, so the fields fill in where they are read.
     write: () => {

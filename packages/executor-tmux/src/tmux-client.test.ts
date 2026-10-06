@@ -147,6 +147,15 @@ describe("assertUsableVersion", () => {
     ).rejects.toMatchObject({ code: "tmux-too-old", hint: expect.stringContaining("3.2") });
   });
 
+  it("says a version it cannot read is unreadable, not old", async () => {
+    await expect(
+      assertUsableVersion((await stubClient("echo 'tmux abc'")).client),
+    ).rejects.toMatchObject({
+      code: "tmux-failed",
+      message: expect.stringContaining("could not read a version number"),
+    });
+  });
+
   it("refuses output that is not a tmux version", async () => {
     await expect(
       assertUsableVersion((await stubClient("echo 'hello there'")).client),

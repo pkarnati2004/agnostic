@@ -30,7 +30,7 @@ const ALLOWED: { why: string; matches: (path: string) => boolean }[] = [
       [
         "registry/src/detect-login.ts",
         "registry/src/install-commands.ts",
-        "registry/src/enumerate-profiles.ts",
+        "registry/src/api-keys.ts",
         "registry/src/gateways.ts",
         "hooks/src/harness-hooks.ts",
         "usage/src/harness-transcripts.ts",

@@ -4,7 +4,6 @@ import type {
   CreatePrRequest,
   CreatePrResponse,
   EditorId,
-  EditorsResponse,
   TaskListRow,
   UpdateTaskResponse,
 } from "@agnostic/core";
@@ -14,6 +13,7 @@ import { DiffView } from "../diff/diff-view";
 import { PaneHandle } from "../layout/pane-handle";
 import type { PaneColumn } from "../layout/workspace-columns";
 import type { TaskAction, TaskNotice } from "../store/task-notices";
+import { useEditors } from "../store/use-editors";
 import { TaskNoticeLine } from "../task/task-notice-line";
 import { worktreeGone } from "../task/worktree-gone";
 import { ActionRow } from "./action-row";
@@ -192,25 +192,4 @@ function useFading(ms: number): [string | null, (line: string) => void] {
     return () => clearTimeout(timer);
   }, [shown, ms]);
   return [shown?.line ?? null, (line) => setShown({ line })];
-}
-
-/** The editors are the machine's, not the task's, so the panel reads them once. A failed read
- * leaves the control disabled, which is what it looks like on a machine with no editor. */
-function useEditors(client: WorkspaceClient): EditorsResponse | null {
-  const [editors, setEditors] = useState<EditorsResponse | null>(null);
-  useEffect(() => {
-    let live = true;
-    void client.editors().then(
-      (response) => {
-        if (live) {
-          setEditors(response);
-        }
-      },
-      () => undefined,
-    );
-    return () => {
-      live = false;
-    };
-  }, [client]);
-  return editors;
 }

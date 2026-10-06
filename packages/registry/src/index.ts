@@ -1,3 +1,4 @@
+export { type ApiKeyVar, apiKeyVars, nativeApiKey } from "./api-keys.js";
 export { type DetectOptions, detectHarnesses, type HarnessStatus } from "./detect.js";
 export { findOnPath, readVersion } from "./detect-binary.js";
 export { type DetectEditorsOptions, detectEditors, editorCommand } from "./detect-editors.js";

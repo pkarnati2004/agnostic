@@ -18,6 +18,8 @@ const CONFIG: MachineConfig = {
   hooks: { claudeStatusline: "user" },
   appearance: { theme: "ink", mode: "dark" },
   terminal: { font: "Menlo", size: 15 },
+  catalogStaleDays: 7,
+  specFirst: false,
 };
 
 const ANSWER: ConfigResponse = { config: CONFIG, file: "/tmp/config.yaml" };
@@ -39,8 +41,9 @@ async function openConfig(patchConfig: () => Promise<ConfigResponse>) {
   const { root, applied, terminals } = recordingRoot();
   const client = stubClient({ config: () => Promise.resolve(ANSWER), patchConfig });
   const latest: { current: ConfigState | null } = { current: null };
+  const announced: MachineConfig[] = [];
   function Host() {
-    latest.current = useConfig(client, root, true);
+    latest.current = useConfig(client, root, true, (config) => void announced.push(config));
     return null;
   }
   const rendered = render(createElement(Host));
@@ -48,7 +51,7 @@ async function openConfig(patchConfig: () => Promise<ConfigResponse>) {
     await Promise.resolve();
   });
   const state = () => latest.current as ConfigState;
-  return { state, unmount: rendered.unmount, applied, terminals };
+  return { state, unmount: rendered.unmount, applied, terminals, announced };
 }
 
 beforeEach(() => {
@@ -116,5 +119,19 @@ it("keeps what it painted when the daemon refuses, and says what it said", async
   });
   expect(applied.at(-1)).toEqual({ theme: "carbon", mode: "dark" });
   expect(state().error).toBe("config.yaml is read-only");
+  unmount();
+});
+
+it("announces every answer, so the page's own copy follows the open read and each patch", async () => {
+  const settled: ConfigResponse = {
+    config: { ...CONFIG, specFirst: true },
+    file: "/tmp/config.yaml",
+  };
+  const { state, unmount, announced } = await openConfig(() => Promise.resolve(settled));
+  expect(announced).toEqual([CONFIG]);
+  await act(async () => {
+    await state().patch({ specFirst: true });
+  });
+  expect(announced.at(-1)?.specFirst).toBe(true);
   unmount();
 });

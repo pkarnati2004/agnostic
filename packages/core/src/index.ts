@@ -7,6 +7,7 @@ export * from "./changes-api.js";
 export * from "./commit-prompt.js";
 export * from "./compare-api.js";
 export * from "./config-api.js";
+export * from "./config-defaults.js";
 export * from "./daemon-api.js";
 export * from "./daemon-client.js";
 export * from "./daemon-probe.js";

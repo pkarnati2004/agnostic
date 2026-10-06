@@ -1,4 +1,4 @@
-import type { ChangesResponse, PickCompareResponse, RepoListRow } from "@agnostic/core";
+import type { ChangesResponse, RepoListRow } from "@agnostic/core";
 import { useMemo, useReducer, useState } from "react";
 import { createClient } from "./api/client";
 import { browserTokenSources, readToken } from "./auth/token";
@@ -10,7 +10,8 @@ import { TooltipProvider } from "./components/tooltip";
 import { useWorkspaceColumns } from "./layout/workspace-columns";
 import { WorkspacePalette } from "./palette/workspace-palette";
 import { useRepoActions } from "./repo/use-repo-actions";
-import { useAppearanceSync } from "./settings/use-appearance-sync";
+import { useMachineConfig } from "./settings/use-machine-config";
+import { useWorkspaceShortcuts } from "./shortcuts/workspace-shortcuts";
 import { defaultRepoId, groupTasks } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
 import { TaskRowActionsProvider } from "./sidebar/task-row-actions";
@@ -95,7 +96,7 @@ function Workspace({ token, root }: { token: string; root: AppearanceRoot }) {
     activeId === null ? 0 : (state.usageStamp.byTask[activeId] ?? 0),
   );
   useTabsStorage(tabs, state, dispatchTabs);
-  useAppearanceSync(client, root);
+  const { config, setConfig } = useMachineConfig(client, root);
 
   const activeTask = activeId === null ? null : (state.tasks[activeId] ?? null);
   const ownRead = read !== null && read.taskId === activeId ? read : null;
@@ -116,24 +117,23 @@ function Workspace({ token, root }: { token: string; root: AppearanceRoot }) {
     writePanelOpen(localStorage, !changesOpen);
     setChangesOpen(!changesOpen);
   };
-  // The view holds the response: it says what was cleaned, which no row of the store carries.
-  const pick = async (compareId: string, taskId: string): Promise<PickCompareResponse | null> => {
-    let picked: PickCompareResponse | null = null;
-    await act({ taskId, action: "pick", host: "compare" }, async (api) => {
-      picked = await api.pickCompare(compareId, { taskId });
-      return picked.kept;
-    });
-    return picked;
-  };
-
-  const stop = (taskId: string) =>
-    act(
-      { taskId, action: "stop", host: "header" },
-      async (api) => (await api.stopTask(taskId)).task,
-    );
-
   const { openInEditor, createPr, update, askCommit } = useChangesActions(act);
-  const { handoff, started } = useTaskActions(act, put, dispatchTabs);
+  const { handoff, started, pick, stop } = useTaskActions(act, put, dispatchTabs);
+  // The palette's own gates, on the keyboard: a handoff needs a worktree, Changes needs a task.
+  useWorkspaceShortcuts({
+    handoff: () => {
+      if (activeTask?.worktreePresent === true) {
+        setHandoffFor(activeTask.id);
+      }
+    },
+    toggleSidebar: () => setCollapsed(!collapsed),
+    toggleChanges: () => {
+      if (activeTask !== null) {
+        toggleChanges();
+      }
+    },
+    nextTab: () => dispatchTabs({ type: "next" }),
+  });
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
   // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
   const resume = async (taskId: string, host: NoticeHost): Promise<void> => {
@@ -193,6 +193,8 @@ function Workspace({ token, root }: { token: string; root: AppearanceRoot }) {
         <WorkspaceDialogs
           client={client}
           state={state}
+          profiles={profiles}
+          onConfig={setConfig}
           rows={rows}
           repoActions={repoActions}
           root={root}
@@ -207,6 +209,7 @@ function Workspace({ token, root }: { token: string; root: AppearanceRoot }) {
         <Centre
           tabs={tabs}
           dispatchTabs={dispatchTabs}
+          config={config}
           repos={state.repos}
           tasks={state.tasks}
           loaded={state.loaded}

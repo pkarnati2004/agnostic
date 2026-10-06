@@ -29,20 +29,30 @@ function check(over: Partial<CatalogCheckState> = {}): CatalogCheckState {
 }
 
 describe("catalogStaleLine", () => {
+  it("takes the stale window from the setting, so 3 days is stale at three and 7 is not", () => {
+    const threeDays = check({ checkedAt: "2026-09-21T09:00:00.000Z" });
+    expect(catalogStaleLine(summary({ lastCheck: threeDays }), NOW, 3)).toBe(
+      `Catalog last checked 3 days ago. ${TAIL}`,
+    );
+    expect(catalogStaleLine(summary({ lastCheck: threeDays }), NOW, 7)).toBeNull();
+  });
+
   it("says nothing on a machine that opted out of the check", () => {
-    expect(catalogStaleLine(summary({ checkEnabled: false }), NOW)).toBeNull();
-    expect(catalogStaleLine(summary({ checkEnabled: false, lastCheck: check() }), NOW)).toBeNull();
+    expect(catalogStaleLine(summary({ checkEnabled: false }), NOW, 7)).toBeNull();
+    expect(
+      catalogStaleLine(summary({ checkEnabled: false, lastCheck: check() }), NOW, 7),
+    ).toBeNull();
   });
 
   it("says nothing while the last check is a few days old", () => {
-    expect(catalogStaleLine(summary({ lastCheck: check() }), NOW)).toBeNull();
+    expect(catalogStaleLine(summary({ lastCheck: check() }), NOW, 7)).toBeNull();
     const sixDays = check({ checkedAt: "2026-09-18T11:00:00.000Z" });
-    expect(catalogStaleLine(summary({ lastCheck: sixDays }), NOW)).toBeNull();
+    expect(catalogStaleLine(summary({ lastCheck: sixDays }), NOW, 7)).toBeNull();
   });
 
   it("counts the days once a week has gone by", () => {
     const old = check({ checkedAt: "2026-09-15T09:00:00.000Z" });
-    expect(catalogStaleLine(summary({ lastCheck: old }), NOW)).toBe(
+    expect(catalogStaleLine(summary({ lastCheck: old }), NOW, 7)).toBe(
       `Catalog last checked 9 days ago. ${TAIL}`,
     );
   });
@@ -53,12 +63,12 @@ describe("catalogStaleLine", () => {
       message: "getaddrinfo ENOTFOUND",
       remoteVersion: null,
     });
-    expect(catalogStaleLine(summary({ lastCheck: failed }), NOW)).toBe(
+    expect(catalogStaleLine(summary({ lastCheck: failed }), NOW, 7)).toBe(
       `The last catalog check failed: getaddrinfo ENOTFOUND. ${TAIL}`,
     );
   });
 
   it("says so when no check has ever run", () => {
-    expect(catalogStaleLine(summary(), NOW)).toBe(`The catalog has never been checked. ${TAIL}`);
+    expect(catalogStaleLine(summary(), NOW, 7)).toBe(`The catalog has never been checked. ${TAIL}`);
   });
 });

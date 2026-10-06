@@ -37,6 +37,8 @@ describe("writeDaemonConfig", () => {
       hooks: USER_SCOPE,
       appearance: ROSEWOOD,
       terminal: PAGE_MONO,
+      catalogStaleDays: 7,
+      specFirst: false,
     });
   });
 
@@ -80,6 +82,33 @@ describe("writeDaemonConfig", () => {
     expect(body).not.toContain("budget");
     expect(body).not.toContain("claude_statusline");
     expect(body).not.toContain("plans");
+    expect(body).not.toContain("catalog_stale_days");
+    expect(body).not.toContain("spec_first");
+  });
+
+  it("merges the stale window and the spec default, and leaves either at its default unwritten", async () => {
+    const paths = agnosticPaths(home);
+    await writeDaemonConfig(paths, { catalogStaleDays: 3 });
+    expect(await readDaemonConfig(paths)).toMatchObject({ catalogStaleDays: 3, specFirst: false });
+    expect(await readFile(paths.config, "utf8")).toContain("catalog_stale_days: 3");
+
+    await writeDaemonConfig(paths, { specFirst: true });
+    expect(await readDaemonConfig(paths)).toMatchObject({ catalogStaleDays: 3, specFirst: true });
+
+    await writeDaemonConfig(paths, { catalogStaleDays: 7, specFirst: false });
+    const body = await readFile(paths.config, "utf8");
+    expect(body).not.toContain("catalog_stale_days");
+    expect(body).not.toContain("spec_first");
+  });
+
+  it("keeps the theme through a spec-default write", async () => {
+    const paths = agnosticPaths(home);
+    await writeDaemonConfig(paths, { appearance: { theme: "carbon" } });
+    await writeDaemonConfig(paths, { specFirst: true });
+    expect(await readDaemonConfig(paths)).toMatchObject({
+      appearance: { theme: "carbon", mode: "system" },
+      specFirst: true,
+    });
   });
 
   it("keeps the plans through an appearance write, and the theme through a plans write", async () => {

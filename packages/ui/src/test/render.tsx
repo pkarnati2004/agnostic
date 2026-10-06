@@ -41,3 +41,32 @@ export function find<T extends Element>(container: HTMLElement, selector: string
   }
   return element;
 }
+
+/**
+ * Opens a Select by its label and answers its options. Radix opens its list from the keyboard; its
+ * pointer handlers want a layout happy-dom does not provide. The list portals to the body, so the
+ * options are read off the document rather than the container.
+ */
+export function openSelect(label: string): HTMLElement[] {
+  const trigger = document.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+  act(() => {
+    trigger?.focus();
+    trigger?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  return [...document.querySelectorAll<HTMLElement>("[data-slot='select-item']")];
+}
+
+export function optionLabels(options: HTMLElement[]): string[] {
+  return options.map((option) => option.textContent ?? "");
+}
+
+export function chooseOption(options: HTMLElement[], label: string): void {
+  const option = options.find((row) => row.textContent === label);
+  if (option === undefined) {
+    throw new Error(`no option "${label}" in [${optionLabels(options).join(", ")}]`);
+  }
+  act(() => {
+    option.focus();
+    option.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+}

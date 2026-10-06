@@ -59,6 +59,7 @@ export async function recommendContext(
     port: () => 0,
     detect: () => Promise.resolve(detection),
     tmuxConfigStale: () => Promise.resolve(false),
+    tmuxVersion: () => Promise.resolve({ version: "3.4", ok: true }),
     detectEditors: () => Promise.resolve([]),
     catalog: fixtureCatalogStore(catalog),
     catalogSource: {

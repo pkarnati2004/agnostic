@@ -1,8 +1,9 @@
-import type { HandoffTaskRequest, Task } from "@agnostic/core";
+import type { HandoffTaskRequest, PickCompareResponse, Task } from "@agnostic/core";
 import type { Workspace } from "../store/use-workspace";
 import { NEW_TASK_TAB, type TabsAction } from "../tabs/tabs-state";
 
-/** The two actions that open a tab: a handoff opens the child, a run opens what it started. */
+/** The actions the page itself makes, rather than a panel or a row: each one needs the tab strip
+ * or the response, which no component below `app.tsx` holds. */
 export function useTaskActions(
   act: Workspace["act"],
   put: Workspace["put"],
@@ -25,5 +26,19 @@ export function useTaskActions(
     dispatchTabs({ type: "open", taskId: task.id });
     dispatchTabs({ type: "close", taskId: NEW_TASK_TAB });
   };
-  return { handoff, started };
+  // The Compare view holds the response: it says what was cleaned, which no row of the store carries.
+  const pick = async (compareId: string, taskId: string): Promise<PickCompareResponse | null> => {
+    let picked: PickCompareResponse | null = null;
+    await act({ taskId, action: "pick", host: "compare" }, async (api) => {
+      picked = await api.pickCompare(compareId, { taskId });
+      return picked.kept;
+    });
+    return picked;
+  };
+  const stop = (taskId: string) =>
+    act(
+      { taskId, action: "stop", host: "header" },
+      async (api) => (await api.stopTask(taskId)).task,
+    );
+  return { handoff, started, pick, stop };
 }

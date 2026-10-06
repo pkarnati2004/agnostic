@@ -1,7 +1,23 @@
-import { Keyboard, type LucideIcon, Palette, Terminal } from "lucide-react";
+import {
+  Bot,
+  FolderGit2,
+  Keyboard,
+  KeyRound,
+  type LucideIcon,
+  Palette,
+  Scale,
+  Terminal,
+} from "lucide-react";
 
-/** Only sections with a control behind them; 33b widens the union as the rest land (ADR 038). */
-export type SettingsSectionId = "daemon" | "appearance" | "shortcuts";
+/** Only sections with a control behind them: a row with nothing behind it is not drawn (ADR 038). */
+export type SettingsSectionId =
+  | "agents"
+  | "plans"
+  | "recommendations"
+  | "tasks"
+  | "daemon"
+  | "appearance"
+  | "shortcuts";
 
 export type SettingsSection = {
   id: SettingsSectionId;
@@ -15,11 +31,50 @@ export type SettingsSection = {
 
 export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
+    id: "agents",
+    group: "Agents",
+    label: "Agents and profiles",
+    icon: Bot,
+    terms: ["harness", "detected", "doctor", "model", "route", "spec writer", "profile"],
+  },
+  {
+    id: "plans",
+    group: "Agents",
+    label: "Plans and keys",
+    icon: KeyRound,
+    terms: ["plan", "subscription", "api key", "environment", "claude", "chatgpt", "limits"],
+  },
+  {
+    id: "recommendations",
+    group: "Agents",
+    label: "Recommendations",
+    icon: Scale,
+    terms: ["catalog", "benchmark", "scores", "stale", "risk", "sync"],
+  },
+  {
+    id: "tasks",
+    group: "Work",
+    label: "Tasks and worktrees",
+    icon: FolderGit2,
+    terms: ["worktree", "branch", "spec", "editor", "open in editor"],
+  },
+  {
     id: "daemon",
     group: "This computer",
     label: "Daemon and terminal",
     icon: Terminal,
-    terms: ["agnd", "tmux", "pid", "version", "font", "size", "mono", "typeface"],
+    terms: [
+      "agnd",
+      "tmux",
+      "pid",
+      "version",
+      "font",
+      "size",
+      "mono",
+      "typeface",
+      "status line",
+      "commands",
+    ],
   },
   {
     id: "appearance",
@@ -36,6 +91,11 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     terms: ["keys", "keyboard", "command palette", "hotkey"],
   },
 ];
+
+/** The three sections that read `POST /doctor`; the others draw from config and the repo list. */
+export function needsDoctor(id: SettingsSectionId): boolean {
+  return id === "agents" || id === "plans" || id === "daemon";
+}
 
 /** Sections whose label or any term contains the query, case-insensitively. */
 export function filterSections(query: string): SettingsSection[] {

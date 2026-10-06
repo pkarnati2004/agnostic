@@ -7,6 +7,7 @@ import type {
   Plan,
   PlanOption,
   Plans,
+  TmuxReport,
 } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
 import {
@@ -82,6 +83,8 @@ export type DaemonDeps = {
   executor: ExecutorProvider;
   /** Asked by `agn doctor`: whether the running tmux server predates the settings agn writes now. */
   tmuxConfigStale: () => Promise<boolean>;
+  /** What `tmux -V` answers on the daemon's PATH; read per doctor call, never cached. */
+  tmuxVersion: () => Promise<TmuxReport>;
   /** The base environment every harness is launched with: the daemon's own, scrubbed. */
   env: Record<string, string>;
   /** The user's home, where the harnesses keep their auth files. */

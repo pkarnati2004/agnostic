@@ -63,6 +63,8 @@ export function doctorResponse(over: Partial<DoctorResponse> = {}): DoctorRespon
     named: [],
     planOptions: planOptions(),
     tmuxConfigStale: false,
+    keys: [],
+    tmux: { version: "3.4", ok: true },
     ...over,
   };
 }
