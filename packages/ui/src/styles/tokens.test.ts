@@ -140,7 +140,7 @@ describe("styles/themes/*.css", () => {
     }
   });
 
-  it("names a family in a stack and nothing else: no file is fetched for a theme", () => {
+  it("names a family in a stack and nothing else: the faces all live in fonts.css", () => {
     for (const sheet of Object.keys(THEMES)) {
       expect(text(sheet), sheet).not.toContain("@font-face");
       expect(text(sheet), sheet).not.toContain("url(");
