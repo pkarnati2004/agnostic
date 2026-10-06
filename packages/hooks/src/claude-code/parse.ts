@@ -1,16 +1,11 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { type HookEventParser, parseHookEvent } from "../hook-event-parser.js";
 import {
   type ClaudeShapedNames,
   claudeShapedStatus,
 } from "../settings-json/claude-shaped-status.js";
 
-/**
- * The names Claude Code's own payloads use, which OpenClaude repeats. The table around them is
- * ported from Orca's Claude hook listener
- * (`src/shared/agent-hook-listener/providers/claude-events.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
+/** The names Claude Code's own payloads use, which OpenClaude repeats. */
 export const CLAUDE_NAMES: ClaudeShapedNames = {
   questionTools: ["AskUserQuestion"],
   waitingNotifications: [

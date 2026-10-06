@@ -1,12 +1,6 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HarnessDefinition, PromptDelivery, UsageSource } from "./harness-definition.js";
 import { harnessIdentity } from "./harness-identity.js";
-
-/**
- * The launch-and-attach rows, ported from Orca's agent table (`src/shared/tui-agent.ts`,
- * `tui-agent-config.ts`, `agent-process-recognition.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 const argvAfterSeparator: PromptDelivery = { kind: "argv", separator: "--" };
 const typeAfterStart: PromptDelivery = { kind: "type-after-start" };

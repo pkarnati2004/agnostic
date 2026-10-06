@@ -1,6 +1,5 @@
-// Copied from shadcn/ui `dropdown-menu`, MIT (c) shadcn, against @radix-ui/react-dropdown-menu
-// rather than the unified radix-ui package, and trimmed to Root, Trigger, Group, Content, Item
-// and Separator. The values are the design's: a 272 px card of 30 px rows on a hairline, radius 9.
+// From shadcn/ui (MIT © shadcn).
+// The values are the design's: a 272 px card of 30 px rows on a hairline, radius 9.
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import type { ComponentProps } from "react";
 import { cn } from "../class-names";

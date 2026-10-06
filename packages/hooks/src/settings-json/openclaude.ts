@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { claudeCodeMember } from "../claude-code/install.js";
 import { CLAUDE_NAMES } from "../claude-code/parse.js";
 import { type HookEventParser, parseHookEvent } from "../hook-event-parser.js";
@@ -7,10 +8,7 @@ import { type SettingsJsonMember, settingsJsonInstaller } from "./member.js";
 
 /**
  * OpenClaude is Claude Code's events and payloads read out of another directory, which the
- * registry row already names. Ported from Orca's `src/main/openclaude/hook-service.ts`, which
- * passes one config-dir parameter to the Claude installer.
- *
- * MIT License, Copyright (c) Lovecast Inc.
+ * registry row already names.
  */
 const openClaudeMember: SettingsJsonMember = {
   ...claudeCodeMember,

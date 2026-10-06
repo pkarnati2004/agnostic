@@ -1,6 +1,4 @@
-// The record shapes - a `session` header, a `model_change` per switch and one `message` per turn,
-// with Pi writing `modelId` where OMP writes `model` - come from stablyai/orca
-// `src/main/ai-vault/session-scanner-graph-parsers.ts` (MIT © Lovecast Inc.).
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { basename, resolve } from "node:path";
 import { z } from "zod";
 import { jsonlLines } from "../jsonl-lines.js";

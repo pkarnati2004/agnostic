@@ -1,10 +1,5 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { z } from "zod";
-
-/**
- * Ported from Orca's model discovery (`src/shared/claude-model-list-probe.ts`,
- * `commit-message-model-parsers.ts`, `grok-model-list-probe.ts`).
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** Claude Code has no listing subcommand; one control request over stream-json returns the picker. */
 export const claudeModelListRequest = `${JSON.stringify({

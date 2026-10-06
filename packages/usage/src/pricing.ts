@@ -1,6 +1,5 @@
-// The date-suffix normalisation and the per-bucket cost sum are ported from asheshgoplani/
-// agent-deck `internal/costs/pricing.go` (MIT © Ashesh Goplani). The rates themselves are catalog
-// data (ADR 011), so there is no table and no override precedence here.
+// Adapted from asheshgoplani/agent-deck (MIT © Ashesh Goplani).
+// The rates are catalog data (ADR 011), so there is no table and no override precedence here.
 import type { Catalog, ModelRow, PricingRow } from "@agnostic/catalog";
 import type { Billing, HarnessId } from "@agnostic/core";
 import type { PriceableTurn } from "./transcript-parser.js";

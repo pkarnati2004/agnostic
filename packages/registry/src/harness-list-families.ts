@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { parseGrokPlan } from "./detect-plan.js";
 import type {
   HarnessDefinition,
@@ -20,8 +21,7 @@ const typeAfterStart: PromptDelivery = { kind: "type-after-start" };
  * The harnesses agn hooks but reads no transcript for (ADR 035). Each row names the family its
  * hook lives in and where that family keeps it; the hooks package owns the events and the write
  * format. The name, mark and plan vendor come from the row's identity in `harness-identity.ts`.
- * Everything here but the resume argv comes from the survey; the argv is Orca's table. Only Claude
- * Code and Codex were verified on a machine, so these rows are unverified live.
+ * Only Claude Code and Codex were verified on a machine, so these rows are unverified live.
  */
 type FamilySource = {
   id: string;

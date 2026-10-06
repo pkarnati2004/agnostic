@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import {
   AGN_TABLE_MARKER,
   type MarkedBlock,
@@ -10,9 +11,6 @@ import { HooksError } from "./error.js";
  * Kimi Code keeps every preference in one TOML file and reads its hooks from `[[hooks]]` tables.
  * agn vendors no TOML writer, so it owns a marked block at the end of the file: a table header is
  * valid TOML after anything, and every byte outside the block is the user's.
- *
- * Ported from Orca's `src/main/kimi/kimi-hook-config-toml.ts`.
- * MIT License, Copyright (c) Lovecast Inc.
  */
 const BLOCK: MarkedBlock = {
   begin: "# >>> agn hooks: managed block, edits here are replaced >>>",

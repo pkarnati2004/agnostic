@@ -1,6 +1,4 @@
-// The chats document's shape - a whole-file JSON object with `sessionId` and a `messages` array
-// whose assistant entries are typed `gemini` and carry `tokens` and `model` - comes from
-// stablyai/orca `src/main/ai-vault/session-scanner-gemini-parsers.ts` (MIT © Lovecast Inc.).
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 // Unverified live: no Gemini CLI was installed on the machine this was written on.
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";

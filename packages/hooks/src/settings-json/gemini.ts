@@ -1,14 +1,8 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookStatus } from "@agnostic/core";
 import { type HookEventParser, type HookPayload, parseHookEvent } from "../hook-event-parser.js";
 import type { HookInstaller } from "../hook-installer.js";
 import { type SettingsJsonMember, settingsJsonInstaller } from "./member.js";
-
-/**
- * Ported from Orca's Gemini hook service and listener (`src/main/gemini/hook-service.ts`,
- * `src/shared/agent-hook-listener/providers/gemini-events.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** Gemini's pre-tool event is `BeforeTool`, not the `PreToolUse` the rest of the family sends. */
 const EVENTS = [

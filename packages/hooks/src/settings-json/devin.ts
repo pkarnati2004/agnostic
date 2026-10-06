@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookInstallResult } from "@agnostic/core";
 import { configUnsupported, HooksError } from "../error.js";
 import { type HookEventParser, parseHookEvent } from "../hook-event-parser.js";
@@ -12,13 +13,6 @@ import {
   settingsJson,
   settingsJsonInstaller,
 } from "./member.js";
-
-/**
- * Ported from Orca's Devin hook service (`src/main/devin/hook-settings.ts`, `hook-config-json.ts`)
- * and listener (`src/shared/agent-hook-listener/providers/devin-events.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** No matchers: Devin reads a matcher as a regex, where Claude's literal `*` is invalid. */
 const EVENTS = [

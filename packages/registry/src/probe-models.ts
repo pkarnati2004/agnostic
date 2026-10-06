@@ -1,11 +1,6 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { run } from "@agnostic/core";
 import type { HarnessDefinition } from "./harness-definition.js";
-
-/**
- * Ported from Orca's model discovery runtime (`src/main/text-generation/
- * commit-message-model-discovery.ts`, `commit-message-model-discovery-policy.ts`).
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 const PROBE_TIMEOUT_MS = 5_000;
 

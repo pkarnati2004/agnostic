@@ -1,5 +1,4 @@
-// Ported from agent-deck's internal/tmux package (MIT © Ashesh Goplani): the single-argv-factory
-// rule, `-u` on every client, `|`-joined format fields, the version floor and the paste transport.
+// Adapted from asheshgoplani/agent-deck (MIT © Ashesh Goplani).
 import { ProcessError, type RunResult, run, scrubEnv } from "@agnostic/core";
 import { ExecutorError } from "./error.js";
 

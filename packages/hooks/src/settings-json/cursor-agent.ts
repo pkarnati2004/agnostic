@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookStatus } from "@agnostic/core";
 import { z } from "zod";
 import {
@@ -8,13 +9,6 @@ import {
 } from "../hook-event-parser.js";
 import type { HookInstaller } from "../hook-installer.js";
 import { type SettingsJsonMember, settingsJsonInstaller } from "./member.js";
-
-/**
- * Ported from Orca's Cursor hook service and listener (`src/main/cursor/hook-service.ts`,
- * `hook-events.ts`, `src/shared/agent-hook-listener/providers/cursor-events.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /**
  * Cursor's own events, in its camelCase spelling. The gating ones - `preToolUse`,

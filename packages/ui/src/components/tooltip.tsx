@@ -1,6 +1,6 @@
-// Copied from shadcn/ui `tooltip`, MIT (c) shadcn. shadcn wraps every Tooltip in its own Provider;
-// here the app mounts one Provider at the root, so its delay is the delay everywhere. The design
-// draws no arrow: the tooltip is a small floating card, not a speech bubble.
+// From shadcn/ui (MIT © shadcn).
+// The app mounts one Provider at the root, so its delay is the delay everywhere. The design draws
+// no arrow: the tooltip is a small floating card, not a speech bubble.
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type { ComponentProps } from "react";
 import { cn } from "../class-names";

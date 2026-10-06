@@ -1,6 +1,6 @@
-// Copied from shadcn/ui `select`, MIT (c) shadcn, against @radix-ui/react-select rather than the
-// unified radix-ui package, and trimmed to the parts the workspace uses. The values are the
-// design's: a 30 px trigger that reads as one line, and a floating list of 30 px rows.
+// From shadcn/ui (MIT © shadcn).
+// The values are the design's: a 30 px trigger that reads as one line, and a floating list of
+// 30 px rows.
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
 import type { ComponentProps } from "react";

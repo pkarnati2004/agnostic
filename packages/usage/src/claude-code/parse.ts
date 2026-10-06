@@ -1,5 +1,4 @@
-// The record shape, the prefilter, the dedupe key and the max-per-bucket merge come from
-// stablyai/orca `src/main/claude-usage/transcript-record-parser.ts` (MIT © Lovecast Inc.).
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { basename } from "node:path";
 import { z } from "zod";
 import { jsonlLines } from "../jsonl-lines.js";

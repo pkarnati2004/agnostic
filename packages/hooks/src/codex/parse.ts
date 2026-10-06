@@ -1,12 +1,6 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookStatus } from "@agnostic/core";
 import { type HookEventParser, type HookPayload, parseHookEvent } from "../hook-event-parser.js";
-
-/**
- * The event-to-status table is ported from Orca's Codex hook listener
- * (`src/shared/agent-hook-listener/providers/codex-events.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** Codex asks the user a question by calling a tool, so the question arrives as a pre-tool event. */
 const QUESTION_TOOL = "request_user_input";

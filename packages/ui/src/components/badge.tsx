@@ -1,6 +1,7 @@
-// Copied from shadcn/ui `badge`, MIT (c) shadcn. The variant table is a plain record. `outline` is
-// the design's route and billing badge, `tag` a source, `count` a number beside a heading or a tab,
-// and `alert` that same count when what it counts is waiting for you.
+// From shadcn/ui (MIT © shadcn).
+// The variant table is a plain record. `outline` is the design's route and billing badge, `tag` a
+// source, `count` a number beside a heading or a tab, and `alert` that same count when what it
+// counts is waiting for you.
 import type { ComponentProps } from "react";
 import { cn } from "../class-names";
 

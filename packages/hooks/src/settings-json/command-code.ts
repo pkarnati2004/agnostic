@@ -1,15 +1,8 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookStatus } from "@agnostic/core";
 import { type HookEventParser, type HookPayload, parseHookEvent } from "../hook-event-parser.js";
 import type { HookInstaller } from "../hook-installer.js";
 import { type SettingsJsonMember, settingsJsonInstaller } from "./member.js";
-
-/**
- * Ported from Orca's Command Code hook service and listener
- * (`src/main/command-code/hook-service.ts`,
- * `src/shared/agent-hook-listener/providers/command-code-events.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** Command Code reads a matcher as a regex, so every tool is `.*` rather than Claude's `*`. */
 const EVENTS = [

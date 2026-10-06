@@ -1,7 +1,4 @@
-// The shape of this script - capture stdin with the shell's own reader, skip a payload without
-// `rate_limits`, and throttle the write with a stamp file - is ported from stablyai/orca
-// `src/main/claude/statusline-script.ts` (MIT © Lovecast Inc.). Orca posts to a daemon; agn
-// writes a file, and chains the user's own status line instead of printing nothing.
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { AgnosticPaths } from "@agnostic/core";

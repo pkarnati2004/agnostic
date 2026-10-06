@@ -1,6 +1,7 @@
-// Copied from shadcn/ui `button`, MIT (c) shadcn. The variant tables are plain records merged
-// through cn(), so the copy needs no class-variance-authority. The values are the design's:
-// 30 px tall, 26 px in a header or a row, radius 7, and a ring that sits off the surface.
+// From shadcn/ui (MIT © shadcn).
+// The variant tables are plain records merged through cn(), so this file needs no
+// class-variance-authority. The values are the design's: 30 px tall, 26 px in a header or a row,
+// radius 7, and a ring that sits off the surface.
 import { Slot } from "@radix-ui/react-slot";
 import type { ComponentProps } from "react";
 import { cn } from "../class-names";

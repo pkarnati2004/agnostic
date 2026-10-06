@@ -1,6 +1,4 @@
-// The table layouts - per-message rows in `message` or `session_message`, and the session-level
-// totals a newer OpenCode keeps instead - come from stablyai/orca
-// `src/main/opencode-usage/opencode-usage-row-queries.ts` (MIT © Lovecast Inc.).
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { Database } from "better-sqlite3";
 
 /** One assistant message as OpenCode stores it: its usage is the JSON in `data`. */

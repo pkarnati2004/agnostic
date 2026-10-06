@@ -1,15 +1,9 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
+// Pi has no hook config: an extension in its own directory registers `pi.on(...)` handlers inside
+// the running process.
 import type { AgnosticPaths } from "@agnostic/core";
 import { hookPostSource } from "../hook-post-source.js";
 import { AGN_MANAGED_MARKER } from "../managed-file.js";
-
-/**
- * Pi has no hook config: an extension in its own directory registers `pi.on(...)` handlers inside
- * the running process. The events, the owner guard, the session metadata and the three turn rules
- * are ported from Orca's `src/main/pi/agent-status-extension-source.ts`,
- * `agent-status-handler-source.ts` and `agent-status-ui-prompt-source.ts`.
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** Pi loads `.ts` through jiti, which runs the plain JavaScript below without a type check. */
 export const PI_EXTENSION_FILE = "agn-status.ts";
