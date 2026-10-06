@@ -61,6 +61,9 @@ their subscription limits over rolling windows of their own - five hours, seven 
 percentages Claude Code or Codex show you will not match these totals. They are counting a
 different window, not different tokens.
 
+The week resets at Monday 00:00, so on Monday morning most agents have no tokens in either window
+until you take your first turn. They keep their rows and their cells either way.
+
 ## Limits
 
 Some agents write what their vendor's meter says into a file on your machine. agn reads those
@@ -127,6 +130,10 @@ when a task starts and on `agn hooks install`. The command writes the payload to
   `none yet`.
 
 ### `agn usage`
+
+Each table has a row per installed agent that records usage, whether or not the window counted any
+tokens for it; an empty window prints `-` in every figure column. `agn usage --json` lists those
+agents as `present`, each with its `harness`, `vendor` and `plan`.
 
 Under the two tables, `agn usage` prints one line per agent whose figures still hold:
 

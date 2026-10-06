@@ -1,4 +1,4 @@
-import type { Billing, PlanUsage, PlanVendor } from "@agnostic/core";
+import type { Billing, PlanPresent, PlanVendor } from "@agnostic/core";
 
 // `@agnostic/core/browser` holds the rules the CLI and the page must agree on. What is below is
 // the page's own formatting, restated from `agn usage`; format-usage.test.ts pins the CLI's cases.
@@ -42,7 +42,7 @@ export const VENDOR_NAME: Record<PlanVendor, string> = {
  * vendor bills it. The plan is the id agn stores, not the catalog's display name: the display names
  * arrive with `planOptions`, which the bar reads only to ask the question.
  */
-export function planLabel(row: PlanUsage): string {
+export function planLabel(row: PlanPresent): string {
   if (row.vendor === null) {
     return row.harness;
   }

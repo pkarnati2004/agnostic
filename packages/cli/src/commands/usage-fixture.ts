@@ -4,6 +4,7 @@ import {
   type BudgetReport,
   type HarnessId,
   type PlanLimit,
+  type PlanPresent,
   type PlanUsage,
   type Task,
   type TaskUsageResponse,
@@ -57,11 +58,17 @@ export function plan(over: Partial<PlanUsage> = {}): PlanUsage {
   };
 }
 
+/** An installed agent that records usage, as `GET /usage` lists it whether or not it spent. */
+export function presentPlan(over: Partial<PlanPresent> = {}): PlanPresent {
+  return { harness: "codex", vendor: "chatgpt", plan: "plus", ...over };
+}
+
 export function response(
   plans: PlanUsage[],
   budget: BudgetReport = NO_BUDGET,
   limits: PlanLimit[] = [],
   unavailable: HarnessId[] = [],
+  present: PlanPresent[] = [],
 ): UsageResponse {
   return {
     // 2026-09-11 was a Friday; the week it is in starts on Monday the 7th.
@@ -69,6 +76,7 @@ export function response(
     week: { window: dayWindow("week", "2026-09-07T00:00:00"), plans },
     budget,
     limits,
+    present,
     unavailable,
     scannedAt: "2026-09-11T15:00:00.000Z",
   };

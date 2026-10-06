@@ -3,13 +3,12 @@ import type { LimitCapture } from "./doctor-api.js";
 import { type Editor, type EditorId, EditorIdSchema } from "./editor.js";
 import type { AttachInfo, DetectedHarness } from "./executor.js";
 import type { Outcome } from "./outcome.js";
-import type { Billing, Profile } from "./profile.js";
+import type { Profile } from "./profile.js";
 import type { HarnessId } from "./profile-id.js";
 import type { Recommendation } from "./recommendation.js";
 import type { Repo } from "./repo.js";
 import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
 import { TaskIntentSchema } from "./task-intent.js";
-import type { BudgetReport, PlanLimit, PlanUsage, UsageSum, UsageWindow } from "./usage.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;
@@ -264,31 +263,5 @@ export type InitWrite = {
 
 export type InitResponse = { writes: InitWrite[] };
 
-/**
- * Both windows in one body (ADR 021): one scan of the transcripts answers the day and the week,
- * so the CLI and the workspace's usage bar make one call. `scannedAt` is when that scan ran.
- */
-export type UsageResponse = {
-  day: { window: UsageWindow; plans: PlanUsage[] };
-  week: { window: UsageWindow; plans: PlanUsage[] };
-  /** The ceilings from config.yaml over these same windows, from this same scan. */
-  budget: BudgetReport;
-  /**
-   * What the harnesses last said about their plans' own meters, one row per harness with a local
-   * source. Each window carries the `freshness` the figure had at `scannedAt`.
-   */
-  limits: PlanLimit[];
-  /**
-   * The harnesses agn detected on this machine whose registry row names no usage source, in
-   * registry order. Nothing on the machine records their tokens, so the bar and `agn usage` name
-   * them rather than leave them out (ADR 029, 2026-09-30).
-   */
-  unavailable: HarnessId[];
-  scannedAt: string;
-};
-
 /** One task's outcome row. `outcome` is null until the task closes and agn records one. */
 export type OutcomeResponse = { task: Task; outcome: Outcome | null };
-
-/** One task's tokens. `billing` comes from the task's profile; null when it cannot be resolved. */
-export type TaskUsageResponse = { task: Task; usage: UsageSum; billing: Billing | null };

@@ -8,7 +8,7 @@ import { formatMoney, formatShare } from "./format-usage";
 import { hasFigure, LimitFigures } from "./limit-figures";
 import { PlanQuestion } from "./plan-question";
 import { TokenFigures } from "./token-figures";
-import { UsageRows, usageRows } from "./usage-rows";
+import { type UsageRow, UsageRows, usageRows } from "./usage-rows";
 
 /** What the cell asks with when nothing said which plan this vendor bills the user on. */
 export type PlanCellQuestion = {
@@ -42,8 +42,9 @@ const PANEL_WIDTH_PX = 320;
 
 /**
  * One plan: the percent of its rate limit where a file on this machine reports one, the tokens and
- * cost where none does, and the question in place of either while agn cannot tell which plan it is.
- * The tooltip is a compact copy of the vendor's own usage panel.
+ * cost where none does, that the window counted nothing where there are neither, and the question
+ * in place of any of them while agn cannot tell which plan it is. The tooltip is a compact copy of
+ * the vendor's own usage panel.
  */
 export function PlanCell(props: PlanCellProps) {
   const { label, vendor, limit, day, week, now, question } = props;
@@ -65,55 +66,104 @@ export function PlanCell(props: PlanCellProps) {
       </Cell>
     );
   }
-  const figures = limit !== null && hasFigure(limit, now);
-  // The cell falls back to tokens once every window is stale, but the panel still owes the reader
-  // the windows and their age: a panel of tokens alone reads as a panel that failed to load.
-  const rows = limit === null ? [] : usageRows(limit, now);
-  const tokens = tokensLine(day, week);
-  const cost = costLine(vendor, day, week);
-  // What the limit source carried beside its windows: the account's credits and plan, or the
-  // reporting session's cost and context. Empty for a source that carried neither.
-  const detail = limit === null ? [] : limitDetailParts(limit.detail);
+  const state = cellState(props);
+  const panel = panelLines(props);
+  const cell = (
+    <Cell state={state} vendor={vendor}>
+      <VendorMark vendor={vendor} />
+      <span className="text-foreground">{label}</span>
+      {state === "percent" && limit !== null && <LimitFigures limit={limit} now={now} />}
+      {/* The bar's own muted colour: an agent with nothing counted is not a warning. */}
+      {state === "empty" && <span data-figure="empty">nothing this week</span>}
+      {state === "tokens" && <TokenFigures day={day} week={week} vendor={vendor} />}
+    </Cell>
+  );
+  // A panel with only a title reads as one that failed to load, so a cell with nothing to add
+  // beyond its label draws no tooltip at all.
+  if (!hasPanel(panel)) {
+    return cell;
+  }
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Cell state={figures ? "percent" : "tokens"} vendor={vendor}>
-          <VendorMark vendor={vendor} />
-          <span className="text-foreground">{label}</span>
-          {figures && limit !== null ? (
-            <LimitFigures limit={limit} now={now} />
-          ) : (
-            <TokenFigures day={day} week={week} vendor={vendor} />
-          )}
-        </Cell>
-      </TooltipTrigger>
-      <TooltipContent className="whitespace-normal" style={{ width: PANEL_WIDTH_PX }}>
-        <div className="flex flex-col gap-1.5">
-          <span className="font-medium">{label}</span>
-          {rows.length > 0 && (
-            <div data-line="rows">
-              <UsageRows rows={rows} now={now} />
-            </div>
-          )}
-          {rows.length > 0 && limit !== null && worthDating(limit, now) && (
-            <span data-line="age" className="text-primary-foreground-muted">
-              as of {formatAgo(limit.observedAt, new Date(now))}
-            </span>
-          )}
-          {tokens !== null && (
-            <span data-line="tokens" className="text-primary-foreground-muted">
-              {tokens}
-            </span>
-          )}
-          {detail.length > 0 && (
-            <span data-line="detail" className="text-primary-foreground-muted">
-              {detail.join(" · ")}
-            </span>
-          )}
-          {cost !== null && <span data-line="cost">{cost}</span>}
-        </div>
-      </TooltipContent>
+      <TooltipTrigger asChild>{cell}</TooltipTrigger>
+      <UsagePanel label={label} limit={limit} now={now} panel={panel} />
     </Tooltip>
+  );
+}
+
+/**
+ * percent while a window of the plan's own meter still holds, tokens while a window counted any,
+ * and empty when neither window counted and no figure holds.
+ */
+function cellState({ limit, day, week, now }: PlanCellProps): "percent" | "tokens" | "empty" {
+  if (limit !== null && hasFigure(limit, now)) {
+    return "percent";
+  }
+  return day === null && week === null ? "empty" : "tokens";
+}
+
+/** What the panel has to say under the plan's name; all four empty means there is no panel. */
+type PanelLines = {
+  rows: UsageRow[];
+  tokens: string | null;
+  detail: string[];
+  cost: string | null;
+};
+
+function panelLines({ vendor, limit, day, week, now }: PlanCellProps): PanelLines {
+  return {
+    // The cell falls back to tokens once every window is stale, but the panel still owes the
+    // reader the windows and their age: a panel of tokens alone reads as one that failed to load.
+    rows: limit === null ? [] : usageRows(limit, now),
+    tokens: tokensLine(day, week),
+    // What the limit source carried beside its windows: the account's credits and plan, or the
+    // reporting session's cost and context. Empty for a source that carried neither.
+    detail: limit === null ? [] : limitDetailParts(limit.detail),
+    cost: costLine(vendor, day, week),
+  };
+}
+
+function hasPanel({ rows, tokens, detail, cost }: PanelLines): boolean {
+  return rows.length > 0 || tokens !== null || detail.length > 0 || cost !== null;
+}
+
+type UsagePanelProps = {
+  label: string;
+  limit: PlanLimit | null;
+  now: number;
+  panel: PanelLines;
+};
+
+/** The vendor's own usage panel, compacted: the windows, their age, the tokens and the cost. */
+function UsagePanel({ label, limit, now, panel }: UsagePanelProps) {
+  const { rows, tokens, detail, cost } = panel;
+  return (
+    <TooltipContent className="whitespace-normal" style={{ width: PANEL_WIDTH_PX }}>
+      <div className="flex flex-col gap-1.5">
+        <span className="font-medium">{label}</span>
+        {rows.length > 0 && (
+          <div data-line="rows">
+            <UsageRows rows={rows} now={now} />
+          </div>
+        )}
+        {rows.length > 0 && limit !== null && worthDating(limit, now) && (
+          <span data-line="age" className="text-primary-foreground-muted">
+            as of {formatAgo(limit.observedAt, new Date(now))}
+          </span>
+        )}
+        {tokens !== null && (
+          <span data-line="tokens" className="text-primary-foreground-muted">
+            {tokens}
+          </span>
+        )}
+        {detail.length > 0 && (
+          <span data-line="detail" className="text-primary-foreground-muted">
+            {detail.join(" · ")}
+          </span>
+        )}
+        {cost !== null && <span data-line="cost">{cost}</span>}
+      </div>
+    </TooltipContent>
   );
 }
 
@@ -123,7 +173,10 @@ function Cell({
   vendor,
   children,
   ...rest
-}: ComponentProps<"div"> & { state: "percent" | "tokens" | "unknown"; vendor: PlanVendor | null }) {
+}: ComponentProps<"div"> & {
+  state: "percent" | "tokens" | "empty" | "unknown";
+  vendor: PlanVendor | null;
+}) {
   return (
     // `rest` first: the tooltip trigger passes a `data-state` of its own, and this cell's state is
     // the one the page and its tests read.

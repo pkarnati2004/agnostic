@@ -420,7 +420,8 @@ check is turned off in `config.yaml`, the page says nothing about it.
 
 ## The usage bar
 
-Along the bottom there is one cell per plan, each 28 px tall and separated by a hairline. A cell
+Along the bottom there is one cell per agent agn found that records usage, each 28 px tall and
+separated by a hairline. A cell
 starts with the mark of the harness the plan is billed through: C for claude-code, X for codex, O
 for opencode, π for pi, G for gemini, and the first two letters of the name for any other harness
 (Gr for grok, Ki for kimi, Cu for cursor-agent). A plan agn has no vendor for reads `?`. Then comes
@@ -434,6 +435,9 @@ reset reads `–`. See [Limits](usage.md#limits) for which agents report a limit
 Where nothing on this machine reports a limit, the figures are tokens for today and for this week,
 shortened to fit: `today 2.1M tok week 9.8M tok`. A window agn could price carries the price after
 the tokens, `184k tok · $1.92`; a plan that priced nothing reads `included in plan`.
+
+An agent with no tokens today or this week keeps its cell. Where a file on this machine reports a
+limit, the cell shows its percentages. Where none does, the figures read `nothing this week`.
 
 When agn cannot tell which plan you are on, the cell asks instead of showing figures: **Which Claude
 plan are you on?** followed by a chip per plan the catalog knows. One click writes the plan and the
@@ -458,7 +462,8 @@ Hover a cell for the plan's usage panel:
 
 The token windows are calendar windows in your own time zone: today is today, and the week starts
 on Monday. The rate-limit windows are the vendor's own rolling
-ones, so the two sets of figures count different spans.
+ones, so the two sets of figures count different spans. The week resets at Monday 00:00, so on
+Monday morning most cells read `nothing this week` until you take your first turn.
 
 If `~/.agnostic/config.yaml` sets a `budget`, a cell after the plans shows what this machine has
 spent against it: `today $4.10 of $5` and the week beside it. Past 80% of a ceiling the cell is

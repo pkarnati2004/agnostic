@@ -67,6 +67,7 @@ function usage(budget: BudgetReport): UsageResponse {
     week: { window: window("week"), plans: [] },
     budget,
     limits: [],
+    present: [],
     unavailable: [],
     scannedAt: "2026-09-11T15:00:00.000Z",
   };

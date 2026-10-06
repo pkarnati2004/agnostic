@@ -1,4 +1,5 @@
 import {
+  emptyPlans,
   formatAgo,
   formatReset,
   type HarnessId,
@@ -6,9 +7,11 @@ import {
   limitDetailParts,
   limitFreshness,
   type PlanLimit,
+  type PlanPresent,
   type PlanUsage,
   type TaskUsageResponse,
   type UsageResponse,
+  type UsageSum,
   windowHeading,
 } from "@agnostic/core";
 import { Command } from "commander";
@@ -36,9 +39,9 @@ async function showWindows(ctx: CliContext): Promise<void> {
     writeJson(ctx.io, response);
     return;
   }
-  print(ctx, response.day, "today");
+  print(ctx, response.day, response.present, "today");
   ctx.io.out("");
-  print(ctx, response.week, "this week");
+  print(ctx, response.week, response.present, "this week");
   for (const line of limitLines(response.limits, new Date())) {
     ctx.io.out(line);
   }
@@ -57,16 +60,37 @@ async function showWindows(ctx: CliContext): Promise<void> {
 function print(
   ctx: CliContext,
   { window, plans }: UsageResponse["day"],
+  present: PlanPresent[],
   label: "today" | "this week",
 ): void {
   ctx.io.out(`${label} (${windowHeading(window)})`);
-  if (plans.length === 0) {
+  const rows = windowRows(plans, present);
+  if (rows.length === 0) {
     ctx.io.out(`no usage ${label}`);
     return;
   }
-  for (const line of renderTable(plans, columns())) {
+  for (const line of renderTable(rows, columns())) {
     ctx.io.out(line);
   }
+}
+
+/** A window's row has no figures when the window counted nothing for a harness that is installed. */
+type WindowRow = PlanPresent & { usage: UsageSum | null; fableShare: number | null };
+
+/** What the window counted, in the order it counted it, then a dashed row per present harness. */
+function windowRows(plans: PlanUsage[], present: PlanPresent[]): WindowRow[] {
+  const counted: WindowRow[] = plans.map((plan) => ({
+    harness: plan.harness,
+    vendor: plan.vendor,
+    plan: plan.plan,
+    usage: plan.usage,
+    fableShare: plan.fableShare,
+  }));
+  const empty = emptyPlans(
+    present,
+    plans.map((plan) => plan.harness),
+  ).map((row) => ({ ...row, usage: null, fableShare: null }));
+  return [...counted, ...empty];
 }
 
 /**
@@ -130,22 +154,30 @@ function phrase(
   return `${about}${Math.round(window.usedPercent)}% of ${named}${resets}`;
 }
 
-function columns(): Column<PlanUsage>[] {
+function columns(): Column<WindowRow>[] {
   const right = "right" as const;
   return [
     { header: "plan", value: (row) => (row.plan === null ? "unknown plan" : label(row)) },
     { header: "agent", value: (row) => row.harness },
-    { header: "tokens", value: (row) => count(row.usage.tokens), align: right },
-    { header: "input", value: (row) => count(row.usage.tokensInput), align: right },
-    { header: "output", value: (row) => count(row.usage.tokensOutput), align: right },
-    { header: "cache read", value: (row) => count(row.usage.tokensCacheRead), align: right },
-    { header: "cache write", value: (row) => count(row.usage.tokensCacheWrite), align: right },
-    { header: "cost", value: (row) => money(row.usage.costUsd), align: right },
+    { header: "tokens", value: (row) => count(row.usage?.tokens ?? null), align: right },
+    { header: "input", value: (row) => count(row.usage?.tokensInput ?? null), align: right },
+    { header: "output", value: (row) => count(row.usage?.tokensOutput ?? null), align: right },
+    {
+      header: "cache read",
+      value: (row) => count(row.usage?.tokensCacheRead ?? null),
+      align: right,
+    },
+    {
+      header: "cache write",
+      value: (row) => count(row.usage?.tokensCacheWrite ?? null),
+      align: right,
+    },
+    { header: "cost", value: (row) => money(row.usage?.costUsd ?? null), align: right },
     { header: "fable", value: (row) => share(row.fableShare), align: right },
   ];
 }
 
-function label(row: PlanUsage): string {
+function label(row: PlanPresent): string {
   return row.vendor === null ? String(row.plan) : `${row.vendor} ${row.plan}`;
 }
 
