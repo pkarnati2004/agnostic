@@ -25,6 +25,10 @@ export function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50 grid w-full",
+          // One column that can shrink below its content: a grid track's minimum is otherwise the
+          // widest unwrappable child (a select value, a badge), which pushed the dialog's content
+          // past 580 px and clipped its right edge.
+          "grid-cols-[minmax(0,1fr)]",
           "max-w-[580px] gap-0 overflow-hidden rounded-xl border border-border bg-popover p-0",
           "shadow-floating",
           className,
