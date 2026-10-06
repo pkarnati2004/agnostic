@@ -8,3 +8,5 @@ NOTES.md
 coverage/
 .DS_Store
 .screenshots/
+.codex
+.agents

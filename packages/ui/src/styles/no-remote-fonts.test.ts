@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 // Every stylesheet the page ships, not only tokens.css: a remote request from any one of them would
 // break the "no request leaves the page" promise the mono-stack pick makes (handoff pick 2).
-const SHEETS = import.meta.glob<string>("./*.css", {
+const SHEETS = import.meta.glob<string>("./**/*.css", {
   query: "?raw",
   import: "default",
   eager: true,
@@ -23,7 +23,19 @@ describe("packages/ui/src/styles/*.css", () => {
 
   // Guards the guard: a glob that matched nothing would make the checks above vacuous.
   it("finds the stylesheets the page ships", () => {
-    expect(Object.keys(SHEETS).sort()).toEqual(["./index.css", "./tokens.css", "./type.css"]);
+    expect(Object.keys(SHEETS).sort()).toEqual([
+      "./index.css",
+      "./themes/carbon.css",
+      "./themes/claudette.css",
+      "./themes/dusk.css",
+      "./themes/ink.css",
+      "./themes/moss.css",
+      "./themes/paper.css",
+      "./themes/rosewood.css",
+      "./themes/slate.css",
+      "./tokens.css",
+      "./type.css",
+    ]);
   });
 });
 

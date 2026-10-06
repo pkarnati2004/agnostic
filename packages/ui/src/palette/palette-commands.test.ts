@@ -28,6 +28,7 @@ function handlers(): PaletteHandlers {
     archive: vi.fn(),
     delete: vi.fn(),
     showCost: vi.fn(),
+    settings: vi.fn(),
     addRepo: vi.fn(),
     sync: vi.fn(),
   };
@@ -40,11 +41,11 @@ function ids(ctx: Partial<PaletteContext>, on: PaletteHandlers = handlers()): st
 
 describe("paletteCommands", () => {
   it("offers the page's own commands when no task is in front", () => {
-    expect(ids({})).toEqual(["new-task", "cost", "add-repo", "sync"]);
+    expect(ids({})).toEqual(["new-task", "cost", "settings", "add-repo", "sync"]);
   });
 
   it("drops Sync when the page knows of no repo", () => {
-    expect(ids({ repo: null })).toEqual(["new-task", "cost", "add-repo"]);
+    expect(ids({ repo: null })).toEqual(["new-task", "cost", "settings", "add-repo"]);
   });
 
   it("offers Stop and not Resume for a running task", () => {
@@ -56,6 +57,7 @@ describe("paletteCommands", () => {
       "pr",
       "update",
       "cost",
+      "settings",
       "add-repo",
       "sync",
     ]);
@@ -72,6 +74,7 @@ describe("paletteCommands", () => {
       "archive",
       "delete",
       "cost",
+      "settings",
       "add-repo",
       "sync",
     ]);
@@ -81,14 +84,23 @@ describe("paletteCommands", () => {
     // The push reads the branch from the main checkout, so Create PR needs no worktree, and the
     // panel's own button is enabled here too. A resume rebuilds the worktree and the rest return.
     const rows = ids({ activeTask: taskRow({ status: "stopped", worktreePresent: false }) });
-    expect(rows).toEqual(["new-task", "resume", "pr", "delete", "cost", "add-repo", "sync"]);
+    expect(rows).toEqual([
+      "new-task",
+      "resume",
+      "pr",
+      "delete",
+      "cost",
+      "settings",
+      "add-repo",
+      "sync",
+    ]);
   });
 
   it("offers nothing about the branch for a cleaned worktree with no branch either", () => {
     const rows = ids({
       activeTask: taskRow({ status: "stopped", worktreePresent: false, branch: null }),
     });
-    expect(rows).toEqual(["new-task", "resume", "delete", "cost", "add-repo", "sync"]);
+    expect(rows).toEqual(["new-task", "resume", "delete", "cost", "settings", "add-repo", "sync"]);
   });
 
   it("keeps Hand off for a folder task and for an adopted one, which had no worktree", () => {
@@ -98,6 +110,7 @@ describe("paletteCommands", () => {
       "stop",
       "handoff",
       "cost",
+      "settings",
       "add-repo",
       "sync",
     ]);
@@ -164,6 +177,7 @@ describe("paletteCommands", () => {
     expect(on.update).toHaveBeenCalledWith("task9");
     expect(on.commit).toHaveBeenCalledWith("task9");
     expect(on.showCost).toHaveBeenCalledTimes(1);
+    expect(on.settings).toHaveBeenCalledTimes(1);
     expect(on.addRepo).toHaveBeenCalledTimes(1);
     expect(on.sync).toHaveBeenCalledWith("repo1");
     expect(on.resume).not.toHaveBeenCalled();
@@ -184,6 +198,7 @@ describe("paletteCommands", () => {
     expect(groups.get("stop")).toBe("task");
     expect(groups.get("pr")).toBe("task");
     expect(groups.get("cost")).toBe("commands");
+    expect(groups.get("settings")).toBe("commands");
     expect(groups.get("sync")).toBe("commands");
   });
 

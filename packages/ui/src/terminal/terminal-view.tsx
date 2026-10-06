@@ -1,12 +1,13 @@
 import type { TaskListRow, TerminalSize } from "@agnostic/core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import type { TaskNotice } from "../store/task-notices";
 import { type OverlayPhase, SessionOverlay } from "./session-overlay";
 import { type SessionTarget, sessionTarget } from "./terminal-phase";
 import { type SessionPhase, startSession, type TerminalSession } from "./terminal-session";
-import { xtermTheme } from "./terminal-theme";
-import { type TerminalHandle, useTerminal } from "./use-terminal";
+import { xtermFont, xtermTheme } from "./terminal-theme";
+import { type TerminalHandle, type TerminalStyle, useTerminal } from "./use-terminal";
+import { watchRootStyle } from "./watch-root-style";
 
 // Long enough that a drag of the window sends one resize frame and not thirty. A fit is not only
 // `fitAddon.fit()`: it sends the size to the daemon, which resizes the PTY and makes the harness
@@ -31,7 +32,7 @@ type TerminalViewProps = {
 /** One tab's pane: the terminal, the socket behind it, and what to say when there is none. */
 export function TerminalView(props: TerminalViewProps) {
   const { task, token, active, client } = props;
-  const terminal = useTerminal(useMemo(pageTheme, []));
+  const terminal = useTerminal();
   const sizeRef = useRef<TerminalSize | null>(null);
   const sessionRef = useRef<TerminalSession | null>(null);
   const [sized, setSized] = useState(false);
@@ -111,8 +112,15 @@ function usePane(terminal: TerminalHandle, measure: () => void) {
     if (pane === null) {
       return;
     }
+    // Before the attach, so the terminal is built with the page's theme and font and never
+    // repaints from a default one. After it, a theme or font pick comes through the same call.
+    terminal.restyle(pageStyle());
     terminal.attach(pane);
     measure();
+    const unwatch = watchRootStyle(document.documentElement, () => {
+      terminal.restyle(pageStyle());
+      measure();
+    });
     // The observer covers the window, the sidebar collapsing, and the tab becoming visible.
     let timer: ReturnType<typeof setTimeout> | null = null;
     const observer = new ResizeObserver(() => {
@@ -123,6 +131,7 @@ function usePane(terminal: TerminalHandle, measure: () => void) {
     });
     observer.observe(pane);
     return () => {
+      unwatch();
       observer.disconnect();
       if (timer !== null) {
         clearTimeout(timer);
@@ -141,9 +150,11 @@ function overlayPhase(target: SessionTarget, phase: SessionPhase): OverlayPhase 
   return phase === "reconnecting" || phase === "ended" ? phase : null;
 }
 
-function pageTheme() {
+/** The colours and the font the page is drawn with right now, read from `<html>`. */
+function pageStyle(): TerminalStyle {
   const styles = getComputedStyle(document.documentElement);
-  return xtermTheme((name) => styles.getPropertyValue(name));
+  const read = (name: string) => styles.getPropertyValue(name);
+  return { theme: xtermTheme(read), ...xtermFont(read) };
 }
 
 /** A read that failed says nothing about the task, so the tab waits and asks again. */

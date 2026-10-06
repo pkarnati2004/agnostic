@@ -168,6 +168,8 @@ agn open <task> --editor zed     # this once, in Zed
 | `catalog_check` | Whether agnostic checks once a day for a newer benchmark catalog, which is its only outbound call. Absent means yes; `false` turns it off and leaves `agn catalog update` working. |
 | `spec_writer` | The profile that writes specs in the workspace's spec step, as a full profile id. Absent means agn picks the cheapest model your subscription already covers. |
 | `hooks` | `claude_statusline`, either `user` or `repo`. `user`, the default, puts agn's status-line command in `~/.claude/settings.json`, so every Claude Code session reports its plan's rate limit. `repo` keeps agn out of that file: only the sessions agn starts report, and your own entry goes back on the next task launch or `agn hooks install`. |
+| `appearance` | `theme`, one of `rosewood`, `claudette`, `slate`, `paper`, `ink`, `moss`, `carbon`, `dusk`; and `mode`, one of `dark`, `light`, `system`. Defaults: `rosewood` and `system`. |
+| `terminal` | `font`, the name of a monospaced family installed on this machine, used by the workspace's terminal panes; and `size` in px, 8 to 32. Absent `font` means the page's own mono stack; `size` defaults to 13. |
 | `budget` | `daily_usd` and `weekly_usd`, a ceiling in dollars over what agn priced in the calendar day and the Monday-based week: API-key and credits runs, and a run whose billing agn could not determine. Subscription and local runs never count. A cost the agent wrote itself (Pi, OMP, OpenCode, fx) is kept, because the provider billed it, and it counts toward the budget. At 80% `agn run`, the New task tab and the usage bar warn; at 100% a run or handoff onto an API-key or credits profile is refused unless you pass `--ignore-budget`. Resume is never refused. |
 
 ```yaml
@@ -180,6 +182,15 @@ budget:
   weekly_usd: 20
 hooks:
   claude_statusline: repo
+appearance:
+  theme: slate
+  mode: dark
+terminal:
+  font: IBM Plex Mono
+  size: 14
 ```
 
 An unknown key or an unknown editor id is an error, not a silent default.
+
+The workspace's Settings dialog writes `appearance` and `terminal`; a key left at its default is
+not written back.

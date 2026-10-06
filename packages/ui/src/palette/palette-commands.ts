@@ -10,6 +10,7 @@ import {
   Play,
   Plus,
   RefreshCw,
+  Settings,
   Sparkles,
   Square,
   SquareArrowOutUpRight,
@@ -48,6 +49,8 @@ export type PaletteHandlers = {
   delete(taskId: string): void;
   /** Scrolls the usage bar into view and flashes it. */
   showCost(): void;
+  /** Opens the Settings dialog, the same one the sidebar's gear opens. */
+  settings(): void;
   addRepo(): void;
   sync(repoId: string): void;
 };
@@ -70,6 +73,7 @@ const ICONS = {
   archive: Archive,
   delete: Trash2,
   cost: Coins,
+  settings: Settings,
   "add-repo": FolderPlus,
   sync: RefreshCw,
 };
@@ -99,6 +103,7 @@ export function paletteCommands(ctx: PaletteContext, on: PaletteHandlers): Palet
   }
   rows.push(...taskCommands(ctx, repo, on));
   rows.push(row("commands", "cost", "Cost", "jumps to the usage bar", on.showCost));
+  rows.push(row("commands", "settings", "Settings", "opens Settings", on.settings));
   rows.push(row("commands", "add-repo", "Add repo", "registers a folder with agn", on.addRepo));
   if (repo !== null) {
     rows.push(

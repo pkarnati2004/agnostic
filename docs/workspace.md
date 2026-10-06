@@ -146,10 +146,10 @@ The rows are grouped, with a heading over each group: "Run" for "New task" and t
 prompt adds, then "Current task" for the tab in front, then "Commands". Each row carries the icon of
 the button it stands for.
 
-Four rows are always there: "New task"; "Cost", which brings the usage bar into view and highlights
-it; "Add repo"; and "Sync `<repo>`" for the repo you are working in. Sync writes that repo's
-generated files, the same ones `agn sync` writes, and says nothing when they are already current. A
-failure appears under the repo in the sidebar.
+Five rows are always there: "New task"; "Cost", which brings the usage bar into view and highlights
+it; "Settings", which opens the Settings dialog; "Add repo"; and "Sync `<repo>`" for the repo you
+are working in. Sync writes that repo's generated files, the same ones `agn sync` writes, and says
+nothing when they are already current. A failure appears under the repo in the sidebar.
 
 Typing a prompt adds two more rows:
 
@@ -169,6 +169,41 @@ cleaned offers none of "Hand off", "Open in editor" and "Bring up to date" until
 commit" appears once the Changes panel has read the task and found uncommitted work, since the
 count comes from that read. The Compare tab has no task of its own, so no task rows appear while it
 is in front.
+
+## Settings
+
+Open Settings from the gear at the right end of the sidebar footer, from the gear in the collapsed
+rail, or from the "Settings" row in the command palette. Escape and the X close it.
+
+The left pane lists the sections, grouped by what they are about: "This computer" holds "Daemon and
+terminal", and "App" holds "Appearance" and "Shortcuts". The search box above filters the list by
+the section's name and by the words it covers, so typing `theme` leaves Appearance. The section you
+had open stays open while it still matches; otherwise the first match opens. The foot of the pane
+shows the path of `~/.agnostic/config.yaml` with a button that copies it.
+
+### Appearance
+
+Eight themes: Rosewood, Claudette, Slate, Paper, Ink, Moss, Carbon and Dusk. Each card shows a
+swatch of the theme's page, text, waiting and running colours, and the two fonts it asks for.
+Rosewood is the default. A theme's interface fonts are used where they are installed on this
+machine; where they are not, the system font is used instead. agn never downloads a font.
+
+Mode is Dark, Light or System. System follows macOS, and the page changes with it without a reload.
+
+### Shortcuts
+
+A list of what the workspace answers to today: Command palette ⌘K, Start task ⌘↵, task row menu
+⇧F10, and Close ⎋. Shortcuts can't be changed yet.
+
+### Daemon and terminal
+
+The `agnd` row says whether the daemon is answering this page and, when it is, its version and its
+process id. Terminal has two settings: Font, which is the family the terminal panes draw in, and
+Size in px. The agent's own colours and layout do not change; only the font does. An open terminal
+follows the change with no reload.
+
+Everything in Settings is written to `~/.agnostic/config.yaml`, which is the same file the CLI
+reads, so a change here also applies to `agn`.
 
 ## Changes
 

@@ -1,0 +1,104 @@
+/*
+ * Slate, generated from the design's remap of the token values in tokens.css (2026-10-06).
+ * Neutrals take hue 215 at saturation 0.14; waiting h72 s0.85, running h168, failed h2, queued h215, ring h200 s0.6, warning h36 s0.8.
+ * Edit the generator, not this file - except to hand-tune a value the design asks for.
+ */
+[data-theme="slate"].dark {
+  --background: #101215;
+  --foreground: #e2e3e5;
+  --card: #15171b;
+  --card-foreground: #e2e3e5;
+  --popover: #181b1f;
+  --popover-foreground: #e2e3e5;
+  --primary: #e2e3e5;
+  --primary-foreground: #111417;
+  --primary-foreground-muted: #4d5867;
+  --secondary: #21262c;
+  --secondary-foreground: #ecedef;
+  --muted: #1a1e23;
+  --muted-foreground: #778598;
+  --accent: #1c2026;
+  --accent-foreground: #ecedef;
+  --destructive: #e0534e;
+  --destructive-foreground: #f9f9fa;
+  --border: #22262c;
+  --input: #292e36;
+  --ring: #72b9dc;
+  --sidebar: #121519;
+  --sidebar-foreground: #d0d3d7;
+  --sidebar-primary: #e2e3e5;
+  --sidebar-primary-foreground: #111417;
+  --sidebar-accent: #1c2026;
+  --sidebar-accent-foreground: #ecedef;
+  --sidebar-border: #1e2227;
+  --sidebar-ring: #72b9dc;
+  --status-waiting: #cff04a;
+  --status-running: #5fbfac;
+  --status-queued: #8a96a8;
+  --status-done: #596677;
+  --status-failed: #e0534e;
+  --status-stopped: #3d4652;
+  --warning: #e9a43c;
+  --terminal: #0f1113;
+  --diff-add-bg: rgb(95 191 172 / 0.1);
+  --diff-add-fg: #b9dcd5;
+  --diff-del-bg: rgb(224 83 78 / 0.1);
+  --diff-del-fg: #f0b8b6;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.03);
+  --font-stack-sans:
+    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-stack-mono:
+    "IBM Plex Mono", "JetBrains Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas,
+    monospace;
+}
+
+[data-theme="slate"].light {
+  --background: #f8f8f9;
+  --foreground: #1c1e21;
+  --card: #f1f2f3;
+  --card-foreground: #1c1e21;
+  --popover: #edeef0;
+  --popover-foreground: #1c1e21;
+  --primary: #1c1e21;
+  --primary-foreground: #f6f7f7;
+  --primary-foreground-muted: #a1a7b0;
+  --secondary: #dfe1e4;
+  --secondary-foreground: #141618;
+  --muted: #e9eaec;
+  --muted-foreground: #6e7682;
+  --accent: #e6e8ea;
+  --accent-foreground: #141618;
+  --destructive: #d22b25;
+  --destructive-foreground: #0b0c0d;
+  --border: #dfe1e4;
+  --input: #d4d7db;
+  --ring: #27769e;
+  --sidebar: #f4f5f6;
+  --sidebar-foreground: #292c31;
+  --sidebar-primary: #1c1e21;
+  --sidebar-primary-foreground: #f6f7f7;
+  --sidebar-accent: #e6e8ea;
+  --sidebar-accent-foreground: #141618;
+  --sidebar-border: #e4e6e8;
+  --sidebar-ring: #27769e;
+  --status-waiting: #62780a;
+  --status-running: #317b6c;
+  --status-queued: #627084;
+  --status-done: #9198a2;
+  --status-failed: #d22b25;
+  --status-stopped: #b7bcc2;
+  --warning: #976111;
+  --terminal: #fafafb;
+  --diff-add-bg: rgb(49 123 108 / 0.1);
+  --diff-add-fg: #3d7a6e;
+  --diff-del-bg: rgb(210 43 37 / 0.1);
+  --diff-del-fg: #ab2823;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(28 25 23 / 0.18), 0 0 0 1px rgb(28 25 23 / 0.06);
+  --font-stack-sans:
+    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-stack-mono:
+    "IBM Plex Mono", "JetBrains Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas,
+    monospace;
+}

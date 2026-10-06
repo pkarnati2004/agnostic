@@ -23,6 +23,7 @@ const DAEMON_PATHS = [
   "/health",
   "/editors",
   "/doctor",
+  "/config",
 ];
 
 export default defineConfig(() => {

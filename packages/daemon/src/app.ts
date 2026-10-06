@@ -40,6 +40,7 @@ import { branchRoutes } from "./routes/branch.js";
 import { catalogRoutes } from "./routes/catalog.js";
 import { changesRoutes } from "./routes/changes.js";
 import { compareRoutes } from "./routes/compares.js";
+import { configRoutes } from "./routes/config.js";
 import { editorRoutes } from "./routes/editors.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
@@ -140,6 +141,7 @@ export function createApp(deps: DaemonDeps): {
   app.route("/", usageRoutes(ctx));
   app.route("/", outcomeRoutes(ctx));
   app.route("/", catalogRoutes(ctx));
+  app.route("/", configRoutes(ctx));
   app.route("/", uiRoutes(ctx));
 
   app.notFound((c) => {
