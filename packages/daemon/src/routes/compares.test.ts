@@ -118,7 +118,7 @@ describe("POST /repos/:id/compare", () => {
     expect(daemon.ledger.tasks.list()).toEqual([]);
   });
 
-  it("refuses a folder workspace, which has one working tree to share", async () => {
+  it("refuses a folder repo, which has one working tree to share", async () => {
     const folder = await repoWithConfig(daemon, { git: false });
     const response = await startCompare({ profiles: ["claude-code", "codex"] }, folder);
     expect(response.status).toBe(409);

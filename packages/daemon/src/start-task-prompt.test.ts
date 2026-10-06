@@ -119,7 +119,7 @@ describe("the launch prompt", () => {
     expect(log).not.toContain("Commit your work on");
   });
 
-  it("leaves the section out for a folder workspace, which has no branch of agn's own", async () => {
+  it("leaves the section out for a folder repo, which has no branch of agn's own", async () => {
     const folder = await daemon.addRepo({ git: false, defaultProfile: PROFILE });
     const task = await started(folder, { prompt: "the new one" });
     expect(task.branch).toBeNull();

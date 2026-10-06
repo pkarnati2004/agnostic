@@ -176,7 +176,7 @@ describe("POST /tasks/:id/update", () => {
     expect(error.hint).toBe("Answer the screen in the task's terminal, then try again.");
   });
 
-  it("refuses a folder workspace", async () => {
+  it("refuses a folder repo", async () => {
     const folder = await repoWithConfig(daemon, { git: false });
     const task = await startTask(daemon, folder);
     const error = await refused(await update(task.id), 409);

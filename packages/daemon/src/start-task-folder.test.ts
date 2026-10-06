@@ -38,7 +38,7 @@ function failure(response: Response): Promise<{ error: { code: string; message: 
   return response.json() as Promise<{ error: { code: string; message: string } }>;
 }
 
-describe("folder workspaces", () => {
+describe("folder repos", () => {
   it("runs in place, refuses a second task, and runs in a worktree once git init has happened", async () => {
     const repo = await daemon.addRepo({ git: false, defaultProfile: PROFILE });
     const first = await started(repo, { prompt: "in place please" });
@@ -49,7 +49,7 @@ describe("folder workspaces", () => {
     const refused = await run(repo, { prompt: "a second one" });
     expect(refused.status).toBe(409);
     expect((await failure(refused)).error.message).toBe(
-      "folder workspaces run one task at a time; git init to run tasks in parallel.",
+      "folder repos run one task at a time; git init to run tasks in parallel.",
     );
 
     await daemon.request(`/tasks/${first.id}/stop`, { method: "POST" });
@@ -90,7 +90,7 @@ describe("two runs at once on a folder", () => {
     expect(statuses).toEqual([201, 409]);
     const refused = first?.status === 409 ? first : second;
     expect((await failure(refused as Response)).error.message).toBe(
-      "folder workspaces run one task at a time; git init to run tasks in parallel.",
+      "folder repos run one task at a time; git init to run tasks in parallel.",
     );
     expect(daemon.ledger.tasks.list({ repoId: repo.id })).toHaveLength(1);
   });

@@ -201,7 +201,7 @@ does the same from a terminal.
 
 Some tasks have no file list to show:
 
-- A folder workspace has no git to read, so the panel says "This folder is not a git repo." and
+- A folder repo has no git to read, so the panel says "This folder is not a git repo." and
   gives the command that would make it one.
 - A task agn adopted has no base commit of its own, so its header reads
   "adopted: changes against `main`".
@@ -329,7 +329,7 @@ loads; click the heading to list them, newest first. A row there opens in a tab 
 The section holding the task you have open shows its rows without being clicked.
 
 Tasks reach History when you archive them, when `agn clean` removes their worktree, when the
-sweep does, and when you delete the directory yourself. A task that ran in a folder workspace never had a worktree of agn's,
+sweep does, and when you delete the directory yourself. A task that ran in a folder repo never had a worktree of agn's,
 so it stays under its repo.
 
 Hand off is not offered for a task whose worktree is gone: the next agent would have nowhere to
@@ -500,7 +500,7 @@ report it; the flag will be dropped.
 
 ## After a task
 
-`agn outcomes <task>` prints what one finished task cost and what became of it: how long the agent ran, its tokens and cost, the model it resolved to, the test results from before and after, how many lines it changed, and how many lines you changed afterwards. The verdict is `accepted` once the task's branch is merged into the base branch, by a merge commit or a squash; `reverted` once the branch is deleted or its worktree is removed without a merge; `not merged` until one of those happens. agn rechecks the open ones every five minutes and again whenever you ask for them, so a branch you merged a moment ago reads as accepted. A task that ran in a folder workspace has no branch of agn's, so its verdict and line counts print as `-`.
+`agn outcomes <task>` prints what one finished task cost and what became of it: how long the agent ran, its tokens and cost, the model it resolved to, the test results from before and after, how many lines it changed, and how many lines you changed afterwards. The verdict is `accepted` once the task's branch is merged into the base branch, by a merge commit or a squash; `reverted` once the branch is deleted or its worktree is removed without a merge; `not merged` until one of those happens. agn rechecks the open ones every five minutes and again whenever you ask for them, so a branch you merged a moment ago reads as accepted. A task that ran in a folder repo has no branch of agn's, so its verdict and line counts print as `-`.
 
 `agn stop` returns as soon as the agent is gone and finishes the task's accounting behind it: the usage scan, the repo's `test_command`, and the outcome row. An `agn outcomes` or `agn clean` run straight after a stop waits for that work, so it can take as long as your test command does. On a task adopted from a terminal of your own, stop ends that agent process too: SIGTERM first, then SIGKILL if it is still there five seconds later.
 

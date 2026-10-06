@@ -254,7 +254,7 @@ describe("POST /tasks/:id/resume", () => {
   });
 });
 
-describe("POST /tasks/:id/resume in a folder workspace", () => {
+describe("POST /tasks/:id/resume in a folder repo", () => {
   it("refuses while another task holds the folder, and allows it once that one ends", async () => {
     const folder = await daemon.addRepo({ git: false, defaultProfile: PROFILE });
     const first = await runTask(folder);
@@ -267,7 +267,7 @@ describe("POST /tasks/:id/resume in a folder workspace", () => {
     const body = (await refused.json()) as { error: { code: string; message: string } };
     expect(body.error.code).toBe("folder-busy");
     expect(body.error.message).toBe(
-      "folder workspaces run one task at a time; git init to run tasks in parallel.",
+      "folder repos run one task at a time; git init to run tasks in parallel.",
     );
     expect(daemon.ledger.tasks.get(first.id)?.status).toBe("stopped");
 

@@ -160,7 +160,7 @@ describe("POST /tasks/:id/commit", () => {
     expect(log.indexOf(body.prompt)).toBeGreaterThan(log.indexOf("ready"));
   });
 
-  it("refuses a folder workspace, which has no branch to commit on", async () => {
+  it("refuses a folder repo, which has no branch to commit on", async () => {
     const folder = await repoWithConfig(daemon, { git: false });
     const task = await startTask(daemon, folder);
 

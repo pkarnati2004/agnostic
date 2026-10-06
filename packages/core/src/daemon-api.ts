@@ -103,7 +103,7 @@ export const RunTaskRequestSchema = z.strictObject({
   profile: z.string().min(1).optional(),
   /** Replaces the model segment of the resolved profile; never checked against a model list. */
   model: z.string().min(1).optional(),
-  /** A git ref or a task id to branch from; a folder workspace has nothing to branch. */
+  /** A git ref or a task id to branch from; a folder repo has nothing to branch. */
   base: z.string().min(1).optional(),
   /** Replaces what the classifier read out of the prompt, for this task only. */
   intent: TaskIntentSchema.optional(),

@@ -161,9 +161,9 @@ describe("composeHandoffBody", () => {
     expect(body).toContain("### Files touched\n\nsrc/parse.ts, by hand\n\n src/parse.ts | 2 +-");
   });
 
-  it("says a folder workspace tracks nothing, and an untouched branch none", () => {
+  it("says a folder repo tracks nothing, and an untouched branch none", () => {
     expect(composeHandoffBody({ note: null, from: from(), changes: { kind: "folder" } })).toContain(
-      "### Files touched\n\nnot tracked (folder workspace)",
+      "### Files touched\n\nnot tracked (folder repo)",
     );
     expect(composeHandoffBody({ note: null, from: from(), changes: NO_CHANGES })).toContain(
       "### Files touched\n\nnone",

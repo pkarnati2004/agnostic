@@ -46,7 +46,7 @@ export async function ensureWorktree(
 
 /**
  * The directory the resume settled on has to be there before an agent is pointed at it. A task
- * with a worktree has already been through `ensureWorktree`; this is the folder workspace whose
+ * with a worktree has already been through `ensureWorktree`; this is the folder repo whose
  * own directory the user moved or deleted.
  */
 export async function assertDirectory(task: Task, cwd: string): Promise<void> {

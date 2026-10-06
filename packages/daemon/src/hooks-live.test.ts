@@ -126,7 +126,7 @@ describe("a hook from a live harness", () => {
 
   it("still starts the task when the hook install fails, and logs why", async () => {
     const repo = await daemon.addRepo({ defaultProfile: PROFILE, git: false });
-    // A folder workspace launches in the repo path itself; a plain file where the installer needs
+    // A folder repo launches in the repo path itself; a plain file where the installer needs
     // a directory makes its mkdir fail without agn ever touching the repo the test set up.
     await writeFile(join(repo.path, ".claude"), "not a directory", "utf8");
     const task = await start(repo);

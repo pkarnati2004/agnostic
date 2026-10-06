@@ -151,7 +151,7 @@ describe("fileChanges", () => {
     expect(changes.kind === "git" && changes.worktreePath).toBe(null);
   });
 
-  it("tracks no files at all in a folder workspace", async () => {
+  it("tracks no files at all in a folder repo", async () => {
     expect(await fileChanges(repo("folder"), task(), null)).toEqual({ kind: "folder" });
   });
 });

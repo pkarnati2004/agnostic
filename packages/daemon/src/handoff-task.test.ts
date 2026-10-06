@@ -197,7 +197,7 @@ describe("POST /tasks/:id/handoff", () => {
     });
   });
 
-  it("runs the child in place in a folder workspace, once the parent has stopped", async () => {
+  it("runs the child in place in a folder repo, once the parent has stopped", async () => {
     const repo = await daemon.addRepo({ git: false, defaultProfile: PROFILE });
     const parent = await started(repo, { prompt: "write the parser" });
     const { task: child, parent: left } = await handoff(parent, { profile: "codex" });

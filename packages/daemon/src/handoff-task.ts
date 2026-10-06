@@ -93,7 +93,7 @@ async function handoffBase(repo: Repo, parent: Task): Promise<string | null> {
   });
 }
 
-/** A terminal parent is left as it is; a live one is stopped, which frees a folder workspace. */
+/** A terminal parent is left as it is; a live one is stopped, which frees a folder repo. */
 async function stopParent(ctx: DaemonContext, repo: Repo, parent: Task): Promise<Task> {
   if (repo.kind === "folder") {
     // The route reconciled the parent; the folder guard below judges the parent's siblings too,

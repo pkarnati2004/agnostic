@@ -171,7 +171,7 @@ describe("a task's worktree is synced before the agent starts", () => {
   });
 });
 
-describe("a folder workspace is synced in place", () => {
+describe("a folder repo is synced in place", () => {
   it("writes the instruction files straight into the repo path, no worktree involved", async () => {
     const repo = await daemon.addRepo({ git: false, defaultProfile: PROFILE });
     await mkdir(join(repo.path, ".ag"), { recursive: true });
