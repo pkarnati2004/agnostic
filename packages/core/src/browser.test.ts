@@ -35,6 +35,7 @@ describe("@agnostic/core/browser", () => {
     expect([...graph().keys()].sort()).toEqual([
       "./appearance.js",
       "./browser.js",
+      "./config-defaults.js",
       "./error.js",
       "./is-kind.js",
       "./profile-id.js",

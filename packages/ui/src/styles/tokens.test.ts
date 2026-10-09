@@ -63,7 +63,23 @@ const AGN = [
 ];
 
 /** `harness-mark.tsx` builds these names from a harness id, so the pairs must all be here. */
-const MARKED_HARNESSES = ["claude-code", "codex", "opencode", "pi", "gemini"];
+const MARKED_HARNESSES = [
+  "claude-code",
+  "codex",
+  "opencode",
+  "pi",
+  "gemini",
+  "cursor-agent",
+  "droid",
+  "kimi",
+  "devin",
+  "openclaude",
+  "command-code",
+  "omp",
+  "mimo-code",
+  "grok",
+  "copilot",
+];
 
 describe("tokens.css", () => {
   it("gives every token a value in the base, which is Claudette dark", () => {

@@ -10,7 +10,7 @@ import {
   type RegisterRepoResponse,
   type Repo,
 } from "@agnostic/core";
-import { createTmuxExecutor, tmuxConfigStale } from "@agnostic/executor-tmux";
+import { createTmuxExecutor, readTmuxVersion, tmuxConfigStale } from "@agnostic/executor-tmux";
 import { type Ledger, openLedger } from "@agnostic/ledger";
 import type { LocalServer } from "@agnostic/registry";
 import { type ServerType, serve } from "@hono/node-server";
@@ -193,6 +193,10 @@ export async function createTestDaemon(opts: TestDaemonOptions = {}): Promise<Te
       launch === null
         ? Promise.resolve(false)
         : tmuxConfigStale({ paths, socketName: launch.socketName, env: launch.env }),
+    // A test without a tmux of its own gets the answer a current machine would give, so no route
+    // test depends on what `tmux -V` says on the machine running the suite.
+    tmuxVersion: () =>
+      launch === null ? Promise.resolve({ version: "3.4", ok: true }) : readTmuxVersion(launch.env),
     verdicts,
     home: userHome,
     catalog: createCatalogStore({

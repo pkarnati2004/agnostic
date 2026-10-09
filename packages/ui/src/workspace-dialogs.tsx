@@ -1,4 +1,4 @@
-import type { HealthResponse, RepoListRow } from "@agnostic/core";
+import type { HealthResponse, MachineConfig, Profile, RepoListRow } from "@agnostic/core";
 import type { WorkspaceClient } from "./api/client";
 import { AddRepoDialog } from "./repo/add-repo-dialog";
 import { RemoveRepoDialog } from "./repo/remove-repo-dialog";
@@ -17,6 +17,10 @@ type WorkspaceDialogsProps = {
   repoActions: RepoActions;
   root: AppearanceRoot;
   health: HealthResponse | null;
+  /** The page's profile list, which the Settings dialog's Agents section draws read-only. */
+  profiles: Profile[];
+  /** Every config answer the dialog gets, so the page's own copy follows a change. */
+  onConfig: (config: MachineConfig) => void;
   addRepo: boolean;
   onAddRepoChange: (open: boolean) => void;
   /** The repo the Remove confirmation is about, or null while it is closed. */
@@ -56,6 +60,8 @@ export function WorkspaceDialogs(props: WorkspaceDialogsProps) {
         root={props.root}
         health={props.health}
         connection={state.connection}
+        profiles={props.profiles}
+        onConfig={props.onConfig}
       />
     </>
   );

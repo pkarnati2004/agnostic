@@ -106,18 +106,39 @@
 
 /*
  * A harness mark's own two colours, one pair per harness, outside the theme blocks: the mark stands
- * for the vendor rather than the page, and the same pair reads on both themes. Placeholders until
- * real marks are licensed.
+ * for the vendor rather than the page, and the same pair reads on both themes. Each background is
+ * the vendor's own brand colour, or a neutral in its temperature where the brand is monochrome;
+ * every foreground passes 4.5:1 on its mark.
  */
 :root {
   --mark-claude-code: #d08a6a;
   --mark-claude-code-foreground: #1a1310;
   --mark-codex: #cfc9c2;
-  --mark-codex-foreground: #1a1714;
+  --mark-codex-foreground: #1a1310;
   --mark-opencode: #8fb8a2;
-  --mark-opencode-foreground: #111a15;
-  --mark-pi: #b7a0db;
-  --mark-pi-foreground: #17121f;
+  --mark-opencode-foreground: #1a1310;
+  --mark-pi: #f09082;
+  --mark-pi-foreground: #1a1310;
   --mark-gemini: #86a9d6;
-  --mark-gemini-foreground: #101722;
+  --mark-gemini-foreground: #1a1310;
+  --mark-cursor-agent: #b1bcd8;
+  --mark-cursor-agent-foreground: #1a1310;
+  --mark-droid: #ef6f2e;
+  --mark-droid-foreground: #1a1310;
+  --mark-kimi: #5aa2ff;
+  --mark-kimi-foreground: #1a1310;
+  --mark-devin: #1f5fd6;
+  --mark-devin-foreground: #ffffff;
+  --mark-openclaude: #ff943a;
+  --mark-openclaude-foreground: #1a1310;
+  --mark-command-code: #a48cff;
+  --mark-command-code-foreground: #1a1310;
+  --mark-omp: #f84fcc;
+  --mark-omp-foreground: #1a1310;
+  --mark-mimo-code: #ff6700;
+  --mark-mimo-code-foreground: #1a1310;
+  --mark-grok: #a6a7ab;
+  --mark-grok-foreground: #1a1310;
+  --mark-copilot: #8534f3;
+  --mark-copilot-foreground: #ffffff;
 }

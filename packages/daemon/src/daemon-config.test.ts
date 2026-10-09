@@ -30,6 +30,8 @@ describe("readDaemonConfig", () => {
       hooks: USER_SCOPE,
       appearance: ROSEWOOD,
       terminal: PAGE_MONO,
+      catalogStaleDays: 7,
+      specFirst: false,
     });
   });
 
@@ -45,6 +47,8 @@ describe("readDaemonConfig", () => {
       hooks: USER_SCOPE,
       appearance: ROSEWOOD,
       terminal: PAGE_MONO,
+      catalogStaleDays: 7,
+      specFirst: false,
     });
   });
 
@@ -172,6 +176,21 @@ describe("readDaemonConfig", () => {
 
     await writeFile(paths.config, "terminal:\n  size: 15\n");
     expect((await readDaemonConfig(paths)).terminal).toEqual({ font: null, size: 15 });
+  });
+
+  it("reads the stale window and the spec default, which are a week and off", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "catalog_stale_days: 3\nspec_first: true\n");
+    expect(await readDaemonConfig(paths)).toMatchObject({ catalogStaleDays: 3, specFirst: true });
+
+    await writeFile(paths.config, "editor: cursor\n");
+    expect(await readDaemonConfig(paths)).toMatchObject({ catalogStaleDays: 7, specFirst: false });
+  });
+
+  it("refuses a stale window no notice could use", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "catalog_stale_days: 0\n");
+    await expect(readDaemonConfig(paths)).rejects.toBeInstanceOf(ConfigError);
   });
 
   it("refuses a theme no stylesheet answers to, and a key under appearance nothing reads", async () => {

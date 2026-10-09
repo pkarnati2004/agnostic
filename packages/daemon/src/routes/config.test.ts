@@ -64,6 +64,36 @@ it("keeps the keys a later patch does not name", async () => {
   });
 });
 
+it("round-trips the stale window and the spec default", async () => {
+  const answered = await read(await patch('{"catalogStaleDays":3,"specFirst":true}'));
+  expect(answered.config).toMatchObject({ catalogStaleDays: 3, specFirst: true });
+  expect(await readFile(daemon.paths.config, "utf8")).toContain("catalog_stale_days: 3");
+  const again = await read(await daemon.request("/config"));
+  expect(again.config).toMatchObject({ catalogStaleDays: 3, specFirst: true });
+});
+
+it("refuses a stale window no notice could use", async () => {
+  const response = await patch('{"catalogStaleDays":0}');
+  expect(response.status).toBe(400);
+});
+
+it("takes the window's boundaries and refuses one day past either end, with the file untouched", async () => {
+  const oneDay = await patch('{"catalogStaleDays":1}');
+  expect(oneDay.status).toBe(200);
+  expect((await read(oneDay)).config).toMatchObject({ catalogStaleDays: 1 });
+
+  const aYear = await patch('{"catalogStaleDays":365}');
+  expect(aYear.status).toBe(200);
+  expect((await read(aYear)).config).toMatchObject({ catalogStaleDays: 365 });
+
+  const before = await readFile(daemon.paths.config, "utf8");
+  const tooLow = await patch('{"catalogStaleDays":0}');
+  expect(tooLow.status).toBe(400);
+  const tooHigh = await patch('{"catalogStaleDays":366}');
+  expect(tooHigh.status).toBe(400);
+  expect(await readFile(daemon.paths.config, "utf8")).toBe(before);
+});
+
 it("refuses a key nothing reads and a body that is not json", async () => {
   const unknown = await patch('{"theme":"x"}');
   expect(unknown.status).toBe(400);

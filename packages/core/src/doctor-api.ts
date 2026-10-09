@@ -70,6 +70,15 @@ export type ToolReport = {
   login: "logged-in" | "logged-out" | "unknown";
 };
 
+/**
+ * One environment variable a harness row or a gateway row names. `set` is presence and nothing
+ * else: the value never leaves the daemon, so no client can print or log a key by accident.
+ */
+export type ApiKeyReport = { name: string; set: boolean; usedBy: HarnessId[] };
+
+/** `version` is null when `tmux -V` fails; `ok` is 3.3 or newer, or a `next`/`master` build. */
+export type TmuxReport = { version: string | null; ok: boolean };
+
 // An absent or empty body is legal: `agn doctor` with no flag changes nothing and re-detects.
 export const DoctorRequestSchema = z.strictObject({ plans: PlansSchema.optional() });
 export type DoctorRequest = z.infer<typeof DoctorRequestSchema>;
@@ -95,4 +104,8 @@ export type DoctorResponse = {
    * written, so its panes still run on the old ones. False when no server is running.
    */
   tmuxConfigStale: boolean;
+  /** Every key variable the registry names, as presence over the environment agnd was started in. */
+  keys: ApiKeyReport[];
+  /** What `tmux -V` on the daemon's PATH answered, for the row that says reattach needs 3.3. */
+  tmux: TmuxReport;
 };

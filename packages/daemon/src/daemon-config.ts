@@ -1,7 +1,9 @@
 import {
   type AgnosticPaths,
+  CatalogStaleDaysSchema,
   ColorModeSchema,
   DEFAULT_APPEARANCE,
+  DEFAULT_CATALOG_STALE_DAYS,
   DEFAULT_TERMINAL_SIZE,
   EditorIdSchema,
   type MachineConfig,
@@ -48,6 +50,8 @@ const DaemonConfigFileSchema = z.strictObject({
   hooks: HooksFileSchema.optional(),
   appearance: AppearanceFileSchema.optional(),
   terminal: TerminalFileSchema.optional(),
+  catalog_stale_days: CatalogStaleDaysSchema.optional(),
+  spec_first: z.boolean().optional(),
 });
 
 /** Where agn installs Claude Code's status-line command, and so which sessions it captures. */
@@ -63,9 +67,10 @@ const FIX_HINT = "Fix the file, or delete it to use the defaults.";
 /**
  * `~/.agnostic/config.yaml` holds user settings for the machine, not for a repo: the port to bind,
  * the plan each vendor bills the user on, the editor `agn open` uses, whether the daily catalog
- * check runs, the spend ceiling, where agn installs Claude Code's status-line command, and the
- * workspace's theme and terminal font. The port and the check are read once at start and the rest
- * per request. This reader moves to core when a second component needs it.
+ * check runs, the spend ceiling, where agn installs Claude Code's status-line command, the
+ * workspace's theme and terminal font, how old the catalog may get, and whether a new task writes
+ * its spec first. The port and the check are read once at start and the rest per request. This
+ * reader moves to core when a second component needs it.
  */
 export async function readDaemonConfig(paths: AgnosticPaths): Promise<MachineConfig> {
   const file = await readYamlFile(paths.config, DaemonConfigFileSchema, FIX_HINT);
@@ -91,5 +96,8 @@ export async function readDaemonConfig(paths: AgnosticPaths): Promise<MachineCon
       font: file?.terminal?.font ?? null,
       size: file?.terminal?.size ?? DEFAULT_TERMINAL_SIZE,
     },
+    catalogStaleDays: file?.catalog_stale_days ?? DEFAULT_CATALOG_STALE_DAYS,
+    // Absent means off: a new task starts from the prompt alone unless the user asked otherwise.
+    specFirst: file?.spec_first ?? false,
   };
 }

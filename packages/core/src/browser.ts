@@ -4,6 +4,7 @@
 // zod in the index chunk. This is why the page reads `profile-id.js` and not `profile.js`.
 // `browser.test.ts` enforces the rule.
 export * from "./appearance.js";
+export * from "./config-defaults.js";
 export { isKind } from "./is-kind.js";
 export * from "./profile-id.js";
 export * from "./task-status.js";

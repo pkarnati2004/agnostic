@@ -35,6 +35,23 @@ describe("ConfigPatchRequestSchema", () => {
     expect(parse({ terminal: { font: "" } }).success).toBe(false);
   });
 
+  it("takes the two keys the Recommendations and Tasks sections write", () => {
+    expect(parse({ catalogStaleDays: 3 }).success).toBe(true);
+    expect(parse({ specFirst: true }).success).toBe(true);
+  });
+
+  it("refuses a stale window no notice could use", () => {
+    expect(parse({ catalogStaleDays: 0 }).success).toBe(false);
+    expect(parse({ catalogStaleDays: 400 }).success).toBe(false);
+    expect(parse({ catalogStaleDays: 1.5 }).success).toBe(false);
+  });
+
+  it("takes the window's own boundaries, a day and a year, and refuses one day past either end", () => {
+    expect(parse({ catalogStaleDays: 1 }).success).toBe(true);
+    expect(parse({ catalogStaleDays: 365 }).success).toBe(true);
+    expect(parse({ catalogStaleDays: 366 }).success).toBe(false);
+  });
+
   it("refuses port and plans: the port is a hand edit and doctor owns the plans", () => {
     expect(parse({ port: 7431 }).success).toBe(false);
     expect(parse({ plans: { claude: "max20" } }).success).toBe(false);

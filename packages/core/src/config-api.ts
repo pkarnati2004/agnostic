@@ -12,6 +12,9 @@ export const TerminalFontSchema = z.string().trim().min(1).max(64);
 
 export const TerminalSizeSchema = z.number().int().min(8).max(32);
 
+/** A year is the longest wait worth offering; zero days would call every catalog stale at once. */
+export const CatalogStaleDaysSchema = z.number().int().min(1).max(365);
+
 /** The file as the daemon reads it; null where it says nothing and no default applies. */
 export type MachineConfig = {
   port: number | null;
@@ -23,6 +26,10 @@ export type MachineConfig = {
   hooks: { claudeStatusline: "user" | "repo" };
   appearance: Appearance;
   terminal: TerminalConfig;
+  /** How old the catalog may be before the workspace draws the stale notice. */
+  catalogStaleDays: number;
+  /** What the New task tab's "Write the spec first" toggle starts as. */
+  specFirst: boolean;
 };
 
 export type ConfigResponse = { config: MachineConfig; file: string };
@@ -51,6 +58,8 @@ export const ConfigPatchRequestSchema = z.strictObject({
       size: TerminalSizeSchema.optional(),
     })
     .optional(),
+  catalogStaleDays: CatalogStaleDaysSchema.optional(),
+  specFirst: z.boolean().optional(),
 });
 
 export type ConfigPatchRequest = z.infer<typeof ConfigPatchRequestSchema>;

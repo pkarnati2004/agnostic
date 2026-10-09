@@ -1,6 +1,7 @@
 import type {
   BudgetReport,
   HandoffTaskRequest,
+  MachineConfig,
   PickCompareResponse,
   Profile,
   RepoListRow,
@@ -8,6 +9,7 @@ import type {
   TaskListRow,
   TaskUsageResponse,
 } from "@agnostic/core";
+import { DEFAULT_CATALOG_STALE_DAYS } from "@agnostic/core/browser";
 import { useEffect, useState } from "react";
 import type { WorkspaceClient } from "./api/client";
 import type { ApiError } from "./api/error";
@@ -54,6 +56,9 @@ type CentreProps = {
   onRetry: () => void;
   /** The page's 30 s tick, read by the catalog line. */
   now: number;
+  /** config.yaml as the page read it; null until `GET /config` answers. The catalog notice reads
+   * its stale window and the New task tab its spec toggle's starting value. */
+  config: MachineConfig | null;
   /** What the last resume had to say, for the tab it belongs to; the rest of the page ignores it. */
   resumed: ResumeNotice | null;
   /** Keyed by task: the latest failure per task, each drawn where its click was. */
@@ -137,7 +142,11 @@ export function Centre(props: CentreProps) {
       {/* The one failure with no task to sit on: the page never loaded. A daemon that did not
           answer is the banner's line, not a second one saying the same thing. */}
       <Notice error={props.error?.code === "daemon-unreachable" ? null : props.error} />
-      <CatalogNotice client={client} now={props.now} />
+      <CatalogNotice
+        client={client}
+        now={props.now}
+        staleDays={props.config?.catalogStaleDays ?? DEFAULT_CATALOG_STALE_DAYS}
+      />
       {compareId !== null && (
         <CompareView
           compareId={compareId}
@@ -162,6 +171,7 @@ export function Centre(props: CentreProps) {
           client={client}
           onStarted={props.onStarted}
           onAddRepo={props.onAddRepo}
+          specFirst={props.config?.specFirst ?? false}
         />
       )}
       {items.length === 0 && compareId === null && !loaded && (

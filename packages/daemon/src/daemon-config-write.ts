@@ -2,6 +2,7 @@ import {
   type AgnosticPaths,
   type ConfigPatchRequest,
   DEFAULT_APPEARANCE,
+  DEFAULT_CATALOG_STALE_DAYS,
   DEFAULT_TERMINAL_SIZE,
   type MachineConfig,
   type Plans,
@@ -48,6 +49,8 @@ function merge(current: MachineConfig, patch: ConfigPatch): MachineConfig {
       font: kept(patch.terminal?.font, current.terminal.font),
       size: patch.terminal?.size ?? current.terminal.size,
     },
+    catalogStaleDays: patch.catalogStaleDays ?? current.catalogStaleDays,
+    specFirst: patch.specFirst ?? current.specFirst,
   };
 }
 
@@ -88,6 +91,12 @@ function serialize(config: MachineConfig): Record<string, unknown> {
   const terminal = terminalSection(config.terminal);
   if (terminal !== null) {
     file.terminal = terminal;
+  }
+  if (config.catalogStaleDays !== DEFAULT_CATALOG_STALE_DAYS) {
+    file.catalog_stale_days = config.catalogStaleDays;
+  }
+  if (config.specFirst) {
+    file.spec_first = true;
   }
   return file;
 }

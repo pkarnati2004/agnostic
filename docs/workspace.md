@@ -175,11 +175,83 @@ is in front.
 Open Settings from the gear at the right end of the sidebar footer, from the gear in the collapsed
 rail, or from the "Settings" row in the command palette. Escape and the X close it.
 
-The left pane lists the sections, grouped by what they are about: "This computer" holds "Daemon and
-terminal", and "App" holds "Appearance" and "Shortcuts". The search box above filters the list by
-the section's name and by the words it covers, so typing `theme` leaves Appearance. The section you
-had open stays open while it still matches; otherwise the first match opens. The foot of the pane
-shows the path of `~/.agnostic/config.yaml` with a button that copies it.
+The left pane lists seven sections under four headings: "Agents" holds "Agents and profiles",
+"Plans and keys" and "Recommendations"; "Work" holds "Tasks and worktrees"; "This computer" holds
+"Daemon and terminal"; and "App" holds "Appearance" and "Shortcuts". The search box above filters
+the list by the section's name and by the words it covers, so typing `theme` leaves Appearance. The
+section you had open stays open while it still matches; otherwise the first match opens. The foot of
+the pane shows the path of `~/.agnostic/config.yaml` with a button that copies it.
+
+Three settings are not in this dialog because they belong to a repo rather than to the machine. Each
+section says where its own one lives: the default profile and the base branch and branch prefix are
+in that repo's `.ag/agnostic.yaml`, and the risk review rules are in `.ag/preferences.yaml`.
+
+### Agents and profiles
+
+"Detected agents" is the same check as `agn doctor`, run when the section opens. The box is headed
+with how many of the agents agn knows were found and how long ago it looked, and a Recheck button
+runs the check again. Each row names the agent, its version and the path its binary was found at, or
+reads "Not on PATH" for one this machine does not have.
+
+"Profiles" lists every profile `agn profiles` would print: the agent, the model, the route it
+reaches the model through, and what it costs. The list is read-only; a profile is what this machine
+can run, not something to write down. A machine that reaches several gateways has hundreds of
+profiles, so the list scrolls, and "Filter profiles" narrows it by agent, model, route or id. The
+heading counts how many of them the filter leaves.
+
+"Spec writer" is the profile that writes the spec and the acceptance list when "Write the spec
+first" is on. Left at "Cheapest covered model", agn picks the cheapest profile the catalog covers.
+
+### Plans and keys
+
+"Claude plan" and "ChatGPT plan" are the plans the usage bar measures against. Picking one runs the
+same detection `agn doctor --plan` does, so the bar follows within a moment.
+
+"API keys" lists every environment variable an agent or a gateway reads. Each row says "Set in
+environment" or "Not set" and nothing else: agn reads the variable in the environment `agnd` was
+started in and reports whether it has a value, never the value itself. To add a key, export the
+variable where `agnd` starts, then restart it (`agn daemon restart` from a terminal).
+
+### Recommendations
+
+"Benchmark catalog" says which catalog version the daemon serves and how long ago it last looked for
+a newer one. "Sync now" is `agn catalog update`, and the line under the row says what came back.
+
+"Mark catalog stale after" is how old the catalog may get before the workspace draws a notice above
+the terminal. The options are 1, 3, 7, 14 and 30 days; a value set by hand in `config.yaml` is
+offered too.
+
+### Tasks and worktrees
+
+"Worktree location" is the folder each task's worktree is created in, which is `worktrees` under
+agn's home. It is not editable here.
+
+"Write the spec first" is the starting value of the toggle on a new task. A tab that is already open
+follows the change until you touch its toggle, which then stays where you put it.
+
+"Open in editor" is the editor "Open in editor" uses, in Changes and in the task row menu. Left at
+"First detected", agn uses whichever editor it finds first.
+
+### Daemon and terminal
+
+The `agnd` row says whether the daemon is answering this page and, when it is, its version and its
+process id. The `tmux` row says which tmux is on the daemon's PATH and whether it is new enough:
+reattaching to a running task needs 3.3 or newer. When a tmux server of agn's has been running since
+before agn's current settings were written, a line under the row says to stop every task or to run
+`tmux -L agn kill-server`.
+
+"Claude Code status line" is where agn installs the command that reports the plan's rate limit. "All
+sessions" installs it for every Claude Code session on this machine; "agn tasks only" keeps agn out
+of your own settings file, so only the sessions agn starts report their limits. Either way the change
+applies on the next task launch, or on `agn hooks install`.
+
+Terminal has two settings: Font, which is the family the terminal panes draw in, and Size in px. The
+agent's own colours and layout do not change; only the font does. An open terminal follows the
+change with no reload.
+
+"Commands" lists the lines worth running in a terminal - starting, stopping and restarting the
+daemon, `agn doctor`, `agn catalog update`, `agn hooks install --repo <path>` - each with a button
+that copies it, and the path of `config.yaml` last. The page runs none of them itself.
 
 ### Appearance
 
@@ -192,15 +264,13 @@ Mode is Dark, Light or System. System follows macOS, and the page changes with i
 
 ### Shortcuts
 
-A list of what the workspace answers to today: Command palette ⌘K, Start task ⌘↵, task row menu
-⇧F10, and Close ⎋. Shortcuts can't be changed yet.
+A list of what the workspace answers to today: Command palette ⌘K, Start task ⌘↵, Hand off ⌘⇧H,
+Toggle sidebar ⌘\, Toggle Changes ⌘⇧C, Next tab ⌃⇥, task row menu ⇧F10 and Close ⎋. Off macOS,
+Ctrl stands in for ⌘ and for ⌃. Shortcuts can't be changed yet.
 
-### Daemon and terminal
-
-The `agnd` row says whether the daemon is answering this page and, when it is, its version and its
-process id. Terminal has two settings: Font, which is the family the terminal panes draw in, and
-Size in px. The agent's own colours and layout do not change; only the font does. An open terminal
-follows the change with no reload.
+⌘⇧H opens Hand off for the task in front, when it still has its worktree. ⌘⇧C needs a task in
+front. ⌃⇥ is taken by the browser's own tab switch in Chrome and Safari, so the page never receives
+it there; it works in the desktop shell.
 
 Everything in Settings is written to `~/.agnostic/config.yaml`, which is the same file the CLI
 reads, so a change here also applies to `agn`.

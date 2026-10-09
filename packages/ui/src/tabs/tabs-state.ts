@@ -9,7 +9,9 @@ export type TabsAction =
   | { type: "close"; taskId: string }
   | { type: "activate"; taskId: string }
   /** The tasks still worth a tab; every other open tab closes as an ordinary close would. */
-  | { type: "prune"; keep: ReadonlySet<string> };
+  | { type: "prune"; keep: ReadonlySet<string> }
+  /** The tab after the active one in strip order, wrapping; nothing to do with one tab or none. */
+  | { type: "next" };
 
 export const TABS_KEY = "agn.tabs";
 
@@ -48,7 +50,18 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       return without(state, (id) => id !== action.taskId);
     case "prune":
       return without(state, (id) => action.keep.has(id));
+    case "next":
+      return { ...state, active: nextTab(state) };
   }
+}
+
+/** Strip order, wrapping at the end. The active tab is already the only one, so it stays. */
+function nextTab(state: TabsState): string | null {
+  if (state.open.length < 2 || state.active === null) {
+    return state.active;
+  }
+  const index = state.open.indexOf(state.active);
+  return state.open[(index + 1) % state.open.length] ?? state.active;
 }
 
 /**

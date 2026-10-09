@@ -8,21 +8,13 @@ import {
   type Profile,
   type Route,
 } from "@agnostic/core";
+import { nativeApiKey } from "./api-keys.js";
 import type { HarnessStatus } from "./detect.js";
 import type { LocalServer } from "./detect-local-servers.js";
 import { planVendor } from "./detect-plan.js";
 import { gateways } from "./gateways.js";
 import { harnessDefinition } from "./harness-list.js";
 import { resolvePlan } from "./resolve-plan.js";
-
-/** The key that lets a harness bill by API when its own login says nothing. */
-const NATIVE_API_KEYS: Record<string, string> = {
-  "claude-code": "ANTHROPIC_API_KEY",
-  codex: "OPENAI_API_KEY",
-  gemini: "GEMINI_API_KEY",
-  grok: "XAI_API_KEY",
-  kimi: "MOONSHOT_API_KEY",
-};
 
 export type EnumerateInput = {
   statuses: HarnessStatus[];
@@ -96,8 +88,8 @@ function nativeBilling(status: HarnessStatus, env: Record<string, string>): Bill
   if (status.login === "logged-in") {
     return status.billing;
   }
-  const key = NATIVE_API_KEYS[status.harness];
-  return key && env[key] ? "api-key" : "unknown";
+  const key = nativeApiKey(status.harness);
+  return key !== null && env[key] ? "api-key" : "unknown";
 }
 
 function gatewayProfiles(status: HarnessStatus, input: EnumerateInput): Profile[] {

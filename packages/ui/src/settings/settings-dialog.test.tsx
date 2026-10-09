@@ -5,8 +5,9 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { ApiError } from "../api/error";
 import { TooltipProvider } from "../components/tooltip";
 import { createAppearanceRoot } from "../styles/appearance-root";
-import { click, find, render } from "../test/render";
+import { click, find, render, typeInto } from "../test/render";
 import { stubClient } from "../test/workspace-fixture";
+import { doctorResponse } from "../usage/usage-response.fixture";
 import { SettingsDialog } from "./settings-dialog";
 
 const CONFIG: MachineConfig = {
@@ -19,6 +20,8 @@ const CONFIG: MachineConfig = {
   hooks: { claudeStatusline: "user" },
   appearance: { theme: "rosewood", mode: "system" },
   terminal: { font: null, size: 13 },
+  catalogStaleDays: 7,
+  specFirst: false,
 };
 
 const ANSWER: ConfigResponse = { config: CONFIG, file: "/Users/you/.agnostic/config.yaml" };
@@ -37,8 +40,10 @@ async function settled(): Promise<void> {
 }
 
 function open(patchConfig = vi.fn(() => Promise.resolve(ANSWER))) {
-  const client = stubClient({ config: () => Promise.resolve(ANSWER), patchConfig });
+  const doctor = vi.fn(() => Promise.resolve(doctorResponse()));
+  const client = stubClient({ config: () => Promise.resolve(ANSWER), patchConfig, doctor });
   const root = createAppearanceRoot(document.documentElement, MEDIA, localStorage);
+  const announced: MachineConfig[] = [];
   const view = render(
     <TooltipProvider>
       <SettingsDialog
@@ -48,10 +53,12 @@ function open(patchConfig = vi.fn(() => Promise.resolve(ANSWER))) {
         root={root}
         health={null}
         connection="live"
+        profiles={[]}
+        onConfig={(config) => void announced.push(config)}
       />
     </TooltipProvider>,
   );
-  return { ...view, patchConfig };
+  return { ...view, patchConfig, doctor, announced };
 }
 
 /** The dialog portals out of the render container, so every query runs against its own frame. */
@@ -76,14 +83,8 @@ function nav(label: string): HTMLElement {
   return found;
 }
 
-/** React tracks an input's value, so a plain assignment to it looks like no change at all. */
 function type(label: string, value: string): void {
-  const field = find<HTMLInputElement>(panel(), `input[aria-label="${label}"]`);
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-  act(() => {
-    setter?.call(field, value);
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  typeInto(find<HTMLInputElement>(panel(), `input[aria-label="${label}"]`), value);
 }
 
 /** Radix opens its list from the keyboard; its pointer handlers need a layout happy-dom has not. */
@@ -176,5 +177,56 @@ it("asks for the terminal font the Daemon section picked", async () => {
   click(nav("Daemon and terminal"));
   pick("Terminal font", "JetBrains Mono");
   expect(patchConfig).toHaveBeenCalledWith({ terminal: { font: "JetBrains Mono" } });
+  unmount();
+});
+
+it("asks the daemon once when a section that needs detection opens, not before", async () => {
+  const { doctor, unmount } = open();
+  await settled();
+  expect(doctor).not.toHaveBeenCalled();
+  click(nav("Agents and profiles"));
+  await settled();
+  expect(doctor).toHaveBeenCalledTimes(1);
+  click(nav("Plans and keys"));
+  await settled();
+  expect(doctor).toHaveBeenCalledTimes(1);
+  unmount();
+});
+
+it("hands the page every config answer, so its own copy follows a change", async () => {
+  const { announced, unmount } = open();
+  await settled();
+  expect(announced).toEqual([CONFIG]);
+  click(card("slate"));
+  await settled();
+  expect(announced).toHaveLength(2);
+  unmount();
+});
+
+it("shows what the daemon said under each section that asked it for a detection", async () => {
+  const doctor = vi.fn(() =>
+    Promise.reject(new ApiError("tmux is not installed", { code: "tmux-not-found", status: 500 })),
+  );
+  const client = stubClient({ config: () => Promise.resolve(ANSWER), doctor });
+  const root = createAppearanceRoot(document.documentElement, MEDIA, localStorage);
+  const { unmount } = render(
+    <TooltipProvider>
+      <SettingsDialog
+        open
+        onOpenChange={vi.fn()}
+        client={client}
+        root={root}
+        health={null}
+        connection="live"
+        profiles={[]}
+        onConfig={vi.fn()}
+      />
+    </TooltipProvider>,
+  );
+  for (const label of ["Agents and profiles", "Plans and keys", "Daemon and terminal"]) {
+    click(nav(label));
+    await settled();
+    expect(panel().textContent).toContain("tmux is not installed");
+  }
   unmount();
 });

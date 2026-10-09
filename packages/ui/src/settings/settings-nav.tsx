@@ -1,6 +1,6 @@
-import { Check, Copy, Search } from "lucide-react";
-import { useState } from "react";
+import { Search } from "lucide-react";
 import { cn } from "../class-names";
+import { CopyButton } from "./copy-button";
 import type { SettingsSection, SettingsSectionId } from "./settings-sections";
 
 type SettingsNavProps = {
@@ -100,16 +100,6 @@ function NavRow({
 
 /** Where every change lands. Copy rather than open: the page has no way to run an editor here. */
 function ConfigFileRow({ file }: { file: string | null }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    if (file === null) {
-      return;
-    }
-    void navigator.clipboard.writeText(file).then(
-      () => setCopied(true),
-      () => undefined,
-    );
-  };
   return (
     <div className="flex h-8 items-center gap-2 px-2.5">
       <span className="flex min-w-0 flex-1 flex-col">
@@ -118,15 +108,7 @@ function ConfigFileRow({ file }: { file: string | null }) {
           {file ?? ""}
         </span>
       </span>
-      <button
-        type="button"
-        aria-label="Copy the path of config.yaml"
-        disabled={file === null}
-        onClick={copy}
-        className="rounded text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:opacity-50"
-      >
-        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-      </button>
+      <CopyButton text={file} label="Copy the path of config.yaml" />
     </div>
   );
 }
