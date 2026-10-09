@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HarnessId } from "@agnostic/core";
 import { codexWorktreeTrustArgs } from "./codex-worktree-trust.js";
 import { parseClaudePlan, parseCodexPlan } from "./detect-plan.js";
@@ -13,15 +14,6 @@ import {
   parseOpenCodeModelList,
   parsePiModelList,
 } from "./model-list-parsers.js";
-
-/**
- * The binary names, launch tokens, prompt delivery, resume argv and hook payload keys below are
- * ported from Orca's agent table (`src/shared/tui-agent.ts`, `tui-agent-config.ts`,
- * `agent-session-resume.ts`, `agent-process-recognition.ts`), and the headless argv from its
- * `commit-message-agent-specs-primary.ts`.
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 const argv: PromptDelivery = { kind: "argv" };
 

@@ -1,6 +1,4 @@
-// The payload's shape and its tolerances - `utilization` beside `used_percentage`, a `resets_at`
-// that may be epoch seconds or a string - come from stablyai/orca
-// `src/shared/claude-statusline-rate-limits.ts` (MIT © Lovecast Inc.).
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import {
   hasLimitDetail,
   type LimitWindow,

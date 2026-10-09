@@ -1,6 +1,4 @@
-// Walking the transcript roots for `*.jsonl`, and skipping a file whose size and mtime have not
-// changed, come from stablyai/orca `src/main/claude-usage/transcript-file-discovery.ts` and
-// `scanner.ts` (MIT © Lovecast Inc.).
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { Dirent } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";

@@ -1,12 +1,7 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookStatus } from "@agnostic/core";
 import { type HookEventParser, type HookPayload, parseHookEvent } from "../hook-event-parser.js";
 
-/**
- * The event-to-status table is ported from Orca's OpenCode-family hook listener
- * (`src/shared/agent-hook-listener/providers/opencode-family-events.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 export function opencodeFamilyParser(harness: "opencode" | "mimo-code"): HookEventParser {
   return {
     harness,

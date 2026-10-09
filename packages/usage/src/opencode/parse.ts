@@ -1,6 +1,4 @@
-// The bucket split - cached input capped at input, reasoning counted as output - and the
-// seconds-or-milliseconds timestamps come from stablyai/orca
-// `src/main/opencode-usage/opencode-usage-row-parsing.ts` (MIT © Lovecast Inc.).
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { basename } from "node:path";
 import DatabaseConstructor from "better-sqlite3";
 import { z } from "zod";

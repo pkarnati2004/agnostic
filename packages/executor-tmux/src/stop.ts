@@ -1,6 +1,6 @@
-// Ported from agent-deck's internal/tmux (MIT © Ashesh Goplani): the kill escalation and its
-// pid-reuse guard. Claude Code 2.1.27 and later ignore the SIGHUP `kill-session` sends, so a
-// session whose pane is killed first can leave the harness running.
+// Adapted from asheshgoplani/agent-deck (MIT © Ashesh Goplani).
+// Claude Code 2.1.27 and later ignore the SIGHUP `kill-session` sends, so a session whose pane is
+// killed first can leave the harness running.
 import type { SessionHandle } from "@agnostic/core";
 import type { ProcessProbe } from "./process-table.js";
 import { hasSession, killSession, paneDead, panePid, type TmuxClient } from "./tmux-client.js";

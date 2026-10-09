@@ -1,13 +1,7 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { isAbsolute } from "node:path";
 import type { HookStatus } from "@agnostic/core";
 import { type HookEventParser, type HookPayload, parseHookEvent } from "../hook-event-parser.js";
-
-/**
- * The event-to-status table is ported from Orca's Pi-family hook listener
- * (`src/shared/agent-hook-listener/providers/pi-family-events.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** Each asks its question through a tool call, and neither spells the name the same way twice. */
 const QUESTION_TOOL: Record<"pi" | "omp", string> = { pi: "askuserquestion", omp: "ask" };

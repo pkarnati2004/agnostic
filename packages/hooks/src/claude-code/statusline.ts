@@ -1,5 +1,4 @@
-// The three slot states, and the rule that a status line the user wrote is never overwritten,
-// are ported from stablyai/orca `src/main/claude/hook-settings.ts` (MIT © Lovecast Inc.).
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { AgnosticPaths } from "@agnostic/core";
 import { quoted, statusLineScriptPath } from "../hook-script.js";
 import type { HooksJson } from "../hooks-json-file.js";

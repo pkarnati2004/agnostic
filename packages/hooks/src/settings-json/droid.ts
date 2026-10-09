@@ -1,16 +1,10 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookInstallResult } from "@agnostic/core";
 import { type HookEventParser, parseHookEvent } from "../hook-event-parser.js";
 import type { HookInstaller, HookInstallInput } from "../hook-installer.js";
 import { readHooksJson } from "../hooks-json-file.js";
 import { claudeShapedStatus } from "./claude-shaped-status.js";
 import { type SettingsJsonMember, settingsJsonInstaller } from "./member.js";
-
-/**
- * Ported from Orca's Droid hook service and listener (`src/main/droid/hook-service.ts`,
- * `src/shared/agent-hook-listener/providers/droid-events.ts`, `droid-tool-fields.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** `SessionStart` is installed so a resumed session reports before the user types again. */
 const EVENTS = [

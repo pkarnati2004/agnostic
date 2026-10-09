@@ -1,12 +1,10 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookStatus } from "@agnostic/core";
 import { comparableToolName, type HookPayload } from "../hook-event-parser.js";
 
 /**
  * The event-to-status table Claude Code defined and Droid, Kimi, Devin, OpenClaude and Command
- * Code send payloads for. Ported from Orca's hook listeners
- * (`src/shared/agent-hook-listener/providers/{claude,droid,kimi,devin,command-code}-events.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
+ * Code send payloads for.
  */
 export type ClaudeShapedNames = {
   /** Tools whose pre-use event is a question to the user rather than work in progress. */

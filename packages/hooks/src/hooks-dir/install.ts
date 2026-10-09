@@ -1,3 +1,6 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
+// Grok and Copilot each merge every hook file in one directory, so agn owns one file there and
+// writes it whole.
 import { readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { AgnosticPaths, HookInstallResult } from "@agnostic/core";
@@ -12,15 +15,6 @@ import {
   type ManagedEvent,
   withManagedHooks,
 } from "../hooks-json-file.js";
-
-/**
- * Grok and Copilot each merge every hook file in one directory, so agn owns one file there and
- * writes it whole. The events, the status tables and this file shape are ported from Orca's
- * installers (`src/main/grok/grok-hook-config.ts`, `hook-service.ts`;
- * `src/main/copilot/copilot-managed-hook-definitions.ts`, `hook-service.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** The one file in the directory that is agn's. Every other file there belongs to the user. */
 export const HOOKS_DIR_FILE = "agn.json";

@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookStatus } from "@agnostic/core";
 import {
   type HookEventParser,
@@ -7,14 +8,6 @@ import {
   payloadString,
 } from "../hook-event-parser.js";
 import { type HooksDirMember, hooksDirInstaller } from "./install.js";
-
-/**
- * Copilot's event list and its status table are ported from Orca's Copilot installer and listener
- * (`src/main/copilot/copilot-managed-hook-definitions.ts`,
- * `src/shared/agent-hook-listener/providers/copilot-events.ts`, `copilot-tool-fields.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** The one tool Copilot runs to ask the user a question; every other tool call is work. */
 const QUESTION_TOOL = "ask_user";

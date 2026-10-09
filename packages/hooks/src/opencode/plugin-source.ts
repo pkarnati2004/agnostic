@@ -1,15 +1,10 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
+// OpenCode loads every plugin file in its config directory and hands each one the SDK event
+// stream.
 import type { AgnosticPaths } from "@agnostic/core";
 import { hookPostSource } from "../hook-post-source.js";
 import { AGN_MANAGED_MARKER } from "../managed-file.js";
 
-/**
- * OpenCode loads every plugin file in its config directory and hands each one the SDK event
- * stream. The module shape, the undefined-context rule, the event table and the closing idle are
- * ported from Orca's `src/main/opencode/hook-service.ts`, `status-plugin-factory-source.ts` and
- * `status-plugin-lifecycle-source.ts`.
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 export const OPENCODE_PLUGIN_FILE = "agn-status.js";
 
 export function opencodePluginSource(

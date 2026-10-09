@@ -1,6 +1,6 @@
 /*
- * The token names are stablyai/orca's, from src/renderer/src/assets/main.css, MIT © Lovecast Inc.
- * Every value is agnostic's own design system (2026-09-24): a warm near-black dark theme and a warm
+ * The token names follow shadcn's convention, so the copied components read them unchanged. Every
+ * value is agnostic's own design system (2026-09-24): a warm near-black dark theme and a warm
  * light one, with a value for every name in both so a theme switch is a class and nothing else.
  *
  * This file is the only place the page writes a colour, a radius or a font stack. A component reads

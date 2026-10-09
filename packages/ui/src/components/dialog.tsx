@@ -1,6 +1,6 @@
-// Copied from shadcn/ui `dialog`, MIT (c) shadcn, against @radix-ui/react-dialog rather than the
-// unified radix-ui package, and trimmed to the parts the workspace uses. The frame is the design's:
-// 580 px, radius 12, header and footer on hairlines, and the body the only part that scrolls.
+// From shadcn/ui (MIT © shadcn).
+// The frame is the design's: 580 px, radius 12, header and footer on hairlines, and the body the
+// only part that scrolls.
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ComponentProps } from "react";

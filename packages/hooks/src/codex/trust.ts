@@ -1,13 +1,7 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
+// Codex gates every hook handler on a `trusted_hash` it stores per handler in `config.toml`, and
+// asks the user to approve anything else in `/hooks`.
 import { createHash } from "node:crypto";
-
-/**
- * Codex gates every hook handler on a `trusted_hash` it stores per handler in `config.toml`, and
- * asks the user to approve anything else in `/hooks`. The key format, the snake_case event labels
- * and the hashed shape below are ported from Orca's Codex trust identity
- * (`src/main/codex/codex-hook-identity.ts`, `codex-trust-identity.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 type TrustEntry = {
   label: string;

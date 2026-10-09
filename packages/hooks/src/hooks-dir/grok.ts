@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { HookStatus } from "@agnostic/core";
 import {
   type HookEventParser,
@@ -7,14 +8,6 @@ import {
   payloadString,
 } from "../hook-event-parser.js";
 import { type HooksDirMember, hooksDirInstaller } from "./install.js";
-
-/**
- * Grok's event list and its notification rules are ported from Orca's Grok installer and listener
- * (`src/main/grok/grok-hook-config.ts`, `src/shared/agent-hook-listener/providers/grok-events.ts`,
- * `grok-tool-fields.ts`, `provider-event-names.ts`).
- *
- * MIT License, Copyright (c) Lovecast Inc.
- */
 
 /** Grok reads a tool event's matcher as a regular expression, and `.*` is every tool. */
 const EVERY_TOOL = ".*";
@@ -26,7 +19,7 @@ const QUESTION_TOOL = "ask_user_question";
 const ROUTINE_NOTIFICATION = "tool permission requested";
 
 /**
- * `needs your` is the wording Orca captured from Grok; the rest are the plainer synonyms. Bare
+ * `needs your` is the wording captured from Grok; the rest are the plainer synonyms. Bare
  * `feedback`, `clarify` and `question` are left out: Grok writes all three while it is working.
  */
 const PERMISSION_WORDS = ["permission", "approval", "approve", "allow", "confirm", "needs your"];

@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import type { AgnosticPaths } from "@agnostic/core";
 
 /**
@@ -7,9 +8,6 @@ import type { AgnosticPaths } from "@agnostic/core";
  * the literals baked in here - the harness's environment is frozen when it starts, so a daemon
  * that restarts on another port is still found. The file this text goes into imports
  * `readFileSync` from `node:fs`.
- *
- * The latest-only queue is Orca's (`src/main/pi/agent-status-extension-source.ts`,
- * `src/main/opencode/status-plugin-post-source.ts`). MIT License, Copyright (c) Lovecast Inc.
  */
 export function hookPostSource(paths: AgnosticPaths, route: string): string {
   return `const DAEMON_FILE = ${JSON.stringify(paths.daemon)};

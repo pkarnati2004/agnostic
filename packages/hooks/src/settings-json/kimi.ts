@@ -1,3 +1,4 @@
+// Adapted from stablyai/orca (MIT © Lovecast Inc.).
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { HookInstallResult } from "@agnostic/core";
@@ -12,10 +13,7 @@ import { claudeShapedStatus } from "./claude-shaped-status.js";
 
 /**
  * Kimi Code sends Claude-shaped payloads but keeps its hooks in TOML, so it shares this family's
- * events and status table and nothing else. Ported from Orca's `src/main/kimi/hook-service.ts`,
- * `kimi-hook-config-toml.ts` and `src/shared/agent-hook-listener/providers/kimi-events.ts`.
- *
- * MIT License, Copyright (c) Lovecast Inc.
+ * events and status table and nothing else.
  */
 const EVENTS = [
   "UserPromptSubmit",
