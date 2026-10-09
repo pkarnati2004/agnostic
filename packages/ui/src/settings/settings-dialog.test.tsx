@@ -5,7 +5,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { ApiError } from "../api/error";
 import { TooltipProvider } from "../components/tooltip";
 import { createAppearanceRoot } from "../styles/appearance-root";
-import { click, find, render } from "../test/render";
+import { click, find, render, typeInto } from "../test/render";
 import { stubClient } from "../test/workspace-fixture";
 import { doctorResponse } from "../usage/usage-response.fixture";
 import { SettingsDialog } from "./settings-dialog";
@@ -83,14 +83,8 @@ function nav(label: string): HTMLElement {
   return found;
 }
 
-/** React tracks an input's value, so a plain assignment to it looks like no change at all. */
 function type(label: string, value: string): void {
-  const field = find<HTMLInputElement>(panel(), `input[aria-label="${label}"]`);
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-  act(() => {
-    setter?.call(field, value);
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  typeInto(find<HTMLInputElement>(panel(), `input[aria-label="${label}"]`), value);
 }
 
 /** Radix opens its list from the keyboard; its pointer handlers need a layout happy-dom has not. */

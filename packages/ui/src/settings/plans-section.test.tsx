@@ -45,7 +45,9 @@ it("says where a key is read from and how to add one", () => {
   const { container, unmount } = render(<PlansSection doctor={doctorState({ keys: KEYS })} />);
   const text = container.textContent ?? "";
   expect(text).toContain("Read from the environment agnd was started in.");
-  expect(text).toContain("Export a key in the shell that starts agnd, then agn daemon restart.");
+  expect(text).toContain(
+    "Export the variable where agnd starts, then restart it (agn daemon restart from a terminal).",
+  );
   unmount();
 });
 

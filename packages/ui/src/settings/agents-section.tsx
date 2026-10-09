@@ -1,4 +1,6 @@
 import type { Profile } from "@agnostic/core";
+import { Search } from "lucide-react";
+import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -28,6 +30,8 @@ type AgentsSectionProps = {
 };
 
 export function AgentsSection(props: AgentsSectionProps) {
+  const [query, setQuery] = useState("");
+  const shown = matching(props.profiles, query);
   return (
     <>
       <SettingsGroupHeading
@@ -46,9 +50,10 @@ export function AgentsSection(props: AgentsSectionProps) {
       />
       <SettingsGroupHeading
         title="Profiles"
+        count={query.trim() === "" ? undefined : `${shown.length} of ${props.profiles.length}`}
         description="A profile is a harness, a model and a route. Recommendations choose among these."
       />
-      <ProfilesBox profiles={props.profiles} />
+      <ProfilesBox profiles={shown} query={query} onQuery={setQuery} />
       <PerRepoLine>
         Default profile is set per repo in <span className="type-mono">.ag/agnostic.yaml</span>.
       </PerRepoLine>
@@ -68,35 +73,81 @@ export function AgentsSection(props: AgentsSectionProps) {
   );
 }
 
-/** Read-only: a profile comes from what this machine has, so there is nothing here to edit. */
-function ProfilesBox({ profiles }: { profiles: Profile[] }) {
+type ProfilesBoxProps = {
+  /** Already filtered by the query: the section owns the filter, the box draws the result. */
+  profiles: Profile[];
+  query: string;
+  onQuery: (query: string) => void;
+};
+
+/**
+ * Read-only: a profile comes from what this machine has, so there is nothing here to edit. A
+ * machine with every gateway reachable has hundreds of them, so the rows scroll and the filter
+ * above them is the only way to reach one.
+ */
+function ProfilesBox({ profiles, query, onQuery }: ProfilesBoxProps) {
+  const filtering = query.trim() !== "";
   return (
     <SettingsBox>
-      {profiles.length === 0 && (
-        <SettingsBoxRow>
-          <span className="text-muted-foreground">
-            No profiles yet. Install an agent and run a recheck.
-          </span>
+      {(filtering || profiles.length > 0) && (
+        <SettingsBoxRow muted>
+          <Search aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(change) => onQuery(change.target.value)}
+            placeholder="Filter profiles"
+            aria-label="Filter profiles"
+            className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+          />
         </SettingsBoxRow>
       )}
-      {profiles.map((profile) => {
-        const billing = billingLabel(profile.billing);
-        return (
-          <SettingsBoxRow key={profile.id}>
-            <HarnessMark harness={profile.harness} />
-            <span className="min-w-0 flex-1 truncate type-mono">
-              {`${profile.harness} · ${profile.model ?? "default"}`}
-            </span>
-            <span className="rounded border border-border px-1.5 py-0.5 text-muted-foreground type-mono">
-              {profile.route}
-            </span>
-            {billing !== null && (
-              <span className="shrink-0 text-muted-foreground type-meta">{billing}</span>
-            )}
-          </SettingsBoxRow>
-        );
-      })}
+      {profiles.length === 0 ? (
+        <SettingsBoxRow>
+          <span className="text-muted-foreground">
+            {filtering
+              ? "No profiles match"
+              : "No profiles yet. Install an agent and run a recheck."}
+          </span>
+        </SettingsBoxRow>
+      ) : (
+        <div data-profile-rows className="max-h-80 overflow-y-auto">
+          {profiles.map((profile) => (
+            <ProfileRow key={profile.id} profile={profile} />
+          ))}
+        </div>
+      )}
     </SettingsBox>
+  );
+}
+
+function ProfileRow({ profile }: { profile: Profile }) {
+  const billing = billingLabel(profile.billing);
+  return (
+    <SettingsBoxRow>
+      <HarnessMark harness={profile.harness} />
+      <span className="min-w-0 flex-1 truncate type-mono">
+        {`${profile.harness} · ${profile.model ?? "default"}`}
+      </span>
+      <span className="rounded border border-border px-1.5 py-0.5 text-muted-foreground type-mono">
+        {profile.route}
+      </span>
+      {billing !== null && (
+        <span className="shrink-0 text-muted-foreground type-meta">{billing}</span>
+      )}
+    </SettingsBoxRow>
+  );
+}
+
+/** One substring against what a row shows plus the id, so typing what you can see narrows the list. */
+function matching(profiles: Profile[], query: string): Profile[] {
+  const needle = query.trim().toLowerCase();
+  if (needle === "") {
+    return profiles;
+  }
+  return profiles.filter((profile) =>
+    [profile.id, profile.harness, profile.model ?? "", profile.route].some((field) =>
+      field.toLowerCase().includes(needle),
+    ),
   );
 }
 

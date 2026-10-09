@@ -25,14 +25,20 @@ export function SettingsRow({ label, description, children }: SettingsRowProps) 
 /** A heading over a group of rows, with the sentence that says what the group is for. */
 export function SettingsGroupHeading({
   title,
+  count,
   description,
 }: {
   title: string;
+  /** How many of the group's rows are on screen, when a filter hides the rest. */
+  count?: string;
   description?: ReactNode;
 }) {
   return (
     <div className="mt-7 flex flex-col gap-1">
-      <span className="font-semibold text-[13.5px]">{title}</span>
+      <span className="flex items-baseline gap-2">
+        <span className="font-semibold text-[13.5px]">{title}</span>
+        {count !== undefined && <span className="text-muted-foreground type-meta">{count}</span>}
+      </span>
       {description !== undefined && (
         <span className="text-muted-foreground type-meta">{description}</span>
       )}

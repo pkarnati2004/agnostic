@@ -195,7 +195,9 @@ reads "Not on PATH" for one this machine does not have.
 
 "Profiles" lists every profile `agn profiles` would print: the agent, the model, the route it
 reaches the model through, and what it costs. The list is read-only; a profile is what this machine
-can run, not something to write down.
+can run, not something to write down. A machine that reaches several gateways has hundreds of
+profiles, so the list scrolls, and "Filter profiles" narrows it by agent, model, route or id. The
+heading counts how many of them the filter leaves.
 
 "Spec writer" is the profile that writes the spec and the acceptance list when "Write the spec
 first" is on. Left at "Cheapest covered model", agn picks the cheapest profile the catalog covers.
@@ -207,8 +209,8 @@ same detection `agn doctor --plan` does, so the bar follows within a moment.
 
 "API keys" lists every environment variable an agent or a gateway reads. Each row says "Set in
 environment" or "Not set" and nothing else: agn reads the variable in the environment `agnd` was
-started in and reports whether it has a value, never the value itself. To add a key, export it in
-the shell that starts `agnd` and run `agn daemon restart`.
+started in and reports whether it has a value, never the value itself. To add a key, export the
+variable where `agnd` starts, then restart it (`agn daemon restart` from a terminal).
 
 ### Recommendations
 

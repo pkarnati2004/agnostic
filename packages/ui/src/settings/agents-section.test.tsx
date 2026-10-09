@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { expect, it, vi } from "vitest";
-import { chooseOption, click, find, openSelect, render } from "../test/render";
+import { chooseOption, click, find, openSelect, render, typeInto } from "../test/render";
 import { AgentsSection } from "./agents-section";
 import { doctorState, harnessReport, profile } from "./doctor-fixture";
 
@@ -23,12 +23,23 @@ const PROFILES = [
   }),
 ];
 
-function section() {
+/** Three profiles across three harnesses, so a filter has something to leave out. */
+const MANY = [
+  ...PROFILES,
+  profile({
+    id: "codex:gpt-5.3-codex:native",
+    harness: "codex",
+    model: "gpt-5.3-codex",
+    route: "native",
+  }),
+];
+
+function section(profiles = PROFILES) {
   const onSpecWriter = vi.fn();
   const view = render(
     <AgentsSection
       doctor={doctorState({ harnesses: HARNESSES, detectedAt: new Date().toISOString() })}
-      profiles={PROFILES}
+      profiles={profiles}
       specWriter={null}
       onSpecWriter={onSpecWriter}
     />,
@@ -64,6 +75,59 @@ it("draws the profiles read-only: the box has no button in it", () => {
   expect([...container.querySelectorAll("button")].map((b) => b.textContent)).not.toContain(
     "Add profile",
   );
+  unmount();
+});
+
+function profileRows(container: HTMLElement): string[] {
+  const rows = find(container, "[data-profile-rows]").children;
+  return [...rows].map((row) => row.textContent ?? "");
+}
+
+function filter(container: HTMLElement, value: string): void {
+  typeInto(find<HTMLInputElement>(container, 'input[aria-label="Filter profiles"]'), value);
+}
+
+it("narrows the profiles to the filter, and counts what it left", () => {
+  const { container, unmount } = section(MANY);
+  filter(container, "openrouter");
+  expect(profileRows(container)).toHaveLength(1);
+  expect(profileRows(container)[0]).toContain("opencode · kimi-k2.6");
+  expect(container.textContent).toContain("1 of 3");
+  unmount();
+});
+
+it("matches an id, a harness, a model or a route, whatever the case", () => {
+  const { container, unmount } = section(MANY);
+  filter(container, "CODEX");
+  expect(profileRows(container)).toHaveLength(1);
+  filter(container, "native");
+  expect(profileRows(container)).toHaveLength(2);
+  unmount();
+});
+
+it("restores every profile when the filter is cleared, and drops the count", () => {
+  const { container, unmount } = section(MANY);
+  filter(container, "codex");
+  filter(container, "");
+  expect(profileRows(container)).toHaveLength(3);
+  // The count that would read "3 of 3" is gone, not stuck on screen.
+  expect(container.textContent).not.toContain("3 of 3");
+  unmount();
+});
+
+it("says so when the filter matches nothing", () => {
+  const { container, unmount } = section(MANY);
+  filter(container, "mistral");
+  expect(container.textContent).toContain("No profiles match");
+  expect(container.textContent).toContain("0 of 3");
+  unmount();
+});
+
+it("scrolls the rows rather than growing the box past 320px", () => {
+  const { container, unmount } = section();
+  const scroller = find(container, "[data-profile-rows]");
+  expect(scroller.className).toContain("max-h-80");
+  expect(scroller.className).toContain("overflow-y-auto");
   unmount();
 });
 

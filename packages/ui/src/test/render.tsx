@@ -33,6 +33,15 @@ export function click(element: Element): void {
   });
 }
 
+/** React tracks an input's value, so a plain assignment to it looks like no change at all. */
+export function typeInto(field: HTMLInputElement, value: string): void {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  act(() => {
+    setter?.call(field, value);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
 /** The one element matching, because a test that found none would fail on a null later. */
 export function find<T extends Element>(container: HTMLElement, selector: string): T {
   const element = container.querySelector<T>(selector);

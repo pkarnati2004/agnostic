@@ -45,8 +45,8 @@ export function PlansSection({ doctor }: { doctor: DoctorState }) {
       />
       <KeysBox keys={report?.keys ?? null} />
       <p className="mt-2.5 text-[12px] text-muted-foreground">
-        Export a key in the shell that starts agnd, then{" "}
-        <span className="type-mono">agn daemon restart</span>.
+        Export the variable where agnd starts, then restart it (
+        <span className="type-mono">agn daemon restart</span> from a terminal).
       </p>
     </>
   );
