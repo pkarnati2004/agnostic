@@ -69,7 +69,7 @@ const statusByCode: Record<string, number> = {
   "editor-failed": 409,
   // The machine has spent its ceiling for the window: the moment, not the request (ADR 036 Q9).
   "budget-exceeded": 409,
-  // A folder workspace has no git to read a diff from; `git init` is what changes that (ADR 001).
+  // A folder repo has no git to read a diff from; `git init` is what changes that (ADR 001).
   "repo-not-git": 409,
   // The repo has no origin, or one agn cannot open a pull request against: the repo's state.
   "remote-missing": 409,

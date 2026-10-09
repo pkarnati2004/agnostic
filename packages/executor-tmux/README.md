@@ -3,7 +3,7 @@
 The one `ExecutorProvider` (`tmux-local`): it gives a task a place to run and a way back to it.
 
 - `prepare` makes a git worktree from a base commit on branch `agn/<slug>-<task>` and runs the
-  repo's `setup_command` in it. A folder workspace runs in place, with no branch and no git call.
+  repo's `setup_command` in it. A folder repo runs in place, with no branch and no git call.
 - `launch` starts the command it is given as the pane process of a tmux session `agn-<task>` on
   agn's own socket, so a plain `tmux ls` or `tmux kill-server` never sees or ends an agent.
 - Exit is reported without scraping the terminal: `remain-on-exit` plus a `pane-died` hook writes

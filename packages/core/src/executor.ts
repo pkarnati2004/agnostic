@@ -3,7 +3,7 @@ import type { Repo } from "./repo.js";
 import type { Task } from "./task.js";
 
 /**
- * Where the harness will run, the branch it works on (null for a folder workspace), and the commit
+ * Where the harness will run, the branch it works on (null for a folder repo), and the commit
  * that branch started from - the only honest base for "what did the agent change" once the branch
  * has been merged. Null when an existing worktree or branch was reused, which the ledger keeps.
  */

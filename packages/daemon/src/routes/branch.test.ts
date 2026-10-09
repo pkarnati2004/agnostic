@@ -199,7 +199,7 @@ describe("POST /tasks/:id/pr", () => {
     expect(await pushes()).toEqual([]);
   });
 
-  it("refuses a folder workspace", async () => {
+  it("refuses a folder repo", async () => {
     const folder = await repoWithConfig(daemon, { git: false });
     const inPlace = await startTask(daemon, folder);
     expect((await refused(await post({}, inPlace.id), 409)).code).toBe("repo-not-git");

@@ -206,7 +206,7 @@ describe("POST /repos/:id/adopt", () => {
     expect(outcome?.humanEditRatio).toBeNull();
   });
 
-  it("holds a folder workspace the way a launched task does", async () => {
+  it("holds a folder repo the way a launched task does", async () => {
     const repo = await daemon.addRepo({ git: false });
     const pid = await agents.outsideTmux(join(repo.path, "sub"));
     await agents.waitForCount(repo, repo.path, 1);

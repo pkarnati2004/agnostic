@@ -55,13 +55,13 @@ function runRequest(req: StartCompareRequest, title: string, profile: string): R
   };
 }
 
-/** A folder workspace has one working tree, so its agents would be editing each other's files. */
+/** A folder repo has one working tree, so its agents would be editing each other's files. */
 function assertGit(repo: Repo): void {
   if (repo.kind !== "folder") {
     return;
   }
   throw new DaemonError(
-    `a compare runs one worktree per agent; ${repo.name} is a folder workspace with one working tree`,
+    `a compare runs one worktree per agent; ${repo.name} is a folder repo with one working tree`,
     {
       code: "repo-not-git",
       hint: `Run \`git init\` in ${repo.path}, or \`agn add ${repo.path} --git-init\`.`,

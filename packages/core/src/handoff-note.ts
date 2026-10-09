@@ -62,7 +62,7 @@ function filesTouched(written: string | null, changes: FileChanges): string {
 
 function fromGit(changes: FileChanges): string {
   if (changes.kind === "folder") {
-    return "not tracked (folder workspace)";
+    return "not tracked (folder repo)";
   }
   const blocks = [changes.committed.join("\n")];
   if (changes.uncommitted.length > 0) {

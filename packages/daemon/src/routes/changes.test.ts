@@ -176,7 +176,7 @@ describe("GET /tasks/:id/changes", () => {
     expect((await failure(response)).code).toBe("branch-gone");
   });
 
-  it("says a folder workspace has no git to read", async () => {
+  it("says a folder repo has no git to read", async () => {
     const folder = await repoWithConfig(daemon, { git: false });
     const queued = daemon.ledger.tasks.insert({
       ...seedRow(folder.id),

@@ -22,7 +22,7 @@ import { titleFromPrompt } from "./task-title.js";
 
 /**
  * The task id the headless run carries. The hook script sends it as the task header, the receiver
- * finds no such task and answers 404: without it a spec written in a folder workspace's directory
+ * finds no such task and answers 404: without it a spec written in a folder repo's directory
  * would be matched to whatever task is live there and rewrite its session.
  */
 export const SPEC_WRITER_TASK_HEADER = "spec-writer";

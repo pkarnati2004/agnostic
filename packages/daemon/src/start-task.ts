@@ -118,7 +118,7 @@ async function recommendFor(
   }
 }
 
-/** `git init` in a folder workspace takes effect on the next run, so the kind is read again here. */
+/** `git init` in a folder repo takes effect on the next run, so the kind is read again here. */
 export async function withCurrentKind(ctx: DaemonContext, repo: Repo): Promise<Repo> {
   const kind = await detectRepoKind(repo.path);
   return kind === repo.kind ? repo : ctx.ledger.repos.update(repo.id, { kind });

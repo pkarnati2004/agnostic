@@ -13,7 +13,7 @@ export type TaskDir = { dir: string; where: "worktree" | "checkout" };
  */
 export async function taskDir(ctx: DaemonContext, repo: Repo, task: Task): Promise<TaskDir> {
   if (repo.kind === "folder") {
-    throw new DaemonError(`${repo.name} is a folder workspace, so it has no changes to read`, {
+    throw new DaemonError(`${repo.name} is a folder repo, so it has no changes to read`, {
       code: "repo-not-git",
       hint: `Run \`git init\` in ${repo.path}, or \`agn add ${repo.path} --git-init\`.`,
     });

@@ -726,16 +726,16 @@ grep -q "names claude-code twice" "$WORK/compare-dup.txt"
 agx stop "$T1" | grep -q "^stopped $T1"
 agx clean "$T1" --force | grep -q "^cleaned $T1"
 
-# A folder workspace has one working tree, so it has nowhere to run a second agent.
+# A folder repo has one working tree, so it has nowhere to run a second agent.
 ! agx compare "compare smoke" --profiles claude-code,codex --repo "$WORK/runfolder" \
   2> "$WORK/compare-folder.txt"
-grep -q "folder workspace" "$WORK/compare-folder.txt"
+grep -q "folder repo" "$WORK/compare-folder.txt"
 
 agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"
 grep -q "^in place: " "$WORK/folder.txt"
 FOLDER_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/folder.txt")"
-if agx run "second folder task" --profile claude-code --repo "$WORK/runfolder" 2> "$WORK/folder-error.txt"; then echo "smoke: a second task started in a folder workspace" >&2; exit 1; fi
-grep -q "folder workspaces run one task at a time" "$WORK/folder-error.txt"
+if agx run "second folder task" --profile claude-code --repo "$WORK/runfolder" 2> "$WORK/folder-error.txt"; then echo "smoke: a second task started in a folder repo" >&2; exit 1; fi
+grep -q "folder repos run one task at a time" "$WORK/folder-error.txt"
 agx stop "$FOLDER_TASK" | grep -q "^stopped"
 # A folder task has no branch of agn's, so it has no lines and no verdict to report.
 agx outcomes "$FOLDER_TASK" | grep -q "^agent lines: *-$"

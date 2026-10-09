@@ -126,8 +126,8 @@ describe("ChangesPanel", () => {
     unmount();
   });
 
-  it("says how to make a folder workspace a git one", async () => {
-    const refused = new ApiError("petal is a folder workspace, so it has no changes to read", {
+  it("says how to make a folder repo a git one", async () => {
+    const refused = new ApiError("petal is a folder repo, so it has no changes to read", {
       code: "repo-not-git",
       hint: "Run `git init` in /repos/petal, or `agn add /repos/petal --git-init`.",
       status: 409,

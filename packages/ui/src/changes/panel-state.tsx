@@ -34,7 +34,7 @@ export function LoadingPatch() {
   return <PanelLine>Loading the patch…</PanelLine>;
 }
 
-/** A folder workspace has no git to read; the daemon's hint says how to give it one. */
+/** A folder repo has no git to read; the daemon's hint says how to give it one. */
 export function FolderLine({ error }: { error: ApiError }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-2.5 p-6 text-center">

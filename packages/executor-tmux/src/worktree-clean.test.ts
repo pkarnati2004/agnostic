@@ -100,7 +100,7 @@ describe("cleanWorktree", () => {
     );
   });
 
-  it("is a no-op for a folder workspace, with no git call", async () => {
+  it("is a no-op for a folder repo, with no git call", async () => {
     const repo = await createFolderRepo();
     const { entries } = await processesDuring(() =>
       cleanWorktree(paths, { task: testTask(repo), repo, deleteBranch: true }),

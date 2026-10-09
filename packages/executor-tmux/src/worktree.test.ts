@@ -209,7 +209,7 @@ describe("prepareWorktree", () => {
     });
   });
 
-  it("runs in place for a folder workspace, with no branch and no git call", async () => {
+  it("runs in place for a folder repo, with no branch and no git call", async () => {
     const repo = await createFolderRepo();
     const { result: prepared, entries } = await processesDuring(() =>
       prepareWorktree(paths, prepareInput(repo, testTask(repo))),
