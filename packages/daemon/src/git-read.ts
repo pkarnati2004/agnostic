@@ -33,3 +33,8 @@ export async function gitResult(
 export function gitLines(stdout: string | null): string[] {
   return (stdout ?? "").split("\n").filter((line) => line.trim() !== "");
 }
+
+/** The URL of the repo's `origin` remote, or null when it has none. */
+export async function originUrl(cwd: string): Promise<string | null> {
+  return gitLines(await gitStdout(cwd, ["remote", "get-url", "origin"]))[0] ?? null;
+}

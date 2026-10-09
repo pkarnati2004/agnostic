@@ -3,6 +3,7 @@ import {
   type CompareChanges,
   type CompareResponse,
   type CompareTaskRow,
+  errorMessage,
   isDirectory,
   type Repo,
   type Task,
@@ -72,7 +73,7 @@ export function compareSiblings(
 async function compareRow(ctx: DaemonContext, repo: Repo, task: Task): Promise<CompareTaskRow> {
   // A branch merged a minute ago reads as accepted here, as it does on the outcome route.
   await refreshVerdict(ctx, task).catch((cause: unknown) => {
-    ctx.log.error("verdict not rechecked", { taskId: task.id, message: reason(cause) });
+    ctx.log.error("verdict not rechecked", { taskId: task.id, message: errorMessage(cause) });
   });
   return {
     ...task,
@@ -140,8 +141,4 @@ function isCleaned(ledger: Ledger, row: PickCandidate): boolean {
     return false;
   }
   return ledger.events.forTask(row.id).some((event) => event.kind === "task.cleaned");
-}
-
-function reason(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

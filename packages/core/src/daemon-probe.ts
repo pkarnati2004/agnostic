@@ -33,11 +33,13 @@ export async function readDaemonInfo(
   try {
     text = await readFile(paths.daemon, "utf8");
   } catch {
+    // No file is a daemon that has never run here; the caller probes the port anyway.
     return null;
   }
   try {
     return DaemonInfoSchema.parse(JSON.parse(text));
   } catch {
+    // A half-written or foreign file says nothing about the daemon: the probe decides.
     return null;
   }
 }
@@ -105,6 +107,7 @@ async function readHealth(port: number, timeoutMs: number): Promise<HealthRespon
     }
     return HealthResponseSchema.parse(await response.json());
   } catch {
+    // Refused, timed out, or answered with something else: nothing is listening as agnd.
     return null;
   }
 }

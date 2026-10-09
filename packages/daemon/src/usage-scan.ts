@@ -1,7 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
 import type { Catalog } from "@agnostic/catalog";
-import { type Billing, type Profile, parseProfileId, type Task } from "@agnostic/core";
+import { type Billing, isClosed, type Profile, parseProfileId, type Task } from "@agnostic/core";
 import type { UsageInput } from "@agnostic/ledger";
 import { harnesses } from "@agnostic/registry";
 import {
@@ -31,8 +31,6 @@ type ScanDeps = Pick<DaemonContext, "ledger" | "detection" | "catalog" | "env" |
  * agn has not already recorded.
  */
 const FLOOR_DAYS = 14;
-
-const TERMINAL = new Set(["done", "failed", "stopped"]);
 
 /**
  * The one thing that reads the user's transcript directories. It runs when usage is asked for and
@@ -142,7 +140,7 @@ async function sessionOwners(tasks: Task[]): Promise<SessionOwner[]> {
       cwd: await realpath(task.session.cwd).catch(() => task.session?.cwd ?? ""),
       startedAt: task.createdAt,
       // A closed task stopped spending when it settled; a live one is still spending now.
-      endedAt: TERMINAL.has(task.status) ? task.updatedAt : null,
+      endedAt: isClosed(task.status) ? task.updatedAt : null,
     });
   }
   return owners;

@@ -1,8 +1,6 @@
-import type { AskCommitResponse, TaskListRow, TaskStatus } from "@agnostic/core";
+import type { AskCommitResponse, TaskListRow } from "@agnostic/core";
+import { isClosed, isLive } from "@agnostic/core/browser";
 import { worktreeGone } from "../task/worktree-gone";
-
-const LIVE: TaskStatus[] = ["running", "waiting"];
-const RESUMABLE: TaskStatus[] = ["done", "failed", "stopped"];
 
 /** What the panel says once the daemon has answered: where the prompt went, and what to do next. */
 export function commitLine(response: AskCommitResponse): string {
@@ -23,5 +21,5 @@ export function canAskCommit(task: TaskListRow, uncommitted: number | null): boo
   if (uncommitted === null || uncommitted === 0) {
     return false;
   }
-  return LIVE.includes(task.status) || RESUMABLE.includes(task.status);
+  return isLive(task.status) || isClosed(task.status);
 }

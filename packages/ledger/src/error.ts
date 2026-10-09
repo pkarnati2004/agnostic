@@ -1,4 +1,4 @@
-import { CoreError, type CoreErrorOptions } from "@agnostic/core";
+import { CoreError, type CoreErrorOptions, errorMessage } from "@agnostic/core";
 
 export class LedgerError extends CoreError {
   constructor(message: string, opts: CoreErrorOptions) {
@@ -31,7 +31,7 @@ export function writeFailure(
   if (known) {
     return known();
   }
-  return new LedgerError(`the ledger refused a write: ${message(cause)}`, {
+  return new LedgerError(`the ledger refused a write: ${errorMessage(cause)}`, {
     code: "ledger-sqlite",
     hint: "This is a database fault, not a conflict. Check ~/.agnostic/agnostic.db is readable.",
     cause,
@@ -51,8 +51,4 @@ function constraintFailure(cause: unknown): ConstraintFailure | null {
     return null;
   }
   return constraintCodes[cause.code] ?? null;
-}
-
-function message(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

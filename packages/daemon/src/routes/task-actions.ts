@@ -6,6 +6,7 @@ import {
   HandoffTaskRequestSchema,
   type HandoffTaskResponse,
   isDirectory,
+  isLive,
   type Repo,
   type ResumeTaskResponse,
   type Task,
@@ -82,7 +83,7 @@ async function clean(
   task: Task,
   opts: { deleteBranch: boolean; force: boolean },
 ): Promise<CleanTaskResponse> {
-  if (task.status === "running" || task.status === "waiting") {
+  if (isLive(task.status)) {
     throw new DaemonError(`task ${task.id} is still ${task.status}`, {
       code: "task-active",
       hint: `Run \`agn stop ${task.id}\` first.`,

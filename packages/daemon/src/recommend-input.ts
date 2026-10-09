@@ -1,5 +1,5 @@
 import type { HarnessId, Plans, Repo, TaskIntent } from "@agnostic/core";
-import { readPreferences, readRepoConfig } from "@agnostic/core";
+import { LIVE_STATUSES, readPreferences, readRepoConfig } from "@agnostic/core";
 import type { HistoryRow, RecommendInput } from "@agnostic/recommender";
 import type { DaemonContext } from "./app.js";
 import { readDaemonConfig } from "./daemon-config.js";
@@ -45,7 +45,7 @@ export async function buildRecommendInput(
     defaultProfileId: config?.defaultProfileId ?? null,
     // A task that is running or waiting still holds this repo's context in its own session.
     activeProfileIds: ctx.ledger.tasks
-      .list({ repoId: repo.id, status: ["running", "waiting"] })
+      .list({ repoId: repo.id, status: LIVE_STATUSES })
       .map((task) => task.profileId),
     history: historyRows(ctx, repo.id),
     intent: opts.intent ?? null,

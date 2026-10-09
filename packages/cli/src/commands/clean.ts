@@ -1,5 +1,5 @@
 import type { ApiErrorBody, CleanTaskRequest, CleanTaskResponse, Task } from "@agnostic/core";
-import { DaemonApiError, type DaemonClient } from "@agnostic/core";
+import { CLOSED_STATUSES, DaemonApiError, type DaemonClient } from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
 import { renderError } from "../render-error.js";
@@ -10,8 +10,6 @@ type CleanFlags = { deleteBranch?: boolean; force?: boolean };
 type CleanResult =
   | { kind: "cleaned"; response: CleanTaskResponse }
   | { kind: "kept"; task: Task; error: DaemonApiError };
-
-const CLOSED = ["done", "failed", "stopped"] as const;
 
 export function cleanCommand(ctx: CliContext): Command {
   return new Command("clean")
@@ -91,6 +89,6 @@ function jsonBody(result: CleanResult): CleanTaskResponse | ApiErrorBody {
 }
 
 async function closedTasks(client: DaemonClient): Promise<Task[]> {
-  const { tasks } = await client.listAllTasks({ status: [...CLOSED] });
+  const { tasks } = await client.listAllTasks({ status: [...CLOSED_STATUSES] });
   return tasks;
 }

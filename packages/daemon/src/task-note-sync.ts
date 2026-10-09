@@ -1,4 +1,4 @@
-import { readTaskNote, type Task, writeTaskNote } from "@agnostic/core";
+import { errorMessage, readTaskNote, type Task, writeTaskNote } from "@agnostic/core";
 import type { Logger } from "./log.js";
 
 /**
@@ -16,7 +16,7 @@ export async function syncTaskNote(repoPath: string, task: Task, log: Logger): P
   } catch (cause) {
     log.error("task note not updated", {
       taskId: task.id,
-      message: cause instanceof Error ? cause.message : String(cause),
+      message: errorMessage(cause),
     });
   }
 }

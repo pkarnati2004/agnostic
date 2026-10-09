@@ -1,5 +1,6 @@
 import {
   composeHandoffBody,
+  errorMessage,
   type HandoffTaskRequest,
   type HandoffTaskResponse,
   newId,
@@ -125,7 +126,7 @@ async function appendHandoff(
   } catch (cause) {
     ctx.log.error("handoff note not written", {
       taskId: from.id,
-      message: cause instanceof Error ? cause.message : String(cause),
+      message: errorMessage(cause),
     });
   }
 }

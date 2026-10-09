@@ -1,7 +1,11 @@
 import {
   type ExecutorProvider,
+  errorMessage,
+  isClosed,
   isDirectory,
+  isLive,
   isProcessAlive,
+  LIVE_STATUSES,
   type Repo,
   type SessionEvent,
   sessionHandle,
@@ -39,9 +43,6 @@ export type TaskLifecycle = {
   failQueued(): Promise<void>;
 };
 
-const LIVE: TaskStatus[] = ["running", "waiting"];
-const TERMINAL: TaskStatus[] = ["done", "failed", "stopped"];
-
 /**
  * ADR 014: exit code 0 is done, any other code failed, a signal or a vanished server stopped, and
  * a terminal status never changes again. Liveness is reconciled on demand - at start, before a
@@ -63,7 +64,7 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
     const work: Promise<void> = deps
       .afterClose(task)
       .catch((cause: unknown) => {
-        log.error("outcome not recorded", { taskId: task.id, message: reason(cause) });
+        log.error("outcome not recorded", { taskId: task.id, message: errorMessage(cause) });
       })
       .finally(() => {
         if (closing.get(task.id) === work) {
@@ -74,11 +75,11 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
   };
 
   const settle = async (task: Task, to: TaskStatus, defer = false): Promise<Task> => {
-    if (!LIVE.includes(task.status)) {
+    if (!isLive(task.status)) {
       return task;
     }
     const updated = ledger.tasks.setStatus(task.id, to);
-    if (!TERMINAL.includes(to)) {
+    if (!isClosed(to)) {
       return updated;
     }
     const repo = ledger.repos.get(task.repoId);
@@ -106,7 +107,7 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
   };
 
   const reconcile = async (task: Task): Promise<Task> => {
-    if (!LIVE.includes(task.status)) {
+    if (!isLive(task.status)) {
       return task;
     }
     const handle = sessionHandle(task);
@@ -127,12 +128,12 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
     onExited(event) {
       // The executor emits from a file watcher; it has no caller to hand a rejection back to.
       recordExit(ledger, settle, event).catch((cause: unknown) => {
-        log.error("exit not recorded", { taskId: event.taskId, message: reason(cause) });
+        log.error("exit not recorded", { taskId: event.taskId, message: errorMessage(cause) });
       });
     },
 
     async stop(task) {
-      if (!LIVE.includes(task.status)) {
+      if (!isLive(task.status)) {
         return task;
       }
       // Stopped is written first, so the exit event that follows finds a terminal task and no
@@ -185,15 +186,15 @@ export function createTaskLifecycle(deps: LifecycleDeps): TaskLifecycle {
         }
         await syncTaskNote(repo.path, failed, log);
         await release(failed, repo).catch((cause: unknown) => {
-          log.error("worktree not removed", { taskId: task.id, message: reason(cause) });
+          log.error("worktree not removed", { taskId: task.id, message: errorMessage(cause) });
         });
       }
     },
 
     async reconcileAll() {
-      for (const task of ledger.tasks.list({ status: LIVE })) {
+      for (const task of ledger.tasks.list({ status: LIVE_STATUSES })) {
         await reconcile(task).catch((cause: unknown) => {
-          log.error("liveness not checked", { taskId: task.id, message: reason(cause) });
+          log.error("liveness not checked", { taskId: task.id, message: errorMessage(cause) });
         });
       }
     },
@@ -222,8 +223,4 @@ function statusFor(exitCode: number | null): TaskStatus {
     return "stopped";
   }
   return exitCode === 0 ? "done" : "failed";
-}
-
-function reason(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

@@ -1,5 +1,10 @@
 import { join } from "node:path";
-import { type CreatePrResponse, type DaemonClient, launchDetached } from "@agnostic/core";
+import {
+  type CreatePrResponse,
+  type DaemonClient,
+  errorMessage,
+  launchDetached,
+} from "@agnostic/core";
 import { Command } from "commander";
 import { copyToClipboard } from "../clipboard.js";
 import { type CliContext, writeJson } from "../context.js";
@@ -92,13 +97,9 @@ async function openUrl(ctx: CliContext, platform: NodeJS.Platform, url: string):
       logFile: join(ctx.paths.logs, PR_LOG),
     });
   } catch (cause) {
-    throw new CliError(`could not open ${url}: ${reason(cause)}`, {
+    throw new CliError(`could not open ${url}: ${errorMessage(cause)}`, {
       code: "browser-open-failed",
       hint: "Open the printed address yourself, or pass --no-open.",
     });
   }
-}
-
-function reason(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

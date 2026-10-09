@@ -1,4 +1,5 @@
-import type { RepoListRow, TaskListRow, TaskStatus } from "@agnostic/core";
+import type { RepoListRow, TaskListRow } from "@agnostic/core";
+import { isClosed, isLive } from "@agnostic/core/browser";
 import {
   Archive,
   ArrowRightLeft,
@@ -51,9 +52,6 @@ export type PaletteHandlers = {
   addRepo(): void;
   sync(repoId: string): void;
 };
-
-const STOPPABLE: TaskStatus[] = ["running", "waiting"];
-const RESUMABLE: TaskStatus[] = ["done", "failed", "stopped"];
 
 /** The icon each row carries, by row id: the same glyph the button it stands for uses. */
 const ICONS = {
@@ -130,10 +128,10 @@ function taskCommands(
   const rows: PaletteCommand[] = [];
   const offer = (id: RowId, label: string, hint: string | null, run: () => void) =>
     rows.push(row("task", id, label, hint, run));
-  if (STOPPABLE.includes(task.status)) {
+  if (isLive(task.status)) {
     offer("stop", `Stop ${task.title}`, where, () => on.stop(task.id));
   }
-  if (RESUMABLE.includes(task.status)) {
+  if (isClosed(task.status)) {
     offer("resume", `Resume ${task.title}`, where, () => on.resume(task.id));
   }
   if (!worktreeGone(task)) {

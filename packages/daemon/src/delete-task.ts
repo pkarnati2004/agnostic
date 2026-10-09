@@ -1,5 +1,6 @@
 import {
   type DeleteTaskResponse,
+  errorMessage,
   isDirectory,
   type Repo,
   type Task,
@@ -40,15 +41,14 @@ async function removeWorktree(ctx: DaemonContext, repo: Repo, task: Task): Promi
   try {
     await ctx.executor.clean({ task, repo, deleteBranch: false });
   } catch (cause) {
-    throw new DaemonError(`the worktree for task ${task.id} was not removed: ${message(cause)}`, {
-      code: "worktree-remove-failed",
-      hint: `Remove ${task.worktreePath} by hand, then run \`agn task delete ${task.id}\` again.`,
-      cause,
-    });
+    throw new DaemonError(
+      `the worktree for task ${task.id} was not removed: ${errorMessage(cause)}`,
+      {
+        code: "worktree-remove-failed",
+        hint: `Remove ${task.worktreePath} by hand, then run \`agn task delete ${task.id}\` again.`,
+        cause,
+      },
+    );
   }
   return true;
-}
-
-function message(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

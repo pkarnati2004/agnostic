@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { fileURLToPath } from "node:url";
-import { CoreError } from "@agnostic/core";
+import { CoreError, errorMessage } from "@agnostic/core";
 import { DaemonError } from "./error.js";
 import { daemonStatus, restartDaemon, startDaemon, stopDaemon } from "./lifecycle.js";
 import { runDaemon } from "./server.js";
@@ -102,7 +102,7 @@ function parseFlags(args: string[]): Flags {
 }
 
 const code = await main(process.argv.slice(2)).catch((cause: unknown) => {
-  const message = cause instanceof Error ? cause.message : String(cause);
+  const message = errorMessage(cause);
   const hint = cause instanceof CoreError && cause.hint !== undefined ? `\n${cause.hint}` : "";
   process.stderr.write(`agnd: ${message}${hint}\n`);
   return 1;

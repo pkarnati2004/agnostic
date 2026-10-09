@@ -1,4 +1,10 @@
-import { isDirectory, type PickCompareResponse, type Repo, type Task } from "@agnostic/core";
+import {
+  isDirectory,
+  isLive,
+  type PickCompareResponse,
+  type Repo,
+  type Task,
+} from "@agnostic/core";
 import type { DaemonContext } from "./app.js";
 import { compareSiblings } from "./compare-read.js";
 import { DaemonError } from "./error.js";
@@ -32,7 +38,7 @@ export async function pickCompare(
  */
 async function release(ctx: DaemonContext, repo: Repo, task: Task): Promise<Task> {
   const live = await ctx.lifecycle.reconcile(task);
-  if (live.status === "running" || live.status === "waiting") {
+  if (isLive(live.status)) {
     await ctx.lifecycle.stop(live);
   }
   // The close work reads the worktree this is about to remove, so it finishes first.

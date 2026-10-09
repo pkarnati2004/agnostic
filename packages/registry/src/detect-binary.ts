@@ -41,6 +41,7 @@ async function isExecutableFile(path: string): Promise<boolean> {
     await access(path, constants.X_OK);
     return true;
   } catch {
+    // A path agn cannot stat or execute is not a harness binary, whatever the reason.
     return false;
   }
 }

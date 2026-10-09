@@ -1,6 +1,7 @@
 import {
   type EditorId,
   EditorIdSchema,
+  errorMessage,
   launchDetached,
   type OpenTaskResponse,
   taskLogPath,
@@ -57,7 +58,7 @@ async function launch(ctx: CliContext, response: OpenTaskResponse): Promise<void
   try {
     await launchDetached(ctx.spawn, response.argv, { env: ctx.env, logFile: log });
   } catch (cause) {
-    throw failed(response, cause instanceof Error ? cause.message : String(cause), log);
+    throw failed(response, errorMessage(cause), log);
   }
 }
 

@@ -1,4 +1,4 @@
-import { ProcessError } from "./error.js";
+import { errorMessage, ProcessError } from "./error.js";
 import type { spawn } from "./process.js";
 
 /**
@@ -63,5 +63,5 @@ function reason(cause: unknown): string {
   if (cause instanceof ProcessError && cause.stderr !== "") {
     return cause.stderr;
   }
-  return cause instanceof Error ? cause.message : String(cause);
+  return errorMessage(cause);
 }

@@ -1,5 +1,5 @@
 // Adapted from stablyai/orca (MIT © Lovecast Inc.).
-import { run } from "@agnostic/core";
+import { errorMessage, run } from "@agnostic/core";
 import type { HarnessDefinition } from "./harness-definition.js";
 
 const PROBE_TIMEOUT_MS = 5_000;
@@ -43,7 +43,7 @@ export async function probeModels(
       timeoutMs: opts.timeoutMs ?? PROBE_TIMEOUT_MS,
     });
   } catch (cause) {
-    return fallback(opts.seeds, cause instanceof Error ? cause.message : String(cause));
+    return fallback(opts.seeds, errorMessage(cause));
   }
   if (output.stdout.length + output.stderr.length > MAX_OUTPUT_BYTES) {
     return fallback(opts.seeds, `${def.name} printed more than 1 MiB of model list`);

@@ -7,8 +7,9 @@ import type { Profile } from "./profile.js";
 import type { HarnessId } from "./profile-id.js";
 import type { Recommendation } from "./recommendation.js";
 import type { Repo } from "./repo.js";
-import { type Task, type TaskStatus, TaskStatusSchema } from "./task.js";
+import { type Task, TaskStatusSchema } from "./task.js";
 import { TaskIntentSchema } from "./task-intent.js";
+import type { TaskStatus } from "./task-status.js";
 
 /** Fixed so the hook config chunk 9 writes into each repo survives a daemon restart. */
 export const DEFAULT_DAEMON_PORT = 7431;

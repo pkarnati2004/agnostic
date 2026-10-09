@@ -1,4 +1,5 @@
 import type { OutcomeResponse } from "@agnostic/core";
+import { errorMessage } from "@agnostic/core";
 import { Hono } from "hono";
 import type { DaemonContext } from "../app.js";
 import { resolveTaskId } from "../resolve-id.js";
@@ -17,13 +18,9 @@ export function outcomeRoutes(ctx: DaemonContext): Hono {
     await ctx.lifecycle.settled(task.id);
     // A git read that fails leaves the stored row as it was; it never fails the request.
     await refreshVerdict(ctx, task).catch((cause: unknown) => {
-      ctx.log.error("outcome not recorded", { taskId: task.id, message: reason(cause) });
+      ctx.log.error("outcome not recorded", { taskId: task.id, message: errorMessage(cause) });
     });
     const body: OutcomeResponse = { task, outcome: ctx.ledger.outcomes.get(task.id) };
     return c.json(body);
   });
-}
-
-function reason(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

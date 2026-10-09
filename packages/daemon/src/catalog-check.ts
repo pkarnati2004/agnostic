@@ -8,6 +8,7 @@ import {
   CatalogCheckStateSchema,
   type CatalogUpdate,
   CoreError,
+  errorMessage,
 } from "@agnostic/core";
 import { planVendor } from "@agnostic/registry";
 import type { CatalogStore } from "./catalog-store.js";
@@ -116,7 +117,7 @@ async function check(deps: CheckerDeps, record: RecordCheck): Promise<CatalogUpd
     });
     return update;
   } catch (cause) {
-    const message = cause instanceof Error ? cause.message : String(cause);
+    const message = errorMessage(cause);
     deps.log.warn("catalog check failed", {
       code: cause instanceof CoreError ? cause.code : "internal",
       message,
@@ -137,7 +138,7 @@ async function check(deps: CheckerDeps, record: RecordCheck): Promise<CatalogUpd
 function probe(deps: CheckerDeps): Promise<void> {
   return deps.onChecked().catch((cause: unknown) => {
     deps.log.warn("re-probe after catalog check failed", {
-      message: cause instanceof Error ? cause.message : String(cause),
+      message: errorMessage(cause),
     });
   });
 }
@@ -169,6 +170,7 @@ function readState(path: string, log: Logger): CatalogCheckState | null {
   try {
     text = readFileSync(path, "utf8");
   } catch {
+    // No state file is the first run: the check is due and nothing is logged.
     return null;
   }
   const parsed = CatalogCheckStateSchema.safeParse(safeJson(text));
@@ -183,6 +185,7 @@ function safeJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
+    // A truncated state file fails the schema below, which is where the warning is written.
     return null;
   }
 }

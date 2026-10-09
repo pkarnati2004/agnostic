@@ -3,6 +3,8 @@ import { basename, isAbsolute, relative } from "node:path";
 import {
   type AdoptRequest,
   type DetectedHarness,
+  errorMessage,
+  LIVE_STATUSES,
   newId,
   type ProcessMatcher,
   type Repo,
@@ -16,8 +18,6 @@ import { DaemonError } from "./error.js";
 import { ensureHooks } from "./hooks-install.js";
 import { initialTaskNote } from "./initial-task-note.js";
 import { assertRepoUsable } from "./repo-guard.js";
-
-const LIVE: Task["status"][] = ["running", "waiting"];
 
 /**
  * The harness processes a person started themselves under `path`. Headless one-shots are dropped:
@@ -118,7 +118,7 @@ export async function adoptTask(ctx: DaemonContext, repo: Repo, req: AdoptReques
     (cause: unknown) => {
       ctx.log.error("task note not written", {
         taskId: task.id,
-        message: cause instanceof Error ? cause.message : String(cause),
+        message: errorMessage(cause),
       });
     },
   );
@@ -141,7 +141,7 @@ function matchers(): ProcessMatcher[] {
 /** A process agn is already watching is not a candidate: adopting it would be a second task. */
 function watchedPids(ctx: DaemonContext): Map<number, string> {
   const pids = new Map<number, string>();
-  for (const task of ctx.ledger.tasks.list({ status: LIVE })) {
+  for (const task of ctx.ledger.tasks.list({ status: LIVE_STATUSES })) {
     const pid = task.session?.pid;
     if (pid !== undefined && pid !== null) {
       pids.set(pid, task.id);
@@ -156,7 +156,7 @@ function watchedPids(ctx: DaemonContext): Map<number, string> {
  * answer is better than reporting an empty directory.
  */
 async function assertNoTaskUnder(ctx: DaemonContext, under: string): Promise<void> {
-  for (const task of ctx.ledger.tasks.list({ status: LIVE })) {
+  for (const task of ctx.ledger.tasks.list({ status: LIVE_STATUSES })) {
     const cwd = task.session?.cwd;
     if (cwd === undefined) {
       continue;

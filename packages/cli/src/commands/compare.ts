@@ -8,8 +8,8 @@ import type {
   StartCompareResponse,
   Task,
   TaskIntent,
-  TaskStatus,
 } from "@agnostic/core";
+import { isClosed } from "@agnostic/core";
 import { Command } from "commander";
 import { type CliContext, writeJson } from "../context.js";
 import { CliError } from "../error.js";
@@ -18,8 +18,6 @@ import { resolveRepo } from "../resolve-repo.js";
 import { type Column, renderTable } from "../table.js";
 
 type StartFlags = { profiles?: string; repo?: string; title?: string; intent?: string };
-
-const TERMINAL: TaskStatus[] = ["done", "failed", "stopped"];
 
 /**
  * One prompt, several agents, a worktree each. Commander dispatches to `show` or `pick` when the
@@ -209,7 +207,7 @@ function cost(costUsd: number | null, billing: Billing | null): string {
 
 /** What the outcome measured once the task is over, and the wall clock until then. */
 function time(row: CompareTaskRow, now: number): string {
-  if (row.outcome !== null && TERMINAL.includes(row.status)) {
+  if (row.outcome !== null && isClosed(row.status)) {
     return duration(row.outcome.durationSec);
   }
   return duration((now - Date.parse(row.createdAt)) / 1000);

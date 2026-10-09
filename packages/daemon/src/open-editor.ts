@@ -1,6 +1,7 @@
 import {
   type Editor,
   type EditorId,
+  errorMessage,
   isDirectory,
   launchDetached,
   type OpenedTaskResponse,
@@ -36,7 +37,7 @@ export async function openInEditor(
       logFile: taskLogPath(ctx.paths, task.id),
     });
   } catch (cause) {
-    throw new DaemonError(`${editor.name} could not open ${dir}: ${detail(cause)}`, {
+    throw new DaemonError(`${editor.name} could not open ${dir}: ${errorMessage(cause)}`, {
       code: "editor-failed",
       hint: `Run \`agn open ${task.id}\` from a terminal on this machine.`,
       cause,
@@ -98,8 +99,4 @@ function pick(editors: Editor[], wanted: EditorId, advice: string): Editor {
     code: "editor-not-found",
     hint: `${advice}: ${editors.map((editor) => editor.id).join(", ")}.`,
   });
-}
-
-function detail(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

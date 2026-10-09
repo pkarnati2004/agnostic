@@ -55,6 +55,7 @@ function parseOrigin(origin: string): URL | null {
   try {
     return new URL(origin);
   } catch {
+    // A header that is not a URL is not this daemon's origin: the caller refuses the request.
     return null;
   }
 }

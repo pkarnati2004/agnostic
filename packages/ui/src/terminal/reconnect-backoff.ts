@@ -1,4 +1,5 @@
 import type { TaskStatus } from "@agnostic/core";
+import { isLive } from "@agnostic/core/browser";
 
 const FIRST_WAIT_MS = 1_000;
 const LONGEST_WAIT_MS = 10_000;
@@ -38,7 +39,7 @@ export function createReconnect(opts: ReconnectOptions): Reconnect {
     if (stopped) {
       return;
     }
-    if (status === "running" || status === "waiting") {
+    if (status !== null && isLive(status)) {
       opts.onLive();
       return;
     }

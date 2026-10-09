@@ -2,16 +2,9 @@ import { z } from "zod";
 import { IdSchema } from "./id.js";
 import { HarnessIdSchema } from "./profile.js";
 import { RecommendationSchema } from "./recommendation.js";
+import { TASK_STATUSES } from "./task-status.js";
 
-export const TaskStatusSchema = z.enum([
-  "queued",
-  "running",
-  "waiting",
-  "done",
-  "failed",
-  "stopped",
-]);
-export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+export const TaskStatusSchema = z.enum(TASK_STATUSES);
 
 // A task agn started has origin "agn"; one found running in tmux and taken over is "adopted".
 export const TaskOriginSchema = z.enum(["agn", "adopted"]);

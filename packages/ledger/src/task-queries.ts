@@ -7,7 +7,7 @@ import { COLUMNS, filterSql, type TaskRow, toTask } from "./task-row.js";
 
 export type TaskFilter = {
   repoId?: string;
-  status?: TaskStatus | TaskStatus[];
+  status?: TaskStatus | readonly TaskStatus[];
   /** The ADR 004 prefix a user types instead of a whole id. */
   idPrefix?: string;
   /** Exact: the siblings of one compare. */

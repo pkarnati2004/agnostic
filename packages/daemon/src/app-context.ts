@@ -1,3 +1,4 @@
+import { errorMessage } from "@agnostic/core";
 import type { DaemonContext, DaemonDeps } from "./app.js";
 import { createCatalogChecker } from "./catalog-check.js";
 import { closeOutcome } from "./close-outcome.js";
@@ -38,7 +39,7 @@ export function createContext(deps: DaemonDeps): DaemonContext {
       .then(
         () => undefined,
         (cause: unknown) => {
-          deps.log.error("detection failed", { message: reason(cause) });
+          deps.log.error("detection failed", { message: errorMessage(cause) });
         },
       )
       .finally(() => {
@@ -60,7 +61,7 @@ export function createContext(deps: DaemonDeps): DaemonContext {
       } catch (cause: unknown) {
         deps.log.error("resumed session id not cleared", {
           taskId: task.id,
-          message: reason(cause),
+          message: errorMessage(cause),
         });
       }
       await usage.scan({ taskId: task.id });
@@ -100,10 +101,6 @@ function start(ctx: DaemonContext, reprobe: () => Promise<void>): void {
     .then(() => ctx.lifecycle.failQueued())
     .then(() => ctx.verdicts.runOnce())
     .catch((cause: unknown) => {
-      ctx.log.error("start-up reconcile failed", { message: reason(cause) });
+      ctx.log.error("start-up reconcile failed", { message: errorMessage(cause) });
     });
-}
-
-function reason(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }

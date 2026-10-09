@@ -7,13 +7,12 @@ import type {
   TaskStatus,
   UsageSum,
 } from "@agnostic/core";
+import { isClosed } from "@agnostic/core/browser";
 import { formatMoney } from "../usage/format-usage";
 
 // The page cannot import `agn compare`'s own formatters - the CLI is not in this bundle - so the
 // rules are restated here and compare-lines.test.ts pins the CLI's cases against them.
 const LIVE_FIRST: TaskStatus[] = ["running", "waiting", "queued", "done", "failed", "stopped"];
-
-const TERMINAL: TaskStatus[] = ["done", "failed", "stopped"];
 
 type SummaryTask = Pick<TaskListRow, "status">;
 
@@ -58,7 +57,7 @@ export function testsCell(outcome: Outcome | null, status: TaskStatus): string {
   if (outcome !== null && outcome.testsAfter !== null) {
     return outcome.testsAfter ? "pass" : "fail";
   }
-  return TERMINAL.includes(status) ? "did not run" : "-";
+  return isClosed(status) ? "did not run" : "-";
 }
 
 /** Nothing priced on a plan agn knows is spend the plan absorbed, not spend of zero. */
@@ -75,7 +74,7 @@ export function timeCell(
   outcome: Outcome | null,
   now: number,
 ): string {
-  if (outcome !== null && TERMINAL.includes(task.status)) {
+  if (outcome !== null && isClosed(task.status)) {
     return duration(outcome.durationSec);
   }
   return duration((now - Date.parse(task.createdAt)) / 1000);

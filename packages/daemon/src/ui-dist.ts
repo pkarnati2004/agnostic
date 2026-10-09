@@ -29,6 +29,7 @@ export function resolveUiDist(): string | null {
   try {
     return join(dirname(fileURLToPath(import.meta.resolve("@agnostic/ui/package.json"))), "dist");
   } catch {
+    // The page is not installed next to the daemon, so `/ui` answers 404 and the rest serves.
     return null;
   }
 }

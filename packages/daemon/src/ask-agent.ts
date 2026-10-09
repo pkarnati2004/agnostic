@@ -1,10 +1,8 @@
-import { type ResumeTaskResponse, sessionHandle, type Task } from "@agnostic/core";
+import { isLive, type ResumeTaskResponse, sessionHandle, type Task } from "@agnostic/core";
 import type { DaemonContext } from "./app.js";
 import { DaemonError } from "./error.js";
 import type { ExtraSection } from "./launch-command.js";
 import { resumeTask } from "./resume-task.js";
-
-const LIVE: Task["status"][] = ["running", "waiting"];
 
 export type AskedTurn = { task: Task; via: ResumeTaskResponse["via"] };
 
@@ -31,7 +29,7 @@ export async function askAgent(
 
 /** A session started outside tmux is agn's to watch, never agn's to type into (ADR 014). */
 function assertReachable(task: Task, prompt: string): void {
-  if (task.session?.tmuxSession === null && LIVE.includes(task.status)) {
+  if (task.session?.tmuxSession === null && isLive(task.status)) {
     throw new DaemonError(`task ${task.id} was started outside tmux, so agn cannot type into it`, {
       code: "session-not-attachable",
       hint: `Type the prompt into that terminal yourself: ${prompt}`,

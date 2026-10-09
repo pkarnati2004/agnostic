@@ -1,10 +1,9 @@
 import type { RepoListRow, TaskListRow } from "@agnostic/core";
+import { isClosed } from "@agnostic/core/browser";
 import { profileParts } from "../profile/profile-parts";
 
 /** The second line of a sidebar row: what it says, whether it is an id, and in what colour. */
 export type RowLine = { text: string; mono: boolean; tone: "muted" | "queued" | "failed" };
-
-const FINISHED = ["done", "failed", "stopped"];
 
 /**
  * The row's second line. A live task shows the branch it is on; a queued one what agn is doing
@@ -24,7 +23,7 @@ export function rowSecondLine(
     };
   }
   const branch = task.branch ?? "no branch";
-  if (FINISHED.includes(task.status)) {
+  if (isClosed(task.status)) {
     return {
       text: `${branch} · ${task.status}`,
       mono: true,
