@@ -1,4 +1,6 @@
+import { Settings } from "lucide-react";
 import type { ConnectionState } from "../store/workspace-state";
+import { IconAction } from "./icon-action";
 
 export type DaemonState = {
   /** From `GET /health` on load; null until it answers, and after it fails. */
@@ -10,7 +12,11 @@ export type DaemonState = {
  * The foot of the sidebar: whether agnd is answering, and which one. It flips the moment the feed
  * drops, before the banner does, so the two are never both saying nothing (handoff pick 1).
  */
-export function DaemonFooter({ version, connection }: DaemonState) {
+export function DaemonFooter({
+  version,
+  connection,
+  onSettings,
+}: DaemonState & { onSettings: () => void }) {
   const live = connection === "live";
   const colour = live ? "var(--status-running)" : "var(--status-failed)";
   return (
@@ -29,6 +35,9 @@ export function DaemonFooter({ version, connection }: DaemonState) {
       {live && version !== null && (
         <span className="font-mono text-[11px] text-muted-foreground">{`v${version}`}</span>
       )}
+      <IconAction label="Settings" tooltip="Settings" onClick={onSettings} className="-mr-2 size-6">
+        <Settings />
+      </IconAction>
     </footer>
   );
 }

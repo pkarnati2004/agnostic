@@ -83,6 +83,23 @@ describe("tabsReducer", () => {
   });
 });
 
+describe("the next-tab binding", () => {
+  it("moves one to the right and wraps at the end", () => {
+    expect(tabsReducer(three, { type: "next" }).active).toBe("c");
+    expect(tabsReducer({ ...three, active: "c" }, { type: "next" }).active).toBe("a");
+  });
+
+  it("changes nothing with one tab or none", () => {
+    const one = { open: ["a"], active: "a" };
+    expect(tabsReducer(one, { type: "next" })).toEqual(one);
+    expect(tabsReducer(NO_TABS, { type: "next" })).toEqual(NO_TABS);
+  });
+
+  it("leaves the open list alone", () => {
+    expect(tabsReducer(three, { type: "next" }).open).toEqual(["a", "b", "c"]);
+  });
+});
+
 describe("tabbableTasks", () => {
   const repo = (id: string, status: RepoStatus): RepoListRow => ({
     id,

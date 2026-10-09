@@ -45,6 +45,7 @@ export function SelectTrigger({
       data-slot="select-trigger"
       className={cn(
         "flex items-center justify-between gap-2 whitespace-nowrap outline-none",
+        "[&>span]:min-w-0 [&>span]:truncate",
         size === "default" && (mono ? "type-mono-lg" : "type-body"),
         "data-[placeholder]:text-muted-foreground data-[state=open]:border-ring",
         "data-[state=open]:ring-[3px] data-[state=open]:ring-ring/15",
@@ -105,8 +106,8 @@ export function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex h-[30px] w-full cursor-default select-none items-center gap-2 rounded-md",
-        "pr-8 pl-2 text-[12px] outline-none focus:bg-accent focus:text-accent-foreground",
+        "relative flex h-[30px] w-full cursor-default select-none items-center rounded-md",
+        "pr-8 pl-2.5 text-[12px] outline-none focus:bg-accent focus:text-accent-foreground",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
@@ -117,7 +118,11 @@ export function SelectItem({
           <Check className="size-3.5" />
         </SelectPrimitive.ItemIndicator>
       </span>
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      {/* Radix wraps the text in a span of its own, which drops a flex gap between a mark and its
+          label; the row inside keeps it. */}
+      <SelectPrimitive.ItemText>
+        <span className="flex min-w-0 items-center gap-2">{children}</span>
+      </SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
   );
 }

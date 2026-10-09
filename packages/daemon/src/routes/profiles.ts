@@ -1,13 +1,16 @@
 import {
+  type ApiKeyReport,
   DoctorRequestSchema,
   type DoctorResponse,
   type HarnessId,
   type ProfilesResponse,
   parseProfileId,
 } from "@agnostic/core";
+import { apiKeyVars } from "@agnostic/registry";
 import { Hono } from "hono";
 import { type DaemonContext, planOptions } from "../app.js";
-import { readDaemonConfig, writeDaemonConfigPlans } from "../daemon-config.js";
+import { readDaemonConfig } from "../daemon-config.js";
+import { writeDaemonConfig } from "../daemon-config-write.js";
 import { requestInvalid } from "../error.js";
 
 /**
@@ -35,7 +38,7 @@ export function profileRoutes(ctx: DaemonContext): Hono {
       const config = await readDaemonConfig(ctx.paths);
       // Written before detection runs, so the answer already reflects what the user just said.
       const plans = parsed.data.plans
-        ? await writeDaemonConfigPlans(ctx.paths, parsed.data.plans)
+        ? (await writeDaemonConfig(ctx.paths, { plans: parsed.data.plans })).plans
         : config.plans;
       // The detection also carries the local servers, which are the daemon's business and not
       // part of the doctor response; the plans are the daemon's own state, not detection's.
@@ -46,9 +49,24 @@ export function profileRoutes(ctx: DaemonContext): Hono {
         planOptions: planOptions(ctx.catalog.current().catalog.plans),
         named: namedHarnesses(ctx, config.specWriter),
         tmuxConfigStale: await ctx.tmuxConfigStale(),
+        keys: keyReports(ctx.env),
+        tmux: await ctx.tmuxVersion(),
       };
       return c.json(body);
     });
+}
+
+/**
+ * Presence, never a value: the daemon reads the variable and answers with a boolean, so a key
+ * cannot reach a log line, a browser's network tab or a client's state. Which variables there are
+ * is registry data, so a harness added next month gets its row by naming its key there.
+ */
+function keyReports(env: Record<string, string>): ApiKeyReport[] {
+  return apiKeyVars().map((variable) => ({
+    name: variable.name,
+    set: Boolean(env[variable.name]),
+    usedBy: variable.usedBy,
+  }));
 }
 
 /**

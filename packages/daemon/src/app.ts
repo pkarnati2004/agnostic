@@ -7,6 +7,7 @@ import type {
   Plan,
   PlanOption,
   Plans,
+  TmuxReport,
 } from "@agnostic/core";
 import { errorMessage } from "@agnostic/core";
 import type { Ledger } from "@agnostic/ledger";
@@ -41,6 +42,7 @@ import { branchRoutes } from "./routes/branch.js";
 import { catalogRoutes } from "./routes/catalog.js";
 import { changesRoutes } from "./routes/changes.js";
 import { compareRoutes } from "./routes/compares.js";
+import { configRoutes } from "./routes/config.js";
 import { editorRoutes } from "./routes/editors.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
@@ -82,6 +84,8 @@ export type DaemonDeps = {
   executor: ExecutorProvider;
   /** Asked by `agn doctor`: whether the running tmux server predates the settings agn writes now. */
   tmuxConfigStale: () => Promise<boolean>;
+  /** What `tmux -V` answers on the daemon's PATH; read per doctor call, never cached. */
+  tmuxVersion: () => Promise<TmuxReport>;
   /** The base environment every harness is launched with: the daemon's own, scrubbed. */
   env: Record<string, string>;
   /** The user's home, where the harnesses keep their auth files. */
@@ -141,6 +145,7 @@ export function createApp(deps: DaemonDeps): {
   app.route("/", usageRoutes(ctx));
   app.route("/", outcomeRoutes(ctx));
   app.route("/", catalogRoutes(ctx));
+  app.route("/", configRoutes(ctx));
   app.route("/", uiRoutes(ctx));
 
   app.notFound((c) => {

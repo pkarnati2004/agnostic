@@ -19,18 +19,21 @@ type RowActionDeps = {
   createPr: (taskId: string) => void;
 };
 
-/**
- * The handlers every task menu reads, gathered once: the page's own Stop, Resume, Hand off and
- * Create PR, with Archive and Delete from the hook that owns them.
- */
-export function useRowActions(deps: RowActionDeps): {
+/** What the page holds for its task rows: the menu's handlers, the delete confirmation, the toast. */
+export type RowActionsState = {
   actions: TaskRowActions;
   deleting: TaskListRow | null;
   onDelete: (taskId: string) => Promise<void>;
   closeDelete: () => void;
   toast: ToastState | null;
   dismissToast: () => void;
-} {
+};
+
+/**
+ * The handlers every task menu reads, gathered once: the page's own Stop, Resume, Hand off and
+ * Create PR, with Archive and Delete from the hook that owns them.
+ */
+export function useRowActions(deps: RowActionDeps): RowActionsState {
   const archiving = useArchiveDelete(deps.tasks, deps.client, deps.act, deps.resume);
   return {
     actions: {

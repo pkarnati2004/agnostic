@@ -44,7 +44,7 @@ const UPDATED: CatalogUpdateResponse = {
 };
 
 async function notice(client: ReturnType<typeof stubClient>) {
-  const view = render(<CatalogNotice client={client} now={NOW} />);
+  const view = render(<CatalogNotice client={client} now={NOW} staleDays={7} />);
   await act(async () => undefined);
   return view;
 }

@@ -2,45 +2,27 @@ import type { DoctorRequest, DoctorResponse, HarnessReport } from "@agnostic/cor
 import { describe, expect, it } from "vitest";
 import { runMain } from "../program.js";
 import { createTestContext } from "../test-context.js";
+import { doctorResponse, harnessReport } from "./doctor-fixture.js";
 import { unknownPlans } from "./doctor-plan.js";
 
+/** The plan story's own row: nothing probed and no plan read, so config.yaml is what decides. */
 function report(over: Partial<HarnessReport>): HarnessReport {
-  return {
-    harness: "claude-code",
-    name: "Claude Code",
-    binary: "claude",
-    path: "/opt/bin/claude",
-    version: "2.0.1",
-    login: "logged-in",
-    billing: "subscription",
-    tier: 1,
-    support: "full",
+  return harnessReport({
     models: [],
     modelSource: "none",
-    planVendor: "claude",
-    limitSource: "statusline",
-    usageSource: "transcripts",
     plan: null,
     limitCapture: "none",
     ...over,
-  };
+  });
 }
 
 function response(harnesses: HarnessReport[], plans: DoctorResponse["plans"] = {}): DoctorResponse {
-  return {
+  return doctorResponse({
     harnesses,
-    profiles: [],
-    tools: [],
-    named: [],
-    detectedAt: "2026-09-12T10:00:00.000Z",
-    pathVar: "/opt/bin",
     plans,
-    tmuxConfigStale: false,
-    planOptions: [
-      { vendor: "claude", id: "pro", displayName: "Pro" },
-      { vendor: "claude", id: "max20", displayName: "Max 20x" },
-    ],
-  };
+    profiles: [],
+    detectedAt: "2026-09-12T10:00:00.000Z",
+  });
 }
 
 /** A daemon that records what it was asked and answers with the plan it was told, once told. */

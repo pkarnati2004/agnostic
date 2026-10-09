@@ -1,4 +1,4 @@
-import type { ChangesResponse, PickCompareResponse, RepoListRow } from "@agnostic/core";
+import type { ChangesResponse, RepoListRow } from "@agnostic/core";
 import { useMemo, useReducer, useState } from "react";
 import { createClient } from "./api/client";
 import { browserTokenSources, readToken } from "./auth/token";
@@ -9,20 +9,20 @@ import { useChangesActions } from "./changes/use-changes-actions";
 import { TooltipProvider } from "./components/tooltip";
 import { useWorkspaceColumns } from "./layout/workspace-columns";
 import { WorkspacePalette } from "./palette/workspace-palette";
-import { AddRepoDialog } from "./repo/add-repo-dialog";
-import { RemoveRepoDialog } from "./repo/remove-repo-dialog";
 import { useRepoActions } from "./repo/use-repo-actions";
+import { useMachineConfig } from "./settings/use-machine-config";
+import { useWorkspaceShortcuts } from "./shortcuts/workspace-shortcuts";
 import { defaultRepoId, groupTasks } from "./sidebar/group-tasks";
 import { Sidebar } from "./sidebar/sidebar";
 import { TaskRowActionsProvider } from "./sidebar/task-row-actions";
 import type { NoticeHost } from "./store/task-notices";
-import { useDaemonVersion } from "./store/use-daemon-version";
+import { useDaemonHealth } from "./store/use-daemon-health";
 import { useProfiles } from "./store/use-profiles";
 import { useWorkspace } from "./store/use-workspace";
+import type { AppearanceRoot } from "./styles/appearance-root";
 import { type ResumeNotice, resumeNotice } from "./tabs/resume-notice";
 import { compareTabId, NEW_TASK_TAB, readTabs, tabsReducer } from "./tabs/tabs-state";
 import { useTabsStorage } from "./tabs/use-tabs-storage";
-import { DeleteTaskDialog } from "./task/delete-task-dialog";
 import { useRowActions } from "./task/use-row-actions";
 import { useTaskActions } from "./task/use-task-actions";
 import { useTick } from "./time/use-tick";
@@ -30,13 +30,14 @@ import { Toast } from "./toast/toast";
 import { lastResponse } from "./usage/usage-state";
 import { useTaskUsage } from "./usage/use-task-usage";
 import { useUsage } from "./usage/use-usage";
+import { WorkspaceDialogs } from "./workspace-dialogs";
 
 const TOOLTIP_DELAY_MS = 400;
 
 // The waiting times on the page are minutes old at worst; a render every half minute keeps them honest.
 const TICK_MS = 30_000;
 
-export function App() {
+export function App({ root }: { root: AppearanceRoot }) {
   // The fragment is read once, on the first render of the page it arrived with.
   const token = useMemo(() => readToken(browserTokenSources()), []);
   if (token === null) {
@@ -44,12 +45,12 @@ export function App() {
   }
   return (
     <TooltipProvider delayDuration={TOOLTIP_DELAY_MS}>
-      <Workspace token={token} />
+      <Workspace token={token} root={root} />
     </TooltipProvider>
   );
 }
 
-function Workspace({ token }: { token: string }) {
+function Workspace({ token, root }: { token: string; root: AppearanceRoot }) {
   const client = useMemo(() => createClient({ token }), [token]);
   const { state, error, notices, act, put, retry } = useWorkspace(client);
   const profiles = useProfiles(client);
@@ -58,6 +59,7 @@ function Workspace({ token }: { token: string }) {
   // What the palette's "Run: <prompt>" seeds the New task tab with; `at` re-seeds a tab already open.
   const [seed, setSeed] = useState<{ prompt: string; at: number } | null>(null);
   const [addRepo, setAddRepo] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // The task whose handoff dialog, and whose Create PR dialog, the palette has opened.
   const [handoffFor, setHandoffFor] = useState<string | null>(null);
   const [prFor, setPrFor] = useState<string | null>(null);
@@ -82,7 +84,7 @@ function Workspace({ token }: { token: string }) {
     [state.repos, state.tasks],
   );
   const { state: usage, refresh: refreshUsage } = useUsage(client, state.usageStamp.plans);
-  const version = useDaemonVersion(client);
+  const health = useDaemonHealth(client);
   // One clock for the waiting times the sidebar strip and the catalog line read.
   const now = useTick(TICK_MS);
   // The budget rides on the usage body the bar already reads; no dialog asks for it on its own.
@@ -94,6 +96,7 @@ function Workspace({ token }: { token: string }) {
     activeId === null ? 0 : (state.usageStamp.byTask[activeId] ?? 0),
   );
   useTabsStorage(tabs, state, dispatchTabs);
+  const { config, setConfig } = useMachineConfig(client, root);
 
   const activeTask = activeId === null ? null : (state.tasks[activeId] ?? null);
   const ownRead = read !== null && read.taskId === activeId ? read : null;
@@ -114,24 +117,23 @@ function Workspace({ token }: { token: string }) {
     writePanelOpen(localStorage, !changesOpen);
     setChangesOpen(!changesOpen);
   };
-  // The view holds the response: it says what was cleaned, which no row of the store carries.
-  const pick = async (compareId: string, taskId: string): Promise<PickCompareResponse | null> => {
-    let picked: PickCompareResponse | null = null;
-    await act({ taskId, action: "pick", host: "compare" }, async (api) => {
-      picked = await api.pickCompare(compareId, { taskId });
-      return picked.kept;
-    });
-    return picked;
-  };
-
-  const stop = (taskId: string) =>
-    act(
-      { taskId, action: "stop", host: "header" },
-      async (api) => (await api.stopTask(taskId)).task,
-    );
-
   const { openInEditor, createPr, update, askCommit } = useChangesActions(act);
-  const { handoff, started } = useTaskActions(act, put, dispatchTabs);
+  const { handoff, started, pick, stop } = useTaskActions(act, put, dispatchTabs);
+  // The palette's own gates, on the keyboard: a handoff needs a worktree, Changes needs a task.
+  useWorkspaceShortcuts({
+    handoff: () => {
+      if (activeTask?.worktreePresent === true) {
+        setHandoffFor(activeTask.id);
+      }
+    },
+    toggleSidebar: () => setCollapsed(!collapsed),
+    toggleChanges: () => {
+      if (activeTask !== null) {
+        toggleChanges();
+      }
+    },
+    nextTab: () => dispatchTabs({ type: "next" }),
+  });
   const [resumed, setResumed] = useState<ResumeNotice | null>(null);
   // What was said is the response's, not the row's, so the tab hears it from the call that resumed.
   const resume = async (taskId: string, host: NoticeHost): Promise<void> => {
@@ -183,31 +185,31 @@ function Workspace({ token }: { token: string }) {
             setRemoving(state.repos.find((repo) => repo.id === repoId) ?? null)
           }
           repoNotices={repoActions.notices}
-          daemon={{ version, connection: state.connection }}
+          daemon={{ version: health?.version ?? null, connection: state.connection }}
           now={now}
           onToggle={() => setCollapsed(!collapsed)}
+          onSettings={() => setSettingsOpen(true)}
         />
-        <AddRepoDialog
-          open={addRepo}
-          onOpenChange={setAddRepo}
+        <WorkspaceDialogs
           client={client}
-          onReopen={repoActions.reopen}
-        />
-        <RemoveRepoDialog
-          repo={removing}
-          onOpenChange={(open) => setRemoving(open ? removing : null)}
-          onRemove={repoActions.remove}
-        />
-        <DeleteTaskDialog
-          task={rows.deleting}
-          repo={state.repos.find((repo) => repo.id === rows.deleting?.repoId) ?? null}
-          client={client}
-          onOpenChange={rows.closeDelete}
-          onDelete={rows.onDelete}
+          state={state}
+          profiles={profiles}
+          onConfig={setConfig}
+          rows={rows}
+          repoActions={repoActions}
+          root={root}
+          health={health}
+          addRepo={addRepo}
+          onAddRepoChange={setAddRepo}
+          removing={removing}
+          onRemovingChange={(open) => setRemoving(open ? removing : null)}
+          settings={settingsOpen}
+          onSettingsChange={setSettingsOpen}
         />
         <Centre
           tabs={tabs}
           dispatchTabs={dispatchTabs}
+          config={config}
           repos={state.repos}
           tasks={state.tasks}
           loaded={state.loaded}
@@ -282,6 +284,7 @@ function Workspace({ token }: { token: string }) {
             commit: (taskId) => void askCommit(taskId),
             showCost: () => setFlash((count) => count + 1),
             addRepo: () => setAddRepo(true),
+            settings: () => setSettingsOpen(true),
             // The sidebar draws the failure under the repo's heading; a rejection here has no reader.
             sync: (repoId) => void repoActions.sync(repoId).catch(() => undefined),
           }}

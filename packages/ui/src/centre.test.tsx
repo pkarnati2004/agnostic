@@ -65,6 +65,7 @@ function centre(tabs: TabsState, extra: Extra = {}) {
           dispatchTabs={vi.fn()}
           repos={extra.repos ?? []}
           tasks={TASKS}
+          config={null}
           loaded={extra.loaded ?? true}
           profiles={[]}
           token="tok"

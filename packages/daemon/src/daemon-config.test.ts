@@ -1,12 +1,14 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { agnosticPaths, ConfigError } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readDaemonConfig, writeDaemonConfigPlans } from "./daemon-config.js";
+import { readDaemonConfig } from "./daemon-config.js";
 
 const NO_BUDGET = { dailyUsd: null, weeklyUsd: null };
 const USER_SCOPE = { claudeStatusline: "user" };
+const ROSEWOOD = { theme: "rosewood", mode: "system" };
+const PAGE_MONO = { font: null, size: 13 };
 
 describe("readDaemonConfig", () => {
   let home: string;
@@ -26,6 +28,10 @@ describe("readDaemonConfig", () => {
       specWriter: null,
       budget: NO_BUDGET,
       hooks: USER_SCOPE,
+      appearance: ROSEWOOD,
+      terminal: PAGE_MONO,
+      catalogStaleDays: 7,
+      specFirst: false,
     });
   });
 
@@ -39,6 +45,10 @@ describe("readDaemonConfig", () => {
       specWriter: null,
       budget: NO_BUDGET,
       hooks: USER_SCOPE,
+      appearance: ROSEWOOD,
+      terminal: PAGE_MONO,
+      catalogStaleDays: 7,
+      specFirst: false,
     });
   });
 
@@ -128,48 +138,6 @@ describe("readDaemonConfig", () => {
     await writeFile(join(home, "config.yaml"), "plans:\n  codex: plus\n");
     await expect(readDaemonConfig(agnosticPaths(home))).rejects.toThrow(ConfigError);
   });
-});
-
-describe("writeDaemonConfigPlans", () => {
-  let home: string;
-
-  beforeEach(async () => {
-    home = await mkdtemp(join(tmpdir(), "agn-config-"));
-  });
-
-  afterEach(() => rm(home, { recursive: true, force: true }));
-
-  it("keeps the port, the editor and the vendor the user did not mention", async () => {
-    const paths = agnosticPaths(home);
-    await writeFile(paths.config, "port: 7500\neditor: cursor\nplans:\n  chatgpt: plus\n");
-    expect(await writeDaemonConfigPlans(paths, { claude: "max20" })).toEqual({
-      claude: "max20",
-      chatgpt: "plus",
-    });
-    expect(await readDaemonConfig(paths)).toEqual({
-      port: 7500,
-      editor: "cursor",
-      plans: { claude: "max20", chatgpt: "plus" },
-      catalogCheck: true,
-      specWriter: null,
-      budget: NO_BUDGET,
-      hooks: USER_SCOPE,
-    });
-  });
-
-  it("writes a file that was not there", async () => {
-    const paths = agnosticPaths(home);
-    await writeDaemonConfigPlans(paths, { claude: "pro" });
-    expect(await readDaemonConfig(paths)).toEqual({
-      port: null,
-      editor: null,
-      plans: { claude: "pro" },
-      catalogCheck: true,
-      specWriter: null,
-      budget: NO_BUDGET,
-      hooks: USER_SCOPE,
-    });
-  });
 
   it("reads the profile that writes specs and refuses an id that is not one", async () => {
     const paths = agnosticPaths(home);
@@ -179,36 +147,6 @@ describe("writeDaemonConfigPlans", () => {
     });
     await writeFile(paths.config, "spec_writer: haiku\n");
     await expect(readDaemonConfig(paths)).rejects.toBeInstanceOf(ConfigError);
-  });
-
-  it("keeps the spec writer when agn doctor --plan rewrites the file", async () => {
-    const paths = agnosticPaths(home);
-    await writeFile(paths.config, "spec_writer: claude-code:haiku:native\n");
-    await writeDaemonConfigPlans(paths, { claude: "pro" });
-    expect(await readDaemonConfig(paths)).toMatchObject({
-      specWriter: "claude-code:haiku:native",
-      plans: { claude: "pro" },
-    });
-  });
-
-  it("keeps the spend ceiling when agn doctor --plan rewrites the file", async () => {
-    const paths = agnosticPaths(home);
-    await writeFile(paths.config, "budget:\n  daily_usd: 5\n  weekly_usd: 20\n");
-    await writeDaemonConfigPlans(paths, { claude: "pro" });
-    expect((await readDaemonConfig(paths)).budget).toEqual({ dailyUsd: 5, weeklyUsd: 20 });
-  });
-
-  it("writes no budget section for a file that had none", async () => {
-    const paths = agnosticPaths(home);
-    await writeDaemonConfigPlans(paths, { claude: "pro" });
-    expect(await readFile(paths.config, "utf8")).not.toContain("budget");
-  });
-
-  it("keeps an opted-out daily catalog check", async () => {
-    const paths = agnosticPaths(home);
-    await writeFile(paths.config, "catalog_check: false\n");
-    await writeDaemonConfigPlans(paths, { claude: "pro" });
-    expect(await readDaemonConfig(paths)).toMatchObject({ catalogCheck: false });
   });
 
   it("reads the status-line scope, and refuses a value that is neither", async () => {
@@ -222,16 +160,46 @@ describe("writeDaemonConfigPlans", () => {
     });
   });
 
-  it("keeps the status-line scope when agn doctor --plan rewrites the file", async () => {
+  it("reads the workspace's theme and mode, and defaults to Rosewood following the system", async () => {
     const paths = agnosticPaths(home);
-    await writeFile(paths.config, "hooks:\n  claude_statusline: repo\n");
-    await writeDaemonConfigPlans(paths, { claude: "pro" });
-    expect(await readFile(paths.config, "utf8")).toContain("claude_statusline: repo");
+    await writeFile(paths.config, "appearance:\n  theme: ink\n  mode: light\n");
+    expect((await readDaemonConfig(paths)).appearance).toEqual({ theme: "ink", mode: "light" });
+
+    await writeFile(paths.config, "appearance:\n  theme: ink\n");
+    expect((await readDaemonConfig(paths)).appearance).toEqual({ theme: "ink", mode: "system" });
   });
 
-  it("writes no hooks section for a file that had none", async () => {
+  it("reads the terminal font and size, and defaults to the page's own mono at 13 px", async () => {
     const paths = agnosticPaths(home);
-    await writeDaemonConfigPlans(paths, { claude: "pro" });
-    expect(await readFile(paths.config, "utf8")).not.toContain("claude_statusline");
+    await writeFile(paths.config, 'terminal:\n  font: "IBM Plex Mono"\n  size: 15\n');
+    expect((await readDaemonConfig(paths)).terminal).toEqual({ font: "IBM Plex Mono", size: 15 });
+
+    await writeFile(paths.config, "terminal:\n  size: 15\n");
+    expect((await readDaemonConfig(paths)).terminal).toEqual({ font: null, size: 15 });
+  });
+
+  it("reads the stale window and the spec default, which are a week and off", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "catalog_stale_days: 3\nspec_first: true\n");
+    expect(await readDaemonConfig(paths)).toMatchObject({ catalogStaleDays: 3, specFirst: true });
+
+    await writeFile(paths.config, "editor: cursor\n");
+    expect(await readDaemonConfig(paths)).toMatchObject({ catalogStaleDays: 7, specFirst: false });
+  });
+
+  it("refuses a stale window no notice could use", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "catalog_stale_days: 0\n");
+    await expect(readDaemonConfig(paths)).rejects.toBeInstanceOf(ConfigError);
+  });
+
+  it("refuses a theme no stylesheet answers to, and a key under appearance nothing reads", async () => {
+    const paths = agnosticPaths(home);
+    await writeFile(paths.config, "appearance:\n  theme: midnight\n");
+    await expect(readDaemonConfig(paths)).rejects.toBeInstanceOf(ConfigError);
+
+    await writeFile(paths.config, "appearance:\n  colour: ink\n");
+    const unknown = await readDaemonConfig(paths).catch((cause: unknown) => cause);
+    expect((unknown as ConfigError).message).toContain("colour");
   });
 });

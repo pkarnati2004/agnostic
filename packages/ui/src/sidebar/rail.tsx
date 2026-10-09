@@ -1,5 +1,5 @@
 import type { TaskStatus } from "@agnostic/core";
-import { PanelLeft, Plus, Search } from "lucide-react";
+import { PanelLeft, Plus, Search, Settings } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "../class-names";
 import type { DaemonState } from "./daemon-footer";
@@ -14,6 +14,7 @@ type RailProps = {
   onNewTask: () => void;
   onSearch: () => void;
   onSelect: (taskId: string) => void;
+  onSettings: () => void;
 };
 
 /**
@@ -21,7 +22,8 @@ type RailProps = {
  * things the header offers, says which repos want a look, and shows the daemon's dot; the rest of
  * the sidebar is one click away, and a repo's square is that click.
  */
-export function Rail({ groups, daemon, onToggle, onNewTask, onSearch, onSelect }: RailProps) {
+export function Rail(props: RailProps) {
+  const { groups, daemon, onToggle, onNewTask, onSearch, onSelect } = props;
   const waiting = groups.needsYou;
   const oldest = waiting[0];
   return (
@@ -55,6 +57,11 @@ export function Rail({ groups, daemon, onToggle, onNewTask, onSearch, onSelect }
         <RepoSquare key={group.repo.id} group={group} onToggle={onToggle} />
       ))}
       <span className="flex-1" />
+      <div className="mb-1.5">
+        <IconAction label="Settings" tooltip="Settings" onClick={props.onSettings}>
+          <Settings />
+        </IconAction>
+      </div>
       <span
         aria-hidden
         className="mb-4 size-1.5 shrink-0 rounded-full"

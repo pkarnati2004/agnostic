@@ -1,12 +1,18 @@
 import {
   type AgnosticPaths,
-  type EditorId,
+  CatalogStaleDaysSchema,
+  ColorModeSchema,
+  DEFAULT_APPEARANCE,
+  DEFAULT_CATALOG_STALE_DAYS,
+  DEFAULT_TERMINAL_SIZE,
   EditorIdSchema,
-  type Plans,
+  type MachineConfig,
   PlansSchema,
   ProfileIdSchema,
   readYamlFile,
-  writeYamlFile,
+  TerminalFontSchema,
+  TerminalSizeSchema,
+  ThemeIdSchema,
 } from "@agnostic/core";
 import { z } from "zod";
 
@@ -22,6 +28,17 @@ const HooksFileSchema = z.strictObject({
   claude_statusline: z.enum(["user", "repo"]).optional(),
 });
 
+// The workspace's Settings writes these two; the CLI reads neither, but one file is one file.
+const AppearanceFileSchema = z.strictObject({
+  theme: ThemeIdSchema.optional(),
+  mode: ColorModeSchema.optional(),
+});
+
+const TerminalFileSchema = z.strictObject({
+  font: TerminalFontSchema.optional(),
+  size: TerminalSizeSchema.optional(),
+});
+
 // Strict: a misspelled key must be an error, not a port silently back at the default.
 const DaemonConfigFileSchema = z.strictObject({
   port: z.number().int().min(1).max(65535).optional(),
@@ -31,36 +48,31 @@ const DaemonConfigFileSchema = z.strictObject({
   spec_writer: ProfileIdSchema.optional(),
   budget: BudgetFileSchema.optional(),
   hooks: HooksFileSchema.optional(),
+  appearance: AppearanceFileSchema.optional(),
+  terminal: TerminalFileSchema.optional(),
+  catalog_stale_days: CatalogStaleDaysSchema.optional(),
+  spec_first: z.boolean().optional(),
 });
 
 /** Where agn installs Claude Code's status-line command, and so which sessions it captures. */
-export type HooksConfig = { claudeStatusline: "user" | "repo" };
+export type HooksConfig = MachineConfig["hooks"];
 
 /** Null per window when the file sets no ceiling for it (ADR 036 Q8). */
-export type BudgetConfig = { dailyUsd: number | null; weeklyUsd: number | null };
+export type BudgetConfig = MachineConfig["budget"];
 
-type DaemonConfig = {
-  port: number | null;
-  plans: Plans;
-  editor: EditorId | null;
-  catalogCheck: boolean;
-  /** The profile that writes specs, overriding the automatic choice (ADR 028). */
-  specWriter: string | null;
-  budget: BudgetConfig;
-  hooks: HooksConfig;
-};
-
-const HEADER = "agn machine settings. agn doctor --plan rewrites the plans section.";
+export const HEADER = "agn machine settings. agn doctor --plan rewrites the plans section.";
 
 const FIX_HINT = "Fix the file, or delete it to use the defaults.";
 
 /**
  * `~/.agnostic/config.yaml` holds user settings for the machine, not for a repo: the port to bind,
  * the plan each vendor bills the user on, the editor `agn open` uses, whether the daily catalog
- * check runs, the spend ceiling, and where agn installs Claude Code's status-line command. The port and the check are read once at start and the rest
- * per request. This reader moves to core when a second component needs it.
+ * check runs, the spend ceiling, where agn installs Claude Code's status-line command, the
+ * workspace's theme and terminal font, how old the catalog may get, and whether a new task writes
+ * its spec first. The port and the check are read once at start and the rest per request. This
+ * reader moves to core when a second component needs it.
  */
-export async function readDaemonConfig(paths: AgnosticPaths): Promise<DaemonConfig> {
+export async function readDaemonConfig(paths: AgnosticPaths): Promise<MachineConfig> {
   const file = await readYamlFile(paths.config, DaemonConfigFileSchema, FIX_HINT);
   return {
     port: file?.port ?? null,
@@ -75,50 +87,17 @@ export async function readDaemonConfig(paths: AgnosticPaths): Promise<DaemonConf
     },
     // Absent means user scope: agn captures every session unless the user opts out.
     hooks: { claudeStatusline: file?.hooks?.claude_statusline ?? "user" },
+    appearance: {
+      theme: file?.appearance?.theme ?? DEFAULT_APPEARANCE.theme,
+      mode: file?.appearance?.mode ?? DEFAULT_APPEARANCE.mode,
+    },
+    // No font is the page's own mono stack, which is what the workspace drew before this key.
+    terminal: {
+      font: file?.terminal?.font ?? null,
+      size: file?.terminal?.size ?? DEFAULT_TERMINAL_SIZE,
+    },
+    catalogStaleDays: file?.catalog_stale_days ?? DEFAULT_CATALOG_STALE_DAYS,
+    // Absent means off: a new task starts from the prompt alone unless the user asked otherwise.
+    specFirst: file?.spec_first ?? false,
   };
-}
-
-/**
- * Records what the user told `agn doctor --plan`, one vendor at a time, keeping the port, the
- * editor, the catalog setting, the spec writer, the budget and the vendors they did not mention.
- * The file is rewritten from its parsed contents, so a comment in it does not survive being
- * edited this way.
- */
-export async function writeDaemonConfigPlans(paths: AgnosticPaths, plans: Plans): Promise<Plans> {
-  const current = await readDaemonConfig(paths);
-  const merged: Plans = { ...current.plans, ...plans };
-  const file: Record<string, unknown> = { plans: merged };
-  if (current.port !== null) {
-    file.port = current.port;
-  }
-  if (current.editor !== null) {
-    file.editor = current.editor;
-  }
-  if (!current.catalogCheck) {
-    file.catalog_check = false;
-  }
-  if (current.specWriter !== null) {
-    file.spec_writer = current.specWriter;
-  }
-  const budget = budgetSection(current.budget);
-  if (budget !== null) {
-    file.budget = budget;
-  }
-  if (current.hooks.claudeStatusline !== "user") {
-    file.hooks = { claude_statusline: current.hooks.claudeStatusline };
-  }
-  await writeYamlFile(paths.config, file, HEADER);
-  return merged;
-}
-
-/** Written back only when the user set a ceiling, so the rewrite adds no key they never wrote. */
-function budgetSection(budget: BudgetConfig): Record<string, number> | null {
-  const section: Record<string, number> = {};
-  if (budget.dailyUsd !== null) {
-    section.daily_usd = budget.dailyUsd;
-  }
-  if (budget.weeklyUsd !== null) {
-    section.weekly_usd = budget.weeklyUsd;
-  }
-  return Object.keys(section).length === 0 ? null : section;
 }

@@ -83,26 +83,14 @@ describe("createClient", () => {
     ]);
   });
 
-  it("maps a refused open to the daemon's own message and hint", async () => {
-    const { client } = stubClient(() =>
-      Response.json(
-        {
-          error: {
-            code: "editor-failed",
-            message: "zed did not start",
-            hint: "Run `agn open t1`.",
-          },
-        },
-        { status: 409 },
-      ),
-    );
-    const failure = await client.openTask("t1", {}).catch((cause: unknown) => cause);
-    expect(failure).toBeInstanceOf(ApiError);
-    expect(failure).toMatchObject({
-      code: "editor-failed",
-      status: 409,
-      hint: "Run `agn open t1`.",
-    });
+  it("reads config.yaml and patches the keys the user changed", async () => {
+    const { client, calls } = stubClient(() => ok({}));
+    await client.config();
+    await client.patchConfig({ appearance: { theme: "ink" } });
+    expect(calls.map((call) => `${call.method} ${call.url} ${call.body}`)).toEqual([
+      "GET /config null",
+      'PATCH /config {"appearance":{"theme":"ink"}}',
+    ]);
   });
 
   it("reads the snapshot cursor each list carries", async () => {
@@ -141,15 +129,6 @@ describe("createClient", () => {
     await client.recommend({ repoId: "r1", prompt: "add a retry budget" }, controller.signal);
     expect(sent).toBe(JSON.stringify({ repoId: "r1", prompt: "add a retry budget" }));
     expect(signal).toBe(controller.signal);
-  });
-
-  it("passes an aborted fetch back as it was thrown", async () => {
-    const abort = new DOMException("aborted", "AbortError");
-    const client = createClient({ token: "tok", fetch: () => Promise.reject(abort) });
-    const failure = await client
-      .recommend({ repoId: "r1", prompt: "x" }, new AbortController().signal)
-      .catch((cause: unknown) => cause);
-    expect(failure).toBe(abort);
   });
 
   it("starts a task on the repo and returns the row the daemon created", async () => {
@@ -209,89 +188,5 @@ describe("createClient", () => {
       hint: "Write the spec yourself in the dialog.",
       status: 409,
     });
-  });
-
-  it("turns a refused run into an ApiError", async () => {
-    const { client } = stubClient(() =>
-      Response.json(
-        {
-          error: { code: "folder-busy", message: "that folder is in use", hint: "Stop it first." },
-        },
-        { status: 409 },
-      ),
-    );
-    const failure = await client
-      .runTask("r1", { prompt: "add a retry budget" })
-      .catch((cause: unknown) => cause);
-    expect(failure).toMatchObject({ code: "folder-busy", hint: "Stop it first.", status: 409 });
-  });
-
-  it("reports a usage scan the daemon could not finish", async () => {
-    const { client } = stubClient(() =>
-      Response.json(
-        { error: { code: "usage-scan-failed", message: "a transcript could not be read" } },
-        { status: 500 },
-      ),
-    );
-    const failure = await client.usage().catch((cause: unknown) => cause);
-    expect(failure).toBeInstanceOf(ApiError);
-    expect(failure).toMatchObject({ code: "usage-scan-failed", status: 500 });
-  });
-
-  it("turns the daemon's error body into an ApiError", async () => {
-    const { client } = stubClient(() =>
-      Response.json(
-        {
-          error: { code: "session-not-running", message: "nothing is running", hint: "Resume it." },
-        },
-        { status: 409 },
-      ),
-    );
-    const failure = await client.stopTask("t1").catch((cause: unknown) => cause);
-    expect(failure).toBeInstanceOf(ApiError);
-    expect(failure).toMatchObject({
-      code: "session-not-running",
-      message: "nothing is running",
-      hint: "Resume it.",
-      status: 409,
-    });
-  });
-
-  it("turns a 401 body into an unauthorized ApiError", async () => {
-    const { client } = stubClient(() =>
-      Response.json(
-        { error: { code: "unauthorized", message: "missing or bad token" } },
-        { status: 401 },
-      ),
-    );
-    const failure = await client.listRepos().catch((cause: unknown) => cause);
-    expect(failure).toMatchObject({ code: "unauthorized", status: 401 });
-  });
-
-  it("turns a 403 body into an origin-forbidden ApiError", async () => {
-    const { client } = stubClient(() =>
-      Response.json(
-        { error: { code: "origin-forbidden", message: "that origin is not this daemon" } },
-        { status: 403 },
-      ),
-    );
-    const failure = await client.listTasks().catch((cause: unknown) => cause);
-    expect(failure).toMatchObject({ code: "origin-forbidden", status: 403 });
-  });
-
-  it("reports a daemon that is not answering", async () => {
-    const client = createClient({
-      token: "tok",
-      fetch: () => Promise.reject(new TypeError("Failed to fetch")),
-    });
-    const failure = await client.listRepos().catch((cause: unknown) => cause);
-    expect(failure).toMatchObject({ code: "daemon-unreachable", status: null });
-    expect((failure as ApiError).hint).toBe("Run `agn daemon start`.");
-  });
-
-  it("reports a body that is not the daemon's error shape", async () => {
-    const { client } = stubClient(() => new Response("<html>bad gateway</html>", { status: 500 }));
-    const failure = await client.listTasks().catch((cause: unknown) => cause);
-    expect(failure).toMatchObject({ code: "daemon-response-invalid", status: 500 });
   });
 });

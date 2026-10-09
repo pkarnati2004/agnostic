@@ -1,0 +1,104 @@
+/*
+ * Moss, generated from the design's remap of the token values in tokens.css (2026-10-06).
+ * Neutrals take hue 150 at saturation 0.07; waiting h48 s0.9, running h140, failed h4, queued h190, ring h205 s0.55, warning h30 s0.8.
+ * Edit the generator, not this file - except to hand-tune a value the design asks for.
+ */
+[data-theme="moss"].dark {
+  --background: #111413;
+  --foreground: #e3e4e3;
+  --card: #161a18;
+  --card-foreground: #e3e4e3;
+  --popover: #1a1d1c;
+  --popover-foreground: #e3e4e3;
+  --primary: #e3e4e3;
+  --primary-foreground: #131514;
+  --primary-foreground-muted: #54605a;
+  --secondary: #242927;
+  --secondary-foreground: #edeeee;
+  --muted: #1c211f;
+  --muted-foreground: #7f9088;
+  --accent: #1f2321;
+  --accent-foreground: #edeeee;
+  --destructive: #e0584e;
+  --destructive-foreground: #f9fafa;
+  --border: #242a27;
+  --input: #2c3330;
+  --ring: #77afd7;
+  --sidebar: #141716;
+  --sidebar-foreground: #d2d5d3;
+  --sidebar-primary: #e3e4e3;
+  --sidebar-primary-foreground: #131514;
+  --sidebar-accent: #1f2321;
+  --sidebar-accent-foreground: #edeeee;
+  --sidebar-border: #202523;
+  --sidebar-ring: #77afd7;
+  --status-waiting: #f5d245;
+  --status-running: #5fbf7f;
+  --status-queued: #8aa3a8;
+  --status-done: #616f68;
+  --status-failed: #e0584e;
+  --status-stopped: #424d48;
+  --warning: #e9923c;
+  --terminal: #101211;
+  --diff-add-bg: rgb(95 191 127 / 0.1);
+  --diff-add-fg: #b9dcc5;
+  --diff-del-bg: rgb(224 88 78 / 0.1);
+  --diff-del-fg: #f0bab6;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.03);
+  --font-stack-sans:
+    "Red Hat Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-stack-mono:
+    "Red Hat Mono", "JetBrains Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas,
+    monospace;
+}
+
+[data-theme="moss"].light {
+  --background: #f8f9f8;
+  --foreground: #1d201f;
+  --card: #f2f3f2;
+  --card-foreground: #1d201f;
+  --popover: #edefee;
+  --popover-foreground: #1d201f;
+  --primary: #1d201f;
+  --primary-foreground: #f6f7f7;
+  --primary-foreground-muted: #a5aca8;
+  --secondary: #e0e3e2;
+  --secondary-foreground: #151716;
+  --muted: #eaeceb;
+  --muted-foreground: #737d78;
+  --accent: #e7e9e8;
+  --accent-foreground: #151716;
+  --destructive: #d23025;
+  --destructive-foreground: #0c0d0c;
+  --border: #e0e2e1;
+  --input: #d6d9d7;
+  --ring: #3074a5;
+  --sidebar: #f5f5f5;
+  --sidebar-foreground: #2b2f2d;
+  --sidebar-primary: #1d201f;
+  --sidebar-primary-foreground: #f6f7f7;
+  --sidebar-accent: #e7e9e8;
+  --sidebar-accent-foreground: #151716;
+  --sidebar-border: #e5e7e6;
+  --sidebar-ring: #3074a5;
+  --status-waiting: #846b07;
+  --status-running: #317b4a;
+  --status-queued: #597378;
+  --status-done: #959d99;
+  --status-failed: #d23025;
+  --status-stopped: #babfbd;
+  --warning: #a45b12;
+  --terminal: #fafafa;
+  --diff-add-bg: rgb(49 123 74 / 0.1);
+  --diff-add-fg: #3d7a51;
+  --diff-del-bg: rgb(210 48 37 / 0.1);
+  --diff-del-fg: #ab2c23;
+  --radius: 0.625rem;
+  --shadow-floating: 0 24px 64px -12px rgb(28 25 23 / 0.18), 0 0 0 1px rgb(28 25 23 / 0.06);
+  --font-stack-sans:
+    "Red Hat Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-stack-mono:
+    "Red Hat Mono", "JetBrains Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas,
+    monospace;
+}

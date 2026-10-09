@@ -37,6 +37,8 @@ type SidebarProps = {
   /** Asks the page for the confirmation: the sidebar never removes a repo itself. */
   onRemoveRepo: (repoId: string) => void;
   repoNotices: RepoNotices;
+  /** Opens the Settings dialog: the gear in the footer, and the rail's when it is collapsed. */
+  onSettings: () => void;
   /** The page's column for this pane; absent, no handle is drawn. */
   column?: PaneColumn;
   onToggle: () => void;
@@ -59,6 +61,7 @@ export function Sidebar(props: SidebarProps) {
         onNewTask={props.onNewTask}
         onSearch={props.onSearch}
         onSelect={onSelect}
+        onSettings={props.onSettings}
       />
     );
   }
@@ -136,7 +139,7 @@ export function Sidebar(props: SidebarProps) {
           notices={props.repoNotices}
         />
       </div>
-      <DaemonFooter {...props.daemon} />
+      <DaemonFooter {...props.daemon} onSettings={props.onSettings} />
     </aside>
   );
 }

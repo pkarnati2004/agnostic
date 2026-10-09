@@ -6,6 +6,8 @@ import type {
   CleanTaskRequest,
   CleanTaskResponse,
   CompareResponse,
+  ConfigPatchRequest,
+  ConfigResponse,
   CreatePrRequest,
   CreatePrResponse,
   DeleteTaskResponse,
@@ -93,6 +95,10 @@ export type WorkspaceClient = {
   doctor(body: DoctorRequest): Promise<DoctorResponse>;
   /** The editors on this machine and the configured one, for the Open in editor control. */
   editors(): Promise<EditorsResponse>;
+  /** config.yaml as the daemon reads it, with its path: what the Settings dialog shows. */
+  config(): Promise<ConfigResponse>;
+  /** The keys the user changed; the rest of the file is kept. Answers the file as it now reads. */
+  patchConfig(body: ConfigPatchRequest): Promise<ConfigResponse>;
   /** The daemon spawns the editor itself: the page has no terminal to run one in (ADR 036 Q4). */
   openTask(id: string, body: OpenTaskQuery): Promise<OpenedTaskResponse>;
   /** Writes the repo's generated files; the palette's Sync row asks for a real write. */
@@ -196,6 +202,8 @@ export function createClient(opts: {
       json<PickCompareResponse>("POST", `/compares/${encodeURIComponent(id)}/pick`, body),
     doctor: (body) => json<DoctorResponse>("POST", "/doctor", body),
     editors: () => json<EditorsResponse>("GET", "/editors"),
+    config: () => json<ConfigResponse>("GET", "/config"),
+    patchConfig: (body) => json<ConfigResponse>("PATCH", "/config", body),
     openTask: (id, body) =>
       json<OpenedTaskResponse>("POST", `/tasks/${encodeURIComponent(id)}/open`, body),
     syncRepo: (id, body) =>

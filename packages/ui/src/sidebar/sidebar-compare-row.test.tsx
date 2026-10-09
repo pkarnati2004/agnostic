@@ -82,6 +82,7 @@ function sidebar(state: WorkspaceState) {
           onRemoveRepo={vi.fn()}
           repoNotices={{}}
           onToggle={vi.fn()}
+          onSettings={vi.fn()}
         />
       </WithRowActions>
     </TooltipProvider>

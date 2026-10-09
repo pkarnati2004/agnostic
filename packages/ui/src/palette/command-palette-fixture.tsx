@@ -51,6 +51,7 @@ export function handlers(): Omit<PaletteHandlers, "recommend"> {
     archive: vi.fn(),
     delete: vi.fn(),
     showCost: vi.fn(),
+    settings: vi.fn(),
     addRepo: vi.fn(),
     sync: vi.fn(),
   };

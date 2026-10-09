@@ -168,6 +168,10 @@ agn open <task> --editor zed     # this once, in Zed
 | `catalog_check` | Whether agnostic checks once a day for a newer benchmark catalog, which is its only outbound call. Absent means yes; `false` turns it off and leaves `agn catalog update` working. |
 | `spec_writer` | The profile that writes specs in the workspace's spec step, as a full profile id. Absent means agn picks the cheapest model your subscription already covers. |
 | `hooks` | `claude_statusline`, either `user` or `repo`. `user`, the default, puts agn's status-line command in `~/.claude/settings.json`, so every Claude Code session reports its plan's rate limit. `repo` keeps agn out of that file: only the sessions agn starts report, and your own entry goes back on the next task launch or `agn hooks install`. |
+| `appearance` | `theme`, one of `rosewood`, `claudette`, `slate`, `paper`, `ink`, `moss`, `carbon`, `dusk`; and `mode`, one of `dark`, `light`, `system`. Defaults: `rosewood` and `system`. |
+| `terminal` | `font`, the name of a monospaced family installed on this machine, used by the workspace's terminal panes; and `size` in px, 8 to 32. Absent `font` means the page's own mono stack; `size` defaults to 13. |
+| `catalog_stale_days` | How many days old the benchmark catalog may be before the workspace says so above the terminal, 1 to 365. Defaults to 7. |
+| `spec_first` | What the New task tab's "Write the spec first" toggle starts as. Defaults to `false`. |
 | `budget` | `daily_usd` and `weekly_usd`, a ceiling in dollars over what agn priced in the calendar day and the Monday-based week: API-key and credits runs, and a run whose billing agn could not determine. Subscription and local runs never count. A cost the agent wrote itself (Pi, OMP, OpenCode, fx) is kept, because the provider billed it, and it counts toward the budget. At 80% `agn run`, the New task tab and the usage bar warn; at 100% a run or handoff onto an API-key or credits profile is refused unless you pass `--ignore-budget`. Resume is never refused. |
 
 ```yaml
@@ -180,6 +184,19 @@ budget:
   weekly_usd: 20
 hooks:
   claude_statusline: repo
+appearance:
+  theme: slate
+  mode: dark
+terminal:
+  font: IBM Plex Mono
+  size: 14
+catalog_stale_days: 3
+spec_first: true
 ```
 
 An unknown key or an unknown editor id is an error, not a silent default.
+
+The workspace's Settings dialog writes `editor`, `spec_writer`, `hooks`, `appearance`, `terminal`,
+`catalog_stale_days` and `spec_first`. It writes `plans` through `agn doctor`, which re-detects. A
+key left at its default is not written back. `port` stays a hand edit, because the daemon has
+already bound a port by the time the dialog can ask.

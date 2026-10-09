@@ -12,7 +12,16 @@ import { NoticeLine } from "./notice-line";
  * The catalog line, read once per page load and again after an update: nothing here polls. A read
  * that fails says nothing at all - the catalog's age is not worth a second failure on the page.
  */
-export function CatalogNotice({ client, now }: { client: WorkspaceClient; now: number }) {
+export function CatalogNotice({
+  client,
+  now,
+  staleDays,
+}: {
+  client: WorkspaceClient;
+  now: number;
+  /** `catalog_stale_days` from config.yaml, or its default until `GET /config` answers. */
+  staleDays: number;
+}) {
   const [summary, setSummary] = useState<CatalogSummary | null>(null);
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,7 +68,7 @@ export function CatalogNotice({ client, now }: { client: WorkspaceClient; now: n
       </NoticeLine>
     );
   }
-  const line = summary === null ? null : catalogStaleLine(summary, now);
+  const line = summary === null ? null : catalogStaleLine(summary, now, staleDays);
   if (line === null) {
     return null;
   }
