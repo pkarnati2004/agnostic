@@ -7,7 +7,7 @@ import type { Ledger, UsageInput } from "@agnostic/ledger";
 import { usageWindow } from "@agnostic/usage";
 import type { Detection } from "./detection-cache.js";
 import { createTestDaemon, TEST_TOKEN } from "./test-daemon.js";
-import { fixtureDetection } from "./test-detection.js";
+import { fixtureDetection, fixtureProfile } from "./test-detection.js";
 import { resolveUiDist } from "./ui-dist.js";
 
 /**
@@ -23,8 +23,11 @@ const CLOSED_REPO = "aster";
 // A repo whose folder is not on this machine: it draws the "Not found" marker and Remove (ADR 034).
 const MISSING_REPO = { name: "quill", path: join(tmpdir(), "agn-preview-quill-not-there") };
 
-const CLAUDE = "claude-code:sonnet-4.5:native";
-const CODEX = "codex:gpt-5-codex:native";
+// Model aliases the bundled catalog knows, so the New task card has evidence to show.
+const CLAUDE_MODELS = ["opus", "sonnet", "fable"];
+const CODEX_MODELS = ["gpt-6-astra", "gpt-5.6-sol"];
+const CLAUDE = "claude-code:opus:native";
+const CODEX = "codex:gpt-6-astra:native";
 
 const TASKS: { status: TaskStatus; title: string; profileId: string }[] = [
   { status: "waiting", title: "Add the retry budget", profileId: CLAUDE },
@@ -48,8 +51,17 @@ const SPEC_WRITER = fileURLToPath(
 // Every harness row is pointed at the fixture spec writer, so Write spec answers whichever profile
 // the recommender picks.
 function previewDetection(): Detection {
-  const found = fixtureDetection();
-  return { ...found, harnesses: found.harnesses.map((row) => ({ ...row, path: SPEC_WRITER })) };
+  const claude = fixtureDetection(CLAUDE_MODELS, ["claude-code"]);
+  const codex = fixtureDetection(CODEX_MODELS, ["codex"]);
+  const harnesses = [...claude.harnesses, ...codex.harnesses];
+  return {
+    ...claude,
+    harnesses: harnesses.map((row) => ({ ...row, path: SPEC_WRITER })),
+    profiles: [
+      ...claude.profiles,
+      ...CODEX_MODELS.map((model) => fixtureProfile(model, { harness: "codex" })),
+    ],
+  };
 }
 
 /** Enough rows for the bar and the task header to draw: three plans, two of them on the first repo. */
@@ -137,7 +149,9 @@ function seedCompare(ledger: Ledger, repoId: string, path: string): void {
 function seedRepo(ledger: Ledger, name: string, path: string, index: number): string[] {
   const repo = insertRepo(ledger, name, path, index, "active");
   const ids: string[] = [];
-  for (const [position, { status, title, profileId }] of TASKS.entries()) {
+  for (const [position, { status, profileId }] of TASKS.entries()) {
+    // Titles rotate per repo, so the Needs-you list and the repos read as different work.
+    const title = TASKS[(position + index) % TASKS.length]?.title ?? "";
     const id = newId();
     // Yesterday, so the statuses set below carry today's timestamps and the list sorts as it would.
     const at = new Date(Date.UTC(2026, 8, 13, 9, position * 7)).toISOString();

@@ -6,7 +6,7 @@ agnostic doesn't ship any agent. Install and log in to the ones you want, then r
 
 - **Node 22+** - https://nodejs.org
 - **git 2.40+**
-- **tmux 3.2 or newer** - `brew install tmux` (macOS) / `apt install tmux` (Linux). Sessions run inside tmux on a private server (`tmux -L agn ls` lists them) so you can attach from any terminal.
+- **tmux 3.3 or newer** - `brew install tmux` (macOS) / `apt install tmux` (Linux). Sessions run inside tmux on a private server (`tmux -L agn ls` lists them) so you can attach from any terminal.
 - **gh** (optional, for PR creation) - https://cli.github.com
 
 ## agn itself
@@ -14,12 +14,13 @@ agnostic doesn't ship any agent. Install and log in to the ones you want, then r
 Until there is a published package, agn runs from a checkout:
 
 ```bash
-git clone <this repo> && cd agnostic
-pnpm install
-pnpm agn doctor          # runs the CLI from source, arguments and flags as usual
+git clone https://github.com/pkarnati2004/agnostic && cd agnostic
+pnpm install && pnpm build
+(cd packages/cli && npm link)    # puts `agn` on your PATH
+agn doctor
 ```
 
-To put `agn` on your PATH instead, run `pnpm build`, then `npm link` inside `packages/cli`.
+`pnpm agn <command>` runs the CLI from source without the link, arguments and flags as usual.
 
 ## Agents
 
