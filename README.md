@@ -1,107 +1,109 @@
-# agnostic
+<h1 align="center">agnostic</h1>
 
-**One workspace above every coding agent.**
+<p align="center">
+  <strong>One workspace above every coding agent.</strong><br/>
+  Run Claude Code, Codex, Pi, OpenCode and the rest from one place, each task in its own worktree, and know which one to use.
+</p>
 
-Agent-agnostic development. Use Claude Code, Codex, Pi - and know which one to use. Models will change; where you work shouldn't.
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT" />
+  <img src="https://img.shields.io/badge/platform-macOS%20%C2%B7%20Linux%20(best%20effort)-lightgrey" alt="Platform: macOS, Linux best effort" />
+  <img src="https://img.shields.io/badge/node-22%2B-brightgreen" alt="Node 22 or newer" />
+</p>
 
-`agnostic` is a local-first workspace for the coding agents you already have. It recommends which agent and model to use for each task, runs the task in an isolated git worktree using that agent's own CLI, and lets you watch and jump into every running agent across all your repos from one window.
+<p align="center">
+  <img src="docs/assets/workspace.png" alt="The agnostic workspace: repos and tasks in the sidebar, the selected task in the centre, one usage cell per plan along the bottom" width="960" />
+</p>
 
-- **Bring your own agent / subscription.** Claude Code, Codex, Pi, OpenCode, Kimi, local models - anything with a CLI. Your logins, your keys, your plans. Nothing is proxied.
-- **Recommendations, not leaderboards.** Describe the task; get a pick with a reason, a confidence label, and the benchmarks behind it - limited to agents you can actually run.
-- **Isolation.** One worktree per task: two tasks on one repo never share a working tree.
-- **Native sessions.** Plan mode, tool approvals, permissions, subagents all happen in the agent's own UI. `agnostic` renders it; it doesn't replace it.
-- **Portable project context.** `.ag/instructions.md` is the one file you maintain; `agn sync` generates `CLAUDE.md` and `AGENTS.md` from it. Claude Code reads CLAUDE.md; Codex, OpenCode and Pi read AGENTS.md.
-- **Open in your editor.** `agn open` and the workspace button open a task's worktree in VS Code, Cursor, Zed, a JetBrains IDE, Xcode or a terminal.
-- **Usage and cost.** Per-task tokens and cost, per-plan usage at a glance.
-- **Local. Free. MIT.** No server, no account, no telemetry. agnostic makes one outbound call: a
-  daily check for a newer benchmark catalog. Put `catalog_check: false` in `~/.agnostic/config.yaml`
-  to turn it off; `agn catalog update` still works when you ask for it.
+agnostic is a local-first workspace for the coding agents you already have. Describe a task; agnostic recommends an agent and model, creates a git worktree, starts the agent's own CLI in it, and shows every running session across your repos in one window. Nothing is proxied: your agents, your logins, your keys, on your machine.
 
-## How it works
+## What it does
 
-1. **Start with the work.** `agn run "add invitation links"` - or press **+ Task** in the workspace. agnostic creates a worktree and a branch.
-2. **Pick an agent, or take agn's recommendation.** The card shows the pick, an alternative, and something worth trying if you don't have it yet.
-3. **Review and merge.** Watch the session, jump in when it asks, open the diff in your editor, merge when you're ready.
+- **Bring your own agent.** Claude Code, Codex, Pi, OpenCode, Kimi, local models, anything with a CLI. Your subscriptions and keys; agnostic never sits between you and the vendor.
+- **Recommendations, not leaderboards.** One pick per task with a reason, a confidence label and the benchmarks behind it, limited to agents you can run.
+- **One worktree per task.** Two tasks on one repo never share a working tree. Read the diff, open it in your editor, create the PR.
+- **Native sessions.** Plan mode, approvals, permissions and subagents happen in the agent's own UI. agnostic renders the session; it does not replace it.
+- **One project context.** Maintain `.ag/instructions.md`; `agn sync` writes `CLAUDE.md` and `AGENTS.md` from it, and `.ag/mcp.yaml` into each agent's MCP config.
+- **Hand off and compare.** Pass a task to another agent with a structured note, or run one prompt on several agents side by side and keep one.
+- **Usage and cost.** Tokens and cost per task, and every plan's usage in one bar.
+- **Local, free, MIT.** No server, no account, no telemetry. The one outbound call is a daily check for a newer benchmark catalog; `catalog_check: false` in `~/.agnostic/config.yaml` turns it off.
 
 ## Install
 
+agnostic runs from a checkout today. A published `agnostic-dev` package and a macOS app are next.
+
 ```bash
-npm i -g agnostic-dev        # installs the `agn` command
-agn doctor                   # shows which agents you have and whether they're logged in
-agn add ~/code/my-repo       # register a repo
-agn ui                       # open the workspace
+git clone https://github.com/pkarnati2004/agnostic && cd agnostic
+pnpm install && pnpm build
+(cd packages/cli && npm link)    # puts `agn` on your PATH
+agn doctor                       # which agents you have, and whether they are logged in
+agn add ~/code/my-repo           # register a repo
+agn ui                           # open the workspace
 ```
 
-Requirements: macOS (Linux best-effort), Node 22+, git, tmux, and at least one coding agent CLI installed and logged in. See [docs/setup](docs/setup.md) for per-agent instructions.
+Requirements: macOS (Linux best effort), Node 22+, pnpm, git, tmux 3.3+, and at least one coding agent installed and logged in. [docs/setup.md](docs/setup.md) covers each agent.
 
-## Commands
+## How it works
 
-| Command | What it does |
-|---|---|
-| `agn daemon start\|stop\|status\|restart` | Run, inspect or replace the background daemon. `--port <n>` on `start` and `restart`, `--force` on `restart` |
-| `agn add <path>` | Register a repo. `--git-init` runs `git init` on a plain folder first; `--new-id` registers a second clone |
-| `agn repos` | List the registered repos and mark a repo whose folder is missing. `--all` includes closed ones and names each one's status |
-| `agn repo close\|open\|remove <repo>` | Close a repo so it leaves the list and the workspace, keeping its history, or open it again. `remove` hides a repo for good and deletes the worktrees agn made for its tasks, keeping its history; `agn add <path>` brings it back. Close and remove are refused while a task is running or waiting |
-| `agn doctor` | Detect installed agents, logins, provider keys, local model servers |
-| `agn profiles` | List the agent × model combinations you can run right now |
-| `agn run "<task>"` | Create a worktree and start an agent. `--profile <id>`, `--harness other:<binary>`, `--model <m>`, `--repo <r>`, `--title <t>`, `--base <ref\|task>`, `--intent <class>`, `--skip-tests`, `--ignore-budget` |
-| `agn status [<task>]` | One task, or every task across your repos. `--all` lists everything from inside a worktree |
-| `agn attach [<task>]` | Join the session in your terminal; defaults to the task of the worktree you are in |
-| `agn stop <task>` | Stop the session |
-| `agn clean [<task>...]` | Remove the worktrees of closed tasks. `--delete-branch` removes the branch too; `--force` removes a worktree that still holds uncommitted work |
-| `agn task delete <task>` | Remove the task's worktree and every agn record of it: the row, its events and its outcome. Its branch stays, and so do its usage rows, with no task to count them against. Refused while the task runs |
-| `agn resume [<task>]` | Bring a session back after a reboot, with its history where the agent supports it |
-| `agn adopt <path>` | Register an agent session you started outside agn. `--task "<title>"`, `--pid <n>`, `--repo <r>` |
-| `agn hooks install` | Install the status hook in a repo. `--repo <r>`, `--harness <id>` |
-| `agn hooks uninstall` | Remove the status hook and the status line again. `--repo <r>`, `--harness <id>` |
-| `agn init` | Create `.ag/`, seeding `instructions.md` from an existing `CLAUDE.md` or `AGENTS.md`. `--from <file>`, `--force`, `--repo <r>` |
-| `agn sync` | Regenerate `CLAUDE.md` and `AGENTS.md` from `.ag/instructions.md`, and the MCP servers of `.ag/mcp.yaml` into each agent's own config. `--dry-run`, `--force`, `--repo <r>` |
-| `agn recommend "<task>"` | Recommend a profile, with reasons and sources. `--repo <r>`, `--intent <class>`, `--subscriptions-only` |
-| `agn handoff [<task>] --to <id\|harness>` | Stop a task and hand its work to another agent with a structured note. `--note <text>` (`-` reads stdin), `--note-file <path>` |
-| `agn usage [<task>]` | Today's and this week's usage per plan, or one task's |
-| `agn outcomes <task>` | What the task changed, what passed, what you kept |
-| `agn changes [<task>]` | Files the task changed against its base, with counts and whether each is unstaged, staged or committed. `--patch <path>` prints one file's diff |
-| `agn pr [<task>]` | Push the branch and open its pull request. `--title <t>`, `--no-open` |
-| `agn update [<task>]` | Ask the agent to bring the branch up to date with its base: rebase if never pushed, merge if pushed |
-| `agn commit [<task>]` | Ask the agent to commit its uncommitted work, with the prompt in `.ag/prompts/commit.md` or agn's default |
-| `agn compare "<prompt>"` | Run one prompt on 2-4 profiles at once, one worktree each. `--profiles a,b`; omitted, agn's pick and its alternative |
-| `agn compare show <id>` | One table over the agents: files, lines, tests, cost, time |
-| `agn compare pick <id> <task>` | Keep one; the others are stopped and their worktrees removed, branches kept |
-| `agn open [<task>]` | Open the task's directory in your editor. `--editor <id>` |
-| `agn catalog show <profile>` / `agn catalog update` | Print the benchmark rows behind a recommendation, or fetch the latest catalog |
-| `agn mcp` | Serve agn's commands to an agent over MCP on stdin and stdout; see [docs/mcp.md](docs/mcp.md) |
-| `agn ui` | Open the workspace in your browser. `--no-open` prints the address instead |
+**1. Describe the task.** New task in the workspace, or `agn run "add invitation links"`. agnostic classifies the task and shows its pick: the agent and model, why, and how much evidence stands behind the reason. Keep it or choose another.
 
-Every command prints plain text: one aligned table for a list, `key: value` lines for a single
-thing, no colours. `--json` prints the daemon's response body instead, so scripts read the same
-types the UI does. Errors go to stderr as `agn: <message>` with an indented hint. Exit codes are 0
-for ok, 1 for a command that failed and 2 for a command line that was wrong; `agn daemon status`
-answers with its code instead (0 running, 1 stopped, 2 stale).
+<p align="center">
+  <img src="docs/assets/new-task.png" alt="The New task card: the prompt, the recommended profile, the alternative, and the evidence behind the pick" width="800" />
+</p>
 
-Any command starts the daemon if it is not already running, except `agn daemon status` and
-`agn daemon stop`. `AGNOSTIC_HOME` moves everything agn stores away from `~/.agnostic`.
+**2. Watch, and step in when asked.** The task runs in its own worktree, in the agent's own CLI, inside the workspace. Tasks waiting for an answer are listed under "Needs you". `agn attach` joins the same session from any terminal.
+
+**3. Review and merge.** The Changes column lists what the task changed, unstaged, staged and committed. Open the worktree in your editor, ask the agent to commit, create the PR. Hand the task to another agent if the first one stalls.
+
+## Workspace
+
+<p align="center">
+  <img src="docs/assets/settings.png" alt="Settings, Appearance: eight themes, each with its own fonts, and a dark, light or system mode" width="800" />
+</p>
+
+- **Command palette** (`⌘K`): every action on the selected task, and agnostic's own commands.
+- **Themes.** Eight, with bundled open-licence fonts; dark, light or system.
+- **Settings** for agents and profiles, plans and keys, recommendations, worktrees, the daemon and the terminal, all saved to `~/.agnostic/config.yaml`, which the CLI reads too.
+
+## CLI
+
+The workspace and the CLI talk to the same daemon, so anything you can click you can type.
+
+```bash
+agn run "add invitation links"     # worktree, branch, agent; the pick from agn recommend
+agn status                         # every task across your repos
+agn attach <task>                  # join the session in your terminal
+agn handoff <task> --to codex      # stop, write a note, continue with another agent
+agn compare "fix the flaky test"   # one prompt on several agents, then pick one
+agn usage                          # today and this week, per plan
+agn mcp                            # agnostic's commands as MCP tools for an agent
+```
+
+The full list is in [docs/cli.md](docs/cli.md).
 
 ## Supported agents
 
-Full support (status, usage, recommendations): **Claude Code, Codex, Pi, OpenCode, OMP.**
-Status hook: Gemini CLI, Cursor Agent, Copilot CLI, Kimi CLI, Factory Droid, Devin CLI, Grok CLI, Mimo Code, OpenClaude, Command Code; some of these also count tokens (see [docs/setup.md](docs/setup.md)).
-Launch and attach: any other CLI agent - Aider, Goose, Amp, Qwen Code, Kiro, Crush, and more.
+| Support | Agents |
+|---|---|
+| Status, usage, recommendations | Claude Code, Codex, Pi, OpenCode, OMP |
+| Status hook | Gemini CLI, Cursor Agent, Copilot CLI, Kimi CLI, Factory Droid, Devin CLI, Grok CLI, Mimo Code, OpenClaude, Command Code |
+| Launch and attach | Any other CLI agent, with `agn run --harness other:<binary>` |
 
-Model overrides (Kimi in Claude Code, a local model in Codex, anything via OpenRouter) go through each agent's own mechanism with your own keys. See [docs/models](docs/models.md).
+Model overrides (Kimi in Claude Code, a local model in Codex, anything through OpenRouter) go through each agent's own mechanism with your own keys. See [docs/models.md](docs/models.md).
 
 ## Documentation
 
 - [Setup: installing and logging into agents](docs/setup.md)
+- [CLI reference](docs/cli.md)
+- [Workspace](docs/workspace.md)
 - [Models and providers: OpenRouter, Kimi, local models](docs/models.md)
 - [Project context: `.ag/` and `agn sync`](docs/project-context.md)
 - [Recommendations: how the catalog works](docs/recommendations.md)
 - [Usage and cost: what agn counts](docs/usage.md)
 - [Catalog: what it holds, how it updates](docs/catalog.md)
-- [Workspace UI](docs/workspace.md)
 - [MCP: agn's commands as tools for an agent](docs/mcp.md)
 - [Troubleshooting](docs/troubleshooting.md)
-- [Writing guide for docs and site](docs/WRITING.md)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Code is MIT; borrowed pieces are listed in [PROVENANCE.md](PROVENANCE.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Code is MIT; [PROVENANCE.md](PROVENANCE.md) says what was adapted from elsewhere.
