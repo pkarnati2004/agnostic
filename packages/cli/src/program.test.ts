@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { DaemonApiError } from "@agnostic/core";
 import { describe, expect, it } from "vitest";
 import { runMain } from "./program.js";
@@ -18,6 +19,16 @@ function failing() {
 }
 
 describe("runMain", () => {
+  it("prints the version from the package manifest under --version and exits 0", async () => {
+    const manifest = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+    ) as { version: string };
+    const cli = createTestContext();
+    const code = await runMain(["node", "agn", "--version"], cli.ctx);
+    expect(code).toBe(0);
+    expect(cli.out).toEqual([manifest.version]);
+  });
+
   it("prints every command this build carries under --help and exits 0", async () => {
     const cli = createTestContext();
     const code = await runMain(["node", "agn", "--help"], cli.ctx);

@@ -1,8 +1,33 @@
 {
   "name": "agnostic-dev",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "One workspace above every coding agent: recommend, run and watch Claude Code, Codex, Pi, OpenCode and more, one git worktree per task.",
+  "keywords": [
+    "coding-agents",
+    "claude-code",
+    "codex",
+    "worktree",
+    "cli",
+    "daemon"
+  ],
+  "homepage": "https://github.com/pkarnati2004/agnostic#readme",
+  "bugs": "https://github.com/pkarnati2004/agnostic/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pkarnati2004/agnostic.git",
+    "directory": "packages/cli"
+  },
+  "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "prepublishOnly": "echo 'publish the tarball from pnpm pack:npm, not this package: see docs/release.md' >&2 && exit 1"
+  },
   "exports": {
     ".": {
       "development": "./src/index.ts",

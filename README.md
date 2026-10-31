@@ -30,18 +30,14 @@ agnostic is a local-first workspace for the coding agents you already have. Desc
 
 ## Install
 
-agnostic runs from a checkout today. A published `agnostic-dev` package and a macOS app are next.
-
 ```bash
-git clone https://github.com/pkarnati2004/agnostic && cd agnostic
-pnpm install && pnpm build
-(cd packages/cli && npm link)    # puts `agn` on your PATH
+npm i -g agnostic-dev            # puts `agn` on your PATH
 agn doctor                       # which agents you have, and whether they are logged in
 agn add ~/code/my-repo           # register a repo
 agn ui                           # open the workspace
 ```
 
-Requirements: macOS (Linux best effort), Node 22+, pnpm, git, tmux 3.3+, and at least one coding agent installed and logged in. [docs/setup.md](docs/setup.md) covers each agent.
+Requirements: macOS (Linux best effort), Node 22+, git, tmux 3.3+, and at least one coding agent installed and logged in. [docs/setup.md](docs/setup.md) covers each agent, and its "From a checkout" note covers running agn from a clone.
 
 ## How it works
 

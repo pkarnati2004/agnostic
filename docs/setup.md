@@ -11,16 +11,22 @@ agnostic doesn't ship any agent. Install and log in to the ones you want, then r
 
 ## agn itself
 
-Until there is a published package, agn runs from a checkout:
+```bash
+npm i -g agnostic-dev
+agn doctor
+```
+
+The package carries the `agn` command, the daemon and the workspace page. npm installs two native packages beside it, `better-sqlite3` and `node-pty`, with prebuilt binaries for Node 22; nothing agn runs afterwards reaches the network for them.
+
+### From a checkout
 
 ```bash
 git clone https://github.com/pkarnati2004/agnostic && cd agnostic
 pnpm install && pnpm build
-(cd packages/cli && npm link)    # puts `agn` on your PATH
-agn doctor
+pnpm agn doctor                  # runs the CLI from source; flags as on the real command
 ```
 
-`pnpm agn <command>` runs the CLI from source without the link, arguments and flags as usual.
+`pnpm pack:npm` builds the same tarball npm publishes, `build/npm/agnostic-dev-<version>.tgz`, and `npm i -g <that file>` installs it. [CONTRIBUTING.md](../CONTRIBUTING.md) has the rest.
 
 ## Agents
 

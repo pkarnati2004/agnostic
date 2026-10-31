@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { CoreError, spawn } from "@agnostic/core";
 
@@ -9,9 +10,14 @@ export type DaemonRun = { exitCode: number; stdout: string; stderr: string };
 /**
  * Resolving rather than importing keeps hono, better-sqlite3 and the registry out of the CLI
  * process. The parent's execArgv comes along so a CLI running from source under tsx starts a
- * daemon from source too.
+ * daemon from source too. The published bundle ships `agnd.js` beside `main.js`, so that comes
+ * first; `from` is this file's URL, a parameter so the sibling case can be tested.
  */
-export function resolveDaemonEntry(): DaemonEntry {
+export function resolveDaemonEntry(from: string = import.meta.url): DaemonEntry {
+  const beside = fileURLToPath(new URL("./agnd.js", from));
+  if (existsSync(beside)) {
+    return { argv: [process.execPath, ...process.execArgv, beside] };
+  }
   let main: string;
   try {
     main = fileURLToPath(import.meta.resolve("@agnostic/daemon/main"));

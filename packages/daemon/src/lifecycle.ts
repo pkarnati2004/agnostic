@@ -1,6 +1,5 @@
 import { readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   type AgnosticPaths,
   agnosticHome,
@@ -26,7 +25,7 @@ const LOG_TAIL_LINES = 20;
 export async function startDaemon(opts: {
   home?: string;
   port?: number;
-  entry?: string[];
+  entry: string[];
 }): Promise<DaemonInfo> {
   const paths = pathsFor(opts.home);
   const probe = await probeDaemon(paths);
@@ -39,7 +38,7 @@ export async function startDaemon(opts: {
   await rm(paths.daemon, { force: true });
 
   const logFile = join(paths.logs, "agnd.log");
-  const [command = process.execPath, ...rest] = opts.entry ?? [process.execPath, mainScript()];
+  const [command = process.execPath, ...rest] = opts.entry;
   const args = [...rest, "run", ...(opts.port === undefined ? [] : ["--port", String(opts.port)])];
   const child = spawn(command, args, {
     detached: true,
@@ -80,7 +79,7 @@ export async function restartDaemon(opts: {
   home?: string;
   port?: number;
   force?: boolean;
-  entry?: string[];
+  entry: string[];
 }): Promise<DaemonInfo> {
   const paths = pathsFor(opts.home);
   if (opts.force === true) {
@@ -138,11 +137,6 @@ export function daemonStatus(opts: { home?: string }): Promise<DaemonProbe> {
 
 function pathsFor(home: string | undefined): AgnosticPaths {
   return agnosticPaths(home === undefined ? agnosticHome() : resolve(home));
-}
-
-/** The default for a library caller; `agnd` itself passes the argv it was started with. */
-function mainScript(): string {
-  return fileURLToPath(new URL("./main.js", import.meta.url));
 }
 
 async function end(pid: number): Promise<void> {
