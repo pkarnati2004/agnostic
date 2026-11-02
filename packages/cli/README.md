@@ -14,3 +14,5 @@ argv into one client call and prints the answer as an aligned table, `key: value
 
 It is not: state, detection, launching, or policy. It holds no opinion the daemon does not already
 hold, and it imports no workspace package other than `@agnostic/core`.
+
+Published to npm as `agnostic-dev`: `scripts/pack-npm.ts` bundles this package, the daemon and the workspace page into one tarball with `better-sqlite3` and `node-pty` as its dependencies; `pnpm smoke:npm` installs that tarball into a temporary prefix and runs it. See `docs/release.md`.

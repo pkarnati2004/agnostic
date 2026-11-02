@@ -10,3 +10,4 @@ coverage/
 .screenshots/
 .codex
 .agents
+build/

@@ -124,6 +124,9 @@ importers:
       '@types/ws':
         specifier: 8.18.1
         version: 8.18.1
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       knip:
         specifier: 5.88.1
         version: 5.88.1(@types/node@22.20.2)(typescript@5.9.3)

@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveUiDist, resolveUiFile, UI_CONTENT_TYPES, uiContentType } from "./ui-dist.js";
 
@@ -11,6 +12,46 @@ describe("resolveUiDist", () => {
     const dist = resolveUiDist();
     expect(dist).not.toBeNull();
     expect(dist).toMatch(/packages[/\\]ui[/\\]dist$/);
+  });
+});
+
+describe("resolveUiDist from a published bundle", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "agn-bundle-"));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const fromBundle = () => resolveUiDist(pathToFileURL(join(dir, "agnd.js")).href);
+
+  it("serves the ui directory beside the running file when it holds the page", async () => {
+    await mkdir(join(dir, "ui"));
+    await writeFile(join(dir, "ui", "index.html"), "", "utf8");
+    expect(fromBundle()).toBe(join(dir, "ui"));
+  });
+
+  it("returns the directory without a trailing separator", async () => {
+    await mkdir(join(dir, "ui"));
+    await writeFile(join(dir, "ui", "index.html"), "", "utf8");
+    expect(fromBundle()?.endsWith("ui")).toBe(true);
+  });
+
+  it("ignores a ui file that is not a directory holding the page", async () => {
+    await writeFile(join(dir, "ui"), "", "utf8");
+    expect(fromBundle()).toMatch(/packages[/\\]ui[/\\]dist$/);
+  });
+
+  it("ignores a ui directory without the page", async () => {
+    await mkdir(join(dir, "ui"));
+    expect(fromBundle()).toMatch(/packages[/\\]ui[/\\]dist$/);
+  });
+
+  it("falls back to the workspace dist when nothing sits beside it", () => {
+    expect(fromBundle()).toMatch(/packages[/\\]ui[/\\]dist$/);
   });
 });
 

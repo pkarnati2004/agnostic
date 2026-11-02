@@ -6,6 +6,12 @@ AGNOSTIC_HOME="$(mktemp -d)"
 export AGNOSTIC_HOME
 WORK="$(mktemp -d)"
 trap 'rm -rf "$AGNOSTIC_HOME" "$WORK"' EXIT
+# Every config.yaml here turns the daily catalog check off, so no daemon the smoke starts fetches
+# the published catalog. Only the catalog update step below turns it back on, against loopback.
+write_config() {
+  { printf "$@"; printf 'catalog_check: false\n'; } > "$AGNOSTIC_HOME/config.yaml"
+}
+write_config ''
 
 echo "smoke: core unit tests"
 pnpm vitest run --project core
@@ -137,7 +143,7 @@ agn() {
 # A port nothing is listening on, so a daemon the author is already running keeps its own. The
 # CLI never reads this file: it learns the port from the daemon.json that agnd writes.
 FREE_PORT="$("$NODE" -e "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>process.stdout.write(String(p)))})")"
-printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: %s\n' "$FREE_PORT"
 
 if agn daemon status; then echo "smoke: daemon status answered with no daemon running" >&2; exit 1; fi
 agn repos | grep -q "^no repos yet"
@@ -198,7 +204,7 @@ test "$(agn profiles | wc -l)" -eq 2
 agn doctor | head -1 | grep -q "^not installed:"
 if agn doctor | grep -q "plan unknown for"; then echo "smoke: doctor asked for a plan with no harness installed" >&2; exit 1; fi
 # The plan the user names is written to config.yaml, which keeps the port line it already had.
-echo "port: 7439" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: 7439\n'
 agn doctor --plan claude=max20 > /dev/null
 grep -q "claude: max20" "$AGNOSTIC_HOME/config.yaml"
 grep -q "port: 7439" "$AGNOSTIC_HOME/config.yaml"
@@ -231,7 +237,7 @@ for (const vendor of ['google', 'xai', 'moonshot', 'cursor']) {
 "
 # The port line goes back: every daemon the rest of the smoke starts must stay off the real 7431,
 # where the author's own daemon lives.
-printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: %s\n' "$FREE_PORT"
 
 if agn add "$WORK/nope" 2> "$WORK/add-error.txt"; then echo "smoke: add accepted a path that does not exist" >&2; exit 1; fi
 grep -q "does not exist" "$WORK/add-error.txt"
@@ -413,13 +419,13 @@ post() {
 test "$(post spec "$WORK/spec-409.json" '{"prompt":"add a verbose flag"}')" = "409"
 grep -q '"code":"spec-writer-unavailable"' "$WORK/spec-409.json"
 
-printf 'port: %s\nspec_writer: claude-code:default:native\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: %s\nspec_writer: claude-code:default:native\n' "$FREE_PORT"
 test "$(post spec "$WORK/spec.json" '{"prompt":"add a verbose flag"}')" = "200"
 grep -q '"title":"Add a verbose flag"' "$WORK/spec.json"
 grep -q '"profileId":"claude-code:default:native"' "$WORK/spec.json"
 grep -q "^Task: add a verbose flag$" "$WORK/spec-prompt.txt"
 grep -q "^## Acceptance$" "$WORK/spec-prompt.txt"
-printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: %s\n' "$FREE_PORT"
 
 # The approved text reaches the note; the prompt stays the one-liner.
 test "$(post tasks "$WORK/spec-task.json" '{"prompt":"add a verbose flag","profile":"claude-code","spec":"Add --verbose to the CLI.","acceptance":"- [ ] the flag prints a line per step"}')" = "201"
@@ -492,12 +498,12 @@ if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$USER_SETTINGS"; then echo "smo
 grep -q "'printf mine'" "$WORK/runrepo/.claude/settings.local.json"
 test "$(grep -c statusline.sh "$WORK/runrepo/.claude/settings.local.json")" = 1
 # The opt-out puts their own entry back and leaves nothing of agn's behind.
-printf 'port: %s\nhooks:\n  claude_statusline: repo\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: %s\nhooks:\n  claude_statusline: repo\n' "$FREE_PORT"
 agx hooks install --repo "$WORK/runrepo" --harness claude-code > "$WORK/claude-optout.txt"
 grep -q "status-line capture: agn tasks only" "$WORK/claude-optout.txt"
 test "$("$NODE" -e "process.stdout.write(require('$USER_SETTINGS').statusLine.command)")" = "printf mine"
 test ! -f "$SIDECAR"
-printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: %s\n' "$FREE_PORT"
 
 # Every harness but Claude Code keeps its hooks per user: one file under HOME, never in the repo.
 agx hooks install --repo "$WORK/runrepo" --harness gemini > "$WORK/gemini-hooks.txt" 2>&1
@@ -891,7 +897,7 @@ grep -q 'as of 3 h ago' "$WORK/usage-aged.txt"
 
 echo "smoke: a budget in config.yaml, warned about and overridden"
 # The smoke's transcripts belong to no task, so nothing is priced and the window reads $0.00.
-printf 'port: %s\nbudget:\n  daily_usd: 0.01\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: %s\nbudget:\n  daily_usd: 0.01\n' "$FREE_PORT"
 agx usage > "$WORK/budget-usage.txt"
 grep -q '^budget today \$0.00 of \$0.01 (0%, ok)$' "$WORK/budget-usage.txt"
 agx usage --json | grep -q '"limitUsd": 0.01'
@@ -902,10 +908,10 @@ BUDGET_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/budget-run.txt")"
 agx stop "$BUDGET_TASK" | grep -q "^stopped $BUDGET_TASK"
 agx clean "$BUDGET_TASK" | grep -q "^cleaned $BUDGET_TASK"
 # A key under `budget` that agn does not know is an error, not a silent default.
-printf 'port: %s\nbudget:\n  daily_usd: 0.01\n  bogus: 1\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: %s\nbudget:\n  daily_usd: 0.01\n  bogus: 1\n' "$FREE_PORT"
 ! agx usage 2> "$WORK/budget-err.txt"
 grep -q "bogus\|unrecognized" "$WORK/budget-err.txt"
-printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
+write_config 'port: %s\n' "$FREE_PORT"
 
 # Pi writes a message-graph transcript of its own, under its own home directory.
 mkdir -p "$USAGE_HOME/.pi/agent/sessions"
@@ -964,6 +970,9 @@ done
 test -n "$CATALOG_PORT"
 curl -fsS "http://127.0.0.1:$CATALOG_PORT/manifest.json" > /dev/null
 export AGNOSTIC_CATALOG_URL="http://127.0.0.1:$CATALOG_PORT"
+# Until here the daily check was off, so no daemon has recorded one.
+test ! -f "$AGNOSTIC_HOME/catalog-check.json"
+printf 'port: %s\n' "$FREE_PORT" > "$AGNOSTIC_HOME/config.yaml"
 
 agx catalog update | grep -q "^catalog updated 1 → 2 (generated 2026-09-08, 4 benchmark rows)$"
 test -f "$AGNOSTIC_HOME/catalog.json"

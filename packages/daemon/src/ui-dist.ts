@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,8 +25,13 @@ export function uiContentType(file: string): string {
 /**
  * The package is resolved rather than imported: the daemon never loads a byte of the page, and a
  * checkout that has not been built still starts, answering `/ui` with a 404 that says to build.
+ * The published bundle ships the page as `ui/` beside `agnd.js`, so that comes first.
  */
-export function resolveUiDist(): string | null {
+export function resolveUiDist(from: string = import.meta.url): string | null {
+  const beside = fileURLToPath(new URL("./ui", from));
+  if (existsSync(join(beside, INDEX))) {
+    return beside;
+  }
   try {
     return join(dirname(fileURLToPath(import.meta.resolve("@agnostic/ui/package.json"))), "dist");
   } catch {
