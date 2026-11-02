@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render } from "../test/render";
+import { chooseOption, openSelect, optionLabels, render } from "../test/render";
 import { PROFILE, REPO, setValue } from "../test/workspace-fixture";
 import { Composer, type ComposerProps } from "./composer";
 import type { NewTaskForm } from "./new-task-request";
@@ -36,6 +36,7 @@ function composer(overrides: Partial<ComposerProps> = {}) {
     busy: false,
     onStart: vi.fn(),
     onChooseRepo: vi.fn(),
+    onBrowse: null,
     promptRef: createRef<HTMLTextAreaElement>(),
     active: true,
     ...overrides,
@@ -149,6 +150,25 @@ describe("Composer", () => {
     });
 
     expect(container.textContent).toContain("Intent: auto (reads as ui)");
+    unmount();
+  });
+});
+
+describe("Composer's repo chip", () => {
+  it("lists no Browse… outside the Mac app", () => {
+    const { unmount } = composer({ onBrowse: null });
+    expect(optionLabels(openSelect("Repo"))).not.toContain("Browse…");
+    unmount();
+  });
+
+  it("lists Browse… last when onBrowse is set, and the item calls it", () => {
+    const onBrowse = vi.fn();
+    const { props, unmount } = composer({ onBrowse });
+    const options = openSelect("Repo");
+    expect(optionLabels(options).at(-1)).toBe("Browse…");
+    chooseOption(options, "Browse…");
+    expect(onBrowse).toHaveBeenCalledOnce();
+    expect(props.onChange).not.toHaveBeenCalled();
     unmount();
   });
 });

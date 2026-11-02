@@ -94,6 +94,7 @@ function centre(tabs: TabsState, extra: Extra = {}) {
           seed={null}
           onStarted={vi.fn()}
           onAddRepo={vi.fn()}
+          onReopenRepo={vi.fn()}
           usageStamp={{ plans: 0, byTask: {} }}
           onPick={() => Promise.resolve(null)}
         />

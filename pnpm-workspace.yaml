@@ -11,3 +11,7 @@ allowBuilds:
   better-sqlite3: true
   # node-pty ships prebuilds; the install script only compiles when none matches the platform.
   node-pty: true
+  # electron downloads its own binary from its install script; the desktop shell runs on it.
+  electron: true
+  # electron-builder pulls this in for Windows targets; its install script is not needed on a Mac build.
+  electron-winstaller: false

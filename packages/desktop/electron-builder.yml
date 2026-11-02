@@ -1,0 +1,19 @@
+# The staged app from scripts/pack-desktop.ts, natives already rebuilt for Electron.
+appId: dev.agnostic.app
+productName: agnostic
+directories:
+  app: build/app
+  output: release
+# agnd is a separate process that reads ui/ and catalog.json with fs, and both natives dlopen.
+asar: false
+npmRebuild: false
+mac:
+  target:
+    - target: dmg
+      arch: [arm64]
+  category: public.app-category.developer-tools
+  icon: icon/icon.png
+  # "-" is an ad-hoc signature over the whole bundle; null would leave Electron's own, unsealed one.
+  # Developer ID signing, notarization and the hardened runtime come later.
+  hardenedRuntime: false
+  identity: "-"

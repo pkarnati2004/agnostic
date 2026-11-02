@@ -70,6 +70,7 @@ export function tab(client: WorkspaceClient, opts: TabOptions = {}) {
       client={client}
       onStarted={opts.onStarted ?? vi.fn()}
       onAddRepo={vi.fn()}
+      onReopenRepo={vi.fn()}
     />
   );
   const rendered = render(draw());

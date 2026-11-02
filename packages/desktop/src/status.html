@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'"
+    />
+    <title>agnostic</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        background: #141211;
+        color: #e8e4df;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      main {
+        max-width: 460px;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #8e8781;
+      }
+      code {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 13px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: #1a1816;
+        color: #e8e4df;
+        user-select: all;
+      }
+      button {
+        align-self: flex-start;
+        font: inherit;
+        font-size: 14px;
+        padding: 6px 14px;
+        border-radius: 6px;
+        border: 1px solid #2a2624;
+        background: #1a1816;
+        color: #e8e4df;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 id="title">Starting agnd…</h1>
+      <p id="detail" hidden></p>
+      <code id="command" hidden></code>
+      <button id="recheck" type="button" hidden></button>
+      <p id="note" hidden></p>
+    </main>
+    <script src="status.js"></script>
+  </body>
+</html>

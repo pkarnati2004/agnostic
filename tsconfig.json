@@ -11,6 +11,7 @@
     { "path": "packages/sync" },
     { "path": "packages/executor-tmux" },
     { "path": "packages/daemon" },
-    { "path": "packages/cli" }
+    { "path": "packages/cli" },
+    { "path": "packages/desktop" }
   ]
 }
