@@ -7,6 +7,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "../components/select";
@@ -19,6 +20,9 @@ import type { RecommendationState } from "./use-recommendation";
 
 // Eight lines at the design's 14 px over 1.5: past that the box scrolls instead of growing.
 const MAX_HEIGHT_PX = 168;
+
+// The repo chip's last item, which opens the folder picker; a space keeps it apart from any repo id.
+const BROWSE_ITEM = "browse folder";
 
 export type ComposerProps = {
   form: NewTaskForm;
@@ -39,6 +43,8 @@ export type ComposerProps = {
   onStart: () => void;
   /** With no repo registered there is nothing to run in, so the chip opens Add a repo instead. */
   onChooseRepo: () => void;
+  /** Null outside the desktop shell, where no "Browse…" item is drawn. */
+  onBrowse: (() => void) | null;
   promptRef: RefObject<HTMLTextAreaElement | null>;
   /** False while another tab is in front, where a hidden box has no height to measure. */
   active: boolean;
@@ -79,7 +85,7 @@ export function Composer(props: ComposerProps) {
               Choose a repo
             </button>
           ) : (
-            <RepoChip repos={repos} form={form} onChange={onChange} />
+            <RepoChip repos={repos} form={form} onChange={onChange} onBrowse={props.onBrowse} />
           )}
           <Select
             value={form.intent}
@@ -132,12 +138,19 @@ export function Composer(props: ComposerProps) {
 }
 
 /** Which repo the task runs in, with its initial, as the sidebar heading draws it. */
-function RepoChip({ repos, form, onChange }: Pick<ComposerProps, "repos" | "form" | "onChange">) {
+function RepoChip({
+  repos,
+  form,
+  onChange,
+  onBrowse,
+}: Pick<ComposerProps, "repos" | "form" | "onChange" | "onBrowse">) {
   const repo = repos.find((row) => row.id === form.repoId) ?? null;
   return (
     <Select
       value={form.repoId === "" ? undefined : form.repoId}
-      onValueChange={(repoId) => onChange({ ...form, repoId })}
+      onValueChange={(value) =>
+        value === BROWSE_ITEM ? onBrowse?.() : onChange({ ...form, repoId: value })
+      }
     >
       <SelectTrigger id="new-task-repo" aria-label="Repo" size="chip">
         {repo === null ? (
@@ -155,6 +168,12 @@ function RepoChip({ repos, form, onChange }: Pick<ComposerProps, "repos" | "form
             {row.name}
           </SelectItem>
         ))}
+        {onBrowse !== null && (
+          <>
+            <SelectSeparator />
+            <SelectItem value={BROWSE_ITEM}>Browse…</SelectItem>
+          </>
+        )}
       </SelectContent>
     </Select>
   );

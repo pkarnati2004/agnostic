@@ -11,3 +11,6 @@ coverage/
 .codex
 .agents
 build/
+release/
+# A common global ignore lists macOS's "Icon\r" file as `Icon`, which also matches this folder.
+!/packages/desktop/icon/

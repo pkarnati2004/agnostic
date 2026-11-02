@@ -74,11 +74,15 @@ export function isProcessAlive(pid: number): boolean {
   }
 }
 
-/** pnpm exports dozens of `npm_*` variables; they confuse harnesses that read them as their own. */
+/**
+ * pnpm exports dozens of `npm_*` variables; they confuse harnesses that read them as their own.
+ * `ELECTRON_RUN_AS_NODE` is how the desktop app runs agnd under its own binary; an agent that ran
+ * Electron with it set would get Node instead.
+ */
 export function scrubEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   const scrubbed: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
-    if (value === undefined || key.startsWith("npm_")) {
+    if (value === undefined || key.startsWith("npm_") || key === "ELECTRON_RUN_AS_NODE") {
       continue;
     }
     scrubbed[key] = value;

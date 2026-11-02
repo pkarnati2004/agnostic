@@ -123,6 +123,17 @@ export default defineConfig({
       },
       {
         test: {
+          // Electron itself is never loaded here: every module under test takes it as a parameter.
+          name: "desktop",
+          root: "packages/desktop",
+          include: ["src/**/*.test.ts"],
+        },
+        resolve: {
+          conditions: ["development"],
+        },
+      },
+      {
+        test: {
           // The page's own logic: token, client, frames, reducers, grouping, and the few
           // components with behaviour of their own, which opt into happy-dom file by file.
           name: "ui",

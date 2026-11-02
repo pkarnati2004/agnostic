@@ -14,6 +14,16 @@ describe("scrubEnv", () => {
     const scrubbed = scrubEnv({ HOME: "/Users/dev", npm_config_probe: "1", EMPTY: undefined });
     expect(scrubbed).toEqual({ HOME: "/Users/dev" });
   });
+
+  it("drops ELECTRON_RUN_AS_NODE and keeps the rest", () => {
+    const scrubbed = scrubEnv({
+      ELECTRON_RUN_AS_NODE: "1",
+      npm_lifecycle_event: "test",
+      PATH: "/usr/bin",
+      ELECTRON_OTHER: "kept",
+    });
+    expect(scrubbed).toEqual({ PATH: "/usr/bin", ELECTRON_OTHER: "kept" });
+  });
 });
 
 describe("run", () => {

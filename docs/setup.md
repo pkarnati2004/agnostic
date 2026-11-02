@@ -28,6 +28,10 @@ pnpm agn doctor                  # runs the CLI from source; flags as on the rea
 
 `pnpm pack:npm` builds the same tarball npm publishes, `build/npm/agnostic-dev-<version>.tgz`, and `npm i -g <that file>` installs it. [CONTRIBUTING.md](../CONTRIBUTING.md) has the rest.
 
+### Mac app
+
+The Mac app is the same workspace in its own window, with the daemon inside it: Node is not needed, tmux still is (`brew install tmux`; the app says so on first open if it is missing). It starts the daemon if none is running and reuses the one `agn` started, so the terminal and the app see the same tasks. Quit leaves the daemon running, like closing a terminal does; "Quit and Stop Daemon" in the app menu ends it. A download link arrives with the first release.
+
 ## Agents
 
 | Agent | Install and login | Billing agnostic uses |

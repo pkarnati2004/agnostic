@@ -5,6 +5,7 @@
 // `browser.test.ts` enforces the rule.
 export * from "./appearance.js";
 export * from "./config-defaults.js";
+export * from "./desktop-bridge.js";
 export { isKind } from "./is-kind.js";
 export * from "./profile-id.js";
 export * from "./task-status.js";

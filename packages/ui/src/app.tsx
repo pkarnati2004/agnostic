@@ -242,6 +242,7 @@ function Workspace({ token, root }: { token: string; root: AppearanceRoot }) {
           seed={seed}
           onStarted={started}
           onAddRepo={() => setAddRepo(true)}
+          onReopenRepo={repoActions.reopen}
         />
         {showChanges && activeTask !== null && (
           <ChangesPanel

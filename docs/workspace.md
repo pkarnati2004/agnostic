@@ -11,7 +11,9 @@ agn ui --no-open             # print the address instead, to paste into another 
 
 The printed address ends in `#token=<token>`, which is how the page authenticates to the daemon.
 The browser keeps the fragment to itself: it reaches no request line and no log. Treat that
-address as a password, and open it only in your own browser.
+address as a password, and open it only in your own browser. The Mac app opens the same page in
+its own window and adds a Browse… button to Add repo and to the repo chip of the New task tab; the
+browser keeps the typed path.
 
 If you pull a newer agn while a daemon from an older version is running, run `agn daemon restart`
 once. A daemon that started before this version answers `/ui` with an authentication error rather
