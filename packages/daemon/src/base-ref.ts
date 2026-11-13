@@ -1,6 +1,6 @@
 import type { RepoConfig } from "@agnostic/core";
 import { DaemonError } from "./error.js";
-import { gitLines, gitStdout } from "./git-read.js";
+import { gitLines, gitResult, gitStdout } from "./git-read.js";
 
 /** What a detached checkout is asked about before it gives up, in the order git itself suggests. */
 const CONVENTIONAL = ["main", "master"];
@@ -34,9 +34,27 @@ export async function repoBaseRef(repoPath: string, config: RepoConfig | null): 
   });
 }
 
-/** The commit a base ref names, locally or on origin; null when neither resolves. */
+/**
+ * The newer of `<ref>` and `origin/<ref>` when one contains the other; the local one when they
+ * diverged; whichever exists when only one does; null when neither resolves. After a pull request
+ * merges, the merge commit is on origin while the local base often stays where it was.
+ */
 export async function refCommit(cwd: string, ref: string): Promise<string | null> {
-  return (await verify(cwd, ref)) ?? (await verify(cwd, `origin/${ref}`));
+  const local = await verify(cwd, ref);
+  const remote = await verify(cwd, `origin/${ref}`);
+  if (local === null || remote === null) {
+    return local ?? remote;
+  }
+  return ahead(cwd, local, remote);
+}
+
+/** Only exit 0 is yes: `--is-ancestor` exits 1 for no and 128 for a commit git does not have. */
+async function ahead(cwd: string, local: string, remote: string): Promise<string> {
+  if (local === remote) {
+    return local;
+  }
+  const result = await gitResult(cwd, ["merge-base", "--is-ancestor", local, remote]);
+  return result?.exitCode === 0 ? remote : local;
 }
 
 async function verify(cwd: string, ref: string): Promise<string | null> {

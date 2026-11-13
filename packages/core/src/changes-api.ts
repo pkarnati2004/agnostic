@@ -26,8 +26,13 @@ export type ChangesResponse = {
   base: { ref: string; commit: string | null };
   /** Commits on the branch since `base.commit`. */
   ahead: number;
-  /** Commits on `base.ref` the branch does not have; null when the ref resolves to no local commit. */
+  /** Commits on the base the branch does not have, counted against whichever of `base.ref` and
+   * `origin/<base.ref>` is ahead; null when neither resolves. */
   behind: number | null;
+  /** The branch's tip is in the base: nothing left to review, push or bring up to date.
+   * `behind` can stay above 0 for a branch merged with `--no-ff`, since the merge commit is not in
+   * the tip; the panel and the CLI hide it when this is true. */
+  merged: boolean;
   /** Paths with working-tree changes (`git status --porcelain` entries, untracked included);
    * 0 when the task's changes are read from the main checkout. */
   uncommitted: number;

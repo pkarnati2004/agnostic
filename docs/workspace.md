@@ -295,10 +295,10 @@ prints, coloured: green A for added, yellow M for modified, red D for deleted, a
 The directory is muted and the file name is not. The lines added and removed are at the right. Click
 a row for that file's patch below the list. The first file is selected when the panel opens.
 
-The rows sit under Unstaged, Staged and Committed, in that order, with a count on each heading. A
-group with nothing in it is left out, and a list where everything is committed has no heading at
-all. A file with both staged and unstaged edits is one row under Unstaged, which is what "Ask the
-agent to commit" would commit. Untracked files are unstaged.
+The rows sit under Uncommitted, Staged and Committed, in that order, with a count on each heading.
+A group with nothing in it is left out, and a list where everything is committed has no heading at
+all. A file with both staged and unstaged edits is one row under Uncommitted, which is what "Ask
+the agent to commit" would commit. Untracked files are uncommitted.
 
 The panel re-reads itself when the task changes status and when you click Refresh; nothing watches
 the files, so Refresh is how you see what the agent wrote a moment ago. **Open in editor** opens
@@ -315,6 +315,11 @@ Some tasks have no file list to show:
 - A task whose worktree was cleaned reads "worktree cleaned; branch `<branch>` kept" and shows what
   was committed. Open in editor and Bring up to date wait until Resume rebuilds the worktree.
 - A branch with nothing on it yet reads "No changes against `<base>` yet."
+- A branch that was merged into its base reads "Merged into `<base>`." with no list; Create PR and
+  Bring up to date say why they are off, and Archive cleans it. agn reads `<base>` and
+  `origin/<base>` and takes the one ahead, or your local branch when they have diverged; it never
+  fetches or moves your local branch. A squash-merged branch still lists its commits, and a task
+  with no commits of its own that was brought onto a newer base also reads as merged.
 - A binary file reads "binary file, no diff": git has no patch for it.
 
 ## Create PR
@@ -348,7 +353,8 @@ worktree holds uncommitted changes it prints one line to stderr saying how many 
 
 **Ask the agent to commit** in the Changes panel sends the agent a prompt to commit what it has
 written on the task branch. The prompt is `.ag/prompts/commit.md` if the repo has one and agn's own
-if not, and it is sent as written. agn runs no git command for it, and never pushes.
+if not, and it is sent as written. agn's own prompt names the files in Uncommitted and Staged, up
+to 20 of them. agn runs no git command for it, and never pushes.
 
 If the agent's session is still running, the prompt is typed into it. If the session has ended, agn
 resumes the task with the prompt as the first turn. The panel says which happened. Nothing on the

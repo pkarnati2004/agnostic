@@ -25,6 +25,14 @@ describe("headerLine", () => {
   });
 });
 
+describe("headerLine for a merged branch", () => {
+  it("says merged into the base in place of the commits, and nothing about behind", () => {
+    const line = headerLine(changesResponse({ merged: true, ahead: 0, behind: 2 }));
+    expect(line.commits).toBe("merged into main");
+    expect(line.behind).toBeNull();
+  });
+});
+
 describe("adoptedLine", () => {
   it("names the ref an adopted task is read against", () => {
     expect(adoptedLine(changesResponse())).toBe("adopted: changes against `main`");

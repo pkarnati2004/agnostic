@@ -42,6 +42,8 @@ const NOTHING_TO_COMMIT = "Nothing to commit: the working tree is clean.";
 const NO_COMMIT_BRANCH =
   "This task works in the checkout itself, so agn has no branch to commit on.";
 const NO_AGENT = "There is no agent to ask yet.";
+const MERGED_PR = (base: string) => `Merged into ${base}: nothing left to open a pull request for.`;
+const MERGED_UPDATE = (base: string) => `Merged into ${base}: nothing to bring up to date.`;
 
 /** Everything the panel can do to a task. Refresh is in the header, over the count it refreshes. */
 export function ActionRow(props: ActionRowProps) {
@@ -82,7 +84,7 @@ export function ActionRow(props: ActionRowProps) {
           variant="outline"
           size="sm"
           className="ml-auto"
-          disabled={updateBlocked(task, cleaned) || busy !== null}
+          disabled={updateBlocked(task, changes, cleaned) || busy !== null}
           onClick={props.onUpdate}
         >
           <GitMerge style={behind > 0 ? { color: "var(--warning)" } : undefined} />
@@ -97,6 +99,9 @@ export function ActionRow(props: ActionRowProps) {
 function updateTip(task: TaskListRow, changes: ChangesResponse, cleaned: boolean): string {
   if (cleaned) {
     return RESUME_FIRST;
+  }
+  if (changes.merged) {
+    return MERGED_UPDATE(changes.base.ref);
   }
   return task.branch === null
     ? NO_BRANCH
@@ -128,8 +133,8 @@ function nothingToCommit(changes: ChangesResponse): string {
   return `${NOTHING_TO_COMMIT} The files listed are the branch's commits against ${changes.base.ref}.`;
 }
 
-function updateBlocked(task: TaskListRow, cleaned: boolean): boolean {
-  return cleaned || task.branch === null;
+function updateBlocked(task: TaskListRow, changes: ChangesResponse, cleaned: boolean): boolean {
+  return cleaned || changes.merged || task.branch === null;
 }
 
 /**
@@ -137,6 +142,9 @@ function updateBlocked(task: TaskListRow, cleaned: boolean): boolean {
  * still there, and the push reads it from the main checkout.
  */
 function prBlocker(changes: ChangesResponse): string | null {
+  if (changes.merged) {
+    return MERGED_PR(changes.base.ref);
+  }
   if (changes.remote === null) {
     return NO_ORIGIN;
   }

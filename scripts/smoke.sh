@@ -480,6 +480,14 @@ if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$WORK/runrepo/.claude/settings.
 RUN_TREE="$(agx status "$TASK" | awk '$1 == "worktree:" { print $2 }')"
 grep -q statusline.sh "$RUN_TREE/.claude/settings.local.json"
 if grep -q "$(cat "$AGNOSTIC_HOME/auth-token")" "$RUN_TREE/.claude/settings.local.json"; then echo "smoke: token written into the worktree's settings.local.json" >&2; exit 1; fi
+# The task start wrote that file from the worktree, so the main repo's exclude file names it once;
+# an uninstall takes the line out and a reinstall puts it and the worktree's hooks back.
+grep -qx '.claude/settings.local.json' "$WORK/runrepo/.git/info/exclude"
+test "$(grep -cx '.claude/settings.local.json' "$WORK/runrepo/.git/info/exclude")" -eq 1
+agx hooks uninstall --repo "$WORK/runrepo" --harness claude-code > /dev/null
+test "$(grep -cx '.claude/settings.local.json' "$WORK/runrepo/.git/info/exclude" || true)" -eq 0
+agx hooks install --repo "$WORK/runrepo" --harness claude-code > /dev/null
+grep -qx '.claude/settings.local.json' "$WORK/runrepo/.git/info/exclude"
 # The same command goes in the user's own settings file, where every Claude Code session reads it,
 # wrapping the status line already there so it keeps drawing.
 USER_SETTINGS="$USAGE_HOME/.claude/settings.json"
@@ -662,6 +670,12 @@ grep -q "^verdict: *not merged$" "$WORK/outcomes.txt"
 git -C "$WORK/runrepo" merge --no-ff -q -m "merge the task" "$BRANCH"
 agx outcomes "$TASK" | grep -q "^verdict: *accepted"
 agx outcomes "$TASK" --json | grep -q '"accepted": true'
+# The branch is in main now and the worktree is clean, so the changes read as merged: one line.
+agx changes "$TASK" > "$WORK/changes-merged.txt"
+grep -q "merged into main" "$WORK/changes-merged.txt"
+test "$(wc -l < "$WORK/changes-merged.txt")" -eq 1
+agx changes "$TASK" --json | grep -q '"merged": true'
+test "$(agx changes "$TASK" --json | grep -c '"path"')" -eq 0
 
 echo "smoke: agn handoff to the next agent"
 HANDOFF_NOTE="the parser is done, the printer is not"
@@ -778,6 +792,9 @@ grep -q "folder repo" "$WORK/compare-folder.txt"
 
 agx run "folder task" --profile claude-code --repo "$WORK/runfolder" > "$WORK/folder.txt"
 grep -q "^in place: " "$WORK/folder.txt"
+# A folder repo has no git to keep the hook file out of: no exclude file, and no warning for it.
+test ! -e "$WORK/runfolder/.git"
+if grep -q "hooks install failed" "$AGNOSTIC_HOME/logs/agnd.log"; then echo "smoke: the folder task's hook install failed" >&2; exit 1; fi
 FOLDER_TASK="$(awk 'NR == 1 { print $2 }' "$WORK/folder.txt")"
 if agx run "second folder task" --profile claude-code --repo "$WORK/runfolder" 2> "$WORK/folder-error.txt"; then echo "smoke: a second task started in a folder repo" >&2; exit 1; fi
 grep -q "folder repos run one task at a time" "$WORK/folder-error.txt"

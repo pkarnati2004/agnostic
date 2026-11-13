@@ -74,7 +74,7 @@ describe("ChangesPanel", () => {
     ]);
     const unstaged = container.querySelectorAll('[role="group"][data-state="unstaged"]');
     expect(unstaged).toHaveLength(1);
-    expect(unstaged[0]?.firstElementChild?.textContent).toBe("Unstaged 3");
+    expect(unstaged[0]?.firstElementChild?.textContent).toBe("Uncommitted 3");
     expect(rows(container)[0]?.getAttribute("aria-selected")).toBe("true");
     expect(container.querySelector("table")?.textContent).toContain("const ttl = readTtl();");
     unmount();

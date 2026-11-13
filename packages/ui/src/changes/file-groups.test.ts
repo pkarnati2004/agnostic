@@ -6,7 +6,7 @@ describe("fileGroups", () => {
   it("draws one group per state the list holds, in wire order", () => {
     const groups = fileGroups(MIXED_FILES);
     expect(groups.map((group) => [group.label, group.files.length])).toEqual([
-      ["Unstaged", 2],
+      ["Uncommitted", 2],
       ["Staged", 1],
       ["Committed", 2],
     ]);
@@ -32,7 +32,7 @@ describe("fileGroups", () => {
     expect(showGroupHeadings([])).toBe(false);
   });
 
-  it("heads Staged then Committed, with no Unstaged heading, when nothing is unstaged", () => {
+  it("heads Staged then Committed, with no Uncommitted heading, when nothing is unstaged", () => {
     const staged = MIXED_FILES.filter((file) => file.state !== "unstaged");
     const groups = fileGroups(staged);
     expect(groups.map((group) => group.label)).toEqual(["Staged", "Committed"]);

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -201,6 +201,31 @@ describe("DELETE /repos/:id/hooks", () => {
     expect(statusLine).toEqual({ file: userSettings(), changed: true, capture: "none" });
     expect(await readUserCommand()).toBeUndefined();
     expect(await readFile(uninstalls[0]?.file ?? "", "utf8")).not.toContain("post.sh");
+  });
+
+  it("takes its exclude line out and leaves the user's lines", async () => {
+    const exclude = join(repo.path, ".git", "info", "exclude");
+    await mkdir(join(repo.path, ".git", "info"), { recursive: true });
+    await writeFile(exclude, "build/\n", "utf8");
+    await install({ harness: "claude-code" });
+    expect(await readFile(exclude, "utf8")).toBe("build/\n.claude/settings.local.json\n");
+
+    await uninstall({ harness: "claude-code" });
+
+    expect(await readFile(exclude, "utf8")).toBe("build/\n");
+  });
+
+  it("logs an exclude file it cannot rewrite and still uninstalls", async () => {
+    await install({ harness: "claude-code" });
+    const info = join(repo.path, ".git", "info");
+    await chmod(info, 0o555);
+    try {
+      const response = await uninstall({ harness: "claude-code" });
+      expect(response.status).toBe(200);
+      expect(await daemon.readLog()).toContain("hooks exclude removal failed harness=claude-code");
+    } finally {
+      await chmod(info, 0o755);
+    }
   });
 
   it("puts a status line of the user's own back as they wrote it", async () => {

@@ -1,15 +1,15 @@
 import {
   type ChangedFile,
   type ChangedFileState,
-  type ChangedFileStatus,
   type ChangesResponse,
   type Repo,
   readRepoConfig,
   type Task,
 } from "@agnostic/core";
 import type { DaemonContext } from "./app.js";
-import { refCommit, repoBaseRef } from "./base-ref.js";
+import { repoBaseRef } from "./base-ref.js";
 import { branchExists } from "./branch-verdict.js";
+import { lineCount, parseNameStatus, parseNumstat, statusOf } from "./diff-records.js";
 import { DaemonError } from "./error.js";
 import { gitLines, gitResult, gitStdout, originUrl } from "./git-read.js";
 import { resolveTaskBase } from "./task-base.js";
@@ -38,17 +38,40 @@ export async function taskChanges(
   const tip = at.where === "worktree" ? "HEAD" : `refs/heads/${task.branch}`;
   const states = at.where === "worktree" ? await worktreeStates(at.dir) : null;
   const base = await resolveTaskBase(ctx, repo, task, at);
-  const refHead = await refCommit(at.dir, base.ref);
+  const refHead = base.head;
   return {
     task,
     base: { ref: base.ref, commit: base.commit },
     ahead: base.commit === null ? 0 : await countCommits(at.dir, `${base.commit}..${tip}`),
     behind: refHead === null ? null : await countCommits(at.dir, `${tip}..${refHead}`),
+    merged: await isMerged(at.dir, tip, refHead, task.baseCommit),
     uncommitted: states?.size ?? 0,
     pushed: (await branchUpstream(at.dir, task.branch ?? "HEAD")) !== null,
     remote: await originUrl(at.dir),
     files: (await changedFiles(at.dir, base.commit, tip, states)).map(listed),
   };
+}
+
+/**
+ * Exit 0 of `merge-base --is-ancestor tip refHead`, and the branch has moved since it was cut: a
+ * branch with no commits is also in its base, and it reads as "no changes yet", not as merged. An
+ * adopted task has no cut point of agn's, so it is never merged. A squash merge is not an ancestor.
+ */
+async function isMerged(
+  cwd: string,
+  tip: string,
+  refHead: string | null,
+  cut: string | null,
+): Promise<boolean> {
+  if (refHead === null || cut === null) {
+    return false;
+  }
+  const commit = gitLines(await gitStdout(cwd, ["rev-parse", "--verify", "--quiet", tip]))[0];
+  if (commit === undefined || commit.trim() === cut) {
+    return false;
+  }
+  const result = await gitResult(cwd, ["merge-base", "--is-ancestor", commit.trim(), refHead]);
+  return result?.exitCode === 0;
 }
 
 /** `from` is for the diff route's pathspec; the list on the wire is one row per path. */
@@ -177,71 +200,12 @@ async function untracked(cwd: string): Promise<DiffEntry[]> {
     entries.push({
       path,
       status: "untracked",
-      additions: number(additions),
-      deletions: number(deletions),
+      additions: lineCount(additions),
+      deletions: lineCount(deletions),
       from: null,
     });
   }
   return entries;
-}
-
-/** C is a copy: nothing was there before, so the panel reads it as a new file. */
-function statusOf(code: string): ChangedFileStatus {
-  const letter = code[0] ?? "M";
-  if (letter === "A" || letter === "C") {
-    return "added";
-  }
-  if (letter === "D") {
-    return "deleted";
-  }
-  return letter === "R" ? "renamed" : "modified";
-}
-
-type NameStatus = { code: string; path: string; from: string | null };
-
-/** `-z` writes the status and the path as separate records; a rename or a copy writes two paths. */
-function parseNameStatus(stdout: string | null): NameStatus[] {
-  const fields = (stdout ?? "").split("\0").filter((field) => field !== "");
-  const entries: NameStatus[] = [];
-  for (let index = 0; index < fields.length; ) {
-    const code = fields[index++] ?? "";
-    const first = fields[index++] ?? "";
-    const renamed = code.startsWith("R") || code.startsWith("C");
-    const second = renamed ? (fields[index++] ?? "") : "";
-    entries.push(renamed ? { code, path: second, from: first } : { code, path: first, from: null });
-  }
-  return entries;
-}
-
-type Counts = { additions: number | null; deletions: number | null };
-
-/** A rename's record ends with an empty path field, and its two paths follow as their own. */
-function parseNumstat(stdout: string | null): Map<string, Counts> {
-  const fields = (stdout ?? "").split("\0");
-  const counts = new Map<string, Counts>();
-  for (let index = 0; index < fields.length; ) {
-    const [additions, deletions, path] = (fields[index++] ?? "").split("\t");
-    if (path === undefined) {
-      continue;
-    }
-    if (path !== "") {
-      counts.set(path, { additions: number(additions), deletions: number(deletions) });
-      continue;
-    }
-    // A rename: its old path follows, then the name the file has now, which is the row's.
-    index += 1;
-    counts.set(fields[index++] ?? "", {
-      additions: number(additions),
-      deletions: number(deletions),
-    });
-  }
-  return counts;
-}
-
-/** git writes "-" for a binary file, which is not a number of lines. */
-function number(field: string | undefined): number | null {
-  const value = Number(field);
-  return Number.isInteger(value) ? value : null;
 }
 
 /** How many commits a range holds; 0 when git cannot answer, which is what an absent ref means. */
@@ -273,6 +237,7 @@ async function nothingYet(repo: Repo, task: Task): Promise<ChangesResponse> {
     base: { ref, commit: task.baseCommit },
     ahead: 0,
     behind: null,
+    merged: false,
     uncommitted: 0,
     pushed: false,
     remote: await originUrl(repo.path),

@@ -137,6 +137,8 @@ async function commitSection(repo: Repo, task: Task): Promise<string | null> {
   return commitPrompt({
     branch: task.branch,
     file: await readAgText(repo.path, COMMIT_PROMPT_FILE),
+    // A fresh worktree has nothing uncommitted yet, so the launch asks for the task's own work.
+    paths: [],
   });
 }
 

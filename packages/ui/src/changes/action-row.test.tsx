@@ -142,12 +142,12 @@ describe("Ask the agent to commit", () => {
   });
 });
 
-function actionRow(behind: number) {
+function actionRow(behind: number, over: Partial<ChangesResponse> = {}) {
   return render(
     <TooltipProvider delayDuration={0}>
       <ActionRow
         task={taskRow()}
-        changes={changesResponse({ behind })}
+        changes={changesResponse({ behind, ...over })}
         notice={null}
         editors={null}
         busy={null}
@@ -172,5 +172,34 @@ describe("Bring up to date's warning tone", () => {
     const plainIcon = button(upToDate.container, "Bring up to date").querySelector("svg");
     expect(plainIcon?.getAttribute("style")).toBeFalsy();
     upToDate.unmount();
+  });
+});
+
+describe("a merged branch", () => {
+  it("disables Create PR and Bring up to date with the reason, even with a remote and a leftover edit", async () => {
+    const leftover = FILES.slice(0, 1);
+    const { container, unmount } = actionRow(0, { merged: true, uncommitted: 1, files: leftover });
+    const pr = button(container, "Create PR");
+    const update = button(container, "Bring up to date");
+    expect(pr.disabled).toBe(true);
+    expect(update.disabled).toBe(true);
+    await hover(pr.parentElement ?? pr);
+    expect(document.body.textContent).toContain(
+      "Merged into main: nothing left to open a pull request for.",
+    );
+    await hover(update.parentElement ?? update);
+    expect(document.body.textContent).toContain("Merged into main: nothing to bring up to date.");
+    expect(button(container, LABEL).disabled).toBe(false);
+    unmount();
+  });
+
+  it("reads Merged into the base in the panel body, with no list and nothing to commit", async () => {
+    const read = { merged: true, ahead: 0, uncommitted: 0, files: [] };
+    const { container, unmount } = await panel({ read });
+    expect(container.textContent).toContain("Merged into main.");
+    expect(container.textContent).not.toContain("No changes against");
+    expect(container.querySelector('[role="option"]')).toBeNull();
+    expect(button(container, LABEL).disabled).toBe(true);
+    unmount();
   });
 });

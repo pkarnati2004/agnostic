@@ -9,6 +9,8 @@ export type TaskBase = {
   commit: string | null;
   /** Set when `ref` is another task's branch: the task was started with `--base <task>`. */
   baseTaskId: string | null;
+  /** What `ref` resolves to (`refCommit`), read once so a caller does not resolve it again. */
+  head: string | null;
 };
 
 /**
@@ -25,22 +27,26 @@ export async function resolveTaskBase(
 ): Promise<TaskBase> {
   const tip = at.where === "worktree" ? "HEAD" : `refs/heads/${task.branch}`;
   const chosen = await chooseRef(ctx, repo, task, at.dir);
-  return { ...chosen, commit: await baseCommit(at.dir, chosen.ref, tip, task.baseCommit) };
+  const head = chosen.head !== undefined ? chosen.head : await refCommit(at.dir, chosen.ref);
+  const commit = await baseCommit(at.dir, chosen.ref, head, tip, task.baseCommit);
+  return { ref: chosen.ref, baseTaskId: chosen.baseTaskId, head, commit };
 }
 
 /** The merge-base moves with the branch, so a base merged in later is not read as the agent's. */
 async function baseCommit(
   cwd: string,
   ref: string,
+  head: string | null,
   tip: string,
   recorded: string | null,
 ): Promise<string | null> {
-  const side = (await refCommit(cwd, ref)) ?? ref;
+  const side = head ?? ref;
   const found = gitLines(await gitStdout(cwd, ["merge-base", side, tip]))[0] ?? null;
   return found ?? recorded;
 }
 
-type ChosenRef = { ref: string; baseTaskId: string | null };
+/** `head` is set when choosing the ref already resolved it; a stacked parent's is read after. */
+type ChosenRef = { ref: string; baseTaskId: string | null; head?: string | null };
 
 async function chooseRef(
   ctx: DaemonContext,
@@ -57,11 +63,15 @@ async function chooseRef(
   }
   const baseRef = await repoBaseRef(repo.path, config);
   const base = task.baseCommit;
-  if (base === null || (await inBaseRef(cwd, base, baseRef))) {
+  if (base === null) {
     return { ref: baseRef, baseTaskId: null };
   }
+  const head = await refCommit(cwd, baseRef);
+  if (await inBaseRef(cwd, base, head)) {
+    return { ref: baseRef, baseTaskId: null, head };
+  }
   const stacked = await stackedOn(ctx, repo, task, cwd, base);
-  return stacked ?? { ref: baseRef, baseTaskId: null };
+  return stacked ?? { ref: baseRef, baseTaskId: null, head };
 }
 
 function parentRow(ctx: DaemonContext, task: Task, seen: Set<string>): Task | null {
@@ -73,8 +83,7 @@ function parentRow(ctx: DaemonContext, task: Task, seen: Set<string>): Task | nu
 }
 
 /** Only exit 0 is yes: `--is-ancestor` exits 1 for no and 128 for a commit git does not have. */
-async function inBaseRef(cwd: string, base: string, baseRef: string): Promise<boolean> {
-  const commit = await refCommit(cwd, baseRef);
+async function inBaseRef(cwd: string, base: string, commit: string | null): Promise<boolean> {
   if (commit === null) {
     return true;
   }

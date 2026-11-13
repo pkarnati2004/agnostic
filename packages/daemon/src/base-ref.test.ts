@@ -2,7 +2,7 @@ import { rm } from "node:fs/promises";
 import { defaultRepoConfig, newId } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { refCommit, repoBaseRef } from "./base-ref.js";
-import { gitIn } from "./test-task-run.js";
+import { commitLines, gitIn } from "./test-task-run.js";
 import { createWorkspace } from "./test-workspace.js";
 
 let path = "";
@@ -61,4 +61,41 @@ describe("refCommit", () => {
   it("answers null for a ref this checkout does not have", async () => {
     expect(await refCommit(path, "develop")).toBeNull();
   });
+
+  it("takes local main when it is ahead of origin/main", async () => {
+    await gitIn(path, ["update-ref", "refs/remotes/origin/main", await head()]);
+    await commitLines(path, 1, "local.txt");
+    expect(await refCommit(path, "main")).toBe(await head());
+  });
+
+  it("takes origin/main when it is ahead of local main", async () => {
+    const local = await head();
+    await commitLines(path, 1, "merged.txt");
+    const remote = await head();
+    await gitIn(path, ["update-ref", "refs/remotes/origin/main", remote]);
+    await gitIn(path, ["reset", "-q", "--hard", local]);
+    expect(await refCommit(path, "main")).toBe(remote);
+  });
+
+  it("takes local main when the two have diverged", async () => {
+    const cut = await head();
+    await commitLines(path, 1, "theirs.txt");
+    await gitIn(path, ["update-ref", "refs/remotes/origin/main", await head()]);
+    await gitIn(path, ["reset", "-q", "--hard", cut]);
+    await commitLines(path, 1, "ours.txt");
+    expect(await refCommit(path, "main")).toBe(await head());
+  });
+
+  it("takes local main when there is no origin", async () => {
+    expect(await refCommit(path, "main")).toBe(await head());
+  });
+
+  it("takes origin's branch when only origin has it", async () => {
+    await gitIn(path, ["update-ref", "refs/remotes/origin/release", await head()]);
+    expect(await refCommit(path, "release")).toBe(await head());
+  });
 });
+
+async function head(): Promise<string> {
+  return (await gitIn(path, ["rev-parse", "HEAD"])).stdout.trim();
+}

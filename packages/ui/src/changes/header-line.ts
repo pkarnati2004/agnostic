@@ -4,6 +4,7 @@ import type { ChangesResponse } from "@agnostic/core";
 export type HeaderLine = {
   branch: string;
   base: string;
+  /** "merged into <base>" replaces the commits figure; `behind` is null then. */
   commits: string;
   uncommitted: string;
   /** Null when the base has not moved, which is when the panel says nothing about it. */
@@ -11,11 +12,13 @@ export type HeaderLine = {
 };
 
 export function headerLine(response: ChangesResponse): HeaderLine {
-  const behind = response.behind ?? 0;
+  const behind = response.merged ? 0 : (response.behind ?? 0);
   return {
     branch: response.task.branch ?? "no branch",
     base: response.base.ref,
-    commits: `${response.ahead} ${response.ahead === 1 ? "commit" : "commits"}`,
+    commits: response.merged
+      ? `merged into ${response.base.ref}`
+      : `${response.ahead} ${response.ahead === 1 ? "commit" : "commits"}`,
     uncommitted: `${response.uncommitted} uncommitted`,
     behind: behind > 0 ? `${behind} behind` : null,
   };

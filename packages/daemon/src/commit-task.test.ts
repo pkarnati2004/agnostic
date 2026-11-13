@@ -111,11 +111,30 @@ describe("POST /tasks/:id/commit", () => {
     const body = await asked(task.id);
 
     expect(body.via).toBe("live");
-    expect(body.prompt).toBe(defaultCommitPrompt(task.branch ?? ""));
+    expect(body.prompt).toBe(defaultCommitPrompt(task.branch ?? "", []));
     // The launch prompt carries the same text, so the typed line is what this checks: tmux frames
     // a paste, which is why the marker sits between the log's prefix and the prompt.
     const log = await agentLog("line: ");
     expect(log).toMatch(/line: .*Commit your work on/);
+  });
+
+  it("names the uncommitted paths the Changes panel lists", async () => {
+    const repo = await repoWithConfig(daemon);
+    const task = await startTask(daemon, repo);
+    const worktree = task.worktreePath ?? "";
+    await writeFile(join(worktree, "a.txt"), "a\n");
+    await writeFile(join(worktree, "b.txt"), "b\n");
+
+    const body = await asked(task.id);
+
+    expect(body.prompt).toBe(defaultCommitPrompt(task.branch ?? "", ["a.txt", "b.txt"]));
+    expect(
+      body.prompt.startsWith(
+        `Commit the uncommitted changes on \`${task.branch}\`: \`a.txt\`, \`b.txt\`.`,
+      ),
+    ).toBe(true);
+    const log = await agentLog("Commit the uncommitted changes");
+    expect(log).toMatch(/line: .*Commit the uncommitted changes on/);
   });
 
   it("sends the repo's own file when it has one, and agn's default nowhere near it", async () => {

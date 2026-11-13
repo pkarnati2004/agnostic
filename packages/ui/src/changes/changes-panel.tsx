@@ -26,6 +26,7 @@ import {
   FolderLine,
   LoadingLine,
   LoadingPatch,
+  MergedLine,
   type PanelView,
   panelView,
 } from "./panel-state";
@@ -150,21 +151,24 @@ function PanelBody({ view, changes }: { view: PanelView; changes: Changes }) {
     case "failed":
       return <FailedLine error={view.error} />;
     case "changes":
-      return view.response.files.length === 0 ? (
-        <EmptyLine base={view.response.base.ref} />
-      ) : (
-        <>
-          <FileList
-            files={view.response.files}
-            selected={changes.selected}
-            onSelect={changes.select}
-          />
-          <div className="min-h-0 flex-1 overflow-auto">
-            <Patch changes={changes} />
-          </div>
-        </>
-      );
+      return <ChangesBody response={view.response} changes={changes} />;
   }
+}
+
+/** A merged branch with a clean worktree lists nothing; the line says why. */
+function ChangesBody({ response, changes }: { response: ChangesResponse; changes: Changes }) {
+  if (response.files.length === 0) {
+    const base = response.base.ref;
+    return response.merged ? <MergedLine base={base} /> : <EmptyLine base={base} />;
+  }
+  return (
+    <>
+      <FileList files={response.files} selected={changes.selected} onSelect={changes.select} />
+      <div className="min-h-0 flex-1 overflow-auto">
+        <Patch changes={changes} />
+      </div>
+    </>
+  );
 }
 
 function Patch({ changes }: { changes: Changes }) {

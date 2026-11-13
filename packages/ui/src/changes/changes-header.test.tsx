@@ -53,4 +53,20 @@ describe("ChangesHeader", () => {
     expect(onRefresh).not.toHaveBeenCalled();
     unmount();
   });
+
+  it("reads a merged branch as merged into its base, with no behind figure", () => {
+    const merged = changesResponse({
+      merged: true,
+      ahead: 0,
+      behind: 1,
+      uncommitted: 0,
+      files: [],
+    });
+    const { container, unmount } = header({ response: merged });
+    expect(container.textContent).toContain(
+      "agn/invite-links-a1b2vsmain·merged into main·0 uncommitted",
+    );
+    expect(container.textContent).not.toContain("behind");
+    unmount();
+  });
 });

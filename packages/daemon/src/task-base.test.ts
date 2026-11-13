@@ -40,6 +40,7 @@ describe("resolveTaskBase", () => {
       ref: "main",
       commit: task.baseCommit,
       baseTaskId: null,
+      head: task.baseCommit,
     });
   });
 
@@ -48,6 +49,10 @@ describe("resolveTaskBase", () => {
     await commit(first.worktreePath ?? "", "first.ts");
     const second = await startTask(daemon, repo, { base: first.id });
     expect(await base(second)).toMatchObject({ ref: first.branch, baseTaskId: first.id });
+    // A stacked parent's branch is resolved after it is chosen: the head is its tip.
+    expect((await base(second)).head).toBe(
+      (await gitIn(first.worktreePath ?? "", ["rev-parse", "HEAD"])).stdout.trim(),
+    );
   });
 
   it("reads the base branch again once the parent's work is accepted", async () => {
@@ -63,7 +68,7 @@ describe("resolveTaskBase", () => {
     const moved = await commit(repo.path, "later.ts");
     await commit(task.worktreePath ?? "", "agent.ts");
     await gitIn(task.worktreePath ?? "", ["merge", "-q", "--no-edit", "main"]);
-    expect(await base(task)).toEqual({ ref: "main", commit: moved, baseTaskId: null });
+    expect(await base(task)).toEqual({ ref: "main", commit: moved, baseTaskId: null, head: moved });
   });
 
   it("carries a handoff child of a stacked task to its parent's answer", async () => {

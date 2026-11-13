@@ -19,7 +19,6 @@ import {
   withManagedHooks,
   withoutManagedHooks,
 } from "../hooks-json-file.js";
-import { excludeFromGit } from "./git-exclude.js";
 
 /**
  * One harness that keeps its hooks in a JSON settings file. The registry says which file and
@@ -84,9 +83,8 @@ export function settingsJsonInstaller(member: SettingsJsonMember): HookInstaller
         }
         return withManagedStatusLine(withHooks, status, statusLineMarker(input));
       });
-      if (mechanism.scope === "repo") {
-        await excludeFromGit(input.repoPath, mechanism.file);
-      } else if (changed) {
+      // A repo-scope file is kept out of git by the daemon, which does that for every installer.
+      if (mechanism.scope !== "repo" && changed) {
         // A per-user config is outside the repo the user asked about, so agn says what it wrote.
         process.stderr.write(`agn wrote its ${name(member.harness)} status hook to ${file}\n`);
       }
@@ -94,7 +92,6 @@ export function settingsJsonInstaller(member: SettingsJsonMember): HookInstaller
     },
 
     async uninstall(input: HookInstallInput): Promise<HookInstallResult> {
-      // The `.git/info/exclude` line stays: the file it names is still there, still the user's.
       const file = settingsFile(settingsJson(member.harness), input);
       const changed = await updateHooksJson(file, (config) => {
         const swept = withoutManagedHooks(config, hookScriptMarker(input.paths));

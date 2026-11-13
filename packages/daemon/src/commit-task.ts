@@ -10,6 +10,7 @@ import {
 import type { DaemonContext } from "./app.js";
 import { askAgent } from "./ask-agent.js";
 import { DaemonError } from "./error.js";
+import { taskChanges } from "./task-changes.js";
 
 /**
  * Asks the agent to commit the work it has done (ADR 036). The prompt is the repo's own
@@ -29,9 +30,12 @@ export async function askCommit(
   if (task.worktreePath !== null && !(await isDirectory(task.worktreePath))) {
     throw worktreeCleaned(task);
   }
+  // The panel's own rows: a `?? dir/` status entry stands for files, and the list names those.
+  const { files } = await taskChanges(ctx, repo, task);
   const prompt = commitPrompt({
     branch,
     file: await readAgText(repo.path, COMMIT_PROMPT_FILE),
+    paths: files.filter((file) => file.state !== "committed").map((file) => file.path),
   });
   const asked = await askAgent(ctx, task, { heading: "Commit", body: prompt });
   return { task: asked.task, via: asked.via, prompt };
