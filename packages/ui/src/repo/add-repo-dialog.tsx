@@ -1,6 +1,8 @@
+import type { DesktopBridge } from "@agnostic/core";
 import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from "react";
 import type { WorkspaceClient } from "../api/client";
 import { asApiError } from "../api/error";
+import { cn } from "../class-names";
 import { Button } from "../components/button";
 import {
   Dialog,
@@ -12,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/dialog";
+import { desktopBridge } from "../desktop/desktop-bridge";
 import { HintText } from "../hint-text";
 import {
   type AddRepoForm,
@@ -37,7 +40,8 @@ const FIELD =
 /** Point agn at a folder on this machine. The row arrives through the feed, not from here. */
 export function AddRepoDialog(props: AddRepoDialogProps) {
   const field = useRef<HTMLInputElement>(null);
-  const add = useAddRepo(props);
+  const bridge = desktopBridge();
+  const add = useAddRepo(props, bridge);
   const { form } = add;
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -49,19 +53,27 @@ export function AddRepoDialog(props: AddRepoDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <label className="flex flex-col gap-2 text-sm" htmlFor="add-repo-path">
-            Path
-            <input
-              id="add-repo-path"
-              ref={field}
-              required
-              value={form.path}
-              placeholder="/Users/you/code/petal"
-              onChange={(change) => add.setForm({ ...form, path: change.target.value })}
-              onKeyDown={addsNow(add.submit)}
-              className={FIELD}
-            />
-          </label>
+          {/* Browse… sits outside the label, so its text stays out of the field's name. */}
+          <div className="flex flex-col gap-2 text-sm">
+            <label htmlFor="add-repo-path">Path</label>
+            <span className="flex gap-2">
+              <input
+                id="add-repo-path"
+                ref={field}
+                required
+                value={form.path}
+                placeholder="/Users/you/code/petal"
+                onChange={(change) => add.setForm({ ...form, path: change.target.value })}
+                onKeyDown={addsNow(add.submit)}
+                className={cn(FIELD, "min-w-0 flex-1")}
+              />
+              {bridge !== null && (
+                <Button variant="outline" onClick={add.browse}>
+                  Browse…
+                </Button>
+              )}
+            </span>
+          </div>
           <label className="flex items-start gap-2 text-sm" htmlFor="add-repo-git-init">
             <input
               id="add-repo-git-init"
@@ -133,7 +145,7 @@ function KnownRepo({
 const BLANK: AddRepoForm = { path: "", gitInit: false };
 
 /** Every open starts from an empty field, and every answer replaces the one before it. */
-function useAddRepo(props: AddRepoDialogProps) {
+function useAddRepo(props: AddRepoDialogProps, bridge: DesktopBridge | null) {
   const [form, setForm] = useState<AddRepoForm>(BLANK);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -193,7 +205,20 @@ function useAddRepo(props: AddRepoDialogProps) {
     );
   };
 
-  return { form, setForm, busy, failure, known, submit, reopen };
+  // The pick fills the field and nothing more: the user still presses Add.
+  const browse = () => {
+    const typed = form.path.trim();
+    bridge?.pickFolder(typed === "" ? {} : { defaultPath: typed }).then(
+      (path) => {
+        if (path !== null) {
+          setForm((current) => ({ ...current, path }));
+        }
+      },
+      (cause: unknown) => setFailure(asApiError(cause)),
+    );
+  };
+
+  return { form, setForm, busy, failure, known, submit, reopen, browse };
 }
 
 /** The path is what the dialog is for, so it takes the focus rather than the Cancel button. */

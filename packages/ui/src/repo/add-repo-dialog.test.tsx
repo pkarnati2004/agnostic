@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import type { Repo } from "@agnostic/core";
 import { act } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceClient } from "../api/client";
 import { ApiError } from "../api/error";
 import { render } from "../test/render";
@@ -191,6 +191,45 @@ describe("AddRepoDialog", () => {
     type("/Users/dev/petal");
     await pressEnter();
     expect(registerRepo).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+});
+
+describe("AddRepoDialog in the Mac app", () => {
+  afterEach(() => {
+    window.agnostic = undefined;
+  });
+
+  it("draws no Browse… in a browser", () => {
+    const { unmount } = dialog(stubClient());
+    expect(button("Browse…")).toBeUndefined();
+    unmount();
+  });
+
+  it("fills the path from the picker and does not add", async () => {
+    const pickFolder = vi.fn(() => Promise.resolve("/tmp/x"));
+    window.agnostic = { pickFolder };
+    const registerRepo = vi.fn(() => Promise.resolve({ repo: REPO, created: true }));
+    const { unmount, onOpenChange } = dialog(stubClient({ registerRepo }));
+    // The button sits beside the field, not inside its label, so the field is named "Path" alone.
+    expect(document.querySelector("label[for='add-repo-path']")?.textContent).toBe("Path");
+    await act(async () => {
+      button("Browse…").click();
+    });
+    expect(pathField().value).toBe("/tmp/x");
+    expect(registerRepo).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it("leaves the field alone when the picker is cancelled", async () => {
+    window.agnostic = { pickFolder: vi.fn(() => Promise.resolve(null)) };
+    const { unmount } = dialog(stubClient());
+    type("/Users/dev/petal");
+    await act(async () => {
+      button("Browse…").click();
+    });
+    expect(pathField().value).toBe("/Users/dev/petal");
     unmount();
   });
 });

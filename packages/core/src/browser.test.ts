@@ -36,6 +36,7 @@ describe("@agnostic/core/browser", () => {
       "./appearance.js",
       "./browser.js",
       "./config-defaults.js",
+      "./desktop-bridge.js",
       "./error.js",
       "./is-kind.js",
       "./profile-id.js",

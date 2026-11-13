@@ -82,6 +82,7 @@ type CentreProps = {
   /** The task the New task tab started: the page opens its tab and closes the composer's. */
   onStarted: (task: Task) => void;
   onAddRepo: () => void;
+  onReopenRepo: (repoId: string) => Promise<void>;
   /** The task whose handoff dialog the command palette opened, or null while none is open. */
   handoffFor: string | null;
   onHandoffFor: (taskId: string | null) => void;
@@ -171,6 +172,7 @@ export function Centre(props: CentreProps) {
           client={client}
           onStarted={props.onStarted}
           onAddRepo={props.onAddRepo}
+          onReopenRepo={props.onReopenRepo}
           specFirst={props.config?.specFirst ?? false}
         />
       )}

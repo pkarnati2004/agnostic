@@ -18,6 +18,7 @@ import {
 import { NewTaskStarter } from "./new-task-starter";
 import { RecommendationCard } from "./recommendation-card";
 import { SpecStep } from "./spec-step";
+import { useBrowseRepo } from "./use-browse-repo";
 import { useRecommendation } from "./use-recommendation";
 import { useSpecWriter } from "./use-spec-writer";
 
@@ -33,6 +34,8 @@ export type NewTaskTabProps = {
   client: WorkspaceClient;
   onStarted: (task: Task) => void;
   onAddRepo: () => void;
+  /** Reopens a closed repo that the Mac app's "Browse…" picked; rejects when the daemon refused. */
+  onReopenRepo: (repoId: string) => Promise<void>;
   /** config.yaml's `spec_first`: what the spec toggle starts as, until the user touches it. */
   specFirst: boolean;
   /** "empty" draws the display heading and the first-run actions; "tab" is the New task tab. */
@@ -44,6 +47,7 @@ export type NewTaskTabProps = {
 /** Describe the work, see agn's pick, keep it or change it, start. Read a spec first if you ask. */
 export function NewTaskTab(props: NewTaskTabProps) {
   const task = useNewTask(props);
+  const failure = task.error ?? task.browser.error;
   return (
     <div
       hidden={!props.active}
@@ -64,8 +68,8 @@ export function NewTaskTab(props: NewTaskTabProps) {
           (task.state.recommendation !== null || task.state.error !== null) && (
             <RecommendationCard state={task.state} profiles={props.profiles} />
           )}
-        {task.error !== null && (
-          <FailureNotice error={task.error} className="rounded-lg border-b-0 px-3 py-2" />
+        {failure !== null && (
+          <FailureNotice error={failure} className="rounded-lg border-b-0 px-3 py-2" />
         )}
         {task.busy && task.repo?.testCommand != null && (
           <p className="px-1.5 text-muted-foreground type-meta">
@@ -98,6 +102,7 @@ function ComposeStep({ props, task }: StepProps) {
       busy={task.busy}
       onStart={task.writeSpec ? task.write : task.run}
       onChooseRepo={props.onAddRepo}
+      onBrowse={task.browser.browse}
       promptRef={task.promptRef}
       active={props.active}
     />
@@ -167,6 +172,11 @@ function useNewTask(props: NewTaskTabProps) {
   const body = runRequest({ ...form, profileId });
   const spec = specRequest(form);
   const { run, busy, error } = useRunTask(props, form.repoId, body);
+  const browser = useBrowseRepo({
+    client: props.client,
+    onPicked: (repoId) => setForm((current) => ({ ...current, repoId })),
+    onReopen: props.onReopenRepo,
+  });
   const writer = useSpecWriter({
     client: props.client,
     onWritten: (written) =>
@@ -190,6 +200,7 @@ function useNewTask(props: NewTaskTabProps) {
     repo: props.repos.find((row) => row.id === form.repoId) ?? null,
     busy,
     error,
+    browser,
     writer,
     canStart: !busy && !writer.busy && (writing ? spec !== null : body !== null),
     run,

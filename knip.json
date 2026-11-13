@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/knip/schema.json",
   "ignoreExportsUsedInFile": { "type": true },
+  "ignoreBinaries": ["codesign"],
   "workspaces": {
     ".": {
       "entry": ["scripts/*.ts"],
@@ -9,6 +10,17 @@
     "packages/*": {
       "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts"]
+    },
+    "packages/desktop": {
+      "entry": [
+        "src/main.ts",
+        "src/preload-workspace.ts",
+        "src/preload-status.ts",
+        "src/status.js",
+        "src/**/*.test.ts"
+      ],
+      "project": ["src/**/*.{ts,js}"],
+      "ignoreDependencies": ["@electron/rebuild", "electron-builder"]
     },
     "packages/ui": {
       "entry": ["src/**/*.test.ts", "src/**/*.test.tsx"],
