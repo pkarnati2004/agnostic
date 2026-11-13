@@ -16,6 +16,7 @@
     "stage:desktop": "pnpm pack:npm && tsc -b packages/desktop && tsx --conditions development scripts/pack-desktop.ts",
     "desktop": "pnpm stage:desktop && pnpm --filter @agnostic/desktop exec electron build/app",
     "build:desktop": "pnpm stage:desktop && pnpm --filter @agnostic/desktop exec electron-builder --config electron-builder.yml --mac && codesign --verify --deep --strict packages/desktop/release/mac-arm64/agnostic.app",
+    "release:desktop": "bash scripts/release-desktop.sh",
     "smoke:desktop": "bash scripts/smoke-desktop.sh",
     "dev": "pnpm run --parallel \"/^dev:/\"",
     "dev:daemon": "tsx --conditions development packages/daemon/src/main.ts run",

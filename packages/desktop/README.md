@@ -14,8 +14,10 @@ is no auto-update.
   `better-sqlite3` and `node-pty` rebuilt for Electron. A rebuild with no prebuilt binary compiles
   from source, which needs the Xcode Command Line Tools and Python.
 - `pnpm desktop` stages and opens the unpacked app.
-- `pnpm build:desktop` stages and writes an unsigned, ad-hoc signed `agnostic.app` and `.dmg` to
-  `packages/desktop/release/`.
+- `pnpm build:desktop` stages and writes `agnostic.app`, a `.dmg` and a `.zip` to
+  `packages/desktop/release/`, signed ad-hoc under the hardened runtime with `entitlements.plist`.
+- `pnpm release:desktop` builds the same app signed with a Developer ID, notarized and stapled.
+  [docs/release.md](../../docs/release.md) lists the variables it needs and the release steps.
 - `pnpm smoke:desktop` runs the staged app against a temporary home; it opens a window.
 
 `icon/icon.png` is rendered from `icon/icon.svg` with `qlmanage -t -s 1024 -o icon icon/icon.svg`
