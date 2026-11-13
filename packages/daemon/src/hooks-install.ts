@@ -19,6 +19,7 @@ import { harnessDefinition } from "@agnostic/registry";
 import type { DaemonContext } from "./app.js";
 import { readDaemonConfig } from "./daemon-config.js";
 import { DaemonError } from "./error.js";
+import { keepOutOfGit } from "./git-exclude.js";
 
 /** Every hook config an install touched, and the user-scope status line if the harness has one. */
 export type HooksInstall = {
@@ -53,7 +54,12 @@ export async function uninstallHooks(
 ): Promise<HooksInstall> {
   const results: HookInstallResult[] = [];
   for (const directory of [repo.path, ...liveWorktrees(ctx, repo)]) {
-    results.push(await requireInstaller(harness).uninstall(inputFor(ctx, harness, directory)));
+    const result = await requireInstaller(harness).uninstall(inputFor(ctx, harness, directory));
+    // A read-only `.git` keeps the line; the hooks are out either way, so the loop goes on.
+    await keepOutOfGit(directory, result.file, "include").catch((cause: unknown) =>
+      warn(ctx, harness, cause, "hooks exclude removal failed"),
+    );
+    results.push(result);
   }
   const slot = hookInstaller(harness)?.userStatusLine;
   const removed = await slot?.uninstall(scope(ctx));
@@ -110,8 +116,13 @@ export async function ensureHooks(
   }
 }
 
-function warn(ctx: DaemonContext, harness: HarnessId, cause: unknown): void {
-  ctx.log.warn("hooks install failed", {
+function warn(
+  ctx: DaemonContext,
+  harness: HarnessId,
+  cause: unknown,
+  message = "hooks install failed",
+): void {
+  ctx.log.warn(message, {
     harness,
     code: cause instanceof CoreError ? cause.code : "unknown",
   });
@@ -141,7 +152,9 @@ async function install(
   if (reportsToStatusLine(harness)) {
     await writeStatusLineScript(ctx.paths);
   }
-  return requireInstaller(harness).install(inputFor(ctx, harness, repoPath));
+  const result = await requireInstaller(harness).install(inputFor(ctx, harness, repoPath));
+  await keepOutOfGit(repoPath, result.file, "exclude");
+  return result;
 }
 
 function inputFor(ctx: DaemonContext, harness: HarnessId, repoPath: string) {

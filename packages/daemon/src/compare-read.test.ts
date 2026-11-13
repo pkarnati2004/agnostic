@@ -11,6 +11,7 @@ function changes(files: ChangedFile[]): ChangesResponse {
     base: { ref: "main", commit: "c0ffee1" },
     ahead: 1,
     behind: 0,
+    merged: false,
     uncommitted: 0,
     pushed: false,
     remote: null,

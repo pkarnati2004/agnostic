@@ -53,6 +53,7 @@ export function changesResponse(over: Partial<ChangesResponse> = {}): ChangesRes
     base: { ref: "main", commit: "c0ffee1" },
     ahead: 3,
     behind: 0,
+    merged: false,
     uncommitted: 3,
     pushed: false,
     remote: "git@github.com:agn/petal.git",

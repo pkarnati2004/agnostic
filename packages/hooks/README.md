@@ -10,9 +10,9 @@ which turns one hook payload into `running`, `waiting`, or nothing at all.
   in it, how they are written, and what each one means.
 - `settings-json/` is the family that reads a Claude-shaped config: a member is one file holding
   its events, its layout and its status table. Claude Code installs per repo
-  (`.claude/settings.local.json` plus a `.git/info/exclude` entry); every other member installs per
-  user. Kimi keeps its hooks in a marked block in `config.toml`; Codex adds a marked trust block in
-  its `config.toml` beside `hooks.json`.
+  (`.claude/settings.local.json`, which the daemon adds to `.git/info/exclude`); every other
+  member installs per user. Kimi keeps its hooks in a marked block in `config.toml`; Codex adds a
+  marked trust block in its `config.toml` beside `hooks.json`.
 - `hooks-dir/` is the family that merges every file in one directory: Grok and Copilot each read
   `agn.json` there, which agn owns and writes whole.
 - Pi, OMP, OpenCode and Mimo Code read no hook config at all. For those, agn writes a whole file

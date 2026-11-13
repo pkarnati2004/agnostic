@@ -2,12 +2,13 @@ import type { ChangedFile, ChangedFileState } from "@agnostic/core";
 
 export type FileGroup = {
   state: ChangedFileState;
-  label: "Unstaged" | "Staged" | "Committed";
+  label: "Uncommitted" | "Staged" | "Committed";
   files: ChangedFile[];
 };
 
 const LABELS: Record<ChangedFileState, FileGroup["label"]> = {
-  unstaged: "Unstaged",
+  // The wire value stays `unstaged`; the heading matches the header's "uncommitted" count.
+  unstaged: "Uncommitted",
   staged: "Staged",
   committed: "Committed",
 };

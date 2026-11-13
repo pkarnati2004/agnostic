@@ -29,7 +29,7 @@ describe("FileList", () => {
       "committed",
     ]);
     expect(groups.map((group) => group.firstElementChild?.textContent)).toEqual([
-      "Unstaged 2",
+      "Uncommitted 2",
       "Staged 1",
       "Committed 2",
     ]);
@@ -45,7 +45,7 @@ describe("FileList", () => {
   it("heads the one group a list of unstaged rows has", () => {
     const { container, unmount } = list(FILES);
     const group = container.querySelector('[role="group"][data-state="unstaged"]');
-    expect(group?.firstElementChild?.textContent).toBe("Unstaged 3");
+    expect(group?.firstElementChild?.textContent).toBe("Uncommitted 3");
     expect(paths(container)).toEqual(["src/invite.ts", "src/invite.test.ts", "docs/invites.md"]);
     unmount();
   });
@@ -61,7 +61,7 @@ describe("FileList", () => {
     unmount();
   });
 
-  it("draws a file with both staged and unstaged edits once, under Unstaged only", () => {
+  it("draws a file with both staged and unstaged edits once, under Uncommitted only", () => {
     const dual: ChangedFile = {
       path: "src/dual.ts",
       status: "modified",

@@ -67,6 +67,11 @@ export function EmptyLine({ base }: { base: string }) {
   return <PanelLine>{`No changes against \`${base}\` yet.`}</PanelLine>;
 }
 
+/** The branch is in its base: the list is empty because there is nothing left to review. */
+export function MergedLine({ base }: { base: string }) {
+  return <PanelLine>{`Merged into \`${base}\`.`}</PanelLine>;
+}
+
 function PanelLine({ children }: { children: string }) {
   return (
     <p className="px-4 py-3 text-muted-foreground text-sm">

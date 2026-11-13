@@ -2,7 +2,7 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { agnosticPaths, run } from "@agnostic/core";
+import { agnosticPaths } from "@agnostic/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { hookCommand } from "../hook-script.js";
 import { claudeCodeInstaller } from "./install.js";
@@ -22,7 +22,6 @@ const input = () => ({
   env: {},
 });
 const settings = () => join(repoPath, ".claude", "settings.local.json");
-const exclude = () => join(repoPath, ".git", "info", "exclude");
 
 async function readSettings(): Promise<{
   hooks?: Record<string, { matcher?: string; hooks: { command: string }[] }[]>;
@@ -94,24 +93,6 @@ describe("the Claude Code hook installer", () => {
     expect(config.permissions).toEqual({ allow: ["Bash(git status:*)"] });
     expect(config.hooks?.Stop).toHaveLength(1);
     expect(config.hooks?.PreToolUse).toBeUndefined();
-  });
-
-  it("excludes the file from git, once, and never through .gitignore", async () => {
-    await run("git", ["-C", repoPath, "init", "-q"]);
-    // Whoever runs these tests may ignore this path globally already; the repo decides here.
-    await run("git", ["-C", repoPath, "config", "core.excludesFile", "/dev/null"]);
-    await claudeCodeInstaller.install(input());
-    await claudeCodeInstaller.install(input());
-    const lines = (await readFile(exclude(), "utf8")).split("\n");
-    expect(lines.filter((line) => line === ".claude/settings.local.json")).toHaveLength(1);
-    await expect(readFile(join(repoPath, ".gitignore"), "utf8")).rejects.toThrow();
-  });
-
-  it("adds nothing to the exclude file when git already ignores the path", async () => {
-    await run("git", ["-C", repoPath, "init", "-q"]);
-    await writeFile(join(repoPath, ".gitignore"), ".claude/\n", "utf8");
-    await claudeCodeInstaller.install(input());
-    expect(await readFile(exclude(), "utf8")).not.toContain("settings.local.json");
   });
 
   it("installs in a directory that is not a git repo at all", async () => {

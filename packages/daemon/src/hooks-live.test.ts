@@ -124,6 +124,23 @@ describe("a hook from a live harness", () => {
     expect(body.task.status).toBe("stopped");
   });
 
+  it("keeps the worktree's hook file out of git through the main repo's exclude file", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE });
+    await start(repo);
+    await start(repo);
+    const exclude = await readFile(join(repo.path, ".git", "info", "exclude"), "utf8");
+    expect(
+      exclude.split("\n").filter((line) => line === ".claude/settings.local.json"),
+    ).toHaveLength(1);
+  });
+
+  it("writes no exclude file and logs nothing for a folder repo", async () => {
+    const repo = await daemon.addRepo({ defaultProfile: PROFILE, git: false });
+    await start(repo);
+    await expect(readFile(join(repo.path, ".git", "info", "exclude"), "utf8")).rejects.toThrow();
+    expect(await daemon.readLog()).not.toContain("hooks install failed");
+  });
+
   it("still starts the task when the hook install fails, and logs why", async () => {
     const repo = await daemon.addRepo({ defaultProfile: PROFILE, git: false });
     // A folder repo launches in the repo path itself; a plain file where the installer needs

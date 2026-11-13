@@ -58,7 +58,7 @@ const COLUMNS: Column<ChangedFile>[] = [
 
 function render(changes: ChangesResponse): string[] {
   if (changes.files.length === 0) {
-    return [`no changes against ${changes.base.ref} yet`];
+    return [changes.merged ? header(changes) : `no changes against ${changes.base.ref} yet`];
   }
   return [header(changes), ...renderTable(changes.files, COLUMNS).slice(1)];
 }
@@ -66,8 +66,12 @@ function render(changes: ChangesResponse): string[] {
 /** The line the workspace's panel shows above the file list, in the same order. */
 function header(changes: ChangesResponse): string {
   const branch = changes.task.branch ?? "this task";
-  const summary = `${plural(changes.ahead, "commit")}, ${changes.uncommitted} uncommitted`;
-  const behind = changes.behind ? `, behind ${changes.behind}` : "";
+  const commits = changes.merged
+    ? `merged into ${changes.base.ref}`
+    : plural(changes.ahead, "commit");
+  const summary = `${commits}, ${changes.uncommitted} uncommitted`;
+  // A merged branch has nothing to bring up to date, whatever the base gained since.
+  const behind = changes.behind && !changes.merged ? `, behind ${changes.behind}` : "";
   return `${branch} -> ${changes.base.ref}  ${summary}${behind}  ${
     changes.pushed ? "pushed" : "not pushed"
   }`;

@@ -49,6 +49,7 @@ function changes(uncommitted: number): ChangesResponse {
     base: { ref: "main", commit: "c0ffee" },
     ahead: 1,
     behind: 0,
+    merged: false,
     uncommitted,
     pushed: false,
     remote: "git@github.com:agn/petal.git",

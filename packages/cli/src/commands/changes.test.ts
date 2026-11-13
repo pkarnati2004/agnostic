@@ -11,6 +11,7 @@ function response(over: Partial<ChangesResponse> = {}): ChangesResponse {
     base: { ref: "main", commit: "c0ffee" },
     ahead: 3,
     behind: 4,
+    merged: false,
     uncommitted: 2,
     pushed: false,
     remote: null,
@@ -80,6 +81,26 @@ describe("agn changes", () => {
       ["abcdefghjk"],
     );
     expect(out).toEqual(["no changes against main yet"]);
+  });
+
+  it("prints the merged header alone when a merged branch lists nothing", async () => {
+    const merged = response({ merged: true, ahead: 0, behind: 1, uncommitted: 0, files: [] });
+    const { out } = await runChanges({ taskChanges: () => Promise.resolve(merged) }, [
+      "abcdefghjk",
+    ]);
+    expect(out).toEqual([
+      "agn/invite-links-a1b2 -> main  merged into main, 0 uncommitted  not pushed",
+    ]);
+  });
+
+  it("heads a merged branch's leftover edits with the merged line", async () => {
+    const merged = response({ merged: true, ahead: 0, uncommitted: 1 });
+    const { out } = await runChanges({ taskChanges: () => Promise.resolve(merged) }, [
+      "abcdefghjk",
+    ]);
+    expect(out[0]).toBe(
+      "agn/invite-links-a1b2 -> main  merged into main, 1 uncommitted  not pushed",
+    );
   });
 
   it("prints one file's patch verbatim", async () => {
