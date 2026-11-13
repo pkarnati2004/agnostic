@@ -38,6 +38,21 @@ cleanup() {
 }
 trap cleanup EXIT
 
+echo "smoke-desktop: release:desktop refuses to run without the signing variables"
+UNSET=(-u CSC_NAME -u APPLE_ID -u APPLE_APP_SPECIFIC_PASSWORD -u APPLE_TEAM_ID -u APPLE_KEYCHAIN_PROFILE)
+STAGED_AT="$(stat -f %m packages/desktop/build/app)"
+set +e
+OUT="$(env "${UNSET[@]}" bash scripts/release-desktop.sh 2>&1)"
+STATUS=$?
+OUT_LOGIN="$(env "${UNSET[@]}" CSC_NAME=agn-smoke bash scripts/release-desktop.sh 2>&1)"
+STATUS_LOGIN=$?
+set -e
+test "$STATUS" = 1
+test "$OUT" = "release-desktop: CSC_NAME is not set; see docs/release.md"
+test "$STATUS_LOGIN" = 1
+test "$OUT_LOGIN" = "release-desktop: set APPLE_KEYCHAIN_PROFILE, or APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID; see docs/release.md"
+test "$(stat -f %m packages/desktop/build/app)" = "$STAGED_AT"
+
 echo "smoke-desktop: launch the app and wait for daemon.json"
 "${APP[@]}" > /dev/null 2>&1 &
 APP_PID=$!

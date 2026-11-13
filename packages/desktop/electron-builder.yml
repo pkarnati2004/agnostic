@@ -7,13 +7,27 @@ directories:
 # agnd is a separate process that reads ui/ and catalog.json with fs, and both natives dlopen.
 asar: false
 npmRebuild: false
+
+# No fuses key: Electron's defaults keep RunAsNode on, which agnd's launch needs. electron-builder
+# writes only the fuses a config names, so a fuses key added later must set runAsNode: true.
 mac:
   target:
     - target: dmg
       arch: [arm64]
+    # Carries the stapled app without loss; a later update feed would read it.
+    - target: zip
+      arch: [arm64]
   category: public.app-category.developer-tools
   icon: icon/icon.png
+  # Notarization requires the hardened runtime; the ad-hoc build runs under it too.
+  hardenedRuntime: true
+  entitlements: entitlements.plist
+  # The Electron Helper apps.
+  entitlementsInherit: entitlements.plist
+  # Runs only when the notarytool login variables are set; otherwise electron-builder skips it with a warning.
+  notarize: true
   # "-" is an ad-hoc signature over the whole bundle; null would leave Electron's own, unsealed one.
-  # Developer ID signing, notarization and the hardened runtime come later.
-  hardenedRuntime: false
+  # release:desktop passes -c.mac.identity= so the Developer ID named by CSC_NAME signs instead.
   identity: "-"
+# A CSC_NAME that matches no keychain identity fails the build instead of shipping it unsigned.
+forceCodeSigning: true

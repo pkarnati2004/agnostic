@@ -30,6 +30,8 @@ agnostic is a local-first workspace for the coding agents you already have. Desc
 
 ## Install
 
+Mac app for Apple silicon: [the dmg is on the Releases page](https://github.com/pkarnati2004/agnostic/releases/latest), signed with a Developer ID and notarized. Open it and drag agnostic to Applications. Needs tmux: `brew install tmux`.
+
 ```bash
 npm i -g agnostic-dev            # puts `agn` on your PATH
 agn doctor                       # which agents you have, and whether they are logged in
@@ -37,7 +39,7 @@ agn add ~/code/my-repo           # register a repo
 agn ui                           # open the workspace
 ```
 
-Requirements: macOS (Linux best effort), Node 22+, git, tmux 3.3+, and at least one coding agent installed and logged in. [docs/setup.md](docs/setup.md) covers each agent, and its "From a checkout" note covers running agn from a clone.
+Requirements: macOS (Linux best effort), Node 22+ for the npm install, git, tmux 3.3+, and at least one coding agent installed and logged in. [docs/setup.md](docs/setup.md) covers each agent, and its "From a checkout" note covers running agn from a clone.
 
 ## How it works
 
